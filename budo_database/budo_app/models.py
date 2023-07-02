@@ -7,11 +7,12 @@ class Kinder(models.Model):
     kid_index = models.CharField(max_length=255)
     kid_vorname = models.CharField(max_length=255)
     kid_nachname = models.CharField(max_length=255)
-    zug_anreise = models.BooleanField
-    zug_abreise = models.BooleanField
+    zug_anreise = models.BooleanField(null=True, default=None)
+    zug_abreise = models.BooleanField(null=True, default=None)
     # script to filter for "kein Top Jugendticket vorhanden"
     top_jugendticket = models.BooleanField
-    turnus_dauer = models.IntegerField  # 1 oder 2 --> little script to convert
+    # 1 oder 2 --> little script to convert
+    turnus_dauer = models.IntegerField(null=True, default=None)
     geschwister = models.CharField(max_length=255, null=True)
     zeltwunsch = models.CharField(max_length=255, null=True)
     schimmkenntnisse = models.CharField(max_length=255, null=True)
@@ -24,12 +25,12 @@ class Kinder(models.Model):
     anmelder_vorname = models.CharField(max_length=255)
     anmelder_nachname = models.CharField(max_length=255)
     anmelde_organisation = models.CharField(max_length=255, null=True)
-    anmelder_email = models.CharField  # from rawdata
+    anmelder_email = models.CharField(max_length=255, null=True, default=None)
     anmelder_mobil = models.CharField(max_length=255, null=True)
     hauptversichert_bei = models.CharField(max_length=255, null=True)
     # rechnung
     rechnungsadresse = models.CharField(max_length=255)
-    rechnung_plz = models.IntegerField
+    rechnung_plz = models.IntegerField(null=True, default=None)
     rechnung_ort = models.CharField(max_length=255)
     rechnung_land = models.CharField(max_length=255)
     notfall_kontakte = models.CharField(
@@ -51,7 +52,7 @@ class Kinder(models.Model):
 
     # anwesenheit
 
-    anwesend = models.BooleanField
+    anwesend = models.BooleanField(null=True, default=None)
     late_anreise = models.DateField(null=True)
     early_abreise_date = models.DateField(null=True)
     early_abreise_abholer = models.CharField(max_length=255, null=True)
@@ -66,18 +67,20 @@ class Kinder(models.Model):
 
 
 class Turnus(models.Model):
+    turnus_nr = models.IntegerField(null=True, default=None)
+    turnus_year = models.IntegerField(null=True, default=None)
     uploadedFile = models.FileField(upload_to="Uploaded Files/")
     dateTimeOfUpload = models.DateField(auto_now=True)
 
 
 class SchwerpunktOne(models.Model):
-    swp_name = models.CharField(max_length=255, null=True)
-    swp_auslagern = models.BooleanField
+    swp_one_name = models.CharField(max_length=255, null=True)
+    swp_one_auslagern = models.BooleanField(null=True, default=None)
 
 
 class SchwerpunktTwo(models.Model):
-    swp_name = models.CharField(max_length=255, null=True)
-    swp_auslagern = models.BooleanField
+    swp_two_name = models.CharField(max_length=255, null=True)
+    swp_two_auslagern = models.BooleanField(null=True, default=None)
 
 
 class Document(models.Model):
