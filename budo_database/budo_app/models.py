@@ -1,0 +1,86 @@
+from django.db import models
+
+# Create your models here.
+
+
+class Kinder(models.Model):
+    kid_index = models.CharField(max_length=255)
+    kid_vorname = models.CharField(max_length=255)
+    kid_nachname = models.CharField(max_length=255)
+    zug_anreise = models.BooleanField
+    zug_abreise = models.BooleanField
+    # script to filter for "kein Top Jugendticket vorhanden"
+    top_jugendticket = models.BooleanField
+    turnus_dauer = models.IntegerField  # 1 oder 2 --> little script to convert
+    geschwister = models.CharField(max_length=255, null=True)
+    zeltwunsch = models.CharField(max_length=255, null=True)
+    schimmkenntnisse = models.CharField(max_length=255, null=True)
+    haftpflichtversicherung = models.CharField(max_length=255, null=True)
+    budo_erfahrung = models.BooleanField(null=True)
+    anmerkung = models.CharField(max_length=255, null=True)
+    turnus = models.ForeignKey("Turnus", on_delete=models.SET_NULL, null=True)
+
+    # familie
+    anmelder_vorname = models.CharField(max_length=255)
+    anmelder_nachname = models.CharField(max_length=255)
+    anmelde_organisation = models.CharField(max_length=255, null=True)
+    anmelder_email = models.CharField  # from rawdata
+    anmelder_mobil = models.CharField(max_length=255, null=True)
+    hauptversichert_bei = models.CharField(max_length=255, null=True)
+    # rechnung
+    rechnungsadresse = models.CharField(max_length=255)
+    rechnung_plz = models.IntegerField
+    rechnung_ort = models.CharField(max_length=255)
+    rechnung_land = models.CharField(max_length=255)
+    notfall_kontakte = models.CharField(
+        max_length=255, null=True)  # import from rawdata
+
+    # health
+
+    sex = models.CharField
+    sozialversicherungsnr = models.CharField(max_length=255, null=True)
+    tetanusimpfung = models.CharField(max_length=255, null=True)
+    zeckenimpfung = models.CharField(max_length=255, null=True)
+    vegetarisch = models.CharField(max_length=255, null=True)
+    special_food_description = models.CharField(max_length=255, null=True)
+    drugs = models.CharField(max_length=255, null=True)
+    illness = models.CharField(max_length=255, null=True)
+    rezeptfreie_medikamente = models.CharField(max_length=255, null=True)
+    rezept_medikamente = models.CharField(max_length=255, null=True)
+    covid = models.CharField(max_length=255, null=True)
+
+    # anwesenheit
+
+    anwesend = models.BooleanField
+    late_anreise = models.DateField(null=True)
+    early_abreise_date = models.DateField(null=True)
+    early_abreise_abholer = models.CharField(max_length=255, null=True)
+    early_abreise_reason = models.CharField(max_length=255, null=True)
+    came_back = models.DateField(null=True)
+
+    # Schwerpunkte
+    swp1 = models.ForeignKey(
+        "SchwerpunktOne", on_delete=models.SET_NULL, null=True)
+    swp2 = models.ForeignKey(
+        "SchwerpunktTwo", on_delete=models.SET_NULL, null=True)
+
+
+class Turnus(models.Model):
+    uploadedFile = models.FileField(upload_to="Uploaded Files/")
+    dateTimeOfUpload = models.DateField(auto_now=True)
+
+
+class SchwerpunktOne(models.Model):
+    swp_name = models.CharField(max_length=255, null=True)
+    swp_auslagern = models.BooleanField
+
+
+class SchwerpunktTwo(models.Model):
+    swp_name = models.CharField(max_length=255, null=True)
+    swp_auslagern = models.BooleanField
+
+
+class Document(models.Model):
+    title = models.CharField(max_length=200)
+    uploadedFile = models.FileField(upload_to="Uploaded Files/")
+    dateTimeOfUpload = models.DateTimeField(auto_now=True)
