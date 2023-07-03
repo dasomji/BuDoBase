@@ -10,7 +10,7 @@ class Kinder(models.Model):
     zug_anreise = models.BooleanField(null=True, default=None)
     zug_abreise = models.BooleanField(null=True, default=None)
     # script to filter for "kein Top Jugendticket vorhanden"
-    top_jugendticket = models.BooleanField
+    top_jugendticket = models.BooleanField(null=True, default=None)
     # 1 oder 2 --> little script to convert
     turnus_dauer = models.IntegerField(null=True, default=None)
     geschwister = models.CharField(max_length=255, null=True)
@@ -38,7 +38,7 @@ class Kinder(models.Model):
 
     # health
 
-    sex = models.CharField
+    sex = models.CharField(max_length=255, null=True, default=None)
     sozialversicherungsnr = models.CharField(max_length=255, null=True)
     tetanusimpfung = models.CharField(max_length=255, null=True)
     zeckenimpfung = models.CharField(max_length=255, null=True)
