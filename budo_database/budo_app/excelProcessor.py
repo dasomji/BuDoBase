@@ -1,14 +1,17 @@
+from budo_database.settings import MEDIA_ROOT
+from . import models
 import pandas as pd
-# from budo_app.models import Turnus
+import os
 
 
-from budo_app.models import Turnus, Kinder
+def process_excel():
+    this_turnus = models.Turnus.objects.last()
+    path = os.path.join(MEDIA_ROOT, str(this_turnus.uploadedFile))
 
-
-def process():
-    turnus = Turnus.objects.first()
-    path = turnus.uploadedFile.url
-    budo = pd.read_excel(open(path, "rb"), sheet_name="DataCleaner", header=1)
+    budo = pd.read_excel(
+        open(path, "rb"), sheet_name="DataCleaner", header=1)
+    budo_raw = pd.read_excel(
+        open(path, "rb"), sheet_name="RawData", header=0)
     for i in range(0, len(budo)):
         # turn Anreise string into boolean, True = Zuganreise
         if "Betreute Anreise" in budo["AnreiseText"][i]:
@@ -39,7 +42,11 @@ def process():
         else:
             kid_budo_erfahrung = None
 
-        kid = Kinder(
+        # cleaning Notfallkontake from RawData
+        cleaned_notfall = str(budo_raw["Notfall Kontakte"][i]).replace(
+            "<p>", "").replace("</p>", "")
+
+        kid = models.Kinder(
             kid_index=budo["Index"][i],
             kid_vorname=budo["Kind_Vorname"][i],
             kid_nachname=budo["Kind_Nachname"][i],
@@ -53,44 +60,39 @@ def process():
             haftpflichtversicherung=budo["Haftpflichtversicherung"][i],
             budo_erfahrung=kid_budo_erfahrung,
             anmerkung=budo["Anmerkungen"][i],
-            # turnus = models.ForeignKey("Turnus", on_delete=models.SET_NULL, null=True)
+            turnus=this_turnus,
 
-            # # familie
-            # anmelder_vorname = models.CharField(max_length=255)
-            # anmelder_nachname = models.CharField(max_length=255)
-            # anmelde_organisation = budo[""][i],
-            # anmelder_email = models.CharField(max_length=255, null=True, default=None)
-            # anmelder_mobil = budo[""][i],
-            # hauptversichert_bei = budo[""][i],
-            # # rechnung
-            # rechnungsadresse = models.CharField(max_length=255)
-            # rechnung_plz = models.IntegerField(null=True, default=None)
-            # rechnung_ort = models.CharField(max_length=255)
-            # rechnung_land = models.CharField(max_length=255)
-            # notfall_kontakte = models.CharField(
-            #     max_length=255, null=True)  # import from rawdata
+            # familie
+            anmelder_vorname=budo["Anmelder_Vorname"][i],
+            anmelder_nachname=budo["Anmelder_Nachname"][i],
+            anmelde_organisation=budo["Organisation"][i],
+            anmelder_email=budo["Anmelder_Email"][i],
+            anmelder_mobil=budo["Anmelder_mobil"][i],
+            hauptversichert_bei=budo[
+                "Hauptversicherten_Person,_bei_der_das_Kind_mitversichert_ist_(Sozialversicherung)"][i],
+            notfall_kontakte=cleaned_notfall,
+            # rechnung
+            rechnungsadresse=budo["Rechnungsadresse"][i],
+            rechnung_plz=int(budo["Rechnung_PLZ"][i]),
+            rechnung_ort=budo["Rechnung_Ort"][i],
+            rechnung_land=budo["Rechnung_Land"][i],
 
-            # # health
 
-            # sex = models.CharField
-            # sozialversicherungsnr = budo[""][i],
-            # tetanusimpfung = budo[""][i],
-            # zeckenimpfung = budo[""][i],
-            # vegetarisch = budo[""][i],
-            # special_food_description = budo[""][i],
-            # drugs = budo[""][i],
-            # illness = budo[""][i],
-            # rezeptfreie_medikamente = budo[""][i],
-            # rezept_medikamente = budo[""][i],
-            # covid = budo[""][i],
+            # health
 
-            # # anwesenheit
+            sex=budo["Kind_Geschlecht"][i],
+            sozialversicherungsnr=budo["Sozialversicherung_Kind"][i],
+            tetanusimpfung=budo["Tetanusimpfung"][i],
+            zeckenimpfung=budo["Zeckenimpfung"][i],
+            vegetarisch=budo["Vegetarisch"][i],
+            special_food_description=budo["Ernährungsvorgaben"][i],
+            drugs=budo["Muss_ihr_Kind_Medikamente_einnehmen?"][i],
+            illness=budo["Hat_Ihr_Kind_eine_Krankheit,_körperliche_Einschränkungen_oder_besondere_Bedürfnisse?"][i],
+            rezeptfreie_medikamente=budo["Stimmen_Sie_der_Verabreichung_von_NICHT-rezeptpflichtigen_Medikamenten_zu,_wie_zum_Beispiel_Salbe_bei_Insektenstich?"][i],
+            rezept_medikamente=budo["Stimmen_Sie_der_Verabreichung_von_rezeptpflichtigen_Medikamenten_zu,_welche_Ihrem_Kind_von_einem_Arzt_verordnet_wurden?"][i],
+            covid=budo["Covid"][i],
 
-            # anwesend = models.BooleanField(null=True, default=None)
-            # late_anreise = models.DateField(null=True)
-            # early_abreise_date = models.DateField(null=True)
-            # early_abreise_abholer = budo[""][i],
-            # early_abreise_reason = budo[""][i],
-            # came_back = models.DateField(null=True)
+            # Anwesenheit & Schwerpunkte werden nicht aus dem Excel-File extrahiert sondern durch Eingaben ergänzt
+
         )
         kid.save()
