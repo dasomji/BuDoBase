@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 def from_excel_ordinal(ordinal: float, _epoch0=datetime(1899, 12, 31)) -> datetime:
     if ordinal >= 60:
         ordinal -= 1  # Excel leap year bug, 1900 is not a leap year!
-    return (_epoch0 + timedelta(days=ordinal)).replace(microsecond=0).strftime('%d/%m/%Y')
+    return (_epoch0 + timedelta(days=ordinal)).replace(microsecond=0).strftime('%Y-%m-%d')
 
 
 def process_excel():
@@ -59,7 +59,7 @@ def process_excel():
             kid_index=budo["Index"][i],
             kid_vorname=budo["Kind_Vorname"][i],
             kid_nachname=budo["Kind_Nachname"][i],
-            kid_age=budo["Kind_Alter"][i],
+            kid_alter=budo["Kind_Alter"][i],
             kid_birthday=birthday,
             zug_anreise=kid_anreise,
             zug_abreise=kid_abreise,

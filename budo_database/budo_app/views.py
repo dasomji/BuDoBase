@@ -1,9 +1,10 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.template import loader
-from .excelProcessor import process_excel
+from datetime import datetime
 from . import models
 
+from .excelProcessor import process_excel
 
 # Create your views here.
 
@@ -48,7 +49,9 @@ def kids_list(request):
 def kid_details(request, id):
     this_kid = models.Kinder.objects.get(id=id)
     template = loader.get_template('kids_data.html')
+    today = datetime.today().strftime('%Y-%m-%d')
     context = {
+        "today_date": today,
         'Kinder': this_kid,
     }
     return HttpResponse(template.render(context, request))

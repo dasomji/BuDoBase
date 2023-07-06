@@ -1,12 +1,61 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
+{% extends "master.html" %}
+
+{% block title %}
+  BuDo Kid Info
+{% endblock %}
+
     {% block content %}
+    <div class="flex-container">
+        <div class="info_container" id="kinderinfos">
+            <h2>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
+            <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
+            <p><span class="label">Alter</span>: {{Kinder.kid_alter}}</p>
+            <p><span class="label">Geburtstag</span>: {{Kinder.kid_birthday}}</p>
+            <p><span class="label">Aufenthaltsdauer</span>: {{Kinder.turnus_dauer}}-wöchig</p>
+            <p><span class="label">Geschwister</span>: {{Kinder.geschwister}}</p>
+            <p><span class="label">Zeltwunsch</span>: {{Kinder.zeltwunsch}}</p>
+            <p><span class="label">War schon mal im Bunten Dorf</span>: {{Kinder.budo_erfahrung}}</p>
+        </div>
+
+        <div class="info_container" id="health_info">
+            <h2>Gesundheitsinfos</h1>
+            <p><span class="label">Sozialversicherungsnummer</span>: {{Kinder.sozialversicherungsnr}}</p>
+            <p><span class="label">Krankheiten</span>: {{Kinder.illness}}</p>
+            <p><span class="label">Medikamente</span>: {{Kinder.drugs}}</p>
+            <p><span class="label">Vegetarisch</span>: {{Kinder.vegetarisch}}</p>
+            <p><span class="label">Ernährungsvorgaben</span>: {{Kinder.special_food_description}}</p>
+            <p><span class="label">Schwimmkentnisse</span>: {{Kinder.swimmer}}</p>
+        </div>
+        
+        <div class="info_container" id="family_info">
+            <h2>Familie</h2>
+            <p><span class="label">Organisation</span>: {{Kinder.anmelde_organisation}}</p>
+            <p><span class="label">Anmelder:in</span>: {{Kinder.anmelder_vorname}} {{Kinder.anmelder_nachname}}</p>
+            <p><span class="label">Anmelder:in Email</span>: <a href="mailto:{{Kinder.anmelder_email}}">{{Kinder.anmelder_email}}</a></p>
+            <p><span class="label">Anmelder:in Mobil</span>: <a href="tel: {{Kinder.anmelder_mobil}}">{{Kinder.anmelder_mobil}}</a></p>
+            <p><span class="label">Hauptversichert bei</span>: {{Kinder.hauptversichert_bei}}</p>
+            <p><span class="label">Notfallkontakte</span>: {{Kinder.notfall_kontakte}}</p>
+        </div>
+
+        <div class="info_container input_container">
+            <h1>Check-In</h2>    
+                <p><label for="check_in_date">Check-In Datum</label><input type="date" id="check_in_date" value="{{today_date}}"></p>
+                <p><label for="ausweis">Ausweis</label><input type="checkbox" id="ausweis"></p>
+                <p><label for="e-card">E-Card</label><input type="checkbox" id="e-card"></p>
+                <p><label for="covid">Covid Test-Erlaubnis</label><input type="checkbox" name="Covid" id="covid"></p>
+                <p><label for="einverstaendnis">Einverständniserklärung</label><input type="checkbox" name="" id="einverstaendnis"></p>
+                <p><label for="taschengeld">Taschengeld </label><input type="text" name="" id="taschengeld"></p>
+        </div>
+        
+        <div class="info_container" id="family_info">
+            <h2>Notizen</h2>
+            <p><span class="label">Anmerkungen (Buchung)</span>: {{Kinder.anmerkung_buchung}}</p>
+            <p><span class="label">Anmerkungen</span>: {{Kinder.anmerkung}}</p>
+            <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team}}</p>
+            <button>Speichern</button>
+        </div>
+    </div>    
+    <!-- <div class="flex-container">
     <div class="info_container" id="kinderinfos">
         <h2>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
         <p>Geschlecht: {{Kinder.sex}} </p>
@@ -19,7 +68,7 @@
     </div>
 
     <div class="info_container" id="health_info">
-        <h1>Gesundheitsinfos</h1>
+        <h2>Gesundheitsinfos</h1>
         <p>Sozialversicherungsnummer: {{Kinder.sozialversicherungsnr}}</p>
         <p>Krankheiten: {{Kinder.illness}}</p>
         <p>Medikamente: {{Kinder.drugs}}</p>
@@ -38,6 +87,10 @@
         <p>Notfallkontakte: {{Kinder.notfallkontakte}}</p>
     </div>
 
+    <div>
+        <h2>Check</h2>
+    </div>
+
     <div class="info_container" id="family_info">
         <h2>Notizen</h2>
         <p>Anmerkungen (Buchung): {{Kinder.anmerkung_buchung}}</p>
@@ -45,14 +98,9 @@
         <p>Anmerkungen vom Organisator: {{Kinder.anmerkung_team}}</p>
         <button>Speichern</button>
     </div>
+    </div> -->
+
   
-  
-  <p>Back to <a href="/members">Members</a></p>
+  <p>Back to <a href="/all_kids">Members</a></p>
   
 {% endblock %}
-    <h2>Kinderinfos</h2>
-    <ul>
-        <li>{{kiddo.}}</li>
-    </ul>
-</body>
-</html>

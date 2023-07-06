@@ -1,0 +1,30 @@
+:root{
+    --blue: rgba(183, 220, 255, 0.34);
+}
+
+.flex-container{
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
+.info_container{
+    flex-basis: 28vw;
+    border-radius: 8px;
+    border: 4px solid #000;
+    background-color: var(--blue);
+    padding: 0px 20px;
+}
+
+.input_container{
+    flex-basis: 60vw;
+}
+
+.info_container :is(h1, h2){
+    text-align: center;
+}
+
+.info_container span.label{
+    font-weight: bold;
+}
