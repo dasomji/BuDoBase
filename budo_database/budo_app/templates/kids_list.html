@@ -1,0 +1,21 @@
+{% extends "master.html" %}
+
+{% block title %}
+  BuDo Kids Alle Kinder
+{% endblock %}
+
+
+{% block content %}
+  <h1><a href="https://www.youtube.com/watch?v=D9K-bA_MRTM">Alle Kinder</a></h1>
+
+  <p><a href="/">HOME</a></p>
+  
+  <ul>
+    {% for x in kids %}
+      <div class="" id="name"><a href="kid_details/{{ x.id }}">{{ x.kid_vorname }} {{ x.kid_nachname }}</a></div>
+      <div id="budo_family"><a href="details/{{ x.id }}">{{ x.budo_family }}</a></div>
+      <div id="sex">{{ x.sex }}</div>
+      <div></div>
+    {% endfor %}
+  </ul>
+{% endblock %}

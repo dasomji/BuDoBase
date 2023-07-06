@@ -7,6 +7,9 @@ class Kinder(models.Model):
     kid_index = models.CharField(max_length=255)
     kid_vorname = models.CharField(max_length=255)
     kid_nachname = models.CharField(max_length=255)
+    kid_alter = models.DecimalField(
+        max_digits=4, decimal_places=2, null=True, default=None)
+    kid_birthday = models.DateField(null=True, default=None)
     zug_anreise = models.BooleanField(null=True, default=None)
     zug_abreise = models.BooleanField(null=True, default=None)
     # script to filter for "kein Top Jugendticket vorhanden"
@@ -18,6 +21,8 @@ class Kinder(models.Model):
     schimmkenntnisse = models.CharField(max_length=255, null=True)
     haftpflichtversicherung = models.CharField(max_length=255, null=True)
     budo_erfahrung = models.BooleanField(null=True)
+    anmerkung_buchung = models.CharField(
+        max_length=255, null=True, default=None)
     anmerkung = models.CharField(max_length=255, null=True)
     turnus = models.ForeignKey("Turnus", on_delete=models.SET_NULL, null=True)
 
@@ -48,6 +53,7 @@ class Kinder(models.Model):
     illness = models.CharField(max_length=255, null=True)
     rezeptfreie_medikamente = models.CharField(max_length=255, null=True)
     rezept_medikamente = models.CharField(max_length=255, null=True)
+    swimmer = models.CharField(max_length=255, null=True, default=None)
     covid = models.CharField(max_length=255, null=True)
 
     # anwesenheit
@@ -58,12 +64,14 @@ class Kinder(models.Model):
     early_abreise_abholer = models.CharField(max_length=255, null=True)
     early_abreise_reason = models.CharField(max_length=255, null=True)
     came_back = models.DateField(null=True)
+    anmerkung_team = models.CharField(max_length=1000, null=True, default="")
 
-    # Schwerpunkte
+    # Schwerpunkte & Familien
     swp1 = models.ForeignKey(
         "SchwerpunktOne", on_delete=models.SET_NULL, null=True)
     swp2 = models.ForeignKey(
         "SchwerpunktTwo", on_delete=models.SET_NULL, null=True)
+    # budo_family = create a new class with four options
 
 
 class Turnus(models.Model):

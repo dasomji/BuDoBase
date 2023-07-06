@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    {% block content %}
+    <div class="info_container" id="kinderinfos">
+        <h2>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
+        <p>Geschlecht: {{Kinder.sex}} </p>
+        <p>Alter: {{Kinder.age}}</p>
+        <p>Geburtstag: {{Kinder.birthday}}</p>
+        <p>Aufenthaltsdauer: {{Kinder.turnus_dauer}}-wöchig</p>
+        <p>Geschwister: {{Kinder.geschwister}}</p>
+        <p>Zeltwunsch: {{Kinder.zeltwunsch}}</p>
+        <p>War schon mal im Bunten Dorf: {{Kinder.budo_erfahrung}}</p>
+    </div>
+
+    <div class="info_container" id="health_info">
+        <h1>Gesundheitsinfos</h1>
+        <p>Sozialversicherungsnummer: {{Kinder.sozialversicherungsnr}}</p>
+        <p>Krankheiten: {{Kinder.illness}}</p>
+        <p>Medikamente: {{Kinder.drugs}}</p>
+        <p>Vegetarisch: {{Kinder.vegetarisch}}</p>
+        <p>Ernährungsvorgaben: {{Kinder.special_food_description}}</p>
+        <p>Schwimmkentnisse: {{Kinder.swimmer}}</p>
+    </div>
+
+    <div class="info_container" id="family_info">
+        <h2>Familie</h2>
+        <p>Organisation: {{Kinder.anmelde_organisation}}</p>
+        <p>Anmelder:in: {{Kinder.anmelder_vorname}} {{Kinder.anmelder_nachname}}</p>
+        <p>Anmelder:in Email: {{Kinder.anmelder_email}}</p>
+        <p>Anmelder:in Mobil: {{Kinder.anmelder_mobil}}</p>
+        <p>Hauptversichert bei: {{Kinder.hauptversichert_bei}}</p>
+        <p>Notfallkontakte: {{Kinder.notfallkontakte}}</p>
+    </div>
+
+    <div class="info_container" id="family_info">
+        <h2>Notizen</h2>
+        <p>Anmerkungen (Buchung): {{Kinder.anmerkung_buchung}}</p>
+        <p>Anmerkungen: {{Kinder.anmerkung}}</p>
+        <p>Anmerkungen vom Organisator: {{Kinder.anmerkung_team}}</p>
+        <button>Speichern</button>
+    </div>
+  
+  
+  <p>Back to <a href="/members">Members</a></p>
+  
+{% endblock %}
+    <h2>Kinderinfos</h2>
+    <ul>
+        <li>{{kiddo.}}</li>
+    </ul>
+</body>
+</html>

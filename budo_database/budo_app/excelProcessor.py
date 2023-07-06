@@ -2,6 +2,13 @@ from budo_database.settings import MEDIA_ROOT
 from . import models
 import pandas as pd
 import os
+from datetime import datetime, timedelta
+
+
+def from_excel_ordinal(ordinal: float, _epoch0=datetime(1899, 12, 31)) -> datetime:
+    if ordinal >= 60:
+        ordinal -= 1  # Excel leap year bug, 1900 is not a leap year!
+    return (_epoch0 + timedelta(days=ordinal)).replace(microsecond=0).strftime('%d/%m/%Y')
 
 
 def process_excel():
@@ -46,10 +53,14 @@ def process_excel():
         cleaned_notfall = str(budo_raw["Notfall Kontakte"][i]).replace(
             "<p>", "").replace("</p>", "")
 
+        birthday = from_excel_ordinal(float(budo["Kind_Geburtsdatum"][i]))
+
         kid = models.Kinder(
             kid_index=budo["Index"][i],
             kid_vorname=budo["Kind_Vorname"][i],
             kid_nachname=budo["Kind_Nachname"][i],
+            kid_age=budo["Kind_Alter"][i],
+            kid_birthday=birthday,
             zug_anreise=kid_anreise,
             zug_abreise=kid_abreise,
             top_jugendticket=kid_jugendticket,
@@ -60,6 +71,7 @@ def process_excel():
             haftpflichtversicherung=budo["Haftpflichtversicherung"][i],
             budo_erfahrung=kid_budo_erfahrung,
             anmerkung=budo["Anmerkungen"][i],
+            anmerkung_buchung=budo["Anmerkungen_Buchung"][i],
             turnus=this_turnus,
 
             # familie
@@ -90,6 +102,7 @@ def process_excel():
             illness=budo["Hat_Ihr_Kind_eine_Krankheit,_körperliche_Einschränkungen_oder_besondere_Bedürfnisse?"][i],
             rezeptfreie_medikamente=budo["Stimmen_Sie_der_Verabreichung_von_NICHT-rezeptpflichtigen_Medikamenten_zu,_wie_zum_Beispiel_Salbe_bei_Insektenstich?"][i],
             rezept_medikamente=budo["Stimmen_Sie_der_Verabreichung_von_rezeptpflichtigen_Medikamenten_zu,_welche_Ihrem_Kind_von_einem_Arzt_verordnet_wurden?"][i],
+            swimmer=budo["Schwimmkenntnisse"][i],
             covid=budo["Covid"][i],
 
             # Anwesenheit & Schwerpunkte werden nicht aus dem Excel-File extrahiert sondern durch Eingaben ergänzt

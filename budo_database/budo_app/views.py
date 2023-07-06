@@ -1,11 +1,9 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.template import loader
-from budo_database.settings import MEDIA_ROOT
 from .excelProcessor import process_excel
 from . import models
-import pandas as pd
-import os
+
 
 # Create your views here.
 
@@ -36,3 +34,21 @@ def uploadFile(request):
     return render(request, "upload-file.html", context={
         "files": documents
     })
+
+
+def kids_list(request):
+    kids = models.Kinder.objects.all().values()
+    template = loader.get_template('kids_list.html')
+    context = {
+        'kids': kids,
+    }
+    return HttpResponse(template.render(context, request))
+
+
+def kid_details(request, id):
+    this_kid = models.Kinder.objects.get(id=id)
+    template = loader.get_template('kids_data.html')
+    context = {
+        'Kinder': this_kid,
+    }
+    return HttpResponse(template.render(context, request))
