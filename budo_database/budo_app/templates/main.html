@@ -1,0 +1,51 @@
+{% extends "master.html" %}
+
+{% block title %}
+  BuDo Kids Search
+{% endblock %}
+
+{% block header %}
+<script src=  
+"https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.js">  
+    </script>  
+    
+    <script src=  
+"https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.js">  
+    </script>  
+    
+    <link href=  
+"http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/ui-lightness/jquery-ui.css"
+        rel="stylesheet" type="text/css" />  
+
+{% endblock %}
+
+{% block content %}
+<input type="text" id="tags">
+<script>
+  $(function() {
+    var availableTags = [
+      {% for kid in kids %}
+        { 
+          id: {{ kid.id }},
+          name: "{{ kid.id }}: {{ kid.kid_vorname }} {{ kid.kid_nachname }}"
+        },
+      {% endfor %}
+    ];
+
+    $("#tags").autocomplete({
+      source: availableTags.map(function(kid) {
+        return kid.name;
+      }),
+      select: function(event, ui) {
+        var selectedKid = availableTags.find(function(kid) {
+          return kid.name === ui.item.value;
+        });
+
+        if (selectedKid) {
+          window.location.href = "kid_details/" + selectedKid.id;
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

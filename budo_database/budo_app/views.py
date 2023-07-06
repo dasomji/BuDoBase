@@ -10,8 +10,12 @@ from .excelProcessor import process_excel
 
 
 def budo_app(request):
-    template = loader.get_template('myfirst.html')
-    return HttpResponse(template.render())
+    template = loader.get_template('main.html')
+    kids = models.Kinder.objects.all()
+    context = {
+        "kids": kids
+    }
+    return HttpResponse(template.render(context, request))
 
 
 def uploadFile(request):

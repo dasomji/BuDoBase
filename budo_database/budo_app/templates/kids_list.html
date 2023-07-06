@@ -9,13 +9,20 @@
   <h1><a href="https://www.youtube.com/watch?v=D9K-bA_MRTM">Alle Kinder</a></h1>
 
   <p><a href="/">HOME</a></p>
-  
-  <ul>
-    {% for x in kids %}
-      <div class="" id="name"><a href="kid_details/{{ x.id }}">{{ x.kid_vorname }} {{ x.kid_nachname }}</a></div>
-      <div id="budo_family"><a href="details/{{ x.id }}">{{ x.budo_family }}</a></div>
-      <div id="sex">{{ x.sex }}</div>
-      <div></div>
-    {% endfor %}
-  </ul>
+  <p>Hello World</p>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>BuDo-Familie</th>
+            <th>Geschlecht</th>
+        </tr>
+        {% for x in kids %}
+        <tr class="table_row">
+              <td class="" id="name"><a href="kid_details/{{ x.id }}">{{ x.kid_vorname }} {{ x.kid_nachname }}</a></td>
+              <td id="budo_family"><a href="details/{{ x.id }}">{{ x.budo_family }}</a></td>
+              <td id="sex">{{ x.sex }}</td>
+              <div></div>
+        </tr>
+        {% endfor %}
+    </table>
 {% endblock %}

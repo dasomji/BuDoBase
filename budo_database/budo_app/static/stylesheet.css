@@ -28,3 +28,9 @@
 .info_container span.label{
     font-weight: bold;
 }
+
+/* kids_lists
+.table_row{
+    display: flex;
+    flex-flow: row nowrap;
+} */
