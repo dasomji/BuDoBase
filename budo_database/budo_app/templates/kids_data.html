@@ -34,7 +34,7 @@
             <p><span class="label">Anmelder:in Email</span>: <a href="mailto:{{Kinder.anmelder_email}}">{{Kinder.anmelder_email}}</a></p>
             <p><span class="label">Anmelder:in Mobil</span>: <a href="tel: {{Kinder.anmelder_mobil}}">{{Kinder.anmelder_mobil}}</a></p>
             <p><span class="label">Hauptversichert bei</span>: {{Kinder.hauptversichert_bei}}</p>
-            <p><span class="label">Notfallkontakte</span>: {{Kinder.notfall_kontakte}}</p>
+            <p><span class="label">Notfallkontakte</span>: {% autoescape off %}{{Kinder.notfall_kontakte}}{% endautoescape %}</p>
         </div>
 
         <div class="info_container input_container">
@@ -49,8 +49,8 @@
         
         <div class="info_container" id="family_info">
             <h2>Notizen</h2>
-            <p><span class="label">Anmerkungen (Buchung)</span>: {{Kinder.anmerkung_buchung}}</p>
-            <p><span class="label">Anmerkungen</span>: {{Kinder.anmerkung}}</p>
+            <p><span class="label">Anmerkungen (Buchung)</span>: {{Kinder.anmerkung_buchung|safe}}</p>
+            <p><span class="label">Anmerkungen</span>: {{Kinder.anmerkung|safe}}</p>
             <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team}}</p>
             <button>Speichern</button>
         </div>

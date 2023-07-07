@@ -15,13 +15,22 @@
             <th>Name</th>
             <th>BuDo-Familie</th>
             <th>Geschlecht</th>
+            <th>Geburtstag</th>
+            <th>Alter</th>
+            <th>Aufenthaltsdauer</th>
+            <th>Geschwister</th>
+            <th>Zeltwunsch</th>
         </tr>
         {% for x in kids %}
         <tr class="table_row">
               <td class="" id="name"><a href="kid_details/{{ x.id }}">{{ x.kid_vorname }} {{ x.kid_nachname }}</a></td>
               <td id="budo_family"><a href="details/{{ x.id }}">{{ x.budo_family }}</a></td>
               <td id="sex">{{ x.sex }}</td>
-              <div></div>
+              <td id="birthday">{{ x.kid_birthday }}</td>
+              <td>{{ x.kid_alter }}</td>
+              <td>{{ x.turnus_dauer }}-wöchig</td>
+              <td>{{ x.geschwister }}</td>
+              <td> {{ x.zeltwunsch }}</td>
         </tr>
         {% endfor %}
     </table>
