@@ -3,14 +3,77 @@
 <html>
 <head>
   <title>{% block title %}{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
   <link rel="stylesheet" href="{% static 'stylesheet.css' %}">
   {% block header %}
   {% endblock %}
 </head>
 <body>
-
+{% include 'sidebar.html' %}
+<div class="w3-margin-32">
 {% block content %}
 {% endblock %}
+</div>
+
+<div class="overlay" id="overlay" style="display: none;">
+  <div class="number-pad">
+    <p>Enter 4-digit PIN:</p>
+    <input type="password" id="pinInput" maxlength="4" readonly>
+    <br>
+    <button onclick="enterDigit(1)">1</button>
+    <button onclick="enterDigit(2)">2</button>
+    <button onclick="enterDigit(3)">3</button>
+    <br>
+    <button onclick="enterDigit(4)">4</button>
+    <button onclick="enterDigit(5)">5</button>
+    <button onclick="enterDigit(6)">6</button>
+    <br>
+    <button onclick="enterDigit(7)">7</button>
+    <button onclick="enterDigit(8)">8</button>
+    <button onclick="enterDigit(9)">9</button>
+    <br>
+    <button onclick="enterDigit(0)">0</button>
+    <button onclick="clearPin()">Clear</button>
+  </div>
+</div>
+
+<script>
+  var pin = "";
+  var overlay = document.getElementById("overlay");
+  var pinInput = document.getElementById("pinInput");
+
+  function enterDigit(digit) {
+    if (pin.length < 4) {
+      pin += digit;
+      pinInput.value = "*".repeat(pin.length);
+      if (pin.length === 4) {
+        if (pin === "0000") {
+          overlay.style.display = "none";
+        } else {
+          clearPin();
+        }
+      }
+    }
+  }
+
+  function clearPin() {
+    pin = "";
+    pinInput.value = "";
+  }
+
+  function showOverlay() {
+    overlay.style.display = "flex";
+    clearPin();
+  }
+
+  // window.addEventListener("blur", showOverlay);
+  // window.addEventListener("focus", showOverlay);
+  // window.addEventListener("deviceorientation", showOverlay);
+  // window.addEventListener("devicemotion", showOverlay);
+</script>
 
 </body>
 </html>

@@ -1,0 +1,46 @@
+{% extends "kids_data.html" %}
+
+{% block forminput %}
+
+<div class="info_container input_container">
+    {% if Kinder.anwesend == True %}
+    <h1>Check-Out</h1>
+        <p style="color=green">Dieses Kind ist anwesend.</p>
+        <form method="POST">
+            <p><label for="early_check_out">Vorzeitige Abreise?</label><input type="checkbox" id="early_check_out" name="early_check_out"></p>
+            <p><label for="check_out_date">Check-Out Datum</label><input type="date" id="check_out_date" value="{{today_date}}"></p>
+            <p><label for="documents_returend">Dokumente zurückgegeben? </label><input type="checkbox" id="documents_returend" name="documents_returend"></p>
+            <p>Wir hatten folgende Dokumente: </p>
+            <ul>
+                {% if Kinder.e_card == True %}
+                <li>E-Card</li>
+                {% endif %}
+                {% if Kinder.ausweis == True %}
+                <li>Ausweis</li>
+                {% endif %}
+            </ul>
+            <p><label for="abholer">Abgeholt von: </label><input type="text" id="abholer" name="abholer"></p>
+            <p><label for="reason_abreise">Grund der Abreise: </label><input type="text" id="reason_abreise" name="reason_abreise"></p>
+            <p><label for="taschengeld_out">Wieviel Taschengeld zurückgegeben?</label><input type="text" name="taschengeld_out" id="taschengeld_out"></p>
+            <p><label for="neue_anmerkung">Sonstige Anmerkung: </label><input type="text" id="neue_anmerkung" name="neue_anmerkung"></p>
+        {% csrf_token %}
+            <input type="submit" value="Speichern">
+        </form>
+        {% else %}
+    <h1>Check-In</h1>
+        <p style="color=red">Dieses Kind ist noch nicht eingecheckt!.</p>
+        <form method="POST">
+            <p><label for="check_in_date">Check-In Datum</label><input type="date" id="check_in_date" value="{{today_date}}"></p>
+            <p><label for="ausweis">Ausweis</label><input type="checkbox" id="ausweis"></p>
+            <p><label for="e-card">E-Card</label><input type="checkbox" id="e-card"></p>
+            <p><label for="einverstaendnis">Einverständniserklärung</label><input type="checkbox" name="" id="einverstaendnis"></p>
+            <p><label for="taschengeld">Taschengeld </label><input type="text" name="" id="taschengeld"></p>
+            <p><label for="neue_anmerkung">Sonstige Anmerkung</label><input type="text" id="neue_anmerkung" name="neue_anmerkung"></p>
+        {% csrf_token %}
+            <input type="submit" value="Speichern">
+        </form>
+        {% endif %}
+        
+</div>
+
+{% endblock %}

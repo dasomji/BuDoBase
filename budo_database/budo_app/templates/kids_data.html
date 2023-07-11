@@ -11,6 +11,7 @@
             <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
             <p><span class="label">Alter</span>: {{Kinder.kid_alter}}</p>
             <p><span class="label">Geburtstag</span>: {{Kinder.kid_birthday}}</p>
+            <p><a href="/budo_familie/{{ Kinder.budo_family }}"><span class="label">Budo Familie</span>: {{ Kinder.budo_family }}</a></p>
             <p><span class="label">Aufenthaltsdauer</span>: {{Kinder.turnus_dauer}}-wöchig</p>
             <p><span class="label">Geschwister</span>: {{Kinder.geschwister}}</p>
             <p><span class="label">Zeltwunsch</span>: {{Kinder.zeltwunsch}}</p>
@@ -37,70 +38,20 @@
             <p><span class="label">Notfallkontakte</span>: {% autoescape off %}{{Kinder.notfall_kontakte}}{% endautoescape %}</p>
         </div>
 
-        <div class="info_container input_container">
-            <h1>Check-In</h2>    
-                <p><label for="check_in_date">Check-In Datum</label><input type="date" id="check_in_date" value="{{today_date}}"></p>
-                <p><label for="ausweis">Ausweis</label><input type="checkbox" id="ausweis"></p>
-                <p><label for="e-card">E-Card</label><input type="checkbox" id="e-card"></p>
-                <p><label for="covid">Covid Test-Erlaubnis</label><input type="checkbox" name="Covid" id="covid"></p>
-                <p><label for="einverstaendnis">Einverständniserklärung</label><input type="checkbox" name="" id="einverstaendnis"></p>
-                <p><label for="taschengeld">Taschengeld </label><input type="text" name="" id="taschengeld"></p>
-        </div>
+        {% block forminput %}
+        <a href="/check_in/{{ Kinder.id }}">Let's check this one in!</a>
+        {% endblock %}
         
         <div class="info_container" id="family_info">
             <h2>Notizen</h2>
             <p><span class="label">Anmerkungen (Buchung)</span>: {{Kinder.anmerkung_buchung|safe}}</p>
             <p><span class="label">Anmerkungen</span>: {{Kinder.anmerkung|safe}}</p>
-            <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team}}</p>
-            <button>Speichern</button>
+            <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team|safe}}</p>
         </div>
     </div>    
-    <!-- <div class="flex-container">
-    <div class="info_container" id="kinderinfos">
-        <h2>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
-        <p>Geschlecht: {{Kinder.sex}} </p>
-        <p>Alter: {{Kinder.age}}</p>
-        <p>Geburtstag: {{Kinder.birthday}}</p>
-        <p>Aufenthaltsdauer: {{Kinder.turnus_dauer}}-wöchig</p>
-        <p>Geschwister: {{Kinder.geschwister}}</p>
-        <p>Zeltwunsch: {{Kinder.zeltwunsch}}</p>
-        <p>War schon mal im Bunten Dorf: {{Kinder.budo_erfahrung}}</p>
-    </div>
-
-    <div class="info_container" id="health_info">
-        <h2>Gesundheitsinfos</h1>
-        <p>Sozialversicherungsnummer: {{Kinder.sozialversicherungsnr}}</p>
-        <p>Krankheiten: {{Kinder.illness}}</p>
-        <p>Medikamente: {{Kinder.drugs}}</p>
-        <p>Vegetarisch: {{Kinder.vegetarisch}}</p>
-        <p>Ernährungsvorgaben: {{Kinder.special_food_description}}</p>
-        <p>Schwimmkentnisse: {{Kinder.swimmer}}</p>
-    </div>
-
-    <div class="info_container" id="family_info">
-        <h2>Familie</h2>
-        <p>Organisation: {{Kinder.anmelde_organisation}}</p>
-        <p>Anmelder:in: {{Kinder.anmelder_vorname}} {{Kinder.anmelder_nachname}}</p>
-        <p>Anmelder:in Email: {{Kinder.anmelder_email}}</p>
-        <p>Anmelder:in Mobil: {{Kinder.anmelder_mobil}}</p>
-        <p>Hauptversichert bei: {{Kinder.hauptversichert_bei}}</p>
-        <p>Notfallkontakte: {{Kinder.notfallkontakte}}</p>
-    </div>
-
-    <div>
-        <h2>Check</h2>
-    </div>
-
-    <div class="info_container" id="family_info">
-        <h2>Notizen</h2>
-        <p>Anmerkungen (Buchung): {{Kinder.anmerkung_buchung}}</p>
-        <p>Anmerkungen: {{Kinder.anmerkung}}</p>
-        <p>Anmerkungen vom Organisator: {{Kinder.anmerkung_team}}</p>
-        <button>Speichern</button>
-    </div>
-    </div> -->
+    
 
   
-  <p>Back to <a href="/all_kids">Members</a></p>
+  <p>Zurück zur <a href="/all_kids">Gesamtübersicht</a></p>
   
 {% endblock %}

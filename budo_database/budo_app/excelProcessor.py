@@ -109,3 +109,20 @@ def process_excel():
 
         )
         kid.save()
+
+
+def postprocessing():
+    age_ordered = models.Kinder.objects.all().order_by('kid_alter')
+    length = len(models.Kinder.objects.all())
+
+    for i, kid in enumerate(age_ordered):
+        x = age_ordered[i]
+        if i < length/4:
+            x.budo_family = "smallie"
+        elif i < length/2:
+            x.budo_family = "medi"
+        elif i < (length*3/4):
+            x.budo_family = "largie"
+        else:
+            x.budo_family = "x-largie"
+        x.save()

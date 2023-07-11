@@ -4,6 +4,12 @@ from django.db import models
 
 
 class Kinder(models.Model):
+    BUDO_FAMILIES = [
+        ("S", "Smallie"),
+        ("M", "Medi"),
+        ("L", "Largie"),
+        ("XL", "X-Largie"),
+    ]
     kid_index = models.CharField(max_length=255)
     kid_vorname = models.CharField(max_length=255)
     kid_nachname = models.CharField(max_length=255)
@@ -56,9 +62,16 @@ class Kinder(models.Model):
     swimmer = models.CharField(max_length=255, null=True, default=None)
     covid = models.CharField(max_length=255, null=True)
 
-    # anwesenheit
+    # anwesenheit & budo-internes
 
     anwesend = models.BooleanField(null=True, default=None)
+    check_in_date = models.DateField(null=True, default=None)
+    ausweis = models.BooleanField(null=True, default=None)
+    e_card = models.BooleanField(null=True, default=None)
+    einverstaendnis_erklaerung = models.BooleanField(null=True, default=None)
+    taschengeld = models.CharField(max_length=20, null=True, default="")
+    budo_family = models.CharField(
+        max_length=30, choices=BUDO_FAMILIES, null=True)
     late_anreise = models.DateField(null=True)
     early_abreise_date = models.DateField(null=True)
     early_abreise_abholer = models.CharField(max_length=255, null=True)
@@ -71,7 +84,9 @@ class Kinder(models.Model):
         "SchwerpunktOne", on_delete=models.SET_NULL, null=True)
     swp2 = models.ForeignKey(
         "SchwerpunktTwo", on_delete=models.SET_NULL, null=True)
-    # budo_family = create a new class with four options
+
+    class AgeSorted:
+        ordering = ('kid_alter')
 
 
 class Turnus(models.Model):

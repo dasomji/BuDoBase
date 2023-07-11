@@ -5,9 +5,14 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path("upload/", views.uploadFile, name="uploadFile"),
-    path('', views.budo_app, name='budo_app'),
+    path('', views.kids_list, name='budo_app'),
     path('all_kids', views.kids_list, name='kids_list'),
-    path('kid_details/<int:id>', views.kid_details, name='kid_details')
+    path('kid_details/<int:id>', views.kid_details, name='kid_details'),
+    path('test', views.testing, name='testing'),
+    path('budo_familie/<str:budo_family>',
+         views.budo_family, name='budo_family'),
+    path('postprocess', views.postprocess, name='postprocess'),
+    path('check_in/<int:id>', views.check_in, name='check_in'),
 ]
 
 if settings.DEBUG:
