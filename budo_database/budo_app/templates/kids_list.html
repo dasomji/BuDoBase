@@ -9,13 +9,42 @@
   <h1><a href="https://www.youtube.com/watch?v=D9K-bA_MRTM">Alle Kinder</a></h1>
 
   <p><a href="/">HOME</a></p>
-  
-  <ul>
-    {% for x in kids %}
-      <div class="" id="name"><a href="kid_details/{{ x.id }}">{{ x.kid_vorname }} {{ x.kid_nachname }}</a></div>
-      <div id="budo_family"><a href="details/{{ x.id }}">{{ x.budo_family }}</a></div>
-      <div id="sex">{{ x.sex }}</div>
-      <div></div>
-    {% endfor %}
-  </ul>
+  <div class="w3-container">
+    {% include 'filter_table.html' %}
+    <div class="w3-responsive">
+        <table class="w3-table w3-striped w3-padding" id="myTable">
+            <tr>
+                <th>Name</th>
+                <th>BuDo-Familie</th>
+                <th>Geschlecht</th>
+                <th>Geburtstag</th>
+                <th>Alter</th>
+                <th>Aufenthaltsdauer</th>
+                <th>Geschwister</th>
+                <th>Zeltwunsch</th>
+                <th>Veggie </th>
+                <th>Essensinfos</th>
+                <th>Medikamente</th>
+                <th>Gesundheitliches</th>
+            </tr>
+            {% for x in kids %}
+            <tr class="table_row w3-padding-large">
+                  <td class="" id="name"><a href="/kid_details/{{ x.id }}">{{ x.kid_vorname }} {{ x.kid_nachname }}</a></td>
+                  <td id="budo_family"><a href="/budo_familie/{{ x.budo_family }}">{{ x.budo_family }}</a></td>
+                  <td id="sex">{{ x.sex }}</td>
+                  <td id="birthday">{{ x.kid_birthday }}</td>
+                  <td>{{ x.kid_alter }}</td>
+                  <td>{{ x.turnus_dauer }}-wöchig</td>
+                  <td>{{ x.geschwister }}</td>
+                  <td>{{ x.zeltwunsch }}</td>
+                  <td>{{ x.vegetarisch }}</td>
+                  <td>{{ x.special_food_description }}</td>
+                  <td>{{ x.drugs }}</td>
+                  <td>{{ x.illness }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+  </div>
+        
 {% endblock %}
