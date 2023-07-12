@@ -4,10 +4,18 @@
   BuDo Kid Info
 {% endblock %}
 
+{% block headertitle %}
+
+<div class="flex-container">
+    <h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
+    <a href="/check_in/{{ Kinder.id }}" class="w3-button w3-yellow">Jetzt ein/auschecken</a>
+</div>
+{% endblock %}
+
     {% block content %}
     <div class="flex-container">
         <div class="info_container" id="kinderinfos">
-            <h2>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
+            <h2>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h2>
             <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
             <p><span class="label">Alter</span>: {{Kinder.kid_alter}}</p>
             <p><span class="label">Geburtstag</span>: {{Kinder.kid_birthday}}</p>
@@ -39,7 +47,7 @@
         </div>
 
         {% block forminput %}
-        <a href="/check_in/{{ Kinder.id }}">Let's check this one in!</a>
+
         {% endblock %}
         
         <div class="info_container" id="family_info">
@@ -48,10 +56,6 @@
             <p><span class="label">Anmerkungen</span>: {{Kinder.anmerkung|safe}}</p>
             <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team|safe}}</p>
         </div>
-    </div>    
-    
-
-  
-  <p>Zurück zur <a href="/all_kids">Gesamtübersicht</a></p>
+    </div>
   
 {% endblock %}
