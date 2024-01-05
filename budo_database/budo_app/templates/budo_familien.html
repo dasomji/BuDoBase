@@ -1,0 +1,20 @@
+{% extends "master.html" %}
+
+{% block title %}
+  BuDo Familien
+{% endblock %}
+
+{% block headertitle %}
+<h1>BuDo Familien</h1>
+{% endblock %}
+
+{% block content %}
+<div class="flex-container">
+  {% for name, nummer in familien.items %}
+  <div class="info_container">
+  </div>
+  {% endfor %}
+</div>
+  {{ smallies }}
+  {{ familien }}
+{% endblock %}

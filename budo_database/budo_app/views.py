@@ -72,6 +72,22 @@ def testing(request):
     return HttpResponse(template.render(context, request))
 
 
+def budo_family_dash(request):
+    kids = models.Kinder.objects.all()
+    familien = models.Kinder.BUDO_FAMILIES
+    familiensizes = {}
+    for familie in familien:
+        familiensizes[f'{familie[1]}'] = len(
+            kids.filter(budo_family=familie[1]))
+    template = loader.get_template('budo_familien.html')
+    context = {
+        'kids': kids,
+        "familien": familiensizes,
+
+    }
+    return HttpResponse(template.render(context, request))
+
+
 def budo_family(request, budo_family):
     family = budo_family
     kids = models.Kinder.objects.filter(
@@ -123,7 +139,7 @@ def check_in(request, id):
                 this_kid.early_abreise_date = check_out_date
                 this_kid.early_abreise_abholer = abholer
                 this_kid.early_abreise_reason = reason_abreise
-                anmerkung += f'<br>{taschengeld_out}€ retourniert'
+                this_kid.anmerkung_team += f'<br>{taschengeld_out}€ retourniert'
 
             if documents_returned == True:
                 this_kid.ausweis = False
@@ -132,6 +148,8 @@ def check_in(request, id):
             this_kid.anmerkung_team += f'<br>@Checkout/{today_time}: {anmerkung}'
 
         this_kid.save()
+
+    print(request.POST.get("e-card"))
 
     return HttpResponse(template.render(context, request))
 

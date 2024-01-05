@@ -5,11 +5,11 @@
 <div class="info_container input_container">
     {% if Kinder.anwesend == True %}
     <h1>Check-Out</h1>
-        <p style="color=green">Dieses Kind ist anwesend.</p>
+        <p style="color:green;">Dieses Kind ist anwesend.</p>
         <form method="POST" class="w3-container">
-            <p><label for="early_check_out">Vorzeitige Abreise?</label><input class="w3-input" type="checkbox" id="early_check_out" name="early_check_out"></p>
+            <p><label for="early_check_out">Vorzeitige Abreise?</label><input class="w3-input" type="checkbox" id="early_check_out" name="early_check_out" value="True"></p>
             <p><label for="check_out_date">Check-Out Datum</label><input class="w3-input" type="date" id="check_out_date" value="{{today_date}}"></p>
-            <p><label for="documents_returend">Dokumente zurückgegeben? </label><input class="w3-check" type="checkbox" id="documents_returend" name="documents_returend"></p>
+            <p><label for="documents_returend">Dokumente zurückgegeben? </label><input class="w3-check" type="checkbox" id="documents_returend" name="documents_returend" value="True"></p>
             <p>Wir hatten folgende Dokumente: </p>
             <ul>
                 {% if Kinder.e_card == True %}
@@ -28,12 +28,12 @@
         </form>
         {% else %}
     <h1>Check-In</h1>
-        <p style="color=red">Dieses Kind ist noch nicht eingecheckt!.</p>
+        <p style="color:red;">Dieses Kind ist noch nicht eingecheckt!.</p>
         <form method="POST" class="w3-container">
             <p><label for="check_in_date">Check-In Datum:</label><input class="w3-input" type="date" id="check_in_date" value="{{today_date}}"></p>
-            <p><label for="ausweis">Ausweis: </label><input class="w3-check w3-margin-left" type="checkbox" id="ausweis">
-            <label class="w3-margin-left" for="e-card">E-Card: </label><input class="w3-check w3-margin-left" type="checkbox" id="e-card"></p>
-            <p><label for="einverstaendnis">Einverständniserklärung: </label><input class="w3-check w3-margin-left" type="checkbox" name="" id="einverstaendnis"></p>
+            <p><label for="ausweis">Ausweis: </label><input class="w3-check w3-margin-left" type="checkbox" id="ausweis" value="True">
+            <label class="w3-margin-left" for="e-card">E-Card: </label><input class="w3-check w3-margin-left" type="checkbox" id="e-card" value="True"></p>
+            <p><label for="einverstaendnis">Einverständniserklärung: </label><input class="w3-check w3-margin-left" type="checkbox" name="einverstaendnis" id="einverstaendnis" value="True"></p>
             <p><label for="taschengeld">Taschengeld: </label><input class="w3-input" type="text" name="" id="taschengeld"></p>
             <p><label for="neue_anmerkung">Sonstige Anmerkungen:</label><input class="w3-input" type="text" id="neue_anmerkung" name="neue_anmerkung"></p>
         {% csrf_token %}

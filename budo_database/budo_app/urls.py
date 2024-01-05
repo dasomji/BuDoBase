@@ -9,6 +9,7 @@ urlpatterns = [
     path('all_kids', views.kids_list, name='kids_list'),
     path('kid_details/<int:id>', views.kid_details, name='kid_details'),
     path('test', views.testing, name='testing'),
+    path('budo_families/', views.budo_family_dash, name='budo_family_dash'),
     path('budo_familie/<str:budo_family>',
          views.budo_family, name='budo_family'),
     path('postprocess', views.postprocess, name='postprocess'),

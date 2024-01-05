@@ -5,10 +5,10 @@ from django.db import models
 
 class Kinder(models.Model):
     BUDO_FAMILIES = [
-        ("S", "Smallie"),
-        ("M", "Medi"),
-        ("L", "Largie"),
-        ("XL", "X-Largie"),
+        ("S", "smallie"),
+        ("M", "medi"),
+        ("L", "largie"),
+        ("XL", "x-largie"),
     ]
     kid_index = models.CharField(max_length=255)
     kid_vorname = models.CharField(max_length=255)
