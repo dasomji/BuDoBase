@@ -55,6 +55,13 @@
             <p><span class="label">Anmerkungen (Buchung)</span>: {{Kinder.anmerkung_buchung|safe}}</p>
             <p><span class="label">Anmerkungen</span>: {{Kinder.anmerkung|safe}}</p>
             <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team|safe}}</p>
+            <ul>
+                {% for notiz in Kinder.notizen.all %}
+                    <li>{{ notiz.added_by.username }} am {{ notiz.date_added|date:"d.m." }}: {{ notiz.notiz }}</li>
+                {% empty %}
+                    <li>Noch keine Notizen.</li>
+                {% endfor %}
+            </ul>
         </div>
     </div>
   

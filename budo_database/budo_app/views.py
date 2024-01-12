@@ -54,9 +54,11 @@ def kid_details(request, id):
     this_kid = models.Kinder.objects.get(id=id)
     template = loader.get_template('kids_data.html')
     today = datetime.today().strftime('%Y-%m-%d')
+    notizen = this_kid.notizen.all()
     context = {
         "today_date": today,
         'Kinder': this_kid,
+        "Notizen": notizen,
     }
     return HttpResponse(template.render(context, request))
 

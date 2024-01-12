@@ -5,10 +5,10 @@ from django.db import models
 
 class Kinder(models.Model):
     BUDO_FAMILIES = [
-        ("S", "smallie"),
-        ("M", "medi"),
-        ("L", "largie"),
-        ("XL", "x-largie"),
+        ("S", "Smallie"),
+        ("M", "Medi"),
+        ("L", "Largie"),
+        ("XL", "X-largie"),
     ]
     kid_index = models.CharField(max_length=255)
     kid_vorname = models.CharField(max_length=255)
@@ -108,6 +108,17 @@ class Kinder(models.Model):
 
     class Meta:
         verbose_name_plural = "Kinder"
+
+
+class Notizen(models.Model):
+    kinder = models.ForeignKey(
+        Kinder, on_delete=models.CASCADE, related_name='notizen')
+    notiz = models.TextField()
+    date_added = models.DateTimeField(auto_now_add=True)
+    added_by = models.ForeignKey("auth.User", on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"Note about {self.kinder} on {self.date_added.strftime('%Y-%m-%d')} by {self.added_by}"
 
 
 class Turnus(models.Model):
