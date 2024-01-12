@@ -49,44 +49,65 @@ class Kinder(models.Model):
 
     # health
 
-    sex = models.CharField(max_length=255, null=True, default=None)
-    sozialversicherungsnr = models.CharField(max_length=255, null=True)
-    tetanusimpfung = models.CharField(max_length=255, null=True)
-    zeckenimpfung = models.CharField(max_length=255, null=True)
-    vegetarisch = models.CharField(max_length=255, null=True)
-    special_food_description = models.CharField(max_length=255, null=True)
-    drugs = models.CharField(max_length=255, null=True)
-    illness = models.CharField(max_length=255, null=True)
-    rezeptfreie_medikamente = models.CharField(max_length=255, null=True)
-    rezept_medikamente = models.CharField(max_length=255, null=True)
-    swimmer = models.CharField(max_length=255, null=True, default=None)
-    covid = models.CharField(max_length=255, null=True)
+    sex = models.CharField(max_length=255, null=True, default=None, blank=True)
+    sozialversicherungsnr = models.CharField(
+        max_length=255, null=True, blank=True)
+    tetanusimpfung = models.CharField(max_length=255, null=True, blank=True)
+    zeckenimpfung = models.CharField(max_length=255, null=True, blank=True)
+    vegetarisch = models.CharField(max_length=255, null=True, blank=True)
+    special_food_description = models.CharField(
+        max_length=255, null=True, blank=True)
+    drugs = models.CharField(max_length=255, null=True, blank=True)
+    illness = models.CharField(max_length=255, null=True, blank=True)
+    rezeptfreie_medikamente = models.CharField(
+        max_length=255, null=True, blank=True)
+    rezept_medikamente = models.CharField(
+        max_length=255, null=True, blank=True)
+    swimmer = models.CharField(
+        max_length=255, null=True, default=None, blank=True)
+    covid = models.CharField(max_length=255, null=True, blank=True)
 
     # anwesenheit & budo-internes
 
-    anwesend = models.BooleanField(null=True, default=None)
-    check_in_date = models.DateField(null=True, default=None)
-    ausweis = models.BooleanField(null=True, default=None)
-    e_card = models.BooleanField(null=True, default=None)
-    einverstaendnis_erklaerung = models.BooleanField(null=True, default=None)
-    taschengeld = models.CharField(max_length=20, null=True, default="")
+    anwesend = models.BooleanField(null=True, default=None, blank=True)
+    check_in_date = models.DateField(null=True, default=None, blank=True)
+    ausweis = models.BooleanField(null=True, default=None, blank=True)
+    e_card = models.BooleanField(null=True, default=None, blank=True)
+    einverstaendnis_erklaerung = models.BooleanField(
+        null=True, default=None, blank=True)
+    taschengeld = models.CharField(
+        max_length=20, null=True, default="", blank=True)
     budo_family = models.CharField(
-        max_length=30, choices=BUDO_FAMILIES, null=True)
-    late_anreise = models.DateField(null=True)
-    early_abreise_date = models.DateField(null=True)
-    early_abreise_abholer = models.CharField(max_length=255, null=True)
-    early_abreise_reason = models.CharField(max_length=255, null=True)
-    came_back = models.DateField(null=True)
-    anmerkung_team = models.CharField(max_length=1000, null=True, default="")
+        max_length=30, choices=BUDO_FAMILIES, null=True, blank=True)
+    late_anreise = models.DateField(null=True, blank=True)
+    early_abreise_date = models.DateField(null=True, blank=True)
+    early_abreise_abholer = models.CharField(
+        max_length=255, null=True, blank=True)
+    early_abreise_reason = models.CharField(
+        max_length=255, null=True, blank=True)
+    came_back = models.DateField(null=True, blank=True)
+    anmerkung_team = models.CharField(
+        max_length=1000, null=True, default="", blank=True)
 
     # Schwerpunkte & Familien
-    swp1 = models.ForeignKey(
-        "SchwerpunktOne", on_delete=models.SET_NULL, null=True)
-    swp2 = models.ForeignKey(
-        "SchwerpunktTwo", on_delete=models.SET_NULL, null=True)
+    schwerpunkt_woche1 = models.ForeignKey(
+        'Schwerpunkte', on_delete=models.SET_NULL, null=True, related_name='kinder_woche1', blank=True, verbose_name="Schwerpunkt Woche 1")
+    schwerpunkt_woche2 = models.ForeignKey(
+        'Schwerpunkte', on_delete=models.SET_NULL, null=True, related_name='kinder_woche2', blank=True, verbose_name="Schwerpunkt Woche 2")
+
+    # swp1 = models.ForeignKey(
+    #     "SchwerpunktOne", on_delete=models.SET_NULL, null=True, blank=True)
+    # swp2 = models.ForeignKey(
+    #     "SchwerpunktTwo", on_delete=models.SET_NULL, null=True, blank=True)
 
     class AgeSorted:
         ordering = ('kid_alter')
+
+    def __str__(self):
+        return f'{self.kid_vorname} {self.kid_nachname} | {self.budo_family} | {self.kid_alter}'
+
+    class Meta:
+        verbose_name_plural = "Kinder"
 
 
 class Turnus(models.Model):
@@ -95,18 +116,87 @@ class Turnus(models.Model):
     uploadedFile = models.FileField(upload_to="Uploaded Files/")
     dateTimeOfUpload = models.DateField(auto_now=True)
 
+    def __str__(self):
+        return f'T{self.turnus_nr} {self.turnus_year}'
+
+    class Meta:
+        verbose_name_plural = "Turnus"
+
 
 class SchwerpunktOne(models.Model):
     swp_one_name = models.CharField(max_length=255, null=True)
     swp_one_auslagern = models.BooleanField(null=True, default=None)
+
+    def __str__(self):
+        return self.swp_one_name
 
 
 class SchwerpunktTwo(models.Model):
     swp_two_name = models.CharField(max_length=255, null=True)
     swp_two_auslagern = models.BooleanField(null=True, default=None)
 
+    def __str__(self):
+        return self.swp_two_name
+
+
+class Schwerpunkte(models.Model):
+    UNBEKANNT = "Unbekannt"
+    WOCHE1 = "Woche 1"
+    WOCHE2 = "Woche 2"
+    WOCHEN_AUSWAHL = [
+        (UNBEKANNT, "Unbekannt"),
+        (WOCHE1, "Woche 1"),
+        (WOCHE2, "Woche 2")
+    ]
+    swp_name = models.CharField(max_length=255)
+    ort = models.ForeignKey(
+        "Auslagerorte", on_delete=models.SET_NULL, blank=True, null=True)
+    betreuende = models.ManyToManyField(
+        "auth.User", blank=True)
+    beschreibung = models.TextField()
+    welche_woche = models.CharField(
+        max_length=10,
+        choices=WOCHEN_AUSWAHL,
+        default=UNBEKANNT
+    )
+    auslagern = models.BooleanField(null=True, default=None)
+
+    def __str__(self):
+        return self.swp_name
+
+    class Meta:
+        verbose_name_plural = "Schwerpunkte"
+
+
+class Auslagerorte(models.Model):
+    name = models.CharField(max_length=255)
+    strasse = models.CharField(
+        max_length=255, verbose_name="Straße", blank=True)
+    ort = models.CharField(max_length=100, verbose_name="Stadt", blank=True)
+    bundesland = models.CharField(
+        max_length=100, verbose_name="Bundesland", blank=True)
+    postleitzahl = models.CharField(
+        max_length=20, verbose_name="Postleitzahl", blank=True)
+    land = models.CharField(
+        max_length=100, verbose_name="Land", default="Österreich", blank=True)
+    koordinaten = models.CharField(max_length=255, blank=True, null=True)
+    maps_link = models.URLField(blank=True, verbose_name="Google Maps Link")
+    beschreibung = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name_plural = "Auslagerorte"
+
 
 class Document(models.Model):
     title = models.CharField(max_length=200)
     uploadedFile = models.FileField(upload_to="Uploaded Files/")
     dateTimeOfUpload = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        verbose_name_plural = "Dokumente"
