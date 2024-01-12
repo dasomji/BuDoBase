@@ -158,6 +158,8 @@ class Schwerpunkte(models.Model):
         default=UNBEKANNT
     )
     auslagern = models.BooleanField(null=True, default=None)
+    geplante_abreise = models.DateTimeField(null=True, blank=True)
+    geplante_ankunft = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.swp_name
