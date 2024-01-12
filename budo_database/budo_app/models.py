@@ -123,22 +123,6 @@ class Turnus(models.Model):
         verbose_name_plural = "Turnus"
 
 
-class SchwerpunktOne(models.Model):
-    swp_one_name = models.CharField(max_length=255, null=True)
-    swp_one_auslagern = models.BooleanField(null=True, default=None)
-
-    def __str__(self):
-        return self.swp_one_name
-
-
-class SchwerpunktTwo(models.Model):
-    swp_two_name = models.CharField(max_length=255, null=True)
-    swp_two_auslagern = models.BooleanField(null=True, default=None)
-
-    def __str__(self):
-        return self.swp_two_name
-
-
 class Schwerpunkte(models.Model):
     UNBEKANNT = "Unbekannt"
     WOCHE1 = "Woche 1"
