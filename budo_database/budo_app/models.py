@@ -118,7 +118,10 @@ class Notizen(models.Model):
     added_by = models.ForeignKey("auth.User", on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"Note about {self.kinder} on {self.date_added.strftime('%Y-%m-%d')} by {self.added_by}"
+        return f"Notiz über {self.kinder.kid_vorname} {self.kinder.kid_nachname} von {self.added_by}: {self.notiz}"
+
+    class Meta:
+        verbose_name_plural = "Notizen"
 
 
 class Turnus(models.Model):
