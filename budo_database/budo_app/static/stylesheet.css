@@ -42,6 +42,10 @@
     flex-flow: row nowrap;
 } */
 
+.filter_table{
+    margin-top: 20px;
+}
+
 table {
     text-align: left;
     position: relative;

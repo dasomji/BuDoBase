@@ -5,7 +5,11 @@
 {% endblock %}
 
 {% block headertitle %}
-<h1><a href="https://www.youtube.com/watch?v=D9K-bA_MRTM">Alle Kinder</a></h1>
+  {%if family %}
+    <h1>{{ family.title }}s</h1>
+  {% else %}
+    <h1><a href="https://www.youtube.com/watch?v=D9K-bA_MRTM">Alle Kinder</a></h1>
+  {% endif %}
 {% endblock %}
 
 {% block content %}

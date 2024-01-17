@@ -74,20 +74,24 @@ def testing(request):
     return HttpResponse(template.render(context, request))
 
 
-def budo_family_dash(request):
-    kids = models.Kinder.objects.all()
-    familien = models.Kinder.BUDO_FAMILIES
+def budo_family_overview(request):
+    kids = models.Kinder.objects.all().order_by('kid_vorname')
+    familien = kids.values_list('budo_family', flat=True).distinct()
     familiensizes = {}
     for familie in familien:
-        familiensizes[f'{familie[1]}'] = len(
-            kids.filter(budo_family=familie[1]))
-    template = loader.get_template('budo_familien.html')
+        family_kids = kids.filter(budo_family=familie)
+        familiensizes[f'{familie}'] = {
+            'name': f'{familie}',
+            'size': family_kids.count(),
+            'kids': list(family_kids)
+        }
+
     context = {
         'kids': kids,
         "familien": familiensizes,
 
     }
-    return HttpResponse(template.render(context, request))
+    return render(request, 'budo_familien.html', context)
 
 
 def budo_family(request, budo_family):
@@ -97,6 +101,7 @@ def budo_family(request, budo_family):
     template = loader.get_template('kids_list.html')
     context = {
         'kids': kids,
+        'family': family,
     }
     return HttpResponse(template.render(context, request))
 

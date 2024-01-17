@@ -12,11 +12,17 @@
 
 {% block content %}
 <div class="flex-container">
-  {% for name, nummer in familien.items %}
+  {% for familie, info in familien.items %}
   <div class="info_container">
+    <a href="/budo_familie/{{info.name}}">{{ info.name.title }}</a>
+    {{ info.size }}
+    <ul>
+    {% for kid in info.kids %}
+      <a href="/kid_details/{{ kid.id }}"><li>{{ kid.kid_vorname }} {{kid.kid_nachname}} - {{kid.kid_alter}}</li></a>
+    {% endfor %}
+    </ul>
+
   </div>
   {% endfor %}
 </div>
-  {{ smallies }}
-  {{ familien }}
 {% endblock %}
