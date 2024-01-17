@@ -19,11 +19,14 @@
   
   <!-- Page Content -->
   <div class="w3-teal">
-    <button class="w3-button w3-teal w3-xlarge" onclick="w3_open()">☰</button>
+    <button class="w3-button w3-teal w3-xlarge w3-hide-large w3-hide-medium" onclick="w3_open()">☰</button>
     <div class="w3-container" id="headertitle">
         {% block headertitle %}
         <h1>My Page</h1>
         {% endblock %}
+        <div class="desktop-navbar w3-hide-small">
+            {% include 'navbar.html' %}
+        </div>
     </div>
   </div>
   

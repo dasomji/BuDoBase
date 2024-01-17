@@ -12,9 +12,11 @@
 }
 
 .info_container{
-    flex-grow: 27;
+    /* flex-grow: 27; */
     /* flex-shrink: 20;  */
     /* flex-basis: 25; */
+    /* flex-grow: 27; */
+    flex: auto;
     border-radius: 8px;
     border: 4px solid #000;
     background-color: var(--blue);
@@ -89,4 +91,18 @@ table #name{
 /* header */
 #headertitle {
     display: inline-block;
+}
+
+@media only screen and (min-width: 992px) {
+    w3-teal{
+        display: flex;
+    }
+    
+    #headertitle {
+        display: flex;
+        align-items: baseline;
+        flex-direction: row wrap;
+        justify-content: flex-start;
+        column-gap: 30px;
+    }
 }
