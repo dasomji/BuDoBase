@@ -182,6 +182,8 @@ class Auslagerorte(models.Model):
     koordinaten = models.CharField(max_length=255, blank=True, null=True)
     maps_link = models.URLField(blank=True, verbose_name="Google Maps Link")
     beschreibung = models.TextField(blank=True)
+    koordinaten_parkspot = models.CharField(
+        max_length=255, blank=True, null=True)
 
     def __str__(self):
         return self.name
