@@ -7,7 +7,7 @@
 {% block headertitle %}
 
 <div class="flex-container">
-    <h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
+    <a href="/admin/budo_app/kinder/{{Kinder.id}}/change/"><h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1></a>
     <a href="/check_in/{{ Kinder.id }}" class="w3-button w3-yellow">Jetzt ein/auschecken</a>
 </div>
 {% endblock %}
