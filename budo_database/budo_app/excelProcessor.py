@@ -118,11 +118,11 @@ def postprocessing():
     for i, kid in enumerate(age_ordered):
         x = age_ordered[i]
         if i < length/4:
-            x.budo_family = "smallie"
+            x.budo_family = "S"
         elif i < length/2:
-            x.budo_family = "medi"
+            x.budo_family = "M"
         elif i < (length*3/4):
-            x.budo_family = "largie"
+            x.budo_family = "L"
         else:
-            x.budo_family = "x-largie"
+            x.budo_family = "XL"
         x.save()

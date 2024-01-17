@@ -28,8 +28,8 @@ class Kinder(models.Model):
     haftpflichtversicherung = models.CharField(max_length=255, null=True)
     budo_erfahrung = models.BooleanField(null=True)
     anmerkung_buchung = models.CharField(
-        max_length=255, null=True, default=None)
-    anmerkung = models.CharField(max_length=255, null=True)
+        max_length=1000, null=True, default=None)
+    anmerkung = models.CharField(max_length=1000, null=True)
     turnus = models.ForeignKey("Turnus", on_delete=models.SET_NULL, null=True)
 
     # familie
