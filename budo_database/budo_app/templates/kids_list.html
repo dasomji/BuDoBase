@@ -33,7 +33,8 @@
             </tr>
             {% for x in kids %}
             <tr class="table_row w3-padding-large">
-                  <td class="" id="name"><a href="/kid_details/{{ x.id }}">{{ x.kid_vorname }} {{ x.kid_nachname }}</a></td>
+                  <td class="" id="name"><a href="/kid_details/{{ x.id }}">
+                    {% if x.anwesend %}✅ {% endif %}{{ x.kid_vorname }} {{ x.kid_nachname }}</a></td>
                   <td id="budo_family"><a href="/budo_familie/{{ x.budo_family }}">{{ x.budo_family }}</a></td>
                   <td id="sex">{{ x.sex }}</td>
                   <td id="birthday">{{ x.kid_birthday }}</td>

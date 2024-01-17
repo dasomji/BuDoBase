@@ -24,6 +24,17 @@
     box-shadow: #acacac 4px 4px 4px;
 }
 
+.anwesend-container{
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    gap: 10px;
+}
+
+#anwesend-marker{
+    color: green;
+}
+
 /* .input_container{
     flex-basis: 1;
 } */
