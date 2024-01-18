@@ -16,7 +16,7 @@
     /* flex-shrink: 20;  */
     /* flex-basis: 25; */
     /* flex-grow: 27; */
-    flex: auto;
+    flex: 4 4 40%;
     border-radius: 8px;
     border: 4px solid #000;
     background-color: var(--blue);
