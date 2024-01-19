@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
 
@@ -10,6 +11,15 @@ class Kinder(models.Model):
         ("L", "Largie"),
         ("XL", "X-largie"),
     ]
+
+    WO_ABWESEND = [
+        ("BuDo", 'BuDo'),
+        ("Sallingstadt", "Sallingstadt"),
+        ("Krankenhaus", "Krankenhaus"),
+        ("Auslagern", "Auslagern"),
+        ("Sonstiges", "Sonstiges")
+    ]
+
     kid_index = models.CharField(max_length=255)
     kid_vorname = models.CharField(max_length=255)
     kid_nachname = models.CharField(max_length=255)
@@ -70,6 +80,8 @@ class Kinder(models.Model):
     # anwesenheit & budo-internes
 
     anwesend = models.BooleanField(null=True, default=None, blank=True)
+    wo = models.CharField(max_length=20, choices=WO_ABWESEND,
+                          default=None, null=True, blank=True)
     check_in_date = models.DateField(null=True, default=None, blank=True)
     ausweis = models.BooleanField(null=True, default=None, blank=True)
     e_card = models.BooleanField(null=True, default=None, blank=True)

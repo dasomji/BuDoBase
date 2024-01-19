@@ -1,8 +1,31 @@
-from Django import forms
+from django.forms import ModelForm
+from .models import Kinder
+from django import forms
+
+
+class CheckInForm(ModelForm):
+    class Meta:
+        model = Kinder
+        fields = ['check_in_date', 'ausweis', 'einverstaendnis_erklaerung',
+                  'taschengeld', 'late_anreise']
 
 
 class CheckInForm(forms.Form):
-    check_in_date = forms.DateField(null=True, default=None)
+    pass
+
+
+class CheckOutEarly(ModelForm):
+
+    class Meta:
+        model = Kinder
+        fields = ['early_abreise_date',
+                  'early_abreise_reason', 'early_abreise_abholer']
+
+
+class CheckOutTemporary(ModelForm):
+    class Meta:
+        model = Kinder
+        fields = ['wo']
 
 
 # <p><label for="check_in_date">Check-In Datum</label><input type="date" id="check_in_date" value="{{today_date}}"></p>
