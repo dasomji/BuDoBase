@@ -165,6 +165,38 @@ def check_in(request, id):
 
 
 def check_in_list(request, id):
+    kinder_instance = Kinder.objects.get(pk=id)
+    this_kid = models.Kinder.objects.get(id=id)
+    notizen = models.Notizen.objects.all()
+    kids = models.Kinder.objects.all()
+    today = datetime.today().strftime('%Y-%m-%d')
+    today_time = datetime.today().strftime('%d.%m.@%H:%M')
+    context = {
+        'today_date': today,
+        'this_kid': this_kid,
+        'kids': kids,
+        'notizen': notizen
+    }
+
+    if request.method == 'GET':
+        form = CheckInForm()
+        return render(request, 'check_in_list.html', context)
+
+    elif request.method == 'POST':
+        form = CheckInForm(request.POST)
+        if form.is_valid():
+            this_kid = form.save(commit=False)
+            # Assuming you are using Django's built-in authentication
+            notizen.added_by = request.user
+            this_kid.save()
+            messages.success(
+                request, f'{this_kid.kid_vorname} {this_kid.kid_nachname} erfolgreich eingecheckt.')
+            return redirect('check_in_all', id=id)
+
+    return render(request, 'check_in_list.html', context)
+
+
+def check_in_list_older(request, id):
     this_kid = models.Kinder.objects.get(id=id)
     notizen = models.Notizen.objects.all()
     kids = models.Kinder.objects.all()

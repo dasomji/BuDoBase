@@ -1,17 +1,53 @@
 from django.forms import ModelForm
-from .models import Kinder
+from .models import Kinder, Notizen
 from django import forms
+from django.contrib.auth.models import User
+
+
+class NeueNotiz(ModelForm):
+    class Meta:
+        model = Notizen
+        fields = ['notiz']
+        widgets = {
+            'notiz': forms.TextInput(attrs={'class': 'w3-input'})
+        }
 
 
 class CheckInForm(ModelForm):
     class Meta:
         model = Kinder
-        fields = ['check_in_date', 'ausweis', 'einverstaendnis_erklaerung',
+        fields = ['check_in_date', 'ausweis', 'e_card', 'einverstaendnis_erklaerung',
                   'taschengeld', 'late_anreise']
+        widgets = {
+            'check_in_date': forms.DateInput(attrs={'type': 'date', 'class': 'w3-input'}),
+            'ausweis': forms.CheckboxInput(attrs={'class': 'w3-check w3-margin-left'}),
+            'e_card': forms.CheckboxInput(attrs={'class': 'w3-check w3-margin-left'}),
+            'einverstaendnis_erklaerung': forms.CheckboxInput(attrs={'class': 'w3-check w3-margin-left'}),
+            'taschengeld': forms.TextInput(attrs={'class': 'w3-input'}),
+            'neue_notiz': forms.TextInput(attrs={'class': 'w3-input'}),
+        }
 
+    def save(self, commit=True):
+        kinder_instance = super().save(commit=False)
 
-class CheckInForm(forms.Form):
-    pass
+        # Update fields of the Kinder instance
+        kinder_instance.check_in_date = self.cleaned_data['check_in_date']
+        kinder_instance.ausweis = self.cleaned_data['ausweis']
+        kinder_instance.e_card = self.cleaned_data['e_card']
+        kinder_instance.einverstaendnis_erklaerung = self.cleaned_data[
+            'einverstaendnis_erklaerung']
+        kinder_instance.taschengeld = self.cleaned_data['taschengeld']
+
+        # Create a new Notizen instance associated with the Kinder instance
+        notiz = Notizen(
+            kinder=kinder_instance,
+            notiz=['neue_notiz']
+        )
+
+        kinder_instance.save()
+        notiz.save()
+
+        return kinder_instance
 
 
 class CheckOutEarly(ModelForm):
