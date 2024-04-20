@@ -171,11 +171,13 @@ def check_in_list(request, id):
     kids = models.Kinder.objects.all()
     today = datetime.today().strftime('%Y-%m-%d')
     today_time = datetime.today().strftime('%d.%m.@%H:%M')
+    current_user = request.user
     context = {
         'today_date': today,
         'this_kid': this_kid,
         'kids': kids,
-        'notizen': notizen
+        'notizen': notizen,
+        "current_user": current_user,
     }
 
     if request.method == 'GET':
@@ -183,11 +185,10 @@ def check_in_list(request, id):
         return render(request, 'check_in_list.html', context)
 
     elif request.method == 'POST':
-        form = CheckInForm(request.POST)
+        form = CheckInForm(request.POST, user=request.user)
         if form.is_valid():
             this_kid = form.save(commit=False)
             # Assuming you are using Django's built-in authentication
-            notizen.added_by = request.user
             this_kid.save()
             messages.success(
                 request, f'{this_kid.kid_vorname} {this_kid.kid_nachname} erfolgreich eingecheckt.')

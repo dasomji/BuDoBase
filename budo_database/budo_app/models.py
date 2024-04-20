@@ -125,9 +125,9 @@ class Kinder(models.Model):
 class Notizen(models.Model):
     kinder = models.ForeignKey(
         Kinder, on_delete=models.CASCADE, related_name='notizen')
-    notiz = models.TextField()
+    notiz = models.TextField(null=True, blank=True)
     date_added = models.DateTimeField(auto_now_add=True)
-    added_by = models.ForeignKey("auth.User", on_delete=models.CASCADE)
+    added_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"Notiz über {self.kinder.kid_vorname} {self.kinder.kid_nachname} von {self.added_by}: {self.notiz}"

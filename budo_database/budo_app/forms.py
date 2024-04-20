@@ -13,7 +13,7 @@ class NeueNotiz(ModelForm):
         }
 
 
-class CheckInForm(ModelForm):
+class NeuerCheckIn(ModelForm):
     class Meta:
         model = Kinder
         fields = ['check_in_date', 'ausweis', 'e_card', 'einverstaendnis_erklaerung',
@@ -27,8 +27,29 @@ class CheckInForm(ModelForm):
             'neue_notiz': forms.TextInput(attrs={'class': 'w3-input'}),
         }
 
+
+class CheckInForm(ModelForm):
+
+    class Meta:
+        model = Kinder
+        fields = ['check_in_date', 'ausweis', 'e_card', 'einverstaendnis_erklaerung',
+                  'taschengeld', 'late_anreise']
+        widgets = {
+            'check_in_date': forms.DateInput(attrs={'type': 'date', 'class': 'w3-input'}),
+            'ausweis': forms.CheckboxInput(attrs={'class': 'w3-check w3-margin-left'}),
+            'e_card': forms.CheckboxInput(attrs={'class': 'w3-check w3-margin-left'}),
+            'einverstaendnis_erklaerung': forms.CheckboxInput(attrs={'class': 'w3-check w3-margin-left'}),
+            'taschengeld': forms.TextInput(attrs={'class': 'w3-input'}),
+            'neue_notiz': forms.TextInput(attrs={'class': 'w3-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super(CheckInForm, self).__init__(*args, **kwargs)
+
     def save(self, commit=True):
         kinder_instance = super().save(commit=False)
+        current_user = self.user
 
         # Update fields of the Kinder instance
         kinder_instance.check_in_date = self.cleaned_data['check_in_date']
@@ -38,14 +59,26 @@ class CheckInForm(ModelForm):
             'einverstaendnis_erklaerung']
         kinder_instance.taschengeld = self.cleaned_data['taschengeld']
 
-        # Create a new Notizen instance associated with the Kinder instance
-        notiz = Notizen(
-            kinder=kinder_instance,
-            notiz=['neue_notiz']
-        )
+        if commit:
+            kinder_instance.save()  # Save the Kinder instance only if commit is True
 
-        kinder_instance.save()
-        notiz.save()
+            # Create a new Notizen instance associated with the Kinder instance
+            notiz = Notizen(
+                kinder=kinder_instance,
+                notiz=self.cleaned_data['neue_notiz'],  # Corrected assignment
+                added_by=current_user
+            )
+            notiz.save()
+
+        # # Create a new Notizen instance associated with the Kinder instance
+        # notiz = Notizen(
+        #     kinder=kinder_instance,
+        #     notiz=['neue_notiz'],
+        #     added_by=current_user
+        # )
+
+        # kinder_instance.save()
+        # notiz.save()
 
         return kinder_instance
 
