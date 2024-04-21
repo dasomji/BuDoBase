@@ -12,6 +12,10 @@ class NeueNotiz(ModelForm):
             'notiz': forms.TextInput(attrs={'class': 'w3-input'})
         }
 
+    def form_valid(self, form):
+        form.instance.added_by = self.request.user
+        return super().form_valid(form)
+
 
 class NeuerCheckIn(ModelForm):
     class Meta:

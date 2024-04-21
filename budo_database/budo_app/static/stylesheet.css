@@ -2,6 +2,10 @@
     --blue: rgba(183, 220, 255, 0.34);
 }
 
+body{
+    font-family: "Inter";
+}
+
 .flex-container{
     display: flex;
     flex-flow: row wrap;
