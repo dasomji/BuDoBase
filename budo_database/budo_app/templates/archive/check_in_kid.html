@@ -1,0 +1,63 @@
+<div class="flex-container">
+    <div class="info_container" id="kinderinfos">
+        <div class="anwesend-container">
+            <h2>{{ this_kid.kid_vorname }} {{ this_kid.kid_nachname }}</h2>
+            {% if this_kid.anwesend %}<h2 id="anwesend-marker">✅</h2>{% endif %}
+        </div>
+        <p><span class="label">Geschlecht</span>: {{this_kid.sex}} </p>
+        <p><span class="label">Alter</span>: {{this_kid.kid_alter}}</p>
+        <p><span class="label">Geburtstag</span>: {{this_kid.kid_birthday}}</p>
+        <p><a href="/budo_familie/{{ this_kid.budo_family }}"><span class="label">Budo Familie</span>: {{ this_kid.budo_family }}</a></p>
+        <p><span class="label">Aufenthaltsdauer</span>: {{this_kid.turnus_dauer}}-wöchig</p>
+        <p><span class="label">Geschwister</span>: {{this_kid.geschwister}}</p>
+        <p><span class="label">Zeltwunsch</span>: {{this_kid.zeltwunsch}}</p>
+        <p><span class="label">War schon mal im Bunten Dorf</span>: {{this_kid.budo_erfahrung}}</p>
+    </div>
+    {% block forminput %}
+
+    <div class="info_container input_container">
+        {% if this_kid.anwesend == True %}
+        <h1>Check-Out</h1>
+            <p style="color:green;">Dieses Kind ist anwesend.</p>
+            <form method="POST" class="w3-container">
+                <p><label for="early_check_out">Vorzeitige Abreise?</label><input class="w3-input" type="checkbox" id="early_check_out" name="early_check_out" value="True"></p>
+                <p><label for="check_out_date">Check-Out Datum</label><input class="w3-input" type="date" id="check_out_date" value="{{today_date}}"></p>
+                <p><label for="documents_returend">Dokumente zurückgegeben? </label><input class="w3-check" type="checkbox" id="documents_returend" name="documents_returend" value="True"></p>
+                <p>Wir hatten folgende Dokumente: </p>
+                <ul>
+                    {% if this_kid.e_card == True %}
+                    <li>E-Card</li>
+                    {% endif %}
+                    {% if this_kid.ausweis == True %}
+                    <li>Ausweis</li>
+                    {% endif %}
+                </ul>
+                <p><label for="abholer">Abgeholt von: </label><input class="w3-input" type="text" id="abholer" name="abholer"></p>
+                <p><label for="reason_abreise">Grund der Abreise: </label><input class="w3-input" type="text" id="reason_abreise" name="reason_abreise"></p>
+                <p><label for="taschengeld_out">Wieviel Taschengeld zurückgegeben?</label><input class="w3-input" type="text" name="taschengeld_out" id="taschengeld_out"></p>
+                <p><label for="neue_notiz">Notiz: </label><input class="w3-input" type="text" name="" id="neue_notiz"></p>
+                <!-- <p><label for="neue_anmerkung">Sonstige Anmerkung: </label><input class="w3-input" type="text" id="neue_anmerkung" name="neue_anmerkung"></p> -->
+            {% csrf_token %}
+                <input type="submit" value="Speichern">
+            </form>
+            {% else %}
+        <h1>Check-In</h1>
+            <p style="color:red;">Dieses Kind ist noch nicht eingecheckt!.</p>
+            <form method="POST" class="w3-container">
+                <p><label for="check_in_date">Check-In Datum:</label><input class="w3-input" type="date" id="check_in_date" value="{{today_date}}"></p>
+                <p><label for="ausweis">Ausweis: </label><input class="w3-check w3-margin-left" type="checkbox" id="ausweis" value="True">
+                <label class="w3-margin-left" for="e-card">E-Card: </label><input class="w3-check w3-margin-left" type="checkbox" id="e-card" value="True"></p>
+                <p><label for="einverstaendnis">Einverständniserklärung: </label><input class="w3-check w3-margin-left" type="checkbox" name="einverstaendnis" id="einverstaendnis" value="True"></p>
+                <p><label for="taschengeld">Taschengeld: </label><input class="w3-input" type="text" name="" id="taschengeld"></p>
+                <p><label for="neue_notiz">Notiz: </label><input class="w3-input" type="text" name="" id="neue_notiz"></p>
+                <!-- <p><label for="neue_anmerkung">Sonstige Anmerkungen:</label><input class="w3-input" type="text" id="neue_anmerkung" name="neue_anmerkung"></p> -->
+            {% csrf_token %}
+                <input type="submit" value="Speichern">
+            </form>
+            {% endif %}
+            
+    </div>
+
+    {% endblock %}
+</div>
+
