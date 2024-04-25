@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.forms import ModelForm, Form
-from .models import Kinder, Notizen
+from .models import Kinder, Notizen, Turnus
 from django import forms
 from django.contrib.auth.models import User
 
@@ -29,3 +29,12 @@ class CheckInForm(forms.ModelForm):
             'einverstaendnis_erklaerung': forms.CheckboxInput(attrs={'class': 'w3-check w3-margin-left'}),
             'taschengeld': forms.TextInput(attrs={'class': 'w3-input'})
         }
+        labels = {'einverstaendnis_erklaerung': "Einverständniserklärung"}
+
+
+class UploadForm(forms.ModelForm):
+    class Meta:
+        model = Turnus
+        fields = ['turnus_nr', 'turnus_beginn', 'uploadedFile']
+        labels = {"turnus_nr": "Turnus Nummer",
+                  "turnus_beginn": "Beginn des Turnus", "uploadedFile": "Excel-File"}

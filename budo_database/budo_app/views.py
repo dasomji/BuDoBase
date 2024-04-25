@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from . import models
 from .models import Kinder, Notizen
-from .forms import NotizForm, CheckInForm
+from .forms import NotizForm, CheckInForm, UploadForm
 
 
 from .excelProcessor import process_excel, postprocessing
@@ -23,26 +23,35 @@ def budo_app(request):
 
 
 def uploadFile(request):
-    if request.method == "POST":
-        # Fetching the form data
-        turnus_number = request.POST["turnus_nr"]
-        turnus_jahr = request.POST["turnus_year"]
-        uploadedFile = request.FILES["uploadedFile"]
-
-        # Saving the information in the database
-        turnus = models.Turnus(
-            turnus_nr=int(turnus_number),
-            turnus_year=int(turnus_jahr),
-            uploadedFile=uploadedFile
-        )
-        turnus.save()
-        process_excel()  # saves the data from excel to the database
-
+    template = loader.get_template('upload-file.html')
     documents = models.Turnus.objects.all()
+    context = {
+        "documents": documents,
+    }
+    if request.method == "POST":
+        upload_form = UploadForm(request.POST)
+        context["upload_form"] = upload_form
+        if upload_form.is_valid():
+            process_excel()
+    else:
+        upload_form = UploadForm()
+        context["upload_form"] = upload_form
 
-    return render(request, "upload-file.html", context={
-        "files": documents
-    })
+    return HttpResponse(template.render(context, request))
+
+    # # Fetching the form data
+    # turnus_number = request.POST["turnus_nr"]
+    # turnus_jahr = request.POST["turnus_year"]
+    # uploadedFile = request.FILES["uploadedFile"]
+
+    # # Saving the information in the database
+    # turnus = models.Turnus(
+    #     turnus_nr=int(turnus_number),
+    #     turnus_year=int(turnus_jahr),
+    #     uploadedFile=uploadedFile
+    # )
+    # turnus.save()
+    # process_excel()  # saves the data from excel to the database
 
 
 def kids_list(request):

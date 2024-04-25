@@ -9,6 +9,7 @@ class NotizenAdmin(admin.ModelAdmin):
 
 class TurnusAdmin(admin.ModelAdmin):
     list_display = ("__str__", "turnus_beginn")
+    readonly_fields = ('dateTimeOfUpload',)
 # Register your models here.
 
 

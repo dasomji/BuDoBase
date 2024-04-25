@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-
+import datetime
 # Create your models here.
 
 
@@ -143,13 +143,19 @@ class Turnus(models.Model):
     turnus_nr = models.IntegerField(null=True, default=None)
     turnus_beginn = models.DateField()
     uploadedFile = models.FileField(upload_to="Uploaded Files/")
-    dateTimeOfUpload = models.DateField(auto_now=True)
+    dateTimeOfUpload = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'T{self.turnus_nr}-{self.turnus_beginn.year}'
 
     class Meta:
         verbose_name_plural = "Turnus"
+
+    def get_turnus_beginn_formatiert(self):
+        return self.turnus_beginn.strftime("%d.%m.%Y")
+
+    def get_upload_time(self):
+        return self.dateTimeOfUpload.strftime("%H:%M am %d.%m.%Y")
 
 
 class Schwerpunkte(models.Model):
