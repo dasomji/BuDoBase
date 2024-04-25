@@ -157,6 +157,12 @@ class Turnus(models.Model):
     def get_upload_time(self):
         return self.dateTimeOfUpload.strftime("%H:%M am %d.%m.%Y")
 
+    def get_turnus_ende(self):
+        number_of_days = 13
+        end_datum = self.turnus_beginn + \
+            datetime.timedelta(days=number_of_days)
+        return end_datum
+
 
 class Schwerpunkte(models.Model):
     UNBEKANNT = "Unbekannt"

@@ -8,7 +8,11 @@
 
 <div class="flex-container">
     <a href="/admin/budo_app/kinder/{{Kinder.id}}/change/"><h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1></a>
-    <a href="/check_in/{{ Kinder.id }}" class="w3-button w3-yellow">Jetzt ein/auschecken</a>
+    {% if Kinder.anwesend == True %}
+    <a href="/check_out/{{ Kinder.id }}" class="w3-button w3-yellow">Check-Out</a>
+    {% else %}
+    <a href="/check_in/{{ Kinder.id }}" class="w3-button w3-yellow">Check-In</a>
+    {% endif %}
 </div>
 {% endblock %}
 
@@ -17,7 +21,7 @@
         <div class="info_container" id="kinderinfos">
             <div class="anwesend-container">
                 <h2>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h2>
-                {% if Kinder.anwesend %}<h2 id="anwesend-marker">✅</h2>{% endif %}
+                {% if not Kinder.anwesend %}<h2 id="anwesend-marker">❌</h2>{% endif %}
             </div>
             <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
             <p><span class="label">Alter</span>: {{Kinder.kid_alter}}</p>

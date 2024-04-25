@@ -1,56 +1,21 @@
-{% extends "master.html" %}
-
-{% block title %}
-  BuDo Kid Info
-{% endblock %}
-
+{% extends "master.html" %} {% block title %} BuDo Kid Info {% endblock %} 
 {% block headertitle %}
 
 <div class="flex-container">
-    <a href="/admin/budo_app/kinder/{{Kinder.id}}/change/"><h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1></a>
-    <a href="/check_in/{{ Kinder.id }}" class="w3-button w3-yellow">Jetzt ein/auschecken</a>
+  <a href="/admin/budo_app/kinder/{{Kinder.id}}/change/"
+    ><h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
+  </a>
 </div>
-{% endblock %}
-
-{% block content %}
-{% block forminput %}
-
+{% endblock %} 
+{% block content %} 
+    {% block forminput %}
 <div class="info_container input_container">
-    {% if Kinder.anwesend == True %}
-    <h1>Check-Out</h1>
-        <p style="color:green;">Dieses Kind ist anwesend.</p>
-        <form method="POST" class="w3-container">
-            <p><label for="early_check_out">Vorzeitige Abreise?</label><input class="w3-input" type="checkbox" id="early_check_out" name="early_check_out" value="True"></p>
-            <p><label for="check_out_date">Check-Out Datum</label><input class="w3-input" type="date" id="check_out_date" value="{{today_date}}"></p>
-            <p><label for="documents_returend">Dokumente zurückgegeben? </label><input class="w3-check" type="checkbox" id="documents_returend" name="documents_returend" value="True"></p>
-            <p>Wir hatten folgende Dokumente: </p>
-            <ul>
-                {% if Kinder.e_card == True %}
-                <li>E-Card</li>
-                {% endif %}
-                {% if Kinder.ausweis == True %}
-                <li>Ausweis</li>
-                {% endif %}
-            </ul>
-            <p><label for="abholer">Abgeholt von: </label><input class="w3-input" type="text" id="abholer" name="abholer"></p>
-            <p><label for="reason_abreise">Grund der Abreise: </label><input class="w3-input" type="text" id="reason_abreise" name="reason_abreise"></p>
-            <p><label for="taschengeld_out">Wieviel Taschengeld zurückgegeben?</label><input class="w3-input" type="text" name="taschengeld_out" id="taschengeld_out"></p>
-            <p><label for="neue_anmerkung">Sonstige Anmerkung: </label><input class="w3-input" type="text" id="neue_anmerkung" name="neue_anmerkung"></p>
-        {% csrf_token %}
-            <input type="submit" value="Speichern">
-        </form>
-        {% else %}
-    <h1>Check-In</h1>
-        <p style="color:red;">Dieses Kind ist noch nicht eingecheckt!.</p>
-                <form method="post">
-                    {%csrf_token %}
-                    {{ check_in_form.as_p }}
-                    {{ notiz_form.as_p }}
-                    <button type="submit">Einchecken</button>
-                </form>
-        {% endif %}
-        
+  <h1>Check-In</h1>
+  <p style="color: red">Dieses Kind ist noch nicht eingecheckt!.</p>
+  <form method="post">
+    {%csrf_token %} {{ check_in_form.as_p }} {{ notiz_form.as_p }}
+    <button type="submit">Einchecken</button>
+  </form>
 </div>
 
-{% endblock %}
-{% endblock %}
+{% endblock %} {% endblock %}

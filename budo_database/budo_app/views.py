@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from . import models
 from .models import Kinder, Notizen
-from .forms import NotizForm, CheckInForm, UploadForm
+from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm
 from copy import deepcopy
 
 
@@ -39,20 +39,6 @@ def uploadFile(request):
         context["upload_form"] = upload_form
 
     return HttpResponse(template.render(context, request))
-
-    # # Fetching the form data
-    # turnus_number = request.POST["turnus_nr"]
-    # turnus_jahr = request.POST["turnus_year"]
-    # uploadedFile = request.FILES["uploadedFile"]
-
-    # # Saving the information in the database
-    # turnus = models.Turnus(
-    #     turnus_nr=int(turnus_number),
-    #     turnus_year=int(turnus_jahr),
-    #     uploadedFile=uploadedFile
-    # )
-    # turnus.save()
-    # process_excel()  # saves the data from excel to the database
 
 
 def kids_list(request):
@@ -118,20 +104,15 @@ def check_in(request, id):
         if check_in_form.is_valid():
             this_kid = check_in_form.save(commit=False)
             this_kid.anwesend = True
-            print(this_kid.check_in_date)
-            print(
-                f'Turnusbeginn: {this_kid.turnus.turnus_beginn.strftime("%Y-%m-%d")}')
-            print(datetime.today().strftime("%Y-%m-%d"))
+            # print(this_kid.check_in_date)
+            # print(
+            #     f'Turnusbeginn: {this_kid.turnus.turnus_beginn.strftime("%Y-%m-%d")}')
+            # print(datetime.today().strftime("%Y-%m-%d"))
             if this_kid.check_in_date.strftime("%Y-%m-%d") != this_kid.turnus.turnus_beginn.strftime("%Y-%m-%d"):
                 this_kid.late_anreise = this_kid.check_in_date
                 if original_kid.check_in_date != None:
                     this_kid.check_in_date = original_kid.check_in_date
 
-            # if this_kid.check_in_date == datetime.date.today() and this_kid.check_in_date != original_kid.check_in_date:
-            #     this_kid.late_anreise = this_kid.check_in_date
-            # if this_kid.check_in_date != datetime.today():
-            #     this_kid.late_anreise =
-            # print(check_in_form.cleaned_data)
             this_kid.save()
             return redirect('kid_details', id=id)
     else:
@@ -140,55 +121,47 @@ def check_in(request, id):
         context["check_in_form"] = check_in_form
         context["notiz_form"] = notiz_form
 
-    # if request.method == "POST":
-    #     if this_kid.anwesend == False:
-    #         check_in_date = request.POST.get("check_in_date")
-    #         ausweis = request.POST.get("ausweis")
-    #         e_card = request.POST.get("e-card")
-    #         einverstaendnis = request.POST.get("einverstaendnis")
-    #         taschengeld = request.POST.get("taschengeld")
-    #         anmerkung = request.POST.get("neue_anmerkung")
+    return HttpResponse(template.render(context, request))
 
-    #         this_kid.check_in_date = check_in_date
-    #         this_kid.ausweis = ausweis
-    #         this_kid.e_card = e_card
-    #         this_kid.einverstaendnis_erklaerung = einverstaendnis
-    #         this_kid.taschengeld = taschengeld
-    #         this_kid.anwesend = True
 
-    #         notiz = models.Notizen(
-    #             kinder=this_kid, notiz=anmerkung, added_by=request.user)
+def check_out(request, id):
+    this_kid = models.Kinder.objects.get(id=id)
+    original_kid = deepcopy(this_kid)
+    template = loader.get_template('check_out.html')
+    today = datetime.today().strftime('%Y-%m-%d')
+    context = {
+        "today_date": today,
+        'Kinder': this_kid,
+    }
 
-    #         notiz.save()
-    #         this_kid.save()
+    if request.method == 'POST':
+        check_out_form = CheckOutForm(request.POST, instance=this_kid)
+        notiz_form = NotizForm(request.POST)
+        context["check_out_form"] = check_out_form
+        context["notiz_form"] = notiz_form
+        if notiz_form.is_valid():
+            notiz = notiz_form.cleaned_data.get('notiz')
+            if notiz:
+                notiz = notiz_form.save(commit=False)
+                notiz.kinder = this_kid
+                notiz.added_by = request.user
+                notiz.save()
+        if check_out_form.is_valid():
+            this_kid = check_out_form.save(commit=False)
+            this_kid.anwesend = False
+            this_kid.e_card = False
+            this_kid.ausweis = False
+            if this_kid.early_abreise_date.strftime("%Y-%m-%d") == this_kid.turnus.get_turnus_ende().strftime("%Y-%m-%d"):
 
-    #         print(request.POST)
+                this_kid.early_abreise_date = None
 
-    #         return redirect("kid_details", id=id)
-    #     else:
-    #         early_check_out = request.POST.get("early_check_out")
-    #         check_out_date = request.POST.get("check_out_date")
-    #         documents_returned = request.POST.get("documents_returned")
-    #         abholer = request.POST.get("abholer")
-    #         reason_abreise = request.POST.get("reason_abreise")
-    #         taschengeld_out = request.POST.get("taschengeld_out")
-    #         anmerkung = request.POST.get("neue_anmerkung")
-
-    #         this_kid.anwesend = False
-    #         if early_check_out == True:
-    #             this_kid.early_abreise_date = check_out_date
-    #             this_kid.early_abreise_abholer = abholer
-    #             this_kid.early_abreise_reason = reason_abreise
-    #             this_kid.anmerkung_team += f'<br>{taschengeld_out}€ retourniert'
-
-    #         if documents_returned == True:
-    #             this_kid.ausweis = False
-    #             this_kid.e_card = False
-
-    #         this_kid.anmerkung_team += f'<br>@Checkout/{today_time}: {anmerkung}'
-
-    #         this_kid.save()
-    #         print(request.POST)
+            this_kid.save()
+            return redirect('kid_details', id=id)
+    else:
+        check_out_form = CheckOutForm()
+        notiz_form = NotizForm()
+        context["check_out_form"] = check_out_form
+        context["notiz_form"] = notiz_form
 
     return HttpResponse(template.render(context, request))
 

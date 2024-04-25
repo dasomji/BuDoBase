@@ -34,6 +34,17 @@ class CheckInForm(forms.ModelForm):
         labels = {'einverstaendnis_erklaerung': "Einverständniserklärung"}
 
 
+class CheckOutForm(forms.ModelForm):
+    class Meta:
+        today = datetime.date.today().strftime('%Y-%m-%d')
+        model = Kinder
+        fields = ['early_abreise_date']
+        widgets = {'early_abreise_date': forms.DateInput(
+            attrs={'type': 'date', 'class': 'w3-input', "value": f"{today}"})}
+
+        labels = {"early_abreise_date": "Abreisedatum"}
+
+
 class UploadForm(forms.ModelForm):
     class Meta:
         model = Turnus
