@@ -42,16 +42,12 @@
         {% else %}
     <h1>Check-In</h1>
         <p style="color:red;">Dieses Kind ist noch nicht eingecheckt!.</p>
-        <form method="POST" class="w3-container">
-            <p><label for="check_in_date">Check-In Datum:</label><input class="w3-input" type="date" id="check_in_date" value="{{today_date}}"></p>
-            <p><label for="ausweis">Ausweis: </label><input class="w3-check w3-margin-left" type="checkbox" id="ausweis" value="True">
-            <label class="w3-margin-left" for="e-card">E-Card: </label><input class="w3-check w3-margin-left" type="checkbox" id="e-card" value="True"></p>
-            <p><label for="einverstaendnis">Einverständniserklärung: </label><input class="w3-check w3-margin-left" type="checkbox" name="einverstaendnis" id="einverstaendnis" value="True"></p>
-            <p><label for="taschengeld">Taschengeld: </label><input class="w3-input" type="text" name="" id="taschengeld"></p>
-            <p><label for="neue_anmerkung">Notiz:</label><input class="w3-input" type="text" id="neue_anmerkung" name="neue_anmerkung"></p>
-        {% csrf_token %}
-            <input type="submit" value="Speichern">
-        </form>
+                <form method="post">
+                    {%csrf_token %}
+                    {{ check_in_form.as_p }}
+                    {{ notiz_form.as_p }}
+                    <button type="submit">Einchecken</button>
+                </form>
         {% endif %}
         
 </div>

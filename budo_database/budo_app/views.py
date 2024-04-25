@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from . import models
 from .models import Kinder, Notizen
-from .forms import NotizForm, CheckInForm
+from .forms import NotizForm, CheckInForm, CheckKindIn
 
 
 from .excelProcessor import process_excel, postprocessing
@@ -92,55 +92,77 @@ def check_in(request, id):
         'Kinder': this_kid,
     }
 
-    if request.method == "POST":
-        if this_kid.anwesend == False:
-            check_in_date = request.POST.get("check_in_date")
-            ausweis = request.POST.get("ausweis")
-            e_card = request.POST.get("e-card")
-            einverstaendnis = request.POST.get("einverstaendnis")
-            taschengeld = request.POST.get("taschengeld")
-            anmerkung = request.POST.get("neue_anmerkung")
-
-            this_kid.check_in_date = check_in_date
-            this_kid.ausweis = ausweis
-            this_kid.e_card = e_card
-            this_kid.einverstaendnis_erklaerung = einverstaendnis
-            this_kid.taschengeld = taschengeld
+    if request.method == 'POST':
+        check_in_form = CheckKindIn(request.POST)
+        notiz_form = NotizForm(request.POST)
+        context["check_in_form"] = check_in_form
+        context["notiz_form"] = notiz_form
+        if notiz_form.is_valid():
+            notiz = notiz_form.cleaned_data.get('notiz')
+            if notiz:
+                notiz = notiz_form.save(commit=False)
+                notiz.kinder = this_kid
+                notiz.added_by = request.user
+                notiz.save()
+        if check_in_form.is_valid():
             this_kid.anwesend = True
-
-            notiz = models.Notizen(
-                kinder=this_kid, notiz=anmerkung, added_by=request.user)
-
-            notiz.save()
             this_kid.save()
+            return redirect('kid_details', id=id)
+    else:
+        check_in_form = CheckKindIn()
+        notiz_form = NotizForm()
+        context["check_in_form"] = check_in_form
+        context["notiz_form"] = notiz_form
 
-            print(request.POST)
+    # if request.method == "POST":
+    #     if this_kid.anwesend == False:
+    #         check_in_date = request.POST.get("check_in_date")
+    #         ausweis = request.POST.get("ausweis")
+    #         e_card = request.POST.get("e-card")
+    #         einverstaendnis = request.POST.get("einverstaendnis")
+    #         taschengeld = request.POST.get("taschengeld")
+    #         anmerkung = request.POST.get("neue_anmerkung")
 
-            return redirect("kid_details", id=id)
-        else:
-            early_check_out = request.POST.get("early_check_out")
-            check_out_date = request.POST.get("check_out_date")
-            documents_returned = request.POST.get("documents_returned")
-            abholer = request.POST.get("abholer")
-            reason_abreise = request.POST.get("reason_abreise")
-            taschengeld_out = request.POST.get("taschengeld_out")
-            anmerkung = request.POST.get("neue_anmerkung")
+    #         this_kid.check_in_date = check_in_date
+    #         this_kid.ausweis = ausweis
+    #         this_kid.e_card = e_card
+    #         this_kid.einverstaendnis_erklaerung = einverstaendnis
+    #         this_kid.taschengeld = taschengeld
+    #         this_kid.anwesend = True
 
-            this_kid.anwesend = False
-            if early_check_out == True:
-                this_kid.early_abreise_date = check_out_date
-                this_kid.early_abreise_abholer = abholer
-                this_kid.early_abreise_reason = reason_abreise
-                this_kid.anmerkung_team += f'<br>{taschengeld_out}€ retourniert'
+    #         notiz = models.Notizen(
+    #             kinder=this_kid, notiz=anmerkung, added_by=request.user)
 
-            if documents_returned == True:
-                this_kid.ausweis = False
-                this_kid.e_card = False
+    #         notiz.save()
+    #         this_kid.save()
 
-            this_kid.anmerkung_team += f'<br>@Checkout/{today_time}: {anmerkung}'
+    #         print(request.POST)
 
-            this_kid.save()
-            print(request.POST)
+    #         return redirect("kid_details", id=id)
+    #     else:
+    #         early_check_out = request.POST.get("early_check_out")
+    #         check_out_date = request.POST.get("check_out_date")
+    #         documents_returned = request.POST.get("documents_returned")
+    #         abholer = request.POST.get("abholer")
+    #         reason_abreise = request.POST.get("reason_abreise")
+    #         taschengeld_out = request.POST.get("taschengeld_out")
+    #         anmerkung = request.POST.get("neue_anmerkung")
+
+    #         this_kid.anwesend = False
+    #         if early_check_out == True:
+    #             this_kid.early_abreise_date = check_out_date
+    #             this_kid.early_abreise_abholer = abholer
+    #             this_kid.early_abreise_reason = reason_abreise
+    #             this_kid.anmerkung_team += f'<br>{taschengeld_out}€ retourniert'
+
+    #         if documents_returned == True:
+    #             this_kid.ausweis = False
+    #             this_kid.e_card = False
+
+    #         this_kid.anmerkung_team += f'<br>@Checkout/{today_time}: {anmerkung}'
+
+    #         this_kid.save()
+    #         print(request.POST)
 
     return HttpResponse(template.render(context, request))
 
