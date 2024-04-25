@@ -6,6 +6,7 @@ from django.contrib import messages
 from . import models
 from .models import Kinder, Notizen
 from .forms import NotizForm, CheckInForm, UploadForm
+from copy import deepcopy
 
 
 from .excelProcessor import process_excel, postprocessing
@@ -93,6 +94,7 @@ def kid_details(request, id):
 
 def check_in(request, id):
     this_kid = models.Kinder.objects.get(id=id)
+    original_kid = deepcopy(this_kid)
     template = loader.get_template('check_in.html')
     today = datetime.today().strftime('%Y-%m-%d')
     today_time = datetime.today().strftime('%d.%m.@%H:%M')
@@ -116,7 +118,20 @@ def check_in(request, id):
         if check_in_form.is_valid():
             this_kid = check_in_form.save(commit=False)
             this_kid.anwesend = True
-            print(check_in_form.cleaned_data)
+            print(this_kid.check_in_date)
+            print(
+                f'Turnusbeginn: {this_kid.turnus.turnus_beginn.strftime("%Y-%m-%d")}')
+            print(datetime.today().strftime("%Y-%m-%d"))
+            if this_kid.check_in_date.strftime("%Y-%m-%d") != this_kid.turnus.turnus_beginn.strftime("%Y-%m-%d"):
+                this_kid.late_anreise = this_kid.check_in_date
+                if original_kid.check_in_date != None:
+                    this_kid.check_in_date = original_kid.check_in_date
+
+            # if this_kid.check_in_date == datetime.date.today() and this_kid.check_in_date != original_kid.check_in_date:
+            #     this_kid.late_anreise = this_kid.check_in_date
+            # if this_kid.check_in_date != datetime.today():
+            #     this_kid.late_anreise =
+            # print(check_in_form.cleaned_data)
             this_kid.save()
             return redirect('kid_details', id=id)
     else:
