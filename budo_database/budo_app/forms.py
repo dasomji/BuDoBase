@@ -26,6 +26,13 @@ class NotizForm(forms.ModelForm):
         fields = ['notiz']
 
 
+class CheckKindIn(forms.ModelForm):
+    class Meta:
+        model = Kinder
+        fields = ['check_in_date', 'ausweis', 'e_card', 'einverstaendnis_erklaerung',
+                  'taschengeld', 'late_anreise']
+
+
 class NeuerCheckIn(ModelForm):
     class Meta:
         model = Kinder

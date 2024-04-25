@@ -9,7 +9,7 @@ urlpatterns = [
     path('all_kids', views.kids_list, name='kids_list'),
     path('kid_details/<int:id>', views.kid_details, name='kid_details'),
     path('postprocess', views.postprocess, name='postprocess'),
-    # path('check_in/<int:id>', views.check_in, name='check_in'),
+    path('check_in/<int:id>', views.check_in, name='check_in'),
     # path('check_in_list/<int:id>', views.check_in_list, name='check_in_all'),
     # path('test', views.testing, name='testing'),
     # path('budo_families/', views.budo_family_overview,

@@ -1,5 +1,18 @@
-{% extends "kids_data.html" %}
+{% extends "master.html" %}
 
+{% block title %}
+  BuDo Kid Info
+{% endblock %}
+
+{% block headertitle %}
+
+<div class="flex-container">
+    <a href="/admin/budo_app/kinder/{{Kinder.id}}/change/"><h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1></a>
+    <a href="/check_in/{{ Kinder.id }}" class="w3-button w3-yellow">Jetzt ein/auschecken</a>
+</div>
+{% endblock %}
+
+{% block content %}
 {% block forminput %}
 
 <div class="info_container input_container">
@@ -35,7 +48,7 @@
             <label class="w3-margin-left" for="e-card">E-Card: </label><input class="w3-check w3-margin-left" type="checkbox" id="e-card" value="True"></p>
             <p><label for="einverstaendnis">Einverständniserklärung: </label><input class="w3-check w3-margin-left" type="checkbox" name="einverstaendnis" id="einverstaendnis" value="True"></p>
             <p><label for="taschengeld">Taschengeld: </label><input class="w3-input" type="text" name="" id="taschengeld"></p>
-            <p><label for="neue_anmerkung">Sonstige Anmerkungen:</label><input class="w3-input" type="text" id="neue_anmerkung" name="neue_anmerkung"></p>
+            <p><label for="neue_anmerkung">Notiz:</label><input class="w3-input" type="text" id="neue_anmerkung" name="neue_anmerkung"></p>
         {% csrf_token %}
             <input type="submit" value="Speichern">
         </form>
@@ -43,4 +56,5 @@
         
 </div>
 
+{% endblock %}
 {% endblock %}

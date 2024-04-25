@@ -4,7 +4,7 @@ from django.template import loader
 from datetime import datetime
 from django.contrib import messages
 from . import models
-from .models import Kinder
+from .models import Kinder, Notizen
 from .forms import NotizForm, CheckInForm
 
 
@@ -106,8 +106,17 @@ def check_in(request, id):
             this_kid.e_card = e_card
             this_kid.einverstaendnis_erklaerung = einverstaendnis
             this_kid.taschengeld = taschengeld
-            this_kid.anmerkung_team += f'<br>@Checkin/{today_time}: {anmerkung}'
             this_kid.anwesend = True
+
+            notiz = models.Notizen(
+                kinder=this_kid, notiz=anmerkung, added_by=request.user)
+
+            notiz.save()
+            this_kid.save()
+
+            print(request.POST)
+
+            return redirect("kid_details", id=id)
         else:
             early_check_out = request.POST.get("early_check_out")
             check_out_date = request.POST.get("check_out_date")
@@ -130,9 +139,8 @@ def check_in(request, id):
 
             this_kid.anmerkung_team += f'<br>@Checkout/{today_time}: {anmerkung}'
 
-        this_kid.save()
-
-    print(request.POST.get("e-card"))
+            this_kid.save()
+            print(request.POST)
 
     return HttpResponse(template.render(context, request))
 
