@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from . import models
 from .models import Kinder, Notizen
-from .forms import NotizForm, CheckInForm, CheckKindIn
+from .forms import NotizForm, CheckInForm
 
 
 from .excelProcessor import process_excel, postprocessing
@@ -93,7 +93,7 @@ def check_in(request, id):
     }
 
     if request.method == 'POST':
-        check_in_form = CheckKindIn(request.POST)
+        check_in_form = CheckInForm(request.POST)
         notiz_form = NotizForm(request.POST)
         context["check_in_form"] = check_in_form
         context["notiz_form"] = notiz_form
@@ -109,7 +109,7 @@ def check_in(request, id):
             this_kid.save()
             return redirect('kid_details', id=id)
     else:
-        check_in_form = CheckKindIn()
+        check_in_form = CheckInForm()
         notiz_form = NotizForm()
         context["check_in_form"] = check_in_form
         context["notiz_form"] = notiz_form
