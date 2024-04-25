@@ -5,7 +5,8 @@ from datetime import datetime
 from django.contrib import messages
 from . import models
 from .models import Kinder
-from .forms import CheckInForm
+from .forms import NotizForm, CheckInForm
+
 
 from .excelProcessor import process_excel, postprocessing
 
@@ -60,9 +61,24 @@ def kid_details(request, id):
     notizen = this_kid.notizen.all()
     context = {
         "today_date": today,
-        'Kinder': this_kid,
+        "Kinder": this_kid,
         "Notizen": notizen,
     }
+
+    if request.method == 'POST':
+        form = NotizForm(request.POST)
+        context["form"] = form
+        if form.is_valid():
+            notiz = form.save(commit=False)
+            notiz.kinder = this_kid
+            notiz.added_by = request.user
+            notiz.save()
+            return redirect('kid_details', id=id)
+    else:
+        form = NotizForm()
+
+    context["form"] = form
+
     return HttpResponse(template.render(context, request))
 
 

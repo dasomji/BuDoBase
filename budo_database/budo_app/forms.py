@@ -1,4 +1,4 @@
-from django.forms import ModelForm
+from django.forms import ModelForm, Form
 from .models import Kinder, Notizen
 from django import forms
 from django.contrib.auth.models import User
@@ -15,6 +15,15 @@ class NeueNotiz(ModelForm):
     def form_valid(self, form):
         form.instance.added_by = self.request.user
         return super().form_valid(form)
+
+
+# class NotizForm(Form):
+#     notiz = forms.Textarea()
+
+class NotizForm(forms.ModelForm):
+    class Meta:
+        model = Notizen
+        fields = ['notiz']
 
 
 class NeuerCheckIn(ModelForm):

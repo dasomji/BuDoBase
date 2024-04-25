@@ -49,9 +49,9 @@
             <p><span class="label">Notfallkontakte</span>: {% autoescape off %}{{Kinder.notfall_kontakte}}{% endautoescape %}</p>
         </div>
 
-        {% block forminput %}
+        {% comment %} {% block forminput %}
 
-        {% endblock %}
+        {% endblock %} {% endcomment %}
         
         <div class="info_container" id="family_info">
             <h2>Notizen</h2>
@@ -65,6 +65,13 @@
                     <li>Noch keine Notizen.</li>
                 {% endfor %}
             </ul>
+            {% block forminput %}
+                <form method="post">
+                    {%csrf_token %}
+                    {{ form.as_p }}
+                    <button type="submit">Notiz hinzufügen</button>
+                </form>
+            {% endblock %}
         </div>
     </div>
   
