@@ -102,7 +102,7 @@ def check_in(request, id):
     }
 
     if request.method == 'POST':
-        check_in_form = CheckInForm(request.POST)
+        check_in_form = CheckInForm(request.POST, instance=this_kid)
         notiz_form = NotizForm(request.POST)
         context["check_in_form"] = check_in_form
         context["notiz_form"] = notiz_form
@@ -114,7 +114,9 @@ def check_in(request, id):
                 notiz.added_by = request.user
                 notiz.save()
         if check_in_form.is_valid():
+            this_kid = check_in_form.save(commit=False)
             this_kid.anwesend = True
+            print(check_in_form.cleaned_data)
             this_kid.save()
             return redirect('kid_details', id=id)
     else:

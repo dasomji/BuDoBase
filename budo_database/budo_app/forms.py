@@ -3,6 +3,7 @@ from django.forms import ModelForm, Form
 from .models import Kinder, Notizen, Turnus
 from django import forms
 from django.contrib.auth.models import User
+import datetime
 
 
 class NotizForm(forms.ModelForm):
@@ -16,8 +17,13 @@ class NotizForm(forms.ModelForm):
 
 
 class CheckInForm(forms.ModelForm):
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     if self.instance.turnus.turnus_beginn == datetime.date.now():
+    #         self.fields.pop('late_anreise')
+
     class Meta:
-        today = datetime.today().strftime('%Y-%m-%d')
+        today = datetime.date.today().strftime('%Y-%m-%d')
         model = Kinder
         fields = ['check_in_date', 'ausweis', 'e_card', 'einverstaendnis_erklaerung',
                   'taschengeld', 'late_anreise']
