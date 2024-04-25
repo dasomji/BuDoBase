@@ -7,10 +7,13 @@ class NotizenAdmin(admin.ModelAdmin):
     readonly_fields = ('date_added',)
 
 
+class TurnusAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "turnus_beginn")
 # Register your models here.
 
+
 admin.site.register(Kinder)
-admin.site.register(Turnus)
+admin.site.register(Turnus, TurnusAdmin)
 admin.site.register(Schwerpunkte)
 admin.site.register(Auslagerorte)
 admin.site.register(Notizen, NotizenAdmin)

@@ -142,11 +142,12 @@ class Notizen(models.Model):
 class Turnus(models.Model):
     turnus_nr = models.IntegerField(null=True, default=None)
     turnus_year = models.IntegerField(null=True, default=None)
+    turnus_beginn = models.DateField()
     uploadedFile = models.FileField(upload_to="Uploaded Files/")
     dateTimeOfUpload = models.DateField(auto_now=True)
 
     def __str__(self):
-        return f'T{self.turnus_nr} {self.turnus_year}'
+        return f'T{self.turnus_nr}-{self.turnus_beginn.year}'
 
     class Meta:
         verbose_name_plural = "Turnus"
