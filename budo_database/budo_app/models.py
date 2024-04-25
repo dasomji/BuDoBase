@@ -141,7 +141,6 @@ class Notizen(models.Model):
 
 class Turnus(models.Model):
     turnus_nr = models.IntegerField(null=True, default=None)
-    turnus_year = models.IntegerField(null=True, default=None)
     turnus_beginn = models.DateField()
     uploadedFile = models.FileField(upload_to="Uploaded Files/")
     dateTimeOfUpload = models.DateField(auto_now=True)
