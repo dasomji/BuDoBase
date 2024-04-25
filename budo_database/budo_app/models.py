@@ -130,7 +130,10 @@ class Notizen(models.Model):
     added_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"Notiz über {self.kinder.kid_vorname} {self.kinder.kid_nachname} von {self.added_by}: {self.notiz}"
+        return self.notiz
+
+    def kids_name(self):
+        return f"{self.kinder.kid_vorname} {self.kinder.kid_nachname}"
 
     class Meta:
         verbose_name_plural = "Notizen"
