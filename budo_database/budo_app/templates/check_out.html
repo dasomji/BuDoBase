@@ -1,0 +1,42 @@
+{% extends "master.html" %} {% block title %} BuDo Kid Info {% endblock %} 
+{% block headertitle %}
+
+<div class="flex-container">
+  <a href="/admin/budo_app/kinder/{{Kinder.id}}/change/">
+    <h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
+  </a>
+</div>
+
+{% endblock %}
+{% block content %}
+<div class="flex-container" id="body-container">
+  <div class="detail_column" id="single-column">  
+    <div class="info_container input_container">
+      <div class="info-header-container">
+        <h2>Check-Out</h2>
+      </div>
+      <div class="card-info-container">
+        <p style="color: green">Dieses Kind ist anwesend.</p>
+          <p>Wir hatten vom Kind folgendes:</p>      
+          <ul>
+            {% if Kinder.e_card == True %}
+              <li>E-Card</li>
+            {% endif %} 
+            {% if Kinder.ausweis == True %}
+              <li>Ausweis</li>
+            {% endif %}
+          </ul>
+          {% block forminput %}
+            <form method="POST" class="w3-container">
+              {{ check_out_form.as_p }}
+              {{ notiz_form.as_p }} 
+              {% csrf_token %}
+              <button type="submit">Auschecken</button>
+            </form>
+          {% endblock %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

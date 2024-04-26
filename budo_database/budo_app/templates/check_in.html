@@ -7,15 +7,22 @@
   </a>
 </div>
 {% endblock %} 
-{% block content %} 
-    {% block forminput %}
-<div class="info_container input_container">
-  <h1>Check-In</h1>
-  <p style="color: red">Dieses Kind ist noch nicht eingecheckt!.</p>
-  <form method="post">
-    {%csrf_token %} {{ check_in_form.as_p }} {{ notiz_form.as_p }}
-    <button type="submit">Einchecken</button>
-  </form>
-</div>
-
-{% endblock %} {% endblock %}
+{% block content %}
+  <div class="flex-container" id="body-container">
+    <div class="detail_column" id="single-column">  
+      <div class="info_container input_container">
+        <div class="info-header-container">
+        <h2>Check-In</h2>
+      </div>
+      <div class="card-info-container">
+        <p style="color: red">Dieses Kind ist noch nicht eingecheckt!.</p>
+        {% block forminput %}
+          <form method="post">
+            {%csrf_token %} {{ check_in_form.as_p }} {{ notiz_form.as_p }}
+            <button type="submit">Einchecken</button>
+          </form>
+        {% endblock %} 
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -6,8 +6,9 @@
 
 {% block headertitle %}
 
-<div class="flex-container">
-    <a href="/admin/budo_app/kinder/{{Kinder.id}}/change/"><h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1></a>
+<div class="flex-container" id="header-container">
+    <a href="/admin/budo_app/kinder/{{Kinder.id}}/change/"><h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
+        {% if not Kinder.anwesend %}<h1 id="anwesend-marker">❌</h1>{% endif %}</a>
     {% if Kinder.anwesend == True %}
     <a href="/check_out/{{ Kinder.id }}" class="w3-button w3-yellow">Check-Out</a>
     {% else %}
@@ -17,65 +18,90 @@
 {% endblock %}
 
     {% block content %}
-    <div class="flex-container">
-        <div class="info_container" id="kinderinfos">
-            <div class="anwesend-container">
-                <h2>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h2>
-                {% if not Kinder.anwesend %}<h2 id="anwesend-marker">❌</h2>{% endif %}
+    
+    <div class="flex-container" id="body-container">
+        <div class="detail_column" id="left-column">
+            <div class="info_container" id="kinderinfos">
+                <div class="info-header-container">
+                    <h2>{{ Kinder.kid_vorname }}</h2>
+                </div>
+                <div class="card-info-container">
+                    <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
+                    <p><span class="label">Alter</span>: {{Kinder.kid_alter}}</p>
+                    <p><span class="label">Geburtstag</span>: {{Kinder.kid_birthday}}</p>
+                    <p><a href="/budo_familie/{{ Kinder.budo_family }}"><span class="label">Budo Familie</span>: {{ Kinder.budo_family }}</a></p>
+                    <p><span class="label">Aufenthaltsdauer</span>: {{Kinder.turnus_dauer}}-wöchig</p>
+                    <p><span class="label">Geschwister</span>: {{Kinder.geschwister}}</p>
+                    <p><span class="label">Zeltwunsch</span>: {{Kinder.zeltwunsch}}</p>
+                    <p><span class="label">War schon mal im Bunten Dorf</span>: {{Kinder.budo_erfahrung}}</p>
+                </div>
             </div>
-            <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
-            <p><span class="label">Alter</span>: {{Kinder.kid_alter}}</p>
-            <p><span class="label">Geburtstag</span>: {{Kinder.kid_birthday}}</p>
-            <p><a href="/budo_familie/{{ Kinder.budo_family }}"><span class="label">Budo Familie</span>: {{ Kinder.budo_family }}</a></p>
-            <p><span class="label">Aufenthaltsdauer</span>: {{Kinder.turnus_dauer}}-wöchig</p>
-            <p><span class="label">Geschwister</span>: {{Kinder.geschwister}}</p>
-            <p><span class="label">Zeltwunsch</span>: {{Kinder.zeltwunsch}}</p>
-            <p><span class="label">War schon mal im Bunten Dorf</span>: {{Kinder.budo_erfahrung}}</p>
-        </div>
 
-        <div class="info_container" id="health_info">
-            <h2>Gesundheitsinfos</h1>
-            <p><span class="label">Sozialversicherungsnummer</span>: {{Kinder.sozialversicherungsnr}}</p>
-            <p><span class="label">Krankheiten</span>: {{Kinder.illness}}</p>
-            <p><span class="label">Medikamente</span>: {{Kinder.drugs}}</p>
-            <p><span class="label">Vegetarisch</span>: {{Kinder.vegetarisch}}</p>
-            <p><span class="label">Ernährungsvorgaben</span>: {{Kinder.special_food_description}}</p>
-            <p><span class="label">Schwimmkentnisse</span>: {{Kinder.swimmer}}</p>
+            <div id="budo-container" class="info_container">
+                <div class="info-header-container">
+                    <h2>BuDo</h2>
+                </div>
+                <div class="card-info-container">
+                    <p><span class="label">SWP1</span>: {{Kinder.sex}} </p>
+                    <p><span class="label">SWP2</span>: {{Kinder.kid_alter}}</p>
+                    <p><a href="/budo_familie/{{ Kinder.budo_family }}"><span class="label">Budo Familie</span>: {{ Kinder.budo_family }}</a></p>
+                </div>
+                </div>
         </div>
-        
-        <div class="info_container" id="family_info">
-            <h2>Familie</h2>
-            <p><span class="label">Organisation</span>: {{Kinder.anmelde_organisation}}</p>
-            <p><span class="label">Anmelder:in</span>: {{Kinder.anmelder_vorname}} {{Kinder.anmelder_nachname}}</p>
-            <p><span class="label">Anmelder:in Email</span>: <a href="mailto:{{Kinder.anmelder_email}}">{{Kinder.anmelder_email}}</a></p>
-            <p><span class="label">Anmelder:in Mobil</span>: <a href="tel: {{Kinder.anmelder_mobil}}">{{Kinder.anmelder_mobil}}</a></p>
-            <p><span class="label">Hauptversichert bei</span>: {{Kinder.hauptversichert_bei}}</p>
-            <p><span class="label">Notfallkontakte</span>: {% autoescape off %}{{Kinder.notfall_kontakte}}{% endautoescape %}</p>
+        <div class="detail_column" id="center-column">
+            <div class="info_container" id="health_info">
+                <div class="info-header-container">
+                    <h2>Gesundheitsinfos</h2>
+                </div>
+                <div class="card-info-container">
+                    <p><span class="label">Sozialversicherungsnummer</span>: {{Kinder.sozialversicherungsnr}}</p>
+                    <p><span class="label">Krankheiten</span>: {{Kinder.illness}}</p>
+                    <p><span class="label">Medikamente</span>: {{Kinder.drugs}}</p>
+                    <p><span class="label">Vegetarisch</span>: {{Kinder.vegetarisch}}</p>
+                    <p><span class="label">Ernährungsvorgaben</span>: {{Kinder.special_food_description}}</p>
+                    <p><span class="label">Schwimmkentnisse</span>: {{Kinder.swimmer}}</p>
+                </div>
+            </div>
+            
+            <div class="info_container" id="family_info">
+                <div class="info-header-container">
+                    <h2>Familie</h2>
+                </div>
+                <div class="card-info-container">
+                    <p><span class="label">Organisation</span>: {{Kinder.anmelde_organisation}}</p>
+                    <p><span class="label">Anmelder:in</span>: {{Kinder.anmelder_vorname}} {{Kinder.anmelder_nachname}}</p>
+                    <p><span class="label">Anmelder:in Email</span>: <a href="mailto:{{Kinder.anmelder_email}}">{{Kinder.anmelder_email}}</a></p>
+                    <p><span class="label">Anmelder:in Mobil</span>: <a href="tel: {{Kinder.anmelder_mobil}}">{{Kinder.anmelder_mobil}}</a></p>
+                    <p><span class="label">Hauptversichert bei</span>: {{Kinder.hauptversichert_bei}}</p>
+                    <p><span class="label">Notfallkontakte</span>: {% autoescape off %}{{Kinder.notfall_kontakte}}{% endautoescape %}</p>
+                </div>
+            </div>
         </div>
-
-        {% comment %} {% block forminput %}
-
-        {% endblock %} {% endcomment %}
-        
-        <div class="info_container" id="family_info">
-            <h2>Notizen</h2>
-            <p><span class="label">Anmerkungen (Buchung)</span>: {{Kinder.anmerkung_buchung|safe}}</p>
-            <p><span class="label">Anmerkungen</span>: {{Kinder.anmerkung|safe}}</p>
-            <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team|safe}}</p>
-            <ul>
-                {% for notiz in Kinder.notizen.all %}
-                    <li>{{ notiz.added_by.username }} am {{ notiz.date_added|date:"d.m." }}: {{ notiz.notiz }}</li>
-                {% empty %}
-                    <li>Noch keine Notizen.</li>
-                {% endfor %}
-            </ul>
-            {% block forminput %}
-                <form method="post">
-                    {%csrf_token %}
-                    {{ form.as_p }}
-                    <button type="submit">Notiz hinzufügen</button>
-                </form>
-            {% endblock %}
+        <div class="detail_column" id="right-column">
+            <div class="info_container" id="notizen">
+                <div class="info-header-container">
+                    <h2>Notizen</h2>
+                </div>
+                <div class="card-info-container">
+                    <p><span class="label">Anmerkungen (Buchung)</span>: {{Kinder.anmerkung_buchung|safe}}</p>
+                    <p><span class="label">Anmerkungen</span>: {{Kinder.anmerkung|safe}}</p>
+                    <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team|safe}}</p>
+                    <ul>
+                        {% for notiz in Kinder.notizen.all %}
+                            <li>{{ notiz.added_by.username }} am {{ notiz.date_added|date:"d.m." }}: {{ notiz.notiz }}</li>
+                        {% empty %}
+                            <li>Noch keine Notizen.</li>
+                        {% endfor %}
+                    </ul>
+                    {% block forminput %}
+                        <form method="post">
+                            {%csrf_token %}
+                            {{ form.as_p }}
+                            <button type="submit">Notiz hinzufügen</button>
+                        </form>
+                    {% endblock %}
+                    </div>
+            </div>
         </div>
     </div>
   

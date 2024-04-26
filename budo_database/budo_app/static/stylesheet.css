@@ -1,39 +1,109 @@
 :root{
     --blue: rgba(183, 220, 255, 0.34);
+    --dark-blue: rgba(179, 202, 217, 0.95);
+    --bg-blue: rgba(222, 240,255,0.7);
+    --str-padding: 24px;
+    --corner-rad: 8px;
+    --s-padding: 12px;
+    --m-padding: 16px;
+    --l-padding: 20px;
+    --xl-padding: 24px;
+    --button-color: #FFDD9B;
+
+    h2{
+        font-family: "Roboto";
+        margin: 0px;
+    }
 }
 
 body{
-    font-family: "Inter";
+    font-family: "Roboto";
 }
 
-.flex-container{
+#body-container{
+    background: url("/img/BuDoMap.png");
     display: flex;
     flex-flow: row wrap;
-    justify-content: space-around;
-    align-items: stretch;
-    gap: 10px;
-    padding: 10px;
+    gap: var(--l-padding);
+    padding: var(--l-padding);
+}
+
+.detail_column{
+    display: flex;
+    flex-basis: 25%;
+    min-width: 350px;
+    max-width: 40%;
+    flex-grow: 1;
+    flex-flow: column nowrap;
+    gap: var(--l-padding);
+
+}
+
+#right-column{
+    flex-basis: 40%;
 }
 
 .info_container{
-    /* flex-grow: 27; */
-    /* flex-shrink: 20;  */
-    /* flex-basis: 25; */
-    /* flex-grow: 27; */
-    flex: 4 4 40%;
-    border-radius: 8px;
-    border: 4px solid #000;
-    background-color: var(--blue);
-    padding: 0px 20px;
+    flex-grow: 1;
+    border-radius: var(--corner-rad);
+    background-color: var(--bg-blue);
     box-shadow: #acacac 4px 4px 4px;
 }
 
-.anwesend-container{
+#body-container:has(#single-column){
+    justify-content: center;
+}
+
+#single-column{
+    flex: 40% 40%;
+}
+
+.input_container p{
+    display:flex;
+    justify-content: flex-start;
+}
+
+.input_container label{
+    flex-basis: 20%;
+    
+}
+
+.input_container input{
+    flex-basis: 20%;
+    border-radius: var(--corner-rad);
+    align-self: flex-start;
+    
+}
+
+
+
+#notizen{
+    flex-grow: 1;
+}
+
+.info-header-container{
+    background-color: var(--dark-blue);
+    border-radius: var(--corner-rad) var(--corner-rad) 0 0;
+    padding: var(--m-padding) var(--xl-padding);
+}
+
+.card-info-container{
+    padding: var(--str-padding);
+}
+
+button{
+    background-color: var(--button-color);
+    padding:var(--s-padding);
+    border: none;
+    border-radius: var(--corner-rad);
+}
+
+/* .anwesend-container{
     display: flex;
     justify-content: center;
     align-content: center;
     gap: 10px;
-}
+} */
 
 #anwesend-marker{
     color: green;
@@ -44,7 +114,7 @@ body{
 } */
 
 .info_container :is(h1, h2){
-    text-align: center;
+    text-align: left;
 }
 
 .info_container span.label{
