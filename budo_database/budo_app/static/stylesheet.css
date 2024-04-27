@@ -180,6 +180,7 @@ h1 {
 
 .card-info-container {
     padding: var(--str-padding);
+    display: none;
 }
 
 button,

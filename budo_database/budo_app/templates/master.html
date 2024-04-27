@@ -131,10 +131,12 @@
             card.find('.card-info-container').hide();
         });
     }
-  });
+    // Show open cards
+    $('.info_container:not(.closed-card) .card-info-container').slideToggle();
+    $('.info_container:not(.closed-card) .vertical-line').fadeToggle();
 
     // Save state to cookie when a card is clicked
-    $(document).ready(function() {
+    
       $('.info-header-container').click(function() {
         let cardInfoContainer = $(this).next('.card-info-container');
         let icon = $(this).find('.vertical-line');
