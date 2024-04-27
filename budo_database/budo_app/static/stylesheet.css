@@ -64,6 +64,7 @@ h1 {
 }
 
 #body-container {
+    min-height: calc(100vh - 92px);
     position: relative;
     background: url("img/BuDoMap20.png"), radial-gradient(59.33% 87.53% at 38.82% 60.76%, #FFFFFF 0%, #F7EBE0 22%, #999999 100%);
     background-repeat: no-repeat;
@@ -92,7 +93,7 @@ h1 {
 }
 
 .info_container {
-    flex-grow: 1;
+    /* flex-grow: 1; */
     border-radius: var(--corner-rad);
     background-color: var(--bg-blue);
     box-shadow: #acacac 4px 4px 4px;
