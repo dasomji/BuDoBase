@@ -7,6 +7,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
   <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
   <link rel="stylesheet" href="{% static 'stylesheet.css' %}">
   {% block header %}
@@ -119,23 +120,38 @@
   // window.addEventListener("devicemotion", showOverlay);
 
   $(document).ready(function() {
-    $('.closed-card').each(function() {
-        let verticalLine = $(this).find('.vertical-line');
-        verticalLine.toggle();
-    });
-});
+    // Restore state from cookie
+    var closedCards = Cookies.get('closedCards');
+    if (closedCards) {
+        closedCards = JSON.parse(closedCards);
+        closedCards.forEach(function(id) {
+            var card = $('#' + id);
+            card.addClass('closed-card');
+            card.find('.vertical-line').hide();
+            card.find('.card-info-container').hide();
+        });
+    }
+  });
 
-  $(document).ready(function() {
-    $('.info-header-container').click(function() {
+    // Save state to cookie when a card is clicked
+    $(document).ready(function() {
+      $('.info-header-container').click(function() {
         let cardInfoContainer = $(this).next('.card-info-container');
         let icon = $(this).find('.vertical-line');
         let parentContainer = $(this).parent();
 
         icon.fadeToggle()
         cardInfoContainer.slideToggle();
-        parentContainer.toggleClass('closed-card');
+        parentContainer.toggleClass('closed-card');        
+
+        var closedCards = $('.closed-card').map(function() {
+          return this.id;
+        }).get();
+        Cookies.set('closedCards', JSON.stringify(closedCards));
+      });
     });
-  });
+
+  
 </script>
 </body>
 </html>
