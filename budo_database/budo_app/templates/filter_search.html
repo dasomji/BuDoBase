@@ -14,7 +14,7 @@
   var timeoutId;
 
   document.getElementById("myInput").addEventListener("focus", function() {
-    if (document.getElementById("searchResults").children.length < 8) {
+    if (document.getElementById("searchResults").children.length < 15) {
         document.getElementById("searchResults").style.display = "block";
     }
 });
@@ -31,7 +31,7 @@ document.getElementById("myInput").addEventListener("blur", function() {
     input = document.getElementById("myInput");
     filter = input.value.toUpperCase();
     div = document.getElementById("searchResults");
-    a = div.getElementsByTagName("a");
+    a = div.getElementsByTagName("div");
     for (i = 0; i < a.length; i++) {
         txtValue = a[i].textContent || a[i].innerText;
         if (txtValue.toUpperCase().indexOf(filter) > -1) {
