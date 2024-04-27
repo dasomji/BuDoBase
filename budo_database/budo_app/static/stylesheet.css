@@ -35,6 +35,9 @@ body {
     justify-content: center;
     padding: var(--xl-padding);
     background: linear-gradient(92.05deg, #FFF4DE 7.23%, rgba(153, 146, 133, 0.17) 98.57%);
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
 
 #header-content {
