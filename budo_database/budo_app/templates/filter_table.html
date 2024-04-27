@@ -1,8 +1,8 @@
-<input class="w3-input w3-border w3-padding filter_table" type="text" placeholder="Such nach Kindern..." id="myInput" onkeyup="myFunction()">
+<input class="w3-input w3-border w3-padding filter_table" type="text" placeholder="Such nach Kindern..." id="myFilterInput" onkeyup="filterFunction()">
 <script>
-    function myFunction() {
+    function filterFunction() {
       var input, filter, table, tr, td, i;
-      input = document.getElementById("myInput");
+      input = document.getElementById("myFilterInput");
       filter = input.value.toUpperCase();
       table = document.getElementById("myTable");
       tr = table.getElementsByTagName("tr");

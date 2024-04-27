@@ -1,21 +1,53 @@
-<input class="w3-input w3-border w3-padding filter_table" type="text" placeholder="Such nach Kindern..." id="myInput" onkeyup="myFunction()">
+<input class="w3-input w3-border w3-padding filter_table" type="text" placeholder="Such nach Kindern..." id="myInput" onclick="searchFunction()" onkeyup="searchFunction()">
+<div id="searchresults-container">
+  <div id="searchResults" class="search-results">
+    {% for x in kids %}
+      <div class="" id="name"><a href="/kid_details/{{ x.id }}">
+        {% if not x.anwesend %}❌ {% endif %}{{ x.kid_vorname }} {{ x.kid_nachname }}</a>
+      </div>
+    {% endfor %}
+  </div>
+</div>
 <script>
-    function myFunction() {
-      var input, filter, table, tr, td, i;
-      input = document.getElementById("myInput");
-      filter = input.value.toUpperCase();
-      table = document.getElementById("myTable");
-      tr = table.getElementsByTagName("tr");
-      for (i = 0; i < tr.length; i++) {
-        td = tr[i].getElementsByTagName("td")[0];
-        if (td) {
-          txtValue = td.textContent || td.innerText;
-          if (txtValue.toUpperCase().indexOf(filter) > -1) {
-            tr[i].style.display = "";
-          } else {
-            tr[i].style.display = "none";
-          }
-        }
-      }
+  var timeoutId;
+
+  document.getElementById("myInput").addEventListener("focus", function() {
+    if (document.getElementById("searchResults").children.length < 8) {
+        document.getElementById("searchResults").style.display = "block";
     }
-    </script>
+});
+
+document.getElementById("myInput").addEventListener("blur", function() {
+    timeoutId = setTimeout(function() {
+        document.getElementById("searchResults").style.display = "none";
+    }, 100); // delay, otherwise it gets hidden before a link can be clicked
+});
+
+  function searchFunction() {
+    var input, filter, div, a, i, txtValue;
+    var results = [];
+    input = document.getElementById("myInput");
+    filter = input.value.toUpperCase();
+    div = document.getElementById("searchResults");
+    a = div.getElementsByTagName("a");
+    for (i = 0; i < a.length; i++) {
+        txtValue = a[i].textContent || a[i].innerText;
+        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            results.push(txtValue);
+            a[i].parentNode.style.display = "";
+        } else {
+            a[i].parentNode.style.display = "none";
+        }
+    }
+    displayResults(results);
+}
+
+function displayResults(results) {
+    var searchResults = document.getElementById("searchResults");
+    if (results.length < 20) {
+        searchResults.style.display = "block";
+    } else {
+        searchResults.style.display = "none";
+    }
+}
+</script>

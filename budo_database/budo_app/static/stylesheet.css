@@ -9,15 +9,15 @@
     --l-padding: 20px;
     --xl-padding: 24px;
     --button-color: #FFDD9B;
+}
 
-    h1 {
-        font-size: 36px;
-    }
+h1 {
+    font-size: 36px;
+}
 
-    h2 {
-        font-family: "Roboto";
-        margin: 0px;
-    }
+h2 {
+    font-family: "Roboto";
+    margin: 0px;
 }
 
 body {
@@ -53,6 +53,8 @@ h1 {
     align-self: stretch;
     flex-grow: 1;
     display: flex;
+    flex-direction: column;
+    position: relative;
 }
 
 #headersearch input {
@@ -60,7 +62,31 @@ h1 {
     border-radius: var(--corner-rad);
     align-self: stretch;
     flex-grow: 1;
+}
 
+.search-results {
+    position: absolute;
+    top: 40px;
+    background-color: white;
+    border: 1px solid #ccc;
+    overflow-y: auto;
+    display: none;
+    z-index: 2;
+    left: 0;
+    right: 0;
+}
+
+.search-results div {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.search-results div:hover {
+    background-color: #f1f1f1;
+}
+
+#myInput:focus+.search-results {
+    display: block;
 }
 
 #body-container {
@@ -127,7 +153,7 @@ h1 {
 
 
 #notizen {
-    flex-grow: 1;
+    /* flex-grow: 1; */
 }
 
 .info-header-container {
