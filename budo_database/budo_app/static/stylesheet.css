@@ -20,6 +20,10 @@ h2 {
     margin: 0px;
 }
 
+input {
+    border-radius: var(--corner-rad);
+}
+
 body {
     font-family: "Roboto";
 }
@@ -66,23 +70,28 @@ h1 {
 
 .search-results {
     position: absolute;
-    top: 40px;
+    top: 43.2px;
     background-color: white;
-    border: 1px solid #ccc;
+    /* border: 1px solid #ccc; */
     overflow-y: auto;
     display: none;
     z-index: 2;
     left: 0;
     right: 0;
+    border-radius: 0 0 var(--corner-rad);
 }
 
 .search-results div {
-    padding: 10px;
+    padding: var(--s-padding);
     cursor: pointer;
 }
 
+.search-results a {
+    text-decoration: none;
+}
+
 .search-results div:hover {
-    background-color: #f1f1f1;
+    background-color: var(--bg-blue);
 }
 
 #myInput:focus+.search-results {
@@ -157,6 +166,7 @@ h1 {
     background-color: var(--dark-blue);
     border-radius: var(--corner-rad) var(--corner-rad) 0 0;
     padding: var(--m-padding) var(--xl-padding);
+    cursor: pointer;
 }
 
 .info-header-container div {
