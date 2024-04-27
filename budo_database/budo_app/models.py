@@ -118,6 +118,13 @@ class Kinder(models.Model):
     def __str__(self):
         return f'{self.kid_vorname} {self.kid_nachname} | {self.budo_family} | {self.kid_alter}'
 
+    def get_alter(self):
+        if self.kid_birthday is None:
+            return None
+        delta = self.turnus.turnus_beginn - self.kid_birthday
+        age = round(delta.days / 365.25, 2)
+        return age
+
     class Meta:
         verbose_name_plural = "Kinder"
 
