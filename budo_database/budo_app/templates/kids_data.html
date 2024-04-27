@@ -26,7 +26,7 @@
         <div class="detail_column" id="left-column">
             <div class="info_container" id="kinderinfos">
                 <div class="info-header-container">
-                    <h2>{{ Kinder.kid_vorname }}</h2>
+                    <h2>{{ Kinder.kid_vorname }}</h2> {% include "components/openicon.html" %}
                 </div>
                 <div class="card-info-container">
                     <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
@@ -42,19 +42,19 @@
 
             <div id="budo-container" class="info_container">
                 <div class="info-header-container">
-                    <h2>BuDo</h2>
+                    <h2>BuDo</h2> {% include "components/openicon.html" %}
                 </div>
                 <div class="card-info-container">
                     <p><span class="label">SWP1</span>: {{Kinder.sex}} </p>
                     <p><span class="label">SWP2</span>: {{Kinder.kid_alter}}</p>
                     <p><a href="/budo_familie/{{ Kinder.budo_family }}"><span class="label">Budo Familie</span>: {{ Kinder.budo_family }}</a></p>
                 </div>
-                </div>
+            </div>
         </div>
         <div class="detail_column" id="center-column">
             <div class="info_container" id="health_info">
                 <div class="info-header-container">
-                    <h2>Gesundheitsinfos</h2>
+                    <h2>Gesundheitsinfos</h2> {% include "components/openicon.html" %}
                 </div>
                 <div class="card-info-container">
                     <p><span class="label">Sozialversicherungsnummer</span>: {{Kinder.sozialversicherungsnr}}</p>
@@ -68,7 +68,7 @@
             
             <div class="info_container" id="family_info">
                 <div class="info-header-container">
-                    <h2>Familie</h2>
+                    <h2>Familie</h2> {% include "components/openicon.html" %}
                 </div>
                 <div class="card-info-container">
                     <p><span class="label">Organisation</span>: {{Kinder.anmelde_organisation}}</p>
@@ -83,7 +83,7 @@
         <div class="detail_column" id="right-column">
             <div class="info_container" id="notizen">
                 <div class="info-header-container">
-                    <h2>Notizen</h2>
+                    <h2>Notizen</h2> {% include "components/openicon.html" %}
                 </div>
                 <div class="card-info-container">
                     <p><span class="label">Anmerkungen (Buchung)</span>: {{Kinder.anmerkung_buchung|safe}}</p>
