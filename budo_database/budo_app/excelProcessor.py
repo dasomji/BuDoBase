@@ -59,7 +59,7 @@ def process_excel():
             kid_index=budo["Index"][i],
             kid_vorname=budo["Kind_Vorname"][i],
             kid_nachname=budo["Kind_Nachname"][i],
-            kid_alter=budo["Kind_Alter"][i],
+            # kid_alter=budo["Kind_Alter"][i],
             kid_birthday=birthday,
             zug_anreise=kid_anreise,
             zug_abreise=kid_abreise,
@@ -112,7 +112,7 @@ def process_excel():
 
 
 def postprocessing():
-    age_ordered = models.Kinder.objects.all().order_by('kid_alter')
+    age_ordered = models.Kinder.objects.all().order_by('get_alter')
     length = len(models.Kinder.objects.all())
 
     for i, kid in enumerate(age_ordered):

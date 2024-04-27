@@ -23,8 +23,8 @@ class Kinder(models.Model):
     kid_index = models.CharField(max_length=255)
     kid_vorname = models.CharField(max_length=255)
     kid_nachname = models.CharField(max_length=255)
-    kid_alter = models.DecimalField(
-        max_digits=4, decimal_places=2, null=True, default=None)
+    # kid_alter = models.DecimalField(
+    #     max_digits=4, decimal_places=2, null=True, default=None)
     kid_birthday = models.DateField(null=True, default=None)
     zug_anreise = models.BooleanField(null=True, default=None)
     zug_abreise = models.BooleanField(null=True, default=None)
