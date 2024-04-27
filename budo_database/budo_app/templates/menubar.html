@@ -1,0 +1,15 @@
+<div class="" >
+    <div class="w3-container" id="headertitle">
+        {% block headertitle %}
+            <h1>Mama Page</h1>
+        {% endblock %}
+        <div class="desktop-navbar w3-hide-small">
+            {% include 'navbar.html' %}
+        </div>
+    </div>
+  </div>
+
+  <div class="w3-sidebar w3-bar-block w3-border-right w3-animate-left" style="display:none" id="mySidebar">
+    <button onclick="w3_close()" class="w3-bar-item w3-large">Close &times;</button>
+    {% include 'navbar.html' %}
+  </div>

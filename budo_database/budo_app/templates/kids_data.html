@@ -6,15 +6,17 @@
 
 {% block headertitle %}
 
-<div class="flex-container" id="header-container">
+<div class="" id="header-container">
     <a href="/admin/budo_app/kinder/{{Kinder.id}}/change/"><h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
         {% if not Kinder.anwesend %}<h1 id="anwesend-marker">❌</h1>{% endif %}</a>
-    {% if Kinder.anwesend == True %}
-    <a href="/check_out/{{ Kinder.id }}" class="w3-button w3-yellow">Check-Out</a>
-    {% else %}
-    <a href="/check_in/{{ Kinder.id }}" class="w3-button w3-yellow">Check-In</a>
-    {% endif %}
 </div>
+{% endblock %}
+{% block headerbutton %}
+    {% if Kinder.anwesend == True %}
+        <a href="/check_out/{{ Kinder.id }}" class="button">Check-Out</a>
+    {% else %}
+        <a href="/check_in/{{ Kinder.id }}" class="button">Check-In</a>
+    {% endif %}
 {% endblock %}
 
     {% block content %}

@@ -10,6 +10,10 @@
     --xl-padding: 24px;
     --button-color: #FFDD9B;
 
+    h1 {
+        font-size: 36px;
+    }
+
     h2 {
         font-family: "Roboto";
         margin: 0px;
@@ -20,11 +24,51 @@ body {
     font-family: "Roboto";
 }
 
+
+#headermenu {
+    display: flex;
+    justify-content: center;
+    padding: var(--xl-padding);
+    background: linear-gradient(92.05deg, #FFF4DE 7.23%, rgba(153, 146, 133, 0.17) 98.57%);
+}
+
+#header-content {
+    align-self: stretch;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: row;
+    gap: var(--xl-padding);
+    justify-content: space-between;
+    align-items: center;
+}
+
+#header-content #headertitle a,
+h1 {
+    text-decoration: none;
+    padding: 0;
+    margin: 0;
+}
+
+#headersearch {
+    align-self: stretch;
+    flex-grow: 1;
+    display: flex;
+}
+
+#headersearch input {
+    margin: 0;
+    border-radius: var(--corner-rad);
+    align-self: stretch;
+    flex-grow: 1;
+
+}
+
 #body-container {
     position: relative;
     background: url("img/BuDoMap20.png"), radial-gradient(59.33% 87.53% at 38.82% 60.76%, #FFFFFF 0%, #F7EBE0 22%, #999999 100%);
     background-repeat: no-repeat;
     background-position: center;
+    background-attachment: fixed;
     display: flex;
     flex-flow: row wrap;
     gap: var(--l-padding);
@@ -95,11 +139,14 @@ body {
     padding: var(--str-padding);
 }
 
-button {
+button,
+.button {
     background-color: var(--button-color);
     padding: var(--s-padding);
     border: none;
     border-radius: var(--corner-rad);
+    color: black;
+    text-decoration: none;
 }
 
 /* .anwesend-container{
