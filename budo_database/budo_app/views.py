@@ -52,6 +52,7 @@ def kids_list(request):
 
 def kid_details(request, id):
     this_kid = models.Kinder.objects.get(id=id)
+    kids = models.Kinder.objects.all().values()
     template = loader.get_template('kids_data.html')
     today = datetime.today().strftime('%Y-%m-%d')
     notizen = this_kid.notizen.all()
@@ -59,6 +60,7 @@ def kid_details(request, id):
         "today_date": today,
         "Kinder": this_kid,
         "Notizen": notizen,
+        "kids": kids,
     }
 
     if request.method == 'POST':
@@ -81,12 +83,14 @@ def kid_details(request, id):
 def check_in(request, id):
     this_kid = models.Kinder.objects.get(id=id)
     original_kid = deepcopy(this_kid)
+    kids = models.Kinder.objects.all().values()
     template = loader.get_template('check_in.html')
     today = datetime.today().strftime('%Y-%m-%d')
     today_time = datetime.today().strftime('%d.%m.@%H:%M')
     context = {
         "today_date": today,
         'Kinder': this_kid,
+        "kids": kids,
     }
 
     if request.method == 'POST':
@@ -127,11 +131,13 @@ def check_in(request, id):
 def check_out(request, id):
     this_kid = models.Kinder.objects.get(id=id)
     original_kid = deepcopy(this_kid)
+    kids = models.Kinder.objects.all().values()
     template = loader.get_template('check_out.html')
     today = datetime.today().strftime('%Y-%m-%d')
     context = {
         "today_date": today,
         'Kinder': this_kid,
+        "kids": kids,
     }
 
     if request.method == 'POST':
