@@ -2,8 +2,8 @@
 {% block headertitle %}
 
 <div class="flex-container">
-  <a href="/admin/budo_app/kinder/{{Kinder.id}}/change/"
-    ><h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h1>
+  <a href="/admin/budo_app/kinder/{{Kinder.id}}/change/">
+    <h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}{% if not Kinder.anwesend %} ❌{% endif %}</h1>
   </a>
 </div>
 {% endblock %} 
