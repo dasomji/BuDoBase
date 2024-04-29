@@ -125,6 +125,34 @@ class Kinder(models.Model):
         age = round(delta.days / 365.25, 2)
         return age
 
+    def get_short_sex(self):
+        if self.sex == "weiblich":
+            return "♀"
+        elif self.sex == "männlich":
+            return "♂"
+        else:
+            return "d"
+
+    def get_food(self):
+        veggie = ""
+        if self.vegetarisch:
+            if self.vegetarisch.lower() == "ja":
+                veggie = "🥦"
+            elif str(self.vegetarisch).lower().strip() in ("nein", "nan"):
+                veggie = "🥩"
+            else:
+                veggie = self.vegetarisch
+        else:
+            veggie = "🥩"
+        if self.special_food_description:
+            if self.special_food_description.lower() in ("nein", "keine", "nan", "ja"):
+                return veggie
+            else:
+                special = self.special_food_description
+                return f"{veggie} - {special}"
+        else:
+            return veggie
+
     class Meta:
         verbose_name_plural = "Kinder"
 

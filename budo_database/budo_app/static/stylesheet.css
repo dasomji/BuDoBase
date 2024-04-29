@@ -111,8 +111,13 @@ h1 {
     background-attachment: fixed;
     display: flex;
     flex-flow: row wrap;
+    align-content: flex-start;
     gap: var(--l-padding);
     padding: var(--l-padding);
+}
+
+#body-container:has(.table-container) {
+    padding: 0 var(--l-padding);
 }
 
 
@@ -225,6 +230,55 @@ button,
     flex-flow: row nowrap;
 } */
 
+#myFilterInput {
+    /* margin-bottom: var(--xl-padding); */
+}
+
+.table-container {
+    overflow: scroll;
+    border-radius: var(--corner-rad);
+}
+
+#kids_table {
+    border-radius: var(--corner-rad);
+    padding: var(--m-padding);
+}
+
+#kids_table .table_header {
+    background-color: var(--dark-blue);
+    border-radius: var(--corner-rad);
+    /* position: sticky;
+    top: 0;
+    z-index: 2; */
+}
+
+#kids_table td,
+th {
+    padding: var(--s-padding);
+    vertical-align: top;
+}
+
+#kids_table tr {
+    background-color: var(--bg-blue);
+    border-bottom: 1px solid #8F8F8F;
+    padding: var(--m-padding);
+}
+
+#kids_table tr:last-of-type {
+    border-bottom: none;
+}
+
+#kids_table a {
+    text-decoration: none;
+}
+
+#kids_table a:hover {
+    /* background-color: #dcdcdc93; */
+    border-radius: var(--corner-rad);
+    /* padding: var(--s-padding); */
+    box-shadow: #8F8F8F;
+}
+
 .filter_table {
     margin-top: 20px;
 }
@@ -235,15 +289,27 @@ table {
     border-collapse: collapse;
 }
 
-th {
-    background: white;
+/* th {
     position: sticky;
     top: 0;
     box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
-}
+} */
 
 table #name {
     font-weight: bold;
+    white-space: nowrap;
+}
+
+.text-cell {
+    text-align: left;
+}
+
+.number-cell {
+    text-align: right;
+}
+
+.item-cell {
+    text-align: center;
 }
 
 /* styling for the numpad */

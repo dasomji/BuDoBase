@@ -13,39 +13,35 @@
 {% endblock %}
 
 {% block content %}
-  <div class="w3-container">
+  <div class="w3-container" id="body-container">
     {% include 'filter_table.html' %}
-    <div class="w3-responsive">
-        <table class="w3-table w3-striped w3-padding" id="myTable">
-            <tr>
+    <div class="table-container">
+        <table class="" id="kids_table">
+            <tr class="table_header">
                 <th>Name</th>
                 <th>BuDo-Familie</th>
-                <th>Geschlecht</th>
-                <th>Geburtstag</th>
+                <th>⚧</th>
                 <th>Alter</th>
-                <th>Aufenthaltsdauer</th>
+                <th>Wochen</th>
                 <th>Geschwister</th>
                 <th>Zeltwunsch</th>
-                <th>Veggie </th>
-                <th>Essensinfos</th>
+                <th>Ernährung </th>
                 <th>Medikamente</th>
                 <th>Gesundheitliches</th>
             </tr>
             {% for x in kids %}
             <tr class="table_row w3-padding-large">
-                  <td class="" id="name"><a href="/kid_details/{{ x.id }}">
-                    {% if not x.anwesend %}❌ {% endif %}{{ x.kid_vorname }} {{ x.kid_nachname }}</a></td>
-                  <td id="budo_family"><a href="/budo_familie/{{ x.budo_family }}">{{ x.budo_family }}</a></td>
-                  <td id="sex">{{ x.sex }}</td>
-                  <td id="birthday">{{ x.kid_birthday }}</td>
-                  <td>{{ x.kid_alter }}</td>
-                  <td>{{ x.turnus_dauer }}-wöchig</td>
-                  <td>{{ x.geschwister }}</td>
-                  <td>{{ x.zeltwunsch }}</td>
-                  <td>{{ x.vegetarisch }}</td>
-                  <td>{{ x.special_food_description }}</td>
-                  <td>{{ x.drugs }}</td>
-                  <td>{{ x.illness }}</td>
+                  <td class="text-cell" id="name"><a href="/kid_details/{{ x.id }}">
+                    {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a></td>
+                  <td class="item-cell" id="budo_family"><a href="/budo_familie/{{ x.budo_family }}">{{ x.budo_family }}</a></td>
+                  <td class="item-cell" id="sex">{{ x.get_short_sex }}</td>
+                  <td class="number-cell">{{ x.get_alter }}</td>
+                  <td class="number-cell">{{ x.turnus_dauer }}</td>
+                  <td class="text-cell">{{ x.geschwister }}</td>
+                  <td class="text-cell">{{ x.zeltwunsch }}</td>
+                  <td class="text-cell">{{ x.get_food }}</td>
+                  <td class="text-cell">{{ x.drugs }}</td>
+                  <td class="text-cell">{{ x.illness }}</td>
             </tr>
             {% endfor %}
         </table>
@@ -53,3 +49,53 @@
   </div>
         
 {% endblock %}
+
+<script>
+  window.onload = function() {
+    // Function to get the text content of a cell
+    function getCellValue(row, columnIdx) {
+        return row.children[columnIdx].innerText || row.children[columnIdx].textContent;
+    }
+
+    // Function to compare two rows based on the text content of a specific column
+    function rowComparer(columnIdx, ascending) {
+        return function(rowA, rowB) {
+            var cellValueA = getCellValue(ascending ? rowA : rowB, columnIdx);
+            var cellValueB = getCellValue(ascending ? rowB : rowA, columnIdx);
+
+            // If the cell values are numeric, compare them as numbers
+            if (cellValueA !== '' && cellValueB !== '' && !isNaN(cellValueA) && !isNaN(cellValueB)) {
+                return cellValueA - cellValueB;
+            } else {
+                // Otherwise, compare them as strings
+                return cellValueA.toString().localeCompare(cellValueB);
+            }
+        }
+    }
+
+    // Get all the table headers
+    var tableHeaders = document.querySelectorAll('th');
+
+    // Add a click event listener to each table header
+    tableHeaders.forEach(function(tableHeader) {
+        tableHeader.addEventListener('click', function() {
+            // Get the table that this header belongs to
+            var table = tableHeader.closest('table');
+
+            // Get the index of this header in the row
+            var headerIdx = Array.from(tableHeader.parentNode.children).indexOf(tableHeader);
+
+            // Get all the rows of the table, except for the first one (the header row)
+            var rows = Array.from(table.querySelectorAll('tr:nth-child(n+2)'));
+
+            // Sort the rows based on the content of the cells in this column
+            var sortedRows = rows.sort(rowComparer(headerIdx, this.ascending = !this.ascending));
+
+            // Append each sorted row back to the table
+            sortedRows.forEach(function(row) {
+                table.appendChild(row);
+            });
+        });
+    });
+}
+</script>

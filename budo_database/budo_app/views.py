@@ -42,7 +42,7 @@ def uploadFile(request):
 
 
 def kids_list(request):
-    kids = models.Kinder.objects.all().values()
+    kids = models.Kinder.objects.all()
     template = loader.get_template('kids_list.html')
     context = {
         'kids': kids,
@@ -56,6 +56,7 @@ def kid_details(request, id):
     template = loader.get_template('kids_data.html')
     today = datetime.today().strftime('%Y-%m-%d')
     notizen = this_kid.notizen.all()
+
     context = {
         "today_date": today,
         "Kinder": this_kid,
