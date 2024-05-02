@@ -14,9 +14,9 @@
 {% endblock %}
 {% block headerbutton %}
     {% if Kinder.anwesend == True %}
-        <a href="/check_out/{{ Kinder.id }}" class="button">Check-Out</a>
+        <a href="/check_out/{{ Kinder.id }}" class="button">Auschecken</a>
     {% else %}
-        <a href="/check_in/{{ Kinder.id }}" class="button">Check-In</a>
+        <a href="/check_in/{{ Kinder.id }}" class="button">Einchecken</a>
     {% endif %}
 {% endblock %}
 

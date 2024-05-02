@@ -23,7 +23,6 @@
   
   <!-- Desktop Menu -->
   <div class="" id="headermenu">
-    <button class="w3-button w3-teal w3-xlarge w3-hide-large w3-hide-medium" onclick="w3_open()">☰</button>
     <div class="w3-container" id="header-content">
       <div id="logo">
         <svg width="28" height="24" viewBox="0 0 28 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -45,6 +44,7 @@
           {% block headerbutton %}
           {% endblock %}
         </div>
+        <button class="w3-button w3-xlarge w3-hide-large" onclick="w3_open()">☰</button>
     </div>
   </div>
   
@@ -167,7 +167,13 @@
         }).show();
       });
 
-  
+      $(window).on('resize', function() {
+        if ($('#header-content').height() >= 53) {
+            $('#headertitle').css('order', 10);
+        } else {
+            $('#headertitle').css('order', ''); // Reset to default order
+        }
+    }).trigger('resize'); // Trigger the function on page load
 </script>
 </body>
 </html>
