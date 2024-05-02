@@ -111,6 +111,7 @@ h1 {
     background-attachment: fixed;
     display: flex;
     flex-flow: row wrap;
+    justify-content: space-around;
     align-content: flex-start;
     gap: var(--l-padding);
     padding: var(--l-padding);
@@ -125,7 +126,6 @@ h1 {
     display: flex;
     flex-basis: 25%;
     min-width: 350px;
-    max-width: 40%;
     flex-grow: 1;
     flex-flow: column nowrap;
     gap: var(--l-padding);
