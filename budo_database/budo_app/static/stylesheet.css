@@ -230,9 +230,6 @@ button,
     flex-flow: row nowrap;
 } */
 
-#myFilterInput {
-    /* margin-bottom: var(--xl-padding); */
-}
 
 .table-container {
     overflow: scroll;
@@ -251,6 +248,20 @@ button,
     top: 0;
     z-index: 2; */
 }
+
+.table_header th {
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+
+.table_header th::after {
+    content: url("img/sort.svg");
+    padding-left: 5px;
+    display: inline-block;
+}
+
+.table_header th:hover {}
 
 #kids_table td,
 th {

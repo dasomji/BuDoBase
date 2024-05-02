@@ -153,6 +153,20 @@
       });
     });
 
+      // Add a click event to all 'budo_family' cells
+      $('.budo_family').click(function() {
+          // Get the clicked 'budo_family' value
+          var clickedValue = $(this).text();
+    
+          // Hide all rows
+          $('.table_row').hide();
+    
+          // Show only the rows with the clicked 'budo_family' value
+          $('.table_row').filter(function() {
+            return $(this).find('.budo_family').text() === clickedValue;
+        }).show();
+      });
+
   
 </script>
 </body>
