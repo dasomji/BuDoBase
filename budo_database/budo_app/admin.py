@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, Notizen, Document
+from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, Notizen, Document, Profil
 
 
 class NotizenAdmin(admin.ModelAdmin):
@@ -13,9 +13,14 @@ class TurnusAdmin(admin.ModelAdmin):
 # Register your models here.
 
 
+class ProfilAdmin(admin.ModelAdmin):
+    list_display = ("__str__", 'rolle', 'get_food', 'allergien')
+
+
 admin.site.register(Kinder)
 admin.site.register(Turnus, TurnusAdmin)
 admin.site.register(Schwerpunkte)
 admin.site.register(Auslagerorte)
 admin.site.register(Notizen, NotizenAdmin)
 admin.site.register(Document)
+admin.site.register(Profil, ProfilAdmin)

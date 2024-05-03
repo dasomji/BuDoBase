@@ -1,7 +1,63 @@
 from django.db import models
+from django.dispatch import receiver
+from django.db.models.signals import post_save
 from django.contrib.auth.models import User
 import datetime
 # Create your models here.
+
+
+class Profil(models.Model):
+
+    ROLLEN = (
+        ("b", "Betreuer:in"),
+        ("k", "Küche"),
+        ("o", "Organisator"),
+        ("f", "Freiwillige:r")
+    )
+
+    ESSEN = (
+        ("ft", "Flexitarisch"),
+        ("vt", "Vegetarisch"),
+        ("vn", "Vegan")
+    )
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="profil")
+    rufname = models.CharField(
+        max_length=255, blank=True, default="", help_text="Wie willst du genannt werden?")
+    allergien = models.CharField(max_length=500, blank=True, default="")
+    rolle = models.CharField(
+        max_length=1,
+        choices=ROLLEN,
+        blank=True,
+        default="b",
+        help_text="Was ist deine Rolle im Team?"
+    )
+
+    essen = models.CharField(
+        max_length=2,
+        choices=ESSEN,
+        blank=True,
+        default="ft",
+        help_text="Was möchtest du essen?"
+    )
+
+    turnus = models.ManyToManyField(
+        "Turnus", blank=True, related_name="teamer")
+
+    class Meta:
+        verbose_name_plural = "Profile"
+
+    def __str__(self):
+        return self.rufname
+
+    def get_food(self):
+        if self.essen == "ft":
+            return "🥩 Flexitarisch"
+        if self.essen == "vt":
+            return "🧀 Vegetarisch"
+        if self.essen == "vn":
+            return "🥦 Vegan"
 
 
 class Kinder(models.Model):
@@ -264,3 +320,16 @@ class Document(models.Model):
 
     class Meta:
         verbose_name_plural = "Dokumente"
+
+
+# These functions automatically create a Profil when a new user is created.
+@receiver(post_save, sender=User)
+def create_user_profil(sender, instance, created, **kwargs):
+    if created:
+        Profil.objects.create(
+            user=instance, rufname=instance.username.capitalize())
+
+
+@receiver(post_save, sender=User)
+def save_user_profil(sender, instance, **kwargs):
+    instance.profil.save()
