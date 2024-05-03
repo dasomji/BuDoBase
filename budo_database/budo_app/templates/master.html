@@ -36,9 +36,11 @@
           {% endblock %}
         </div>
         {%if request.user.is_authenticated %}
+          {% if kids %}
         <div id="headersearch">
           {% include 'filter_search.html' %}
         </div>
+          {% endif%}
         <div class="desktop-navbar w3-hide-small">
             {% include 'navbar.html' %}
         </div>

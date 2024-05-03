@@ -1,6 +1,6 @@
 {% extends 'master.html' %}
 {% block headertitle %}
-            <h1>Registrieren</h1>
+            <h1>{{ form.instance.rufname }}</h1>
 {% endblock %}
 
 
@@ -9,10 +9,9 @@
     <div class="detail-column" id="single-column">  
         <div class="card input-container">
             <div class="info-header-container">
-                <h2>Profil ausfüllen</h2>
+                <h2>Profil</h2>
             </div>
             <div class="card-info-container">
-                <p>Bitte füll dein Profil aus.</p>
                 <form method="post" novalidate class="">
                     {%csrf_token %}
                     {% for field in form %}
