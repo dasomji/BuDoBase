@@ -8,8 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
-  <script src=" {% static 'js/header.js' %}"></script>
-  {% comment %} <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> {% endcomment %}
+  {% comment %} <script src=" {% static 'js/header.js' %}"></script> {% endcomment %}
   <link rel="stylesheet" href="{% static 'stylesheet.css' %}">
   {% block header %}
   {% endblock %}
@@ -17,13 +16,13 @@
 <body>
   <!-- Menubar Content -->
   <!-- Mobile menue -->
-  <div class="w3-sidebar w3-bar-block w3-border-right w3-animate-left" style="display:none" id="mySidebar">
+  {% comment %} <div class="w3-sidebar w3-bar-block w3-border-right w3-animate-left" style="display:none" id="mySidebar">
     <button onclick="w3_close()" class="w3-bar-item w3-large">Close &times;</button>
     {% include 'navbar.html' %}
-  </div>
+  </div> {% endcomment %}
   
   <!-- Desktop Menu -->
-  <div class="" id="headermenu">
+  {% comment %} <div class="" id="headermenu">
     <div class="w3-container" id="header-content">
       <div id="logo">
         <svg width="28" height="24" viewBox="0 0 28 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -35,7 +34,6 @@
             <h1>My Page</h1>
           {% endblock %}
         </div>
-        {%if request.user.is_authenticated %}
         <div id="headersearch">
           {% include 'filter_search.html' %}
         </div>
@@ -47,12 +45,11 @@
           {% endblock %}
         </div>
         <button class="w3-button w3-xlarge w3-hide-large" onclick="w3_open()">☰</button>
-        {% endif %}
     </div>
+  </div> {% endcomment %}
+  <div class="flex-container" id="body-container">
+    {% block content %}
+    {% endblock %}
   </div>
-{% comment %} <div class="w3-margin-32"> {% endcomment %}
-{% block content %}
-{% endblock %}
-{% comment %} </div> {% endcomment %}
 </body>
 </html>
