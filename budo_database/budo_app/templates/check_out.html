@@ -25,6 +25,9 @@
             {% if Kinder.ausweis == True %}
               <li>Ausweis</li>
             {% endif %}
+            {% if Kinder.einverstaendnis_erklaerung == True %}
+              <li>Einverständniserklärung</li>
+            {% endif %}
           </ul>
           {% block forminput %}
             <form method="POST" class="w3-container">
