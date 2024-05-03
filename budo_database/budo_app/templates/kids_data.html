@@ -21,7 +21,8 @@
 {% endblock %}
 
     {% block content %}
-    
+    {% load static %}
+    <script src="{% static 'js/card_functionality.js' %}"></script>
     <div class="flex-container" id="body-container">
         <div class="detail_column" id="left-column">
             <div class="info_container" id="kinderinfos">

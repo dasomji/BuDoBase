@@ -46,4 +46,28 @@ window.onload = function () {
             });
         });
     });
+
+//This allows to click on a budo-family tag and filter the whole table for that specific family
+
+    // Add a click event to all 'budo_family' cells
+    $('.budo_family').click(function () {
+        // Get the clicked 'budo_family' value
+        var clickedValue = $(this).text();
+
+        // Hide all rows
+        $('.table_row').hide();
+
+        // Show only the rows with the clicked 'budo_family' value
+        $('.table_row').filter(function () {
+            return $(this).find('.budo_family').text() === clickedValue;
+        }).show();
+    });
+
+    $(window).on('resize', function () {
+        if ($('#header-content').height() >= 53) {
+            $('#headertitle').css('order', 10);
+        } else {
+            $('#headertitle').css('order', ''); // Reset to default order
+        }
+    }).trigger('resize'); // Trigger the function on page load
 }
