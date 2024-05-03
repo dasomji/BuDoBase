@@ -1,3 +1,5 @@
+// This Script allows to sort tables.
+
 window.onload = function () {
     // Function to get the text content of a cell
     function getCellValue(row, columnIdx) {
