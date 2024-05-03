@@ -34,6 +34,11 @@ input {
     padding: var(--xs-padding);
 }
 
+select {
+    border-radius: var(--corner-rad);
+    padding: var(--xs-padding);
+}
+
 .input-container input:focus-visible {
     border: 2px solid var(--grey);
 }
@@ -281,6 +286,12 @@ which is changed through js--------------------------------------*/
 
 .input-container .card-info-container {
     display: block;
+}
+
+.input-container .card-info-container form {
+    display: flex;
+    flex-flow: column nowrap;
+    gap: var(--m-padding);
 }
 
 button,

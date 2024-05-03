@@ -13,33 +13,30 @@
             </div>
             <div class="card-info-container">
                 <p>Bitte füll dein Profil aus.</p>
-                <form method="post" novalidate class="card">
+                <form method="post" novalidate class="">
                     {%csrf_token %}
-                    <h2>{% if task %} Update {%else %} Create {%endif%} Task</h2>
-                   {% for field in form %}
-                       {% if field.name == 'completed' %}
-                           <p>
-                               {{ field.label_tag }}
-                               {{ field }}
-                           </p>
-                           {% if field.errors %}
-                               <small class="error">{{ field.errors|striptags  }}</small> 
-                           {% endif %}
-                       {% else %}
-                           {{ field.label_tag }} 
-                           {{ field }}
-                           {% if field.errors %}
-                               <small class="error">{{ field.errors|striptags  }}</small> 
-                           {% endif %}
-                       {% endif %}
-                   {% endfor %}
+                    {% for field in form %}
+                        {% if field.name == 'completed' %}
+                            <p>
+                                {{ field.label_tag }}
+                                {{ field }}
+                            </p>
+                            {% if field.errors %}
+                                <small class="error">{{ field.errors|striptags  }}</small> 
+                            {% endif %}
+                        {% else %}
+                            {{ field.label_tag }} 
+                            {{ field }}
+                            {% if field.errors %}
+                                <small class="error">{{ field.errors|striptags  }}</small> 
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
                    
                    <div class="form-buttons">
                        <input type="submit" value="Save" class="button"/>
                        <a href="{%url 'profil'%}" class="button">Cancel</a>
                    </div>
-                   
-               
                </form>
             </div>
         </div>
