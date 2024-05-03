@@ -168,18 +168,15 @@ class Kinder(models.Model):
     # swp2 = models.ForeignKey(
     #     "SchwerpunktTwo", on_delete=models.SET_NULL, null=True, blank=True)
 
-    class AgeSorted:
-        ordering = ('kid_alter')
-
-    def __str__(self):
-        return f'{self.kid_vorname} {self.kid_nachname} | {self.budo_family} | {self.kid_alter}'
-
     def get_alter(self):
         if self.kid_birthday is None:
             return None
         delta = self.turnus.turnus_beginn - self.kid_birthday
         age = round(delta.days / 365.25, 2)
         return age
+
+    def __str__(self):
+        return f'{self.kid_vorname} {self.kid_nachname}'
 
     def get_short_sex(self):
         if self.sex == "weiblich":

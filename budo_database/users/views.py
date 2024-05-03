@@ -1,7 +1,10 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
+from django.http import HttpResponse
+from django.template import loader
 from .forms import LoginForm, RegisterForm
+from budo_app.models import Kinder
 
 
 def sign_in(request):
@@ -38,6 +41,16 @@ def sign_out(request):
 
 
 def sign_up(request):
+    if request.user.is_authenticated:
+        template = loader.get_template('users/already_registered.html')
+        kids = Kinder.objects.all()
+        context = {
+            'kids': kids,
+        }
+        print(kids)
+        # return render(request, 'users/already_registered.html', {"context": context})
+        return HttpResponse(template.render(context, request))
+
     if request.method == 'GET':
         form = RegisterForm()
         return render(request, 'users/register.html', {'form': form})
