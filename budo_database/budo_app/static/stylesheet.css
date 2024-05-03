@@ -29,6 +29,22 @@ body {
     font-family: "Roboto";
 }
 
+/*------- Header ---------*/
+#headertitle {
+    display: inline-block;
+}
+
+@media only screen and (min-width: 992px) {
+
+    #headertitle {
+        display: flex;
+        align-items: baseline;
+        flex-direction: row wrap;
+        justify-content: flex-start;
+        column-gap: 30px;
+    }
+}
+
 
 #headermenu {
     display: flex;
@@ -170,7 +186,7 @@ h1 {
 }
 
 #single-column {
-    flex: 40% 40% 40%;
+    flex-basis: 40%;
 }
 
 .card {
@@ -254,6 +270,8 @@ button,
 }
 
 
+/* ---- Table ------------- */
+
 .table-container {
     overflow: scroll;
     border-radius: var(--corner-rad);
@@ -323,12 +341,6 @@ table {
     border-collapse: collapse;
 }
 
-/* th {
-    position: sticky;
-    top: 0;
-    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
-} */
-
 table #name {
     font-weight: bold;
     white-space: nowrap;
@@ -346,7 +358,7 @@ table #name {
     text-align: center;
 }
 
-/* styling for the numpad */
+/* ------------Numpad ---------*/
 .overlay {
     position: fixed;
     top: 0;
@@ -373,23 +385,4 @@ table #name {
     width: 40px;
     height: 40px;
     font-size: 18px;
-}
-
-/* header */
-#headertitle {
-    display: inline-block;
-}
-
-@media only screen and (min-width: 992px) {
-    w3-teal {
-        display: flex;
-    }
-
-    #headertitle {
-        display: flex;
-        align-items: baseline;
-        flex-direction: row wrap;
-        justify-content: flex-start;
-        column-gap: 30px;
-    }
 }
