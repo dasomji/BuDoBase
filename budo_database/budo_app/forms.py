@@ -25,11 +25,11 @@ class CheckInForm(forms.ModelForm):
                   'taschengeld']
 
         widgets = {
-            'check_in_date': forms.DateInput(attrs={'type': 'date', 'class': 'w3-input', "value": f"{today}"}),
-            'ausweis': forms.CheckboxInput(attrs={'class': 'w3-check w3-margin-left'}),
-            'e_card': forms.CheckboxInput(attrs={'class': 'w3-check w3-margin-left'}),
-            'einverstaendnis_erklaerung': forms.CheckboxInput(attrs={'class': 'w3-check w3-margin-left'}),
-            'taschengeld': forms.TextInput(attrs={'class': 'w3-input'})
+            'check_in_date': forms.DateInput(attrs={'type': 'date', 'class': '', "value": f"{today}"}),
+            'ausweis': forms.CheckboxInput(attrs={'class': ''}),
+            'e_card': forms.CheckboxInput(attrs={'class': ''}),
+            'einverstaendnis_erklaerung': forms.CheckboxInput(attrs={'class': ''}),
+            'taschengeld': forms.TextInput(attrs={'class': ''})
         }
         labels = {'einverstaendnis_erklaerung': "Einverständniserklärung"}
 

@@ -1,9 +1,12 @@
 :root {
+    --text-color: rgb(16, 16, 16);
     --blue: rgba(183, 220, 255, 0.34);
     --dark-blue: rgba(179, 202, 217, 0.95);
     --bg-blue: rgba(222, 240, 255, 0.7);
+    --grey: #dddddd;
     --str-padding: 24px;
     --corner-rad: 8px;
+    --xs-padding: 6px;
     --s-padding: 12px;
     --m-padding: 16px;
     --l-padding: 20px;
@@ -21,8 +24,18 @@ h2 {
     margin: 0px;
 }
 
+a {
+    color: var(--text-color)
+}
+
 input {
     border-radius: var(--corner-rad);
+    border: 2px solid white;
+    padding: var(--xs-padding);
+}
+
+.input-container input:focus-visible {
+    border: 2px solid var(--grey);
 }
 
 body {
@@ -127,7 +140,7 @@ h1 {
     z-index: 2;
     left: 0;
     right: 0;
-    border-radius: 0 0 var(--corner-rad);
+    border-radius: 0 0 var(--corner-rad) var(--corner-rad);
 }
 
 .search-results div {
@@ -164,6 +177,7 @@ h1 {
 
 #body-container:has(.table-container) {
     padding: 0 var(--l-padding);
+    flex-flow: column nowrap;
 }
 
 
@@ -207,18 +221,29 @@ h1 {
 .input-container p {
     display: flex;
     justify-content: flex-start;
+    align-items: center;
+    gap: var(--m-padding)
 }
 
 .input-container label {
-    flex-basis: 20%;
-
+    /* flex-basis: 1; */
+    /* align-self: center; */
+    width: 180px;
+    font-weight: bold;
 }
 
 .input-container input {
-    flex-basis: 20%;
+    /* flex-basis: 30%; */
     border-radius: var(--corner-rad);
-    align-self: flex-start;
+    /* align-self: center; */
+    /* align-self: flex-start; */
+}
 
+.input-container input[type="checkbox"] {
+    height: 24px;
+    width: 24px;
+    border: none;
+    border-radius: var(--corner-rad) !important;
 }
 
 .info-header-container {
@@ -239,6 +264,8 @@ h1 {
     border-radius: var(--corner-rad);
 }
 
+/*---icon +/- changes based on the parent container class .closed-card,
+which is changed through js--------------------------------------*/
 .vertical-line {
     display: none;
 }
@@ -302,8 +329,6 @@ button,
     padding-left: 5px;
     display: inline-block;
 }
-
-.table-header th:hover {}
 
 #kids-table td,
 th {
