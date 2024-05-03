@@ -183,10 +183,11 @@ h1 {
 
 #body-container:has(#single-column) {
     justify-content: center;
+    flex-wrap: nowrap;
 }
 
 #single-column {
-    flex-basis: 40%;
+    max-width: 500px;
 }
 
 .card {
