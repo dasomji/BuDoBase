@@ -222,6 +222,14 @@ h1 {
     border-radius: var(--corner-rad);
 }
 
+.vertical-line {
+    display: none;
+}
+
+.closed-card .vertical-line {
+    display: block;
+}
+
 .card-info-container {
     padding: var(--str-padding);
     display: none;
