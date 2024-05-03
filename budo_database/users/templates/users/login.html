@@ -1,0 +1,21 @@
+{% extends 'master.html' %}
+
+{% block content %}
+	<div class="flex-container" id="body-container">
+		<div class="detail-column" id="single-column">  
+			<div class="card input-container">
+				<div class="info-header-container">
+					<h2>Login</h2>
+				</div>
+				<div class="card-info-container">
+					<form method="POST" novalidate>
+						{% csrf_token %}
+						<h2>Login</h2>
+						{{form.as_p}}
+						<input type="submit" value="Login" />
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock content%}

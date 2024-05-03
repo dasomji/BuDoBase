@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.template import loader
 from datetime import datetime
@@ -23,6 +24,7 @@ def budo_app(request):
     return HttpResponse(template.render(context, request))
 
 
+@login_required
 def uploadFile(request):
     template = loader.get_template('upload-file.html')
     documents = models.Turnus.objects.all()
@@ -41,6 +43,7 @@ def uploadFile(request):
     return HttpResponse(template.render(context, request))
 
 
+@login_required
 def kids_list(request):
     kids = models.Kinder.objects.all()
     template = loader.get_template('kids_list.html')
@@ -50,6 +53,7 @@ def kids_list(request):
     return HttpResponse(template.render(context, request))
 
 
+@login_required
 def kid_details(request, id):
     this_kid = models.Kinder.objects.get(id=id)
     kids = models.Kinder.objects.all().values()
@@ -81,6 +85,7 @@ def kid_details(request, id):
     return HttpResponse(template.render(context, request))
 
 
+@login_required
 def check_in(request, id):
     this_kid = models.Kinder.objects.get(id=id)
     original_kid = deepcopy(this_kid)
@@ -129,6 +134,7 @@ def check_in(request, id):
     return HttpResponse(template.render(context, request))
 
 
+@login_required
 def check_out(request, id):
     this_kid = models.Kinder.objects.get(id=id)
     original_kid = deepcopy(this_kid)
