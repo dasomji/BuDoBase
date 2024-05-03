@@ -4,7 +4,9 @@ from django.contrib.auth import login, authenticate, logout
 from django.http import HttpResponse
 from django.template import loader
 from .forms import LoginForm, RegisterForm
-from budo_app.models import Kinder
+from budo_app.models import Kinder, Profil
+from django.views.generic.edit import CreateView, UpdateView
+from django.urls import reverse_lazy
 
 
 def sign_in(request):
@@ -63,6 +65,20 @@ def sign_up(request):
             user.save()
             messages.success(request, 'You have singed up successfully.')
             login(request, user)
-            return redirect('kids_list')
+            return redirect('profil')
         else:
             return render(request, 'users/register.html', {'form': form})
+
+
+class ProfilUpdate(UpdateView):
+    model = Profil
+    fields = ['rufname', 'allergien', 'rolle', 'essen', 'turnus']
+    template_name = "users/profil.html"
+    success_url = reverse_lazy('kids_list')
+
+    def get_object(self, queryset=None):
+        return self.request.user.profil
+
+    def form_valid(self, form):
+        messages.success(self.request, "The task was updated successfully.")
+        return super(ProfilUpdate, self).form_valid(form)

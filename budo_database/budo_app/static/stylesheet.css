@@ -313,9 +313,9 @@ button,
 #kids-table .table-header {
     background-color: var(--dark-blue);
     border-radius: var(--corner-rad);
-    /* position: sticky;
+    position: sticky;
     top: 0;
-    z-index: 2; */
+    z-index: 2;
 }
 
 .table-header th {
