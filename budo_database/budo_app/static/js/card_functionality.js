@@ -6,13 +6,13 @@ $(document).ready(function () {
         closedCards.forEach(function (id) {
             let card = $('#' + id);
             card.addClass('closed-card');
-            card.find('.vertical-line').hide();
+            // card.find('.vertical-line').hide();
             card.find('.card-info-container').hide();
         });
     }
     // Show open cards
-    $('.info_container:not(.closed-card) .card-info-container').slideToggle();
-    $('.info_container:not(.closed-card) .vertical-line').fadeToggle();
+    $('.card:not(.closed-card) .card-info-container').slideToggle();
+    $('.card:not(.closed-card) .vertical-line').fadeToggle();
 
     // Save state to cookie when a card is clicked
 

@@ -1,5 +1,5 @@
 <div class="flex-container">
-    <div class="info_container" id="kinderinfos">
+    <div class="card" id="kinderinfos">
         <div class="anwesend-container">
             <h2>{{ this_kid.kid_vorname }} {{ this_kid.kid_nachname }}</h2>
             {% if this_kid.anwesend %}<h2 id="anwesend-marker">✅</h2>{% endif %}
@@ -15,7 +15,7 @@
     </div>
     {% block forminput %}
 
-    <div class="info_container input_container">
+    <div class="card input-container">
         {% if this_kid.anwesend == True %}
         <h1>Check-Out</h1>
             <p style="color:green;">Dieses Kind ist anwesend.</p>

@@ -13,7 +13,7 @@
 {% block content %}
 <div class="flex-container">
   {% for familie, info in familien.items %}
-  <div class="info_container">
+  <div class="card">
     <a href="/budo_familie/{{info.name}}">{{ info.name.title }}</a>
     {{ info.size }}
     <ul>
