@@ -32,7 +32,7 @@
                 <div class="card-info-container">
                     <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
                     <p><span class="label">Alter</span>: {{Kinder.get_alter}}</p>
-                    <p><span class="label">Geburtstag</span>: {{Kinder.kid_birthday}}</p>
+                    <p><span class="label">Geburtstag</span>: {{Kinder.kid_birthday}}{% if Kinder.is_birthday_during_turnus %} 🥳 {% endif %}</p>
                     <p><a href="/budo_familie/{{ Kinder.budo_family }}"><span class="label">Budo Familie</span>: {{ Kinder.budo_family }}</a></p>
                     <p><span class="label">Aufenthaltsdauer</span>: {{Kinder.turnus_dauer}}-wöchig</p>
                     <p><span class="label">Geschwister</span>: {{Kinder.geschwister}}</p>
@@ -59,8 +59,8 @@
                 </div>
                 <div class="card-info-container">
                     <p><span class="label">Sozialversicherungsnummer</span>: {{Kinder.sozialversicherungsnr}}</p>
-                    <p><span class="label">Krankheiten</span>: {{Kinder.illness}}</p>
-                    <p><span class="label">Medikamente</span>: {{Kinder.drugs}}</p>
+                    <p><span class="label">Krankheiten</span>: {% if x.get_clean_illness %}{{ x.get_clean_illness }}{% else %} --- {% endif%}</p>
+                    <p><span class="label">Medikamente</span>: {% if x.get_clean_drugs %}{{ x.get_clean_drugs }}{% else %} --- {% endif%}</p>
                     <p><span class="label">Vegetarisch</span>: {{Kinder.vegetarisch}}</p>
                     <p><span class="label">Ernährungsvorgaben</span>: {{Kinder.special_food_description}}</p>
                     <p><span class="label">Schwimmkentnisse</span>: {{Kinder.swimmer}}</p>
@@ -87,9 +87,9 @@
                     <h2>Notizen</h2> {% include "components/openicon.html" %}
                 </div>
                 <div class="card-info-container">
-                    <p><span class="label">Anmerkungen (Buchung)</span>: {{Kinder.anmerkung_buchung|safe}}</p>
-                    <p><span class="label">Anmerkungen</span>: {{Kinder.anmerkung|safe}}</p>
-                    <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team|safe}}</p>
+                    <p><span class="label">Anmerkungen (Buchung)</span>: {% if x.get_clean_anmerkung_buchung %}{{ x.get_clean_anmerkung_buchung|safe }}{% else %} --- {% endif%}</p>
+                    <p><span class="label">Anmerkungen</span>: {% if x.get_clean_anmerkung %}{{ x.get_clean_anmerkung|safe }}{% else %} --- {% endif%}</p>
+                    {% comment %} <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team|safe}}</p> {% endcomment %}
                     <ul>
                         {% for notiz in Kinder.notizen.all %}
                             <li>{{ notiz.added_by.username }} am {{ notiz.date_added|date:"d.m." }}: {{ notiz.notiz }}</li>

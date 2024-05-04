@@ -39,7 +39,7 @@
                     {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a></td>
                   <td class="item-cell budo_family">{{ x.budo_family }}</td>
                   <td class="item-cell sex">{{ x.get_short_sex }}</td>
-                  <td class="number-cell">{{ x.get_alter }}</td>
+                  <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>
                   <td class="number-cell">{{ x.turnus_dauer }}</td>
                   <td class="text-cell">{{ x.geschwister }}</td>
                   <td class="text-cell">{{ x.zeltwunsch }}</td>

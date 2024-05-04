@@ -86,8 +86,12 @@ def dashboard(request):
         sex__in=["männlich", "weiblich"]).count()
     kids_mit_budo_erfahrung = Kinder.objects.filter(
         budo_erfahrung=True).count()
-    geburtstagskinder = [
-        kid for kid in kids if kid.is_birthday_during_turnus()]
+    # geburtstagskinder = [
+    #     kid for kid in kids if kid.is_birthday_during_turnus()]
+    geburtstagskinder = sorted(
+        [kid for kid in kids if kid.is_birthday_during_turnus()],
+        key=lambda kid: (kid.kid_birthday.month, kid.kid_birthday.day)
+    )
     geburtstage = len(geburtstagskinder)
     eingecheckte_kids = Kinder.objects.filter(anwesend=True).count()
     team = Profil.objects.all()
@@ -96,8 +100,8 @@ def dashboard(request):
     gesundheit = [kid for kid in kids if kid.get_clean_illness()]
     kids_attention = [kid for kid in kids if (
         kid.get_clean_drugs() or kid.get_clean_illness())]
-    # kids_with_medikamente_or_gesundheit = Kinder.objects.filter(
-    #     Q(medikamente=True) | Q(gesundheit=True))
+    ersties = Kinder.objects.filter(budo_erfahrung=False)
+    ersties_count = ersties.count()
     context = {
         "profil": profil,
         "kids": kids,
@@ -114,7 +118,9 @@ def dashboard(request):
         "team": team,
         "medikamente": medikamente,
         "gesundheit": gesundheit,
-        "kids_attention": kids_attention
+        "kids_attention": kids_attention,
+        "ersties": ersties,
+        "ersties_count": ersties_count,
     }
 
     return HttpResponse(template.render(context, request))

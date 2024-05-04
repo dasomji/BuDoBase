@@ -59,6 +59,9 @@ class Profil(models.Model):
         if self.essen == "vn":
             return "🥦 Vegan"
 
+    def get_rolle(self):
+        return dict(self.ROLLEN).get(self.rolle)
+
 
 class Kinder(models.Model):
     BUDO_FAMILIES = [
