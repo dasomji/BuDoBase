@@ -207,17 +207,26 @@ class Kinder(models.Model):
         else:
             return "d"
 
-    def get_food(self):
-        veggie = ""
+    def get_clean_special_food(self):
+        if self.special_food_description:
+            if self.special_food_description.lower().strip() in ("nein", "keine", "keinr", "nan", "ja"):
+                return ""
+            else:
+                return self.special_food_description
+
+    def get_veggie(self):
         if self.vegetarisch:
             if self.vegetarisch.lower() == "ja":
-                veggie = "🥦"
+                return "🥦"
             elif str(self.vegetarisch).lower().strip() in ("nein", "nan"):
-                veggie = "🥩"
+                return "🥩"
             else:
-                veggie = self.vegetarisch
+                return self.vegetarisch
         else:
-            veggie = "🥩"
+            return "🥩"
+
+    def get_food(self):
+        veggie = self.get_veggie()
         if self.special_food_description:
             if self.special_food_description.lower() in ("nein", "keine", "nan", "ja"):
                 return veggie

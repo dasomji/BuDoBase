@@ -83,6 +83,20 @@
                 {% endfor %}
             </div>
         </div>
+        <div class="card closed-card" id="db-essen">
+            <div class="info-header-container">
+                <h2>Essen & Allergien</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                {% for kid in kids %}
+                    {% if kid.get_clean_special_food %}
+                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname|safe}} {{kid.kid_nachname|safe}}</a></span>: {% if kid.get_veggie|length < 2 %} {{kid.get_veggie}} // {% endif %} {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal BuDo{% endif %} </p>
+                    {% if kid.get_veggie|length >= 2 %}<p>Veggie: {{kid.get_veggie}} </p> {% endif %}
+                    <p>{{ kid.get_clean_special_food }}</p>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
         <div class="card" id="db-geburtstagskinder">
             <div class="info-header-container">
                 <h2>Geburtstagskinder</h2>{% include "components/openicon.html" %}
