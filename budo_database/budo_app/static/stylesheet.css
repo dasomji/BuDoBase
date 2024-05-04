@@ -312,7 +312,8 @@ button,
 /* ---- Table ------------- */
 
 .table-container {
-    overflow: scroll;
+    max-height: 80vh;
+    overflow: auto;
     border-radius: var(--corner-rad);
 }
 
@@ -322,16 +323,16 @@ button,
 }
 
 #kids-table .table-header {
-    background-color: var(--dark-blue);
     border-radius: var(--corner-rad);
-    position: sticky;
-    top: 0;
-    z-index: 2;
 }
 
 .table-header th {
+    background-color: var(--dark-blue);
     white-space: nowrap;
     cursor: pointer;
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
 
 
