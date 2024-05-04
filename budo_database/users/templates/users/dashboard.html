@@ -1,0 +1,96 @@
+{% extends 'master.html' %}
+{% block headertitle %}
+            <h1>{{Dashboard}}</h1>
+{% endblock %}
+
+
+{% block content %}
+{% load static %}
+    <script src="{% static 'js/card_functionality.js' %}"></script>
+<div class="flex-container" id="body-container">
+    <div class="detail-column" id="left-column">  
+        <div class="card" id="db-profil">
+            <div class="info-header-container">
+                <h2>Profil</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <p><span class="label">Allergien</span>: {{profil.allergien}} </p>
+                <p><span class="label">Essen</span>: {{profil.essen}} </p>
+                <p><span class="label">Essen</span>: {{profil.essen}} </p>
+            </div>
+        </div>
+        <div class="card" id="db-kinderübersicht">
+            <div class="info-header-container">
+                <h2>Kinder</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <p><span class="label">Burschen</span>: {{ male_kids_count }}</p>
+                <p><span class="label">Mädchen</span>: {{ female_kids_count }}</p>
+                <p><span class="label">Nonbinary</span>: {{ diverse_kids_count }}</p>
+                <p><span class="label">Geburtstage</span>: {{ geburtstage }}</p>
+                <p><span class="label">Kids mit Budo-Erfahrung</span>: {{ kids_mit_budo_erfahrung }}</p>
+                <p><span class="label">Zuganreise</span>: {{ kids_zug_anreise_count }}</p>
+                <p><span class="label">Zugabreise</span>: {{ kids_zug_abreise_count }}</p>
+            </div>
+        </div>
+        <div class="card" id="db-geburtstagskinder">
+            <div class="info-header-container">
+                <h2>Geburtstagskinder</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                {% for kid in geburtstagskinder %}
+                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{ kid.kid_birthday }}</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="detail-column" id="center-column">  
+        <div class="card" id="db-kindergesamt">
+            <div class="info-header-container">
+                <h2>Kinder</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <span class="label">Kinder im BuDo</span>: <h2>{{eingecheckte_kids}}/{{anzahl_kids}} </h2>
+            </div>
+        </div>
+        <div class="card" id="db-team">
+            <div class="info-header-container">
+                <h2>Team</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                {% for teamer in team %}
+                    <p><span class="label">{{teamer.rufname}}</span>: {{ teamer.get_food }} // Allergien: {{ teamer.allergien }}</p>
+                {% endfor %}
+
+            </div>
+        </div>
+    </div>
+    <div class="detail-column" id="right-column">  
+        <div class="card" id="db-empty">
+            <div class="info-header-container">
+                <h2>Kinder</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <span class="label">Kinder im BuDo</span>: <h2>{{eingecheckte_kids}}/{{anzahl_kids}} </h2>
+            </div>
+        </div>
+        <div class="card" id="db-gesundheit">
+            <div class="info-header-container">
+                <h2>Gesundheitliches</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                {% for kid in kids_attention %}
+                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal BuDo{% endif %} </p>
+                    <ul>
+                    {% if kid.get_clean_illness %}<li><span class="label">Krankheiten</span>: {{ kid.get_clean_illness }}</li>{% endif %}
+                    {% if kid.get_clean_drugs %}<li><span class="label">Medikamente</span>: {{ kid.get_clean_drugs }}</li>{% endif %}
+                    {% if kid.get_clean_anmerkung %}<li><span class="label">Anmerkung</span>: {{ kid.get_clean_anmerkung|safe }}</li>{% endif %}
+                    {% if kid.get_clean_anmerkung_buchung %}<li><span class="label">Anmerkung bei Buchung</span>: {{ kid.get_clean_anmerkung_buchung|safe }}</li>{% endif %}
+                    </ul>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content%}

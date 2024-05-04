@@ -1,0 +1,19 @@
+
+<div class="card input-container">
+    <div class="info-header-container">
+        <h2>{{ cardheader }}</h2>{% include "components/openicon.html" %}
+    </div>
+    <div class="card-info-container">
+        {% for field in cardcontent %}
+        <div>
+            <label>{{ field.label }}</label>
+            <div>{{ field.value }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- To use this, include the following variables:
+     cardheader:
+     cardcontent
+-->

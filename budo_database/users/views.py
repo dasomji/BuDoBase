@@ -4,9 +4,11 @@ from django.contrib.auth import login, authenticate, logout
 from django.http import HttpResponse
 from django.template import loader
 from .forms import LoginForm, RegisterForm
+from budo_app.forms import ProfilForm
 from budo_app.models import Kinder, Profil
 from django.views.generic.edit import CreateView, UpdateView
 from django.urls import reverse_lazy
+from django.db.models import Q
 
 
 def sign_in(request):
@@ -68,6 +70,54 @@ def sign_up(request):
             return redirect('profil')
         else:
             return render(request, 'users/register.html', {'form': form})
+
+
+def dashboard(request):
+    template = loader.get_template('users/dashboard.html')
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    kids = Kinder.objects.all()
+    anzahl_kids = Kinder.objects.all().count()
+    kids_zug_anreise_count = Kinder.objects.filter(zug_anreise=True).count()
+    kids_zug_abreise_count = Kinder.objects.filter(zug_abreise=True).count()
+    male_kids_count = Kinder.objects.filter(sex="männlich").count()
+    female_kids_count = Kinder.objects.filter(sex="weiblich").count()
+    diverse_kids_count = Kinder.objects.exclude(
+        sex__in=["männlich", "weiblich"]).count()
+    kids_mit_budo_erfahrung = Kinder.objects.filter(
+        budo_erfahrung=True).count()
+    geburtstagskinder = [
+        kid for kid in kids if kid.is_birthday_during_turnus()]
+    geburtstage = len(geburtstagskinder)
+    eingecheckte_kids = Kinder.objects.filter(anwesend=True).count()
+    team = Profil.objects.all()
+
+    medikamente = [kid for kid in kids if kid.get_clean_drugs()]
+    gesundheit = [kid for kid in kids if kid.get_clean_illness()]
+    kids_attention = [kid for kid in kids if (
+        kid.get_clean_drugs() or kid.get_clean_illness())]
+    # kids_with_medikamente_or_gesundheit = Kinder.objects.filter(
+    #     Q(medikamente=True) | Q(gesundheit=True))
+    context = {
+        "profil": profil,
+        "kids": kids,
+        "kids_zug_anreise_count": kids_zug_anreise_count,
+        "kids_zug_abreise_count": kids_zug_abreise_count,
+        "male_kids_count": male_kids_count,
+        "female_kids_count": female_kids_count,
+        "diverse_kids_count": diverse_kids_count,
+        "kids_mit_budo_erfahrung": kids_mit_budo_erfahrung,
+        "geburtstagskinder": geburtstagskinder,
+        "geburtstage": geburtstage,
+        "eingecheckte_kids": eingecheckte_kids,
+        "anzahl_kids": anzahl_kids,
+        "team": team,
+        "medikamente": medikamente,
+        "gesundheit": gesundheit,
+        "kids_attention": kids_attention
+    }
+
+    return HttpResponse(template.render(context, request))
 
 
 class ProfilUpdate(UpdateView):

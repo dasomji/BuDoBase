@@ -175,6 +175,22 @@ class Kinder(models.Model):
         age = round(delta.days / 365.25, 2)
         return age
 
+    def is_birthday_during_turnus(self):
+        if self.turnus and self.turnus.turnus_beginn:
+            turnus_beginn = self.turnus.turnus_beginn
+            turnus_ende = self.turnus.get_turnus_ende()
+
+            # Create new dates for comparison by replacing the year of the birthday with the year of the turnus dates
+            birthday_this_turnus = self.kid_birthday.replace(
+                year=turnus_beginn.year)
+            birthday_next_turnus = self.kid_birthday.replace(
+                year=turnus_ende.year)
+
+            # Check if the birthday falls within the turnus dates
+            return turnus_beginn <= birthday_this_turnus <= turnus_ende or turnus_beginn <= birthday_next_turnus <= turnus_ende
+        else:
+            return False
+
     def __str__(self):
         return f'{self.kid_vorname} {self.kid_nachname}'
 
@@ -205,6 +221,42 @@ class Kinder(models.Model):
                 return f"{veggie} - {special}"
         else:
             return veggie
+
+    def get_clean_drugs(self):
+        if self.drugs:
+            if self.drugs.lower().strip() in ("nein", "nan", "none", "-"):
+                return ""
+            else:
+                return self.drugs
+        else:
+            return ""
+
+    def get_clean_illness(self):
+        if self.illness:
+            if self.illness.lower().strip() in ("nein", "nan", "none", "-"):
+                return ""
+            else:
+                return self.illness
+        else:
+            return ""
+        
+    def get_clean_anmerkung(self):
+        if self.anmerkung:
+            if str(self.anmerkung).lower().strip() in ("nein", "nan", "none", "-", "0"):
+                return ""
+            else:
+                return self.anmerkung
+        else: 
+            return ""
+        
+    def get_clean_anmerkung_buchung(self):
+        if self.anmerkung_buchung:
+            if str(self.anmerkung).lower().strip() in ("nein", "nan", "none", "-", "0"):
+                return ""
+            else:
+                return self.anmerkung_buchung
+        else: 
+            return ""    
 
     class Meta:
         verbose_name_plural = "Kinder"
