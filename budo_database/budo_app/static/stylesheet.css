@@ -3,6 +3,7 @@
     --blue: rgba(183, 220, 255, 0.34);
     --dark-blue: rgba(179, 202, 217, 0.95);
     --bg-blue: rgba(222, 240, 255, 0.7);
+    --bg-blue__solid: rgba(222, 240, 255, 1);
     --grey: #dddddd;
     --str-padding: 24px;
     --corner-rad: 8px;
@@ -335,17 +336,42 @@ button,
     z-index: 2;
 }
 
-
 .table-header th::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    border-bottom: 1px solid #8F8F8F;
+    z-index: 3;
+    box-sizing: border-box;
+}
+
+
+/* .table-header th::after {
     content: url("img/sort.svg");
     padding-left: 5px;
     display: inline-block;
-}
+} */
 
 #kids-table td,
 th {
     padding: var(--s-padding);
     vertical-align: top;
+}
+
+.headcol {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+}
+
+#kids-table td.headcol {
+    background-color: var(--dark-blue);
+}
+
+th.headcol {
+    z-index: 3;
 }
 
 #kids-table tr {
@@ -381,7 +407,7 @@ table {
 
 table #name {
     font-weight: bold;
-    white-space: nowrap;
+    /* white-space: nowrap; */
 }
 
 .text-cell {

@@ -20,7 +20,7 @@
     <div class="table-container">
         <table class="" id="kids-table">
             <tr class="table-header">
-                <th>Name</th>
+                <th class="headcol">Name</th>
                 <th>Familie</th>
                 <th>⚧</th>
                 <th>Alter</th>
@@ -35,7 +35,7 @@
             </tr>
             {% for x in kids %}
             <tr class="table_row w3-padding-large">
-                  <td class="text-cell" id="name"><a href="/kid_details/{{ x.id }}">
+                  <td class="text-cell headcol" id="name"><a href="/kid_details/{{ x.id }}">
                     {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a></td>
                   <td class="item-cell budo_family">{{ x.budo_family }}</td>
                   <td class="item-cell sex">{{ x.get_short_sex }}</td>
