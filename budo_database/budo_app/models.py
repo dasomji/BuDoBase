@@ -239,24 +239,26 @@ class Kinder(models.Model):
                 return self.illness
         else:
             return ""
-        
+
     def get_clean_anmerkung(self):
         if self.anmerkung:
             if str(self.anmerkung).lower().strip() in ("nein", "nan", "none", "-", "0"):
                 return ""
             else:
                 return self.anmerkung
-        else: 
+        else:
             return ""
-        
+
     def get_clean_anmerkung_buchung(self):
         if self.anmerkung_buchung:
             if str(self.anmerkung).lower().strip() in ("nein", "nan", "none", "-", "0"):
                 return ""
+            elif self.anmerkung == 0:
+                return ""
             else:
                 return self.anmerkung_buchung
-        else: 
-            return ""    
+        else:
+            return ""
 
     class Meta:
         verbose_name_plural = "Kinder"

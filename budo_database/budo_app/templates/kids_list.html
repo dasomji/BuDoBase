@@ -30,6 +30,8 @@
                 <th>Ernährung </th>
                 <th>Medikamente</th>
                 <th>Gesundheitliches</th>
+                <th>Anmerkungen</th>
+                <th>Anmerkungen (Buchung)</th>
             </tr>
             {% for x in kids %}
             <tr class="table_row w3-padding-large">
@@ -42,8 +44,10 @@
                   <td class="text-cell">{{ x.geschwister }}</td>
                   <td class="text-cell">{{ x.zeltwunsch }}</td>
                   <td class="text-cell">{{ x.get_food }}</td>
-                  <td class="text-cell">{{ x.drugs }}</td>
-                  <td class="text-cell">{{ x.illness }}</td>
+                  <td class="text-cell">{% if x.get_clean_drugs %}{{ x.get_clean_drugs }}{% else %} --- {% endif%} </td>
+                  <td class="text-cell">{% if x.get_clean_illness %}{{ x.get_clean_illness }}{% else %} --- {% endif%}</td>
+                  <td class="text-cell">{% if x.get_clean_anmerkung %}{{ x.get_clean_anmerkung|safe }}{% else %} --- {% endif%}</td>
+                  <td class="text-cell">{% if x.get_clean_anmerkung_buchung %}{{ x.get_clean_anmerkung_buchung|safe }}{% else %} --- {% endif%}</td>
             </tr>
             {% endfor %}
         </table>
