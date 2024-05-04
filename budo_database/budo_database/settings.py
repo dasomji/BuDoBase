@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'budo_app',
-    'users.apps.UsersConfig'
+    'users.apps.UsersConfig',
+    "phonenumber_field",
 ]
 
 MIDDLEWARE = [

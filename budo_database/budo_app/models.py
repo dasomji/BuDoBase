@@ -3,6 +3,7 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save
 from django.contrib.auth.models import User
 import datetime
+from phonenumber_field.modelfields import PhoneNumberField
 # Create your models here.
 
 
@@ -25,6 +26,7 @@ class Profil(models.Model):
         User, on_delete=models.CASCADE, related_name="profil")
     rufname = models.CharField(
         max_length=255, blank=True, default="", help_text="Wie willst du genannt werden?")
+    telefonnummer = PhoneNumberField(blank=True)
     allergien = models.CharField(max_length=500, blank=True, default="")
     rolle = models.CharField(
         max_length=1,

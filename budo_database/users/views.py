@@ -128,9 +128,10 @@ def dashboard(request):
 
 class ProfilUpdate(UpdateView):
     model = Profil
-    fields = ['rufname', 'allergien', 'rolle', 'essen', 'turnus']
+    fields = ['rufname', 'allergien', 'rolle',
+              'essen', 'telefonnummer', 'turnus']
     template_name = "users/profil.html"
-    success_url = reverse_lazy('kids_list')
+    success_url = reverse_lazy('dashboard')
 
     def get_object(self, queryset=None):
         return self.request.user.profil

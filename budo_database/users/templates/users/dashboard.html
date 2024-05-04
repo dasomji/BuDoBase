@@ -17,6 +17,9 @@
                 <p><span class="label">Rolle</span>: {{profil.get_rolle}} </p>
                 <p><span class="label">Essen</span>: {{profil.get_food}} </p>
                 <p><span class="label">Allergien</span>: {{profil.allergien}} </p>
+                <p><span class="label">Email</span>: <a href="mailto:{{profil.user.email}}">{{profil.user.email}}</a></p>
+                <p><span class="label">Mobil</span>: <a href="tel: {{profil.telefonnummer}}">{{profil.telefonnummer}}</a></p>
+                <a class="button" href="/profil">Informationen aktuallisieren </a>
             </div>
         </div>
         <div class="card" id="db-team">
@@ -26,7 +29,9 @@
             <div class="card-info-container">
                 {% for teamer in team %}
                     <p><span class="label">{{teamer.rufname}}</span>: {{ teamer.get_food }}</p>
-                    {% if teamer.allergien %}<p>Allergien: {{ teamer.allergien }}</p>{% endif %}
+                    {% if teamer.allergien %}<li><span class="label">Allergien</span>: {{ teamer.allergien }}</li>{% endif %}
+                    {% if teamer.user.email %}<li><span class="label">Email</span>: <a href="mailto:{{teamer.user.email}}">{{teamer.user.email}}</a></li>{% endif %}
+                    {% if teamer.telefonnummer %}<li><span class="label">Mobil</span>: <a href="tel:{{teamer.telefonnummer}}">{{teamer.telefonnummer}}</a></li>{% endif %}
                 {% endfor %}
             </div>
         </div>
