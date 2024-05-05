@@ -425,6 +425,22 @@ table #alter {
     text-align: center;
 }
 
+/*-----------Schwerpunkte---------*/
+#id_betreuende {
+    display: flex;
+    flex-flow: row wrap;
+    gap: var(--m-padding)
+}
+
+#id_betreuende div {
+    display: flex;
+    align-content: center;
+}
+
+#id_betreuende div label {
+    width: auto;
+}
+
 /* ------------Numpad ---------*/
 .overlay {
     position: fixed;

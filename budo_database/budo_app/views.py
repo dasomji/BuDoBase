@@ -4,12 +4,13 @@ from django.http import HttpResponse
 from django.template import loader
 from django.urls import reverse_lazy
 from django.forms import modelformset_factory
+from django import forms
 from datetime import datetime
 from django.contrib import messages
 from . import models
 from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil
 from django.views.generic.edit import CreateView, UpdateView
-from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm
+from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm
 from copy import deepcopy
 from itertools import groupby
 
@@ -189,8 +190,7 @@ def postprocess(request):
 
 class SchwerpunkteUpdate(UpdateView):
     model = Schwerpunkte
-    fields = ['swp_name', 'ort', 'betreuende', 'beschreibung',
-              'schwerpunktzeit', 'auslagern', 'geplante_abreise', 'geplante_ankunft']
+    form_class = SchwerpunktForm
     template_name = "schwerpunkt.html"
     success_url = reverse_lazy('swp-dashboard')
 

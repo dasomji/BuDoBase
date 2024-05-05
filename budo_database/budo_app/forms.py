@@ -65,6 +65,7 @@ class SchwerpunktForm(forms.ModelForm):
         model = Schwerpunkte
         fields = ['swp_name', 'ort', 'betreuende', 'beschreibung',
                   'schwerpunktzeit', 'auslagern', 'geplante_abreise', 'geplante_ankunft']
+        widgets = {'betreuende': forms.CheckboxSelectMultiple}
 
 
 class MealChoiceForm(forms.ModelForm):
