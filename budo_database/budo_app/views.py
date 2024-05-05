@@ -3,13 +3,15 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.template import loader
 from django.urls import reverse_lazy
+from django.forms import modelformset_factory
 from datetime import datetime
 from django.contrib import messages
 from . import models
-from .models import Kinder, Notizen, Schwerpunkte
+from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil
 from django.views.generic.edit import CreateView, UpdateView
-from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm
+from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm
 from copy import deepcopy
+from itertools import groupby
 
 
 from .excelProcessor import process_excel, postprocessing
@@ -192,9 +194,62 @@ class SchwerpunkteUpdate(UpdateView):
     template_name = "schwerpunkt.html"
     success_url = reverse_lazy('swp-dashboard')
 
-    def get_object(self, queryset=None):
-        return self.request.user.profil
-
     def form_valid(self, form):
-        messages.success(self.request, "Schwerpunkt upgedatet!")
+        messages.success(self.request, "Profil upgedatet!")
         return super(SchwerpunkteUpdate, self).form_valid(form)
+
+
+def swp_dashboard(request):
+    template = loader.get_template('swp-dashboard.html')
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    kids = Kinder.objects.all()
+    anzahl_kids = Kinder.objects.all().count()
+    kids_zug_anreise_count = Kinder.objects.filter(zug_anreise=True).count()
+    kids_zug_abreise_count = Kinder.objects.filter(zug_abreise=True).count()
+    male_kids_count = Kinder.objects.filter(sex="männlich").count()
+    female_kids_count = Kinder.objects.filter(sex="weiblich").count()
+    diverse_kids_count = Kinder.objects.exclude(
+        sex__in=["männlich", "weiblich"]).count()
+    kids_mit_budo_erfahrung = Kinder.objects.filter(
+        budo_erfahrung=True).count()
+    # geburtstagskinder = [
+    #     kid for kid in kids if kid.is_birthday_during_turnus()]
+    geburtstagskinder = sorted(
+        [kid for kid in kids if kid.is_birthday_during_turnus()],
+        key=lambda kid: (kid.kid_birthday.month, kid.kid_birthday.day)
+    )
+    geburtstage = len(geburtstagskinder)
+    eingecheckte_kids = Kinder.objects.filter(anwesend=True).count()
+    team = Profil.objects.all()
+
+    medikamente = [kid for kid in kids if kid.get_clean_drugs()]
+    gesundheit = [kid for kid in kids if kid.get_clean_illness()]
+    kids_attention = [kid for kid in kids if (
+        kid.get_clean_drugs() or kid.get_clean_illness())]
+    ersties = Kinder.objects.filter(budo_erfahrung=False)
+    ersties_count = ersties.count()
+    swps = Schwerpunkte.objects.all()
+    context = {
+        "profil": profil,
+        "kids": kids,
+        "kids_zug_anreise_count": kids_zug_anreise_count,
+        "kids_zug_abreise_count": kids_zug_abreise_count,
+        "male_kids_count": male_kids_count,
+        "female_kids_count": female_kids_count,
+        "diverse_kids_count": diverse_kids_count,
+        "kids_mit_budo_erfahrung": kids_mit_budo_erfahrung,
+        "geburtstagskinder": geburtstagskinder,
+        "geburtstage": geburtstage,
+        "eingecheckte_kids": eingecheckte_kids,
+        "anzahl_kids": anzahl_kids,
+        "team": team,
+        "medikamente": medikamente,
+        "gesundheit": gesundheit,
+        "kids_attention": kids_attention,
+        "ersties": ersties,
+        "ersties_count": ersties_count,
+        "swps": swps,
+    }
+
+    return HttpResponse(template.render(context, request))

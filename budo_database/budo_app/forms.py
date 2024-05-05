@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.forms import ModelForm, Form
-from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte
+from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal
 from django import forms
 from django.contrib.auth.models import User
 import datetime
@@ -65,3 +65,9 @@ class SchwerpunktForm(forms.ModelForm):
         model = Schwerpunkte
         fields = ['swp_name', 'ort', 'betreuende', 'beschreibung',
                   'schwerpunktzeit', 'auslagern', 'geplante_abreise', 'geplante_ankunft']
+
+
+class MealChoiceForm(forms.ModelForm):
+    class Meta:
+        model = Meal
+        fields = ('meal_choice',)

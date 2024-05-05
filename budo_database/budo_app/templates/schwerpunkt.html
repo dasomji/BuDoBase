@@ -1,0 +1,44 @@
+{% extends 'master.html' %}
+{% block headertitle %}
+    <h1>{{ form.instance.swp_name }}</h1>
+{% endblock %}
+
+{% block content %}
+<div class="flex-container" id="body-container">
+    <div class="detail-column" id="single-column">  
+        <div class="card input-container">
+            <div class="info-header-container">
+                <h2>Profil</h2>
+            </div>
+            <div class="card-info-container">
+                <form method="post" novalidate class="">
+                    {%csrf_token %}
+                    {% for field in form %}
+                        {% if field.name == 'completed' %}
+                            <p>
+                                {{ field.label_tag }}
+                                {{ field }}
+                            </p>
+                            {% if field.errors %}
+                                <small class="error">{{ field.errors|striptags  }}</small> 
+                            {% endif %}
+                        {% else %}
+                            {{ field.label_tag }} 
+                            {{ field }}
+                            {% if field.errors %}
+                                <small class="error">{{ field.errors|striptags  }}</small> 
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="form-buttons">
+                        <input type="submit" value="Save" class="button"/>
+                        <a href="{%url 'schwerpunkt' pk=form.instance.id %}" class="button">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content%}
