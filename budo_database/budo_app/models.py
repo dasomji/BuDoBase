@@ -84,8 +84,6 @@ class Kinder(models.Model):
     kid_index = models.CharField(max_length=255)
     kid_vorname = models.CharField(max_length=255)
     kid_nachname = models.CharField(max_length=255)
-    # kid_alter = models.DecimalField(
-    #     max_digits=4, decimal_places=2, null=True, default=None)
     kid_birthday = models.DateField(null=True, default=None)
     zug_anreise = models.BooleanField(null=True, default=None)
     zug_abreise = models.BooleanField(null=True, default=None)
@@ -321,25 +319,26 @@ class Turnus(models.Model):
 
 
 class Schwerpunkte(models.Model):
-    UNBEKANNT = "Unbekannt"
-    WOCHE1 = "Woche 1"
-    WOCHE2 = "Woche 2"
-    WOCHEN_AUSWAHL = [
-        (UNBEKANNT, "Unbekannt"),
-        (WOCHE1, "Woche 1"),
-        (WOCHE2, "Woche 2")
-    ]
-    swp_name = models.CharField(max_length=255)
+    # WOCHEN_AUSWAHL = [
+    #     ("u", "Unklar"),
+    #     ("w1", "Woche 1"),
+    #     ("w2", "Woche 2")
+    # ]
+    swp_name = models.CharField(
+        max_length=255, help_text="Was ist der Name des Schwerpunkts?", verbose_name="Schwerpunktname")
     ort = models.ForeignKey(
-        "Auslagerorte", on_delete=models.SET_NULL, blank=True, null=True)
+        "Auslagerorte", on_delete=models.SET_NULL, blank=True, null=True, help_text="Wo findet der Schwerpunkt statt?")
     betreuende = models.ManyToManyField(
-        "auth.User", blank=True)
-    beschreibung = models.TextField()
-    welche_woche = models.CharField(
-        max_length=10,
-        choices=WOCHEN_AUSWAHL,
-        default=UNBEKANNT
+        "Profil", blank=True, related_name="swp")
+    beschreibung = models.TextField(blank=True)
+
+    schwerpunktzeit = models.ForeignKey(
+        "Schwerpunktzeit",
+        related_name="swp",
+        on_delete=models.SET_NULL,
+        null=True,
     )
+
     auslagern = models.BooleanField(null=True, default=None)
     geplante_abreise = models.DateTimeField(null=True, blank=True)
     geplante_ankunft = models.DateTimeField(null=True, blank=True)
@@ -349,6 +348,56 @@ class Schwerpunkte(models.Model):
 
     class Meta:
         verbose_name_plural = "Schwerpunkte"
+
+
+class Meal(models.Model):
+    MEAL_TYPES = [
+        ('breakfast', 'Breakfast'),
+        ('lunch', 'Lunch'),
+        ('dinner', 'Dinner'),
+    ]
+    MEAL_CHOICES = [
+        ('box', 'Box'),
+        ('budo', 'Im BuDo'),
+        ('warm', 'Warm geliefert'),
+    ]
+    schwerpunkt = models.ForeignKey(
+        'Schwerpunkte', on_delete=models.CASCADE, related_name='meals')
+    day = models.IntegerField()  # 1, 2, or 3
+    meal_type = models.CharField(max_length=10, choices=MEAL_TYPES)
+    meal_choice = models.CharField(max_length=10, choices=MEAL_CHOICES)
+
+    class Meta:
+        # prevent duplicate meals
+        unique_together = ('schwerpunkt', 'day', 'meal_type')
+
+
+class DayDuration(models.IntegerChoices):
+    SUPERKURZ = 1, 'superkurz'
+    KURZ = 2, 'kurz'
+    LANG = 3, 'lang'
+    SUPERLANG = 4, 'superlang'
+
+
+class Schwerpunktzeit(models.Model):
+    WOCHEN_AUSWAHL = [
+        ("w1", "Woche 1"),
+        ("w2", "Woche 2")
+    ]
+    woche = models.CharField(
+        max_length=2,
+        choices=WOCHEN_AUSWAHL,
+        default="w1",
+        unique=True
+    )
+    turnus = models.ForeignKey("Turnus", on_delete=models.SET_NULL, null=True,
+                               help_text="In welchem Turnus findet dieser Schwerpunkt statt?")
+    swp_beginn = models.DateField()
+
+    dauer = models.IntegerField(choices=DayDuration.choices)
+
+    def __str__(self):
+        return f"Woche {self.woche} ({self.dauer})"
 
 
 class Auslagerorte(models.Model):
