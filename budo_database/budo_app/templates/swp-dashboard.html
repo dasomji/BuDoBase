@@ -103,7 +103,7 @@
             </div>
             <div class="card-info-container">
                 {% for swp in swps %}
-                    <p><span class="label"><a href="{% url 'schwerpunkt' pk=swp.id %}">{{swp.swp_name}}</a></span>: </p>
+                    <p><span class="label"><a href="{% url 'schwerpunkt' pk=swp.id %}">{{swp.swp_name}}</a></span>: <a href="{% url 'swpmeals' pk=swp.id %}">Essen eintragen</a></p>
                 {% endfor %}
             </div>
         </div>

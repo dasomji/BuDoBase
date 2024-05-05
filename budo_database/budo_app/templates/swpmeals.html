@@ -1,0 +1,39 @@
+{% extends 'master.html' %}
+{% block headertitle %}
+    <h1>{{ form.instance.swp_name }}</h1>
+{% endblock %}
+
+{% block content %}
+<div class="flex-container" id="body-container">
+    <div class="detail-column" id="single-column">  
+        <div class="card input-container">
+            <div class="info-header-container">
+                <h2>Wann esst ihr wo?</h2>
+            </div>
+            <div class="card-info-container">
+                <form method="post">
+                        {% csrf_token %}
+                        {{ meal_formset.management_form }}
+                        {% for meal_form in meal_formset %}
+                            {% ifchanged meal_form.instance.day %}
+                                <h3>Day {{ meal_form.instance.day }}</h3>
+                            {% endifchanged %}
+                            {% for field in meal_form %}
+                                <div class="meal-input">
+                                    <label>{{ meal_form.instance.get_meal_type_display }}</label>
+                                    {{ field }}
+                                </div>
+                                {% if field.errors %}
+                                    <small class="error">{{ field.errors|striptags  }}</small> 
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                    <input class="button" type="submit" value="Speichern">
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content%}
+

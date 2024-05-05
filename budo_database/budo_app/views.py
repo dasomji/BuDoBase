@@ -1,3 +1,5 @@
+from .models import Meal, Schwerpunkte
+from django.shortcuts import redirect
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
@@ -197,6 +199,33 @@ class SchwerpunkteUpdate(UpdateView):
     def form_valid(self, form):
         messages.success(self.request, "Profil upgedatet!")
         return super(SchwerpunkteUpdate, self).form_valid(form)
+
+
+class MealUpdate(UpdateView):
+    model = Schwerpunkte
+    form_class = MealChoiceForm
+    template_name = "swpmeals.html"
+    success_url = reverse_lazy('swp-dashboard')
+
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        MealFormSet = modelformset_factory(Meal, form=MealChoiceForm, extra=0)
+        if self.request.POST:
+            data['meal_formset'] = MealFormSet(
+                self.request.POST, queryset=Meal.objects.filter(schwerpunkt=self.object))
+        else:
+            data['meal_formset'] = MealFormSet(
+                queryset=Meal.objects.filter(schwerpunkt=self.object))
+        return data
+
+    def form_valid(self, form):
+        context = self.get_context_data()
+        meal_formset = context['meal_formset']
+        if meal_formset.is_valid():
+            meal_formset.save()
+            return redirect(self.get_success_url())
+        else:
+            return self.render_to_response(self.get_context_data(form=form))
 
 
 def swp_dashboard(request):

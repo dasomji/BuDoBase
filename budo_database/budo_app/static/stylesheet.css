@@ -441,6 +441,21 @@ table #alter {
     width: auto;
 }
 
+.meal-input {
+    display: flex;
+    justify-content: flex-start;
+    gap: var(--xl-padding)
+}
+
+.meal-input label {
+    padding-left: var(--xl-padding);
+    font-weight: normal;
+}
+
+.meal-input:has(input[type="hidden"]) {
+    display: none;
+}
+
 /* ------------Numpad ---------*/
 .overlay {
     position: fixed;
