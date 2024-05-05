@@ -11,6 +11,7 @@ from datetime import datetime
 from django.contrib import messages
 from . import models
 from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil
+from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, UpdateView
 from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm
 from copy import deepcopy
@@ -193,12 +194,30 @@ def postprocess(request):
 class SchwerpunkteUpdate(UpdateView):
     model = Schwerpunkte
     form_class = SchwerpunktForm
-    template_name = "schwerpunkt.html"
-    success_url = reverse_lazy('swp-dashboard')
+    template_name = "schwerpunkt-update.html"
 
     def form_valid(self, form):
-        messages.success(self.request, "Profil upgedatet!")
+        messages.success(self.request, "Schwerpunkt upgedatet!")
         return super(SchwerpunkteUpdate, self).form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('schwerpunkt-detail', kwargs={'pk': self.object.pk})
+
+
+class SchwerpunkteDetail(DetailView):
+    model = Schwerpunkte
+    template_name = 'schwerpunkt-detail.html'
+    context_object_name = 'schwerpunkt'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        meals_by_day = {}
+        for meal in self.object.meals.all():
+            if meal.day not in meals_by_day:
+                meals_by_day[meal.day] = []
+            meals_by_day[meal.day].append(meal)
+        context['meals_by_day'] = meals_by_day
+        return context
 
 
 class MealUpdate(UpdateView):

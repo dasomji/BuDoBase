@@ -1,0 +1,51 @@
+{% extends 'master.html' %}
+{% block headertitle %}
+    <h1>{{ schwerpunkt.swp_name }}</h1>
+{% endblock %}
+
+{% block content %}
+<div class="flex-container" id="body-container">
+    <div class="detail-column" id="single-column">  
+        <div class="card input-container">
+            <div class="info-header-container">
+                <h2>Schwerpunkt Details</h2>
+            </div>
+            <div class="card-info-container">
+                <p><label>Name</label>: {{ schwerpunkt.swp_name }}</p>
+                <p><label>Ort</label>: {{ schwerpunkt.ort }}</p>
+                <p><label>Auslagern</label>: {{ schwerpunkt.auslagern }}</p>
+                <p><label>Betreuende</label>: {{ schwerpunkt.get_betreuende_names }}</p>
+                <p><label>Beschreibung</label>: {{ schwerpunkt.beschreibung }}</p>
+                <p><label>Wann</label>: {{ schwerpunkt.schwerpunktzeit }}</p>
+                <p><label>Beginnt am</label>: {{ schwerpunkt.schwerpunktzeit.swp_beginn }}</p>
+                <h3>Essen</h3>
+                <table>
+                    <tr>
+                        <th></th>
+                        <th>Frühstück</th>
+                        <th>Mittagessen</th>
+                        <th>Abendessen</th>
+                    </tr>
+                
+                    {% for day, meals in meals_by_day.items %}
+                        <tr>
+                            <td>Tag {{ day }}</td>
+                            {% for meal in meals %}
+                                <td>{{ meal.get_meal_type_display }}: {{ meal.meal_choice }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </table>
+                {%if schwerpunkt.auslagern %}
+                <p><label>Abreise</label>: {{ schwerpunkt.geplante_abreise }}</p>
+                <p><label>Rückkehr</label>: {{ schwerpunkt.geplante_ankunft }}</p>
+                {% endif %}
+                
+                <div class="form-buttons">
+                    <a href="{% url 'schwerpunkt-update' pk=schwerpunkt.pk %}" class="button">Update</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

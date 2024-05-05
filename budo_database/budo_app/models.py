@@ -341,11 +341,6 @@ class Turnus(models.Model):
 
 
 class Schwerpunkte(models.Model):
-    # WOCHEN_AUSWAHL = [
-    #     ("u", "Unklar"),
-    #     ("w1", "Woche 1"),
-    #     ("w2", "Woche 2")
-    # ]
     swp_name = models.CharField(
         max_length=255, help_text="Was ist der Name des Schwerpunkts?", verbose_name="Schwerpunktname")
     ort = models.ForeignKey(
@@ -368,6 +363,9 @@ class Schwerpunkte(models.Model):
     def __str__(self):
         return self.swp_name
 
+    def get_betreuende_names(self):
+        return ', '.join([betreuende.rufname for betreuende in self.betreuende.all()])
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
         schwerpunktzeit = self.schwerpunktzeit
@@ -384,9 +382,9 @@ class Schwerpunkte(models.Model):
 
 class Meal(models.Model):
     MEAL_TYPES = [
-        ('breakfast', 'Breakfast'),
-        ('lunch', 'Lunch'),
-        ('dinner', 'Dinner'),
+        ('breakfast', 'Frühstück'),
+        ('lunch', 'Mittagessen'),
+        ('dinner', 'Abendessen'),
     ]
     MEAL_CHOICES = [
         ('box', 'Box'),

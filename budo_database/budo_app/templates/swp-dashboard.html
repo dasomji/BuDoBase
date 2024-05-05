@@ -99,12 +99,42 @@
         </div>
         <div class="card" id="db-geburtstagskinder">
             <div class="info-header-container">
-                <h2>Geburtstagskinder</h2>{% include "components/openicon.html" %}
+                <h2>Swps</h2>{% include "components/openicon.html" %}
             </div>
-            <div class="card-info-container">
-                {% for swp in swps %}
-                    <p><span class="label"><a href="{% url 'schwerpunkt' pk=swp.id %}">{{swp.swp_name}}</a></span>: <a href="{% url 'swpmeals' pk=swp.id %}">Essen eintragen</a></p>
-                {% endfor %}
+            <div class="card-info-container table-container">
+                <table id="kids-table">
+                    
+                        <tr class="table-header">
+                            <th class="text-cell">Name</th>
+                            <th class="text-cell">Ort</th>
+                            <th class="text-cell">Betreuende</th>
+                            <th class="item-cell">Auslagern</th>
+                            <th class="number-cell">Kinder</th>
+                            <th class="item-cell">Aktionen</th>
+                        </tr>
+                
+                    <tbody>
+                        {% for swp in swps %}
+                            <tr class="table_row">
+                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
+                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.ort.id %}">{{ swp.ort }}</a></td>
+                                <td class="text-cell">
+                                    {% for profil in swp.betreuende.all %}
+                                        {{ profil }}
+                                            {% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td class="item-cell">{{ swp.auslagern }}</td>
+                                <td class="number-cell">{{ swp.kinder_woche1.count }}</td>
+                                <td>
+                                    <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
+                                    <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
+                                    <a href="{% url 'schwerpunkt-detail' pk=swp.id %}">👁️</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
