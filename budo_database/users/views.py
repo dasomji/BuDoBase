@@ -137,5 +137,5 @@ class ProfilUpdate(UpdateView):
         return self.request.user.profil
 
     def form_valid(self, form):
-        messages.success(self.request, "The task was updated successfully.")
+        messages.success(self.request, "Profil upgedatet!")
         return super(ProfilUpdate, self).form_valid(form)

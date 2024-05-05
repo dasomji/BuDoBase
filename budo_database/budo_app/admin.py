@@ -23,7 +23,13 @@ class MealInline(admin.TabularInline):
 
 
 class SchwerpunkteAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "ort", "display_betreuende",
+                    "schwerpunktzeit", "auslagern")
     inlines = [MealInline]
+
+    def display_betreuende(self, obj):
+        return ", ".join([str(betreuer) for betreuer in obj.betreuende.all()])
+    display_betreuende.short_description = 'Betreuende'
 
 
 admin.site.register(Kinder)

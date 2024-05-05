@@ -2,10 +2,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.template import loader
+from django.urls import reverse_lazy
 from datetime import datetime
 from django.contrib import messages
 from . import models
-from .models import Kinder, Notizen
+from .models import Kinder, Notizen, Schwerpunkte
+from django.views.generic.edit import CreateView, UpdateView
 from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm
 from copy import deepcopy
 
@@ -183,76 +185,16 @@ def postprocess(request):
     postprocessing()
 
 
-# def check_in_list(request, id):
-#     kinder_instance = Kinder.objects.get(pk=id)
-#     this_kid = models.Kinder.objects.get(id=id)
-#     notizen = models.Notizen.objects.all()
-#     kids = models.Kinder.objects.all()
-#     today = datetime.today().strftime('%Y-%m-%d')
-#     today_time = datetime.today().strftime('%d.%m.@%H:%M')
-#     current_user = request.user
-#     context = {
-#         'today_date': today,
-#         'this_kid': this_kid,
-#         'kids': kids,
-#         'notizen': notizen,
-#         "current_user": current_user,
-#     }
+class SchwerpunkteUpdate(UpdateView):
+    model = Schwerpunkte
+    fields = ['swp_name', 'ort', 'betreuende', 'beschreibung',
+              'schwerpunktzeit', 'auslagern', 'geplante_abreise', 'geplante_ankunft']
+    template_name = "schwerpunkt.html"
+    success_url = reverse_lazy('swp-dashboard')
 
-#     if request.method == 'GET':
-#         form = CheckInForm()
-#         return render(request, 'check_in_list.html', context)
+    def get_object(self, queryset=None):
+        return self.request.user.profil
 
-#     elif request.method == 'POST':
-#         form = CheckInForm(request.POST, user=request.user)
-#         if form.is_valid():
-#             this_kid = form.save(commit=False)
-#             # Assuming you are using Django's built-in authentication
-#             this_kid.save()
-#             messages.success(
-#                 request, f'{this_kid.kid_vorname} {this_kid.kid_nachname} erfolgreich eingecheckt.')
-#             return redirect('check_in_all', id=id)
-
-#     return render(request, 'check_in_list.html', context)
-
-# def testing(request):
-#     age_ordered = models.Kinder.objects.all().order_by('kid_alter').values()
-#     length = len(models.Kinder.objects.all())
-#     template = loader.get_template('testing.html')
-#     context = {
-#         "kids": age_ordered,
-#         "kid_totalnumbers": length,
-#     }
-#     return HttpResponse(template.render(context, request))
-
-
-# def budo_family_overview(request):
-#     kids = models.Kinder.objects.all().order_by('kid_vorname')
-#     familien = kids.values_list('budo_family', flat=True).distinct()
-#     familiensizes = {}
-#     for familie in familien:
-#         family_kids = kids.filter(budo_family=familie)
-#         familiensizes[f'{familie}'] = {
-#             'name': f'{familie}',
-#             'size': family_kids.count(),
-#             'kids': list(family_kids)
-#         }
-
-#     context = {
-#         'kids': kids,
-#         "familien": familiensizes,
-
-#     }
-#     return render(request, 'budo_familien.html', context)
-
-
-# def budo_family(request, budo_family):
-#     family = budo_family
-#     kids = models.Kinder.objects.filter(
-#         budo_family=budo_family).order_by('kid_vorname')
-#     template = loader.get_template('kids_list.html')
-#     context = {
-#         'kids': kids,
-#         'family': family,
-#     }
-#     return HttpResponse(template.render(context, request))
+    def form_valid(self, form):
+        messages.success(self.request, "Schwerpunkt upgedatet!")
+        return super(SchwerpunkteUpdate, self).form_valid(form)

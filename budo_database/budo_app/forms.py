@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.forms import ModelForm, Form
-from .models import Kinder, Notizen, Turnus, Profil
+from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte
 from django import forms
 from django.contrib.auth.models import User
 import datetime
@@ -58,3 +58,10 @@ class ProfilForm(forms.ModelForm):
         model = Profil
         fields = ['allergien', 'rolle', 'essen', 'telefonnummer']
         labels = {'allergien': "Allergien", 'rolle': "Rolle", 'essen': "Essen"}
+
+
+class SchwerpunktForm(forms.ModelForm):
+    class Meta:
+        model = Schwerpunkte
+        fields = ['swp_name', 'ort', 'betreuende', 'beschreibung',
+                  'schwerpunktzeit', 'auslagern', 'geplante_abreise', 'geplante_ankunft']
