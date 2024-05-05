@@ -3,6 +3,7 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save
 from django.contrib.auth.models import User
 import datetime
+from datetime import timedelta
 from phonenumber_field.modelfields import PhoneNumberField
 # Create your models here.
 
@@ -302,8 +303,26 @@ class Turnus(models.Model):
     def __str__(self):
         return f'T{self.turnus_nr}-{self.turnus_beginn.year}'
 
-    class Meta:
-        verbose_name_plural = "Turnus"
+    def save(self, *args, **kwargs):
+        # If this is a new instance (i.e., it doesn't have an ID yet),
+        # then we need to create the Schwerpunktzeit instances after saving.
+        is_new = self.pk is None
+
+        super().save(*args, **kwargs)
+
+        if is_new:
+            Schwerpunktzeit.objects.create(
+                woche="w1",
+                dauer=DayDuration.LANG,
+                swp_beginn=self.turnus_beginn + timedelta(days=4),
+                turnus=self
+            )
+            Schwerpunktzeit.objects.create(
+                woche="w2",
+                dauer=DayDuration.KURZ,
+                swp_beginn=self.turnus_beginn + timedelta(days=8),
+                turnus=self
+            )
 
     def get_turnus_beginn_formatiert(self):
         return self.turnus_beginn.strftime("%d.%m.%Y")
@@ -316,6 +335,9 @@ class Turnus(models.Model):
         end_datum = self.turnus_beginn + \
             datetime.timedelta(days=number_of_days)
         return end_datum
+
+    class Meta:
+        verbose_name_plural = "Turnus"
 
 
 class Schwerpunkte(models.Model):
@@ -346,6 +368,16 @@ class Schwerpunkte(models.Model):
     def __str__(self):
         return self.swp_name
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        schwerpunktzeit = self.schwerpunktzeit
+        if schwerpunktzeit.woche in ["w1", "w2"]:
+            for day in range(1, schwerpunktzeit.dauer + 1):
+                for meal_type in ['breakfast', 'lunch', 'dinner']:
+                    if not Meal.objects.filter(schwerpunkt=self, day=day, meal_type=meal_type).exists():
+                        Meal.objects.create(
+                            schwerpunkt=self, day=day, meal_type=meal_type)
+
     class Meta:
         verbose_name_plural = "Schwerpunkte"
 
@@ -365,7 +397,11 @@ class Meal(models.Model):
         'Schwerpunkte', on_delete=models.CASCADE, related_name='meals')
     day = models.IntegerField()  # 1, 2, or 3
     meal_type = models.CharField(max_length=10, choices=MEAL_TYPES)
-    meal_choice = models.CharField(max_length=10, choices=MEAL_CHOICES)
+    meal_choice = models.CharField(
+        max_length=10, choices=MEAL_CHOICES, blank=True)
+
+    def __str__(self):
+        return f"{self.schwerpunkt} Tag {self.day} {self.meal_type}"
 
     class Meta:
         # prevent duplicate meals
@@ -382,12 +418,13 @@ class DayDuration(models.IntegerChoices):
 class Schwerpunktzeit(models.Model):
     WOCHEN_AUSWAHL = [
         ("w1", "Woche 1"),
-        ("w2", "Woche 2")
+        ("w2", "Woche 2"),
+        ("u", "unklar")
     ]
     woche = models.CharField(
         max_length=2,
         choices=WOCHEN_AUSWAHL,
-        default="w1",
+        default="u",
         unique=True
     )
     turnus = models.ForeignKey("Turnus", on_delete=models.SET_NULL, null=True,
@@ -397,7 +434,7 @@ class Schwerpunktzeit(models.Model):
     dauer = models.IntegerField(choices=DayDuration.choices)
 
     def __str__(self):
-        return f"Woche {self.woche} ({self.dauer})"
+        return f"{self.get_woche_display()} ({self.dauer} Tage)"
 
 
 class Auslagerorte(models.Model):
