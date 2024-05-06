@@ -214,6 +214,7 @@ h1 {
     border-radius: var(--corner-rad);
     background-color: var(--bg-blue);
     box-shadow: #acacac 4px 4px 4px;
+    /* backdrop-filter: blur(10px); */
 }
 
 .card :is(h1, h2) {
@@ -454,6 +455,12 @@ table #alter {
 
 .meal-input:has(input[type="hidden"]) {
     display: none;
+}
+
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    padding-top: var(--xl-padding);
 }
 
 /* ------------Numpad ---------*/

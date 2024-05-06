@@ -194,7 +194,12 @@ def postprocess(request):
 class SchwerpunkteUpdate(UpdateView):
     model = Schwerpunkte
     form_class = SchwerpunktForm
-    template_name = "schwerpunkt-update.html"
+    template_name = "schwerpunkt-form.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['action'] = 'updaten'
+        return context
 
     def form_valid(self, form):
         messages.success(self.request, "Schwerpunkt upgedatet!")
@@ -218,6 +223,24 @@ class SchwerpunkteDetail(DetailView):
             meals_by_day[meal.day].append(meal)
         context['meals_by_day'] = meals_by_day
         return context
+
+
+class SchwerpunkteCreate(CreateView):
+    model = Schwerpunkte
+    form_class = SchwerpunktForm
+    template_name = 'schwerpunkt-form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['action'] = 'erstellen'
+        return context
+
+    def form_valid(self, form):
+        messages.success(self.request, "Schwerpunkt hinzugefügt!")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('schwerpunkt-detail', kwargs={'pk': self.object.pk})
 
 
 class MealUpdate(UpdateView):

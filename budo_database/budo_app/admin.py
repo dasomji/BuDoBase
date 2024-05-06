@@ -22,6 +22,11 @@ class MealInline(admin.TabularInline):
     extra = 0  # Number of extra forms to display
 
 
+class SwpInline(admin.TabularInline):
+    model = Schwerpunkte
+    extra = 0
+
+
 class SchwerpunkteAdmin(admin.ModelAdmin):
     list_display = ("__str__", "ort", "display_betreuende",
                     "schwerpunktzeit", "auslagern")
@@ -32,6 +37,14 @@ class SchwerpunkteAdmin(admin.ModelAdmin):
     display_betreuende.short_description = 'Betreuende'
 
 
+class SchwerpunktzeitAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "display_swps")
+
+    def display_swps(self, obj):
+        return ", ".join([str(swp) for swp in obj.swp.all()])
+    display_swps.short_description = 'Schwerpunkte'
+
+
 admin.site.register(Kinder)
 admin.site.register(Turnus, TurnusAdmin)
 admin.site.register(Auslagerorte)
@@ -40,4 +53,4 @@ admin.site.register(Document)
 admin.site.register(Profil, ProfilAdmin)
 admin.site.register(Schwerpunkte, SchwerpunkteAdmin)
 admin.site.register(Meal)
-admin.site.register(Schwerpunktzeit)
+admin.site.register(Schwerpunktzeit, SchwerpunktzeitAdmin)

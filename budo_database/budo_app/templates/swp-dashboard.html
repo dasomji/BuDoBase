@@ -3,103 +3,20 @@
             <h1>{{Dashboard}}</h1>
 {% endblock %}
 
+{% block headerbutton %}
+        <a href="/schwerpunkt/create" class="button">SWP hinzufügen</a>
+{% endblock %}
 
 {% block content %}
 {% load static %}
     <script src="{% static 'js/card_functionality.js' %}"></script>
 <div class="flex-container" id="body-container">
     <div class="detail-column" id="left-column">  
-        <div class="card" id="db-profil">
-            <div class="info-header-container">
-                <h2>Mein Profil</h2>{% include "components/openicon.html" %}
-            </div>
-            <div class="card-info-container">
-                <p><span class="label">Rolle</span>: {{profil.get_rolle}} </p>
-                <p><span class="label">Essen</span>: {{profil.get_food}} </p>
-                <p><span class="label">Allergien</span>: {{profil.allergien}} </p>
-                <p><span class="label">Email</span>: <a href="mailto:{{profil.user.email}}">{{profil.user.email}}</a></p>
-                <p><span class="label">Mobil</span>: <a href="tel: {{profil.telefonnummer}}">{{profil.telefonnummer}}</a></p>
-                <a class="button" href="/profil">Informationen aktuallisieren </a>
-            </div>
-        </div>
-        <div class="card" id="db-team">
-            <div class="info-header-container">
-                <h2>Team</h2>{% include "components/openicon.html" %}
-            </div>
-            <div class="card-info-container">
-                {% for teamer in team %}
-                    <p><span class="label">{{teamer.rufname}}</span>: {{ teamer.get_food }}</p>
-                    {% if teamer.allergien %}<li><span class="label">Allergien</span>: {{ teamer.allergien }}</li>{% endif %}
-                    {% if teamer.user.email %}<li><span class="label">Email</span>: <a href="mailto:{{teamer.user.email}}">{{teamer.user.email}}</a></li>{% endif %}
-                    {% if teamer.telefonnummer %}<li><span class="label">Mobil</span>: <a href="tel:{{teamer.telefonnummer}}">{{teamer.telefonnummer}}</a></li>{% endif %}
-                {% endfor %}
-            </div>
-        </div>
     </div>
-    <div class="detail-column" id="center-column"> 
-        <div class="card" id="db-kinderübersicht">
+    <div class="detail-column" id="right-column">
+        <div class="card" id="db-keinewoche">
             <div class="info-header-container">
-                <h2>Kinder: {{eingecheckte_kids}}</h2>{% include "components/openicon.html" %}
-            </div>
-            <div class="card-info-container">
-                <p><span class="label">Eingecheckt</span>: {{eingecheckte_kids}}/{{anzahl_kids}} </p>
-                <p><span class="label">Geschlechter</span>: {{ male_kids_count }} ♂ // {{ female_kids_count }} ♀ // {{ diverse_kids_count }} ⚧</p>
-                <p><span class="label">Kids mit Budo-Erfahrung</span>: {{ kids_mit_budo_erfahrung }}</p>
-                <p><span class="label">Zuganreise</span>: {{ kids_zug_anreise_count }}</p>
-                <p><span class="label">Zugabreise</span>: {{ kids_zug_abreise_count }}</p>
-            </div>
-        </div>
-    </div>
-    <div class="detail-column" id="right-column">  
-        <div class="card closed-card" id="db-ersties">
-            <div class="info-header-container">
-                <h2>Erstes Mal im BuDO: {{ersties_count}}/{{anzahl_kids}} </h2>{% include "components/openicon.html" %}
-            </div>
-            <div class="card-info-container">
-                {% for kid in ersties %}
-                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{kid.get_alter}}</p>
-                    <ul>
-                    {% if kid.get_clean_anmerkung %}<li><span class="label">Anmerkung</span>: {{ kid.get_clean_anmerkung|safe }}</li>{% endif %}
-                    {% if kid.get_clean_anmerkung_buchung %}<li><span class="label">Anmerkung bei Buchung</span>: {{ kid.get_clean_anmerkung_buchung|safe }}</li>{% endif %}
-                    {% if kid.get_clean_illness %}<li><span class="label">Krankheiten</span>: {{ kid.get_clean_illness }}</li>{% endif %}
-                    {% if kid.get_clean_drugs %}<li><span class="label">Medikamente</span>: {{ kid.get_clean_drugs }}</li>{% endif %}
-                    </ul>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="card closed-card" id="db-gesundheit">
-            <div class="info-header-container">
-                <h2>Gesundheitliches</h2>{% include "components/openicon.html" %}
-            </div>
-            <div class="card-info-container">
-                {% for kid in kids_attention %}
-                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal BuDo{% endif %} </p>
-                    <ul>
-                    {% if kid.get_clean_illness %}<li><span class="label">Krankheiten</span>: {{ kid.get_clean_illness }}</li>{% endif %}
-                    {% if kid.get_clean_drugs %}<li><span class="label">Medikamente</span>: {{ kid.get_clean_drugs }}</li>{% endif %}
-                    {% if kid.get_clean_anmerkung %}<li><span class="label">Anmerkung</span>: {{ kid.get_clean_anmerkung|safe }}</li>{% endif %}
-                    {% if kid.get_clean_anmerkung_buchung %}<li><span class="label">Anmerkung bei Buchung</span>: {{ kid.get_clean_anmerkung_buchung|safe }}</li>{% endif %}
-                    </ul>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="card closed-card" id="db-essen">
-            <div class="info-header-container">
-                <h2>Essen & Allergien</h2>{% include "components/openicon.html" %}
-            </div>
-            <div class="card-info-container">
-                {% for kid in kids %}
-                    {% if kid.get_clean_special_food %}
-                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname|safe}} {{kid.kid_nachname|safe}}</a></span>: {% if kid.get_veggie|length < 2 %} {{kid.get_veggie}} // {% endif %} {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal BuDo{% endif %} </p>
-                    {% if kid.get_veggie|length >= 2 %}<p>Veggie: {{kid.get_veggie}} </p> {% endif %}
-                    <p>{{ kid.get_clean_special_food }}</p>
-                    {% endif %}
-                {% endfor %}
-            </div>
-        </div>
-        <div class="card" id="db-geburtstagskinder">
-            <div class="info-header-container">
-                <h2>Swps</h2>{% include "components/openicon.html" %}
+                <h2>Unklar Wann</h2>{% include "components/openicon.html" %}
             </div>
             <div class="card-info-container table-container">
                 <table id="kids-table">
@@ -115,9 +32,10 @@
                 
                     <tbody>
                         {% for swp in swps %}
+                        {% if swp.schwerpunktzeit.woche == "u" %}
                             <tr class="table_row">
                                 <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
-                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.ort.id %}">{{ swp.ort }}</a></td>
+                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.ort }}</a></td>
                                 <td class="text-cell">
                                     {% for profil in swp.betreuende.all %}
                                         {{ profil }}
@@ -132,6 +50,91 @@
                                     <a href="{% url 'schwerpunkt-detail' pk=swp.id %}">👁️</a>
                                 </td>
                             </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>  
+        <div class="card" id="db-woche1">
+            <div class="info-header-container">
+                <h2>Woche 1</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container table-container">
+                <table id="kids-table">
+                    
+                        <tr class="table-header">
+                            <th class="text-cell">Name</th>
+                            <th class="text-cell">Ort</th>
+                            <th class="text-cell">Betreuende</th>
+                            <th class="item-cell">Auslagern</th>
+                            <th class="number-cell">Kinder</th>
+                            <th class="item-cell">Aktionen</th>
+                        </tr>
+                
+                    <tbody>
+                        {% for swp in swps %}
+                        {% if swp.schwerpunktzeit.woche == "w1" %}
+                            <tr class="table_row">
+                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
+                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.ort }}</a></td>
+                                <td class="text-cell">
+                                    {% for profil in swp.betreuende.all %}
+                                        {{ profil }}
+                                            {% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td class="item-cell">{{ swp.auslagern }}</td>
+                                <td class="number-cell">{{ swp.kinder_woche1.count }}</td>
+                                <td>
+                                    <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
+                                    <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
+                                    <a href="{% url 'schwerpunkt-detail' pk=swp.id %}">👁️</a>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card" id="db-woche2">
+            <div class="info-header-container">
+                <h2>Woche 2</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container table-container">
+                <table id="kids-table">
+                    
+                        <tr class="table-header">
+                            <th class="text-cell">Name</th>
+                            <th class="text-cell">Ort</th>
+                            <th class="text-cell">Betreuende</th>
+                            <th class="item-cell">Auslagern</th>
+                            <th class="number-cell">Kinder</th>
+                            <th class="item-cell">Aktionen</th>
+                        </tr>
+                
+                    <tbody>
+                        {% for swp in swps %}
+                            {% if swp.schwerpunktzeit.woche == "w2" %}
+                            <tr class="table_row">
+                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
+                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.ort }}</a></td>
+                                <td class="text-cell">
+                                    {% for profil in swp.betreuende.all %}
+                                        {{ profil }}
+                                            {% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td class="item-cell">{{ swp.auslagern }}</td>
+                                <td class="number-cell">{{ swp.kinder_woche1.count }}</td>
+                                <td>
+                                    <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
+                                    <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
+                                    <a href="{% url 'schwerpunkt-detail' pk=swp.id %}">👁️</a>
+                                </td>
+                            </tr>
+                            {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>

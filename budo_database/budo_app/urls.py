@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail
+from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail, SchwerpunkteCreate
 
 urlpatterns = [
     path("upload/", views.uploadFile, name="uploadFile"),
@@ -12,10 +12,12 @@ urlpatterns = [
     path('postprocess', views.postprocess, name='postprocess'),
     path('check_in/<int:id>', views.check_in, name='check_in'),
     path('check_out/<int:id>', views.check_out, name='check_out'),
-    path('schwerpunkt/<int:pk>/update',
-         SchwerpunkteUpdate.as_view(), name='schwerpunkt-update'),
+    path('schwerpunkt/create',
+         SchwerpunkteCreate.as_view(), name='schwerpunkt-create'),
     path('schwerpunkt/<int:pk>', SchwerpunkteDetail.as_view(),
          name='schwerpunkt-detail'),
+    path('schwerpunkt/<int:pk>/update',
+         SchwerpunkteUpdate.as_view(), name='schwerpunkt-update'),
     path('swpmeals/<int:pk>', MealUpdate.as_view(), name='swpmeals'),
     path("swp-dashboard/", views.swp_dashboard, name="swp-dashboard"),
     # path('check_in_list/<int:id>', views.check_in_list, name='check_in_all'),

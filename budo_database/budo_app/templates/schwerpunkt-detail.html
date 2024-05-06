@@ -40,9 +40,13 @@
                 <p><label>Abreise</label>: {{ schwerpunkt.geplante_abreise }}</p>
                 <p><label>Rückkehr</label>: {{ schwerpunkt.geplante_ankunft }}</p>
                 {% endif %}
-                
-                <div class="form-buttons">
-                    <a href="{% url 'schwerpunkt-update' pk=schwerpunkt.pk %}" class="button">Update</a>
+                <div class="button-container">
+                    <div class="form-buttons">
+                        <a href="{% url 'schwerpunkt-update' pk=schwerpunkt.pk %}" class="button">SWP bearbeiten</a>
+                    </div>
+                    <div class="form-buttons">
+                        <a href="{% url 'swpmeals' pk=schwerpunkt.pk %}" class="button">Essen bearbeiten</a>
+                    </div>
                 </div>
             </div>
         </div>
