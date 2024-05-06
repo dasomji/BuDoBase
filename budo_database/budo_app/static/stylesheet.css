@@ -217,6 +217,12 @@ h1 {
     /* backdrop-filter: blur(10px); */
 }
 
+@media print {
+    .card {
+        page-break-before: always;
+    }
+}
+
 .card :is(h1, h2) {
     text-align: left;
 }
@@ -461,6 +467,33 @@ table #alter {
     display: flex;
     justify-content: space-between;
     padding-top: var(--xl-padding);
+}
+
+
+/*---------Spezialdokumente------*/
+.serienbrief_name {
+    font-size: 3em;
+}
+
+.serienbrief {
+    font-size: 1.2em;
+}
+
+.serienbrief-container {
+    border: 1px solid black;
+    padding: var(--xl-padding);
+    margin-bottom: var(--l-padding);
+}
+
+.serienbrief-kid {
+    padding-left: 94px;
+    padding-right: 94px;
+}
+
+@media print {
+    .serienbrief_name {
+        page-break-before: always;
+    }
 }
 
 /* ------------Numpad ---------*/

@@ -191,6 +191,16 @@ def postprocess(request):
     postprocessing()
 
 
+def serienbrief(request):
+    kids = models.Kinder.objects.all().values()
+    template = loader.get_template('serienbrief.html')
+    context = {
+        "kids": kids,
+    }
+
+    return HttpResponse(template.render(context, request))
+
+
 class SchwerpunkteUpdate(UpdateView):
     model = Schwerpunkte
     form_class = SchwerpunktForm

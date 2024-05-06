@@ -12,6 +12,7 @@ urlpatterns = [
     path('postprocess', views.postprocess, name='postprocess'),
     path('check_in/<int:id>', views.check_in, name='check_in'),
     path('check_out/<int:id>', views.check_out, name='check_out'),
+    path('serienbrief', views.serienbrief, name='serienbrief'),
     path('schwerpunkt/create',
          SchwerpunkteCreate.as_view(), name='schwerpunkt-create'),
     path('schwerpunkt/<int:pk>', SchwerpunkteDetail.as_view(),
