@@ -530,6 +530,25 @@ table #alter {
     }
 }
 
+.murder-container{
+    display: flex;
+    flex-flow: row wrap;
+    gap: var(--xl-padding);
+    padding: var(--xl-padding);
+}
+
+.murder_name{
+    width: 200px;
+}
+
+h2.murder_name{
+    padding-left: var(--xl-padding);
+    padding-top: var(--xl-padding);
+    width: auto;
+}
+
+.mur
+
 /* ------------Numpad ---------*/
 .overlay {
     position: fixed;

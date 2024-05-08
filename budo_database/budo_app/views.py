@@ -201,6 +201,18 @@ def serienbrief(request):
     return HttpResponse(template.render(context, request))
 
 
+def murdergame(request):
+    kids = models.Kinder.objects.filter(anwesend=True)
+    team = models.Profil.objects.all()
+    template = loader.get_template('murdergame.html')
+    context = {
+        "kids": kids,
+        "team": team,
+    }
+
+    return HttpResponse(template.render(context, request))
+
+
 class SchwerpunkteUpdate(UpdateView):
     model = Schwerpunkte
     form_class = SchwerpunktForm
