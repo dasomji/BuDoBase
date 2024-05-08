@@ -92,6 +92,8 @@ def dashboard(request):
         [kid for kid in kids if kid.is_birthday_during_turnus()],
         key=lambda kid: (kid.kid_birthday.month, kid.kid_birthday.day)
     )
+    goodbyes = sorted([kid for kid in kids if (kid.get_alter()
+                      and (kid.get_alter() > 14.8))], key=lambda kid: kid.get_alter())
     geburtstage = len(geburtstagskinder)
     eingecheckte_kids = Kinder.objects.filter(anwesend=True).count()
     team = Profil.objects.all()
@@ -121,6 +123,7 @@ def dashboard(request):
         "kids_attention": kids_attention,
         "ersties": ersties,
         "ersties_count": ersties_count,
+        "goodbyes": goodbyes,
     }
 
     return HttpResponse(template.render(context, request))

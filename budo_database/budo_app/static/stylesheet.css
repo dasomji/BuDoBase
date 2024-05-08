@@ -219,7 +219,41 @@ h1 {
 
 @media print {
     .card {
-        page-break-before: always;
+        /* page-break-before: always; */
+        break-inside: avoid;
+        box-shadow: none;
+    }
+    .card .card-info-container p{
+        margin-bottom: 0.5rem;
+        /* text-decoration: none; */
+    }
+    .card a{
+        text-decoration: none;
+    }
+
+    .card .info-header-container .icon{
+        display: none !important;
+    }
+
+    .card .card-info-container{
+        display: block !important;
+    }
+    div.print-nobreak{
+       break-inside: avoid; 
+    }
+    #headermenu{
+        display: none;
+    }
+    #db-spezial{
+        display: none;
+    }
+
+    #myFilterInput{
+        display: none;
+    }
+
+    table, th, td {
+        display: table-cell !important;
     }
 }
 

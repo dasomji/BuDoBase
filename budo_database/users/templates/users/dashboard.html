@@ -82,13 +82,15 @@
             </div>
             <div class="card-info-container">
                 {% for kid in kids_attention %}
-                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal BuDo{% endif %} </p>
-                    <ul>
-                    {% if kid.get_clean_illness %}<li><span class="label">Krankheiten</span>: {{ kid.get_clean_illness }}</li>{% endif %}
-                    {% if kid.get_clean_drugs %}<li><span class="label">Medikamente</span>: {{ kid.get_clean_drugs }}</li>{% endif %}
-                    {% if kid.get_clean_anmerkung %}<li><span class="label">Anmerkung</span>: {{ kid.get_clean_anmerkung|safe }}</li>{% endif %}
-                    {% if kid.get_clean_anmerkung_buchung %}<li><span class="label">Anmerkung bei Buchung</span>: {{ kid.get_clean_anmerkung_buchung|safe }}</li>{% endif %}
-                    </ul>
+                    <div class="print-nobreak">
+                        <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal BuDo{% endif %} </p>
+                        <ul>
+                        {% if kid.get_clean_illness %}<li><span class="label">Krankheiten</span>: {{ kid.get_clean_illness }}</li>{% endif %}
+                        {% if kid.get_clean_drugs %}<li><span class="label">Medikamente</span>: {{ kid.get_clean_drugs }}</li>{% endif %}
+                        {% if kid.get_clean_anmerkung %}<li><span class="label">Anmerkung</span>: {{ kid.get_clean_anmerkung|safe }}</li>{% endif %}
+                        {% if kid.get_clean_anmerkung_buchung %}<li><span class="label">Anmerkung bei Buchung</span>: {{ kid.get_clean_anmerkung_buchung|safe }}</li>{% endif %}
+                        </ul>
+                    </div>
                 {% endfor %}
             </div>
         </div>
@@ -98,11 +100,13 @@
             </div>
             <div class="card-info-container">
                 {% for kid in kids %}
-                    {% if kid.get_clean_special_food %}
-                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname|safe}} {{kid.kid_nachname|safe}}</a></span>: {% if kid.get_veggie|length < 2 %} {{kid.get_veggie}} // {% endif %} {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal BuDo{% endif %} </p>
-                    {% if kid.get_veggie|length >= 2 %}<p>Veggie: {{kid.get_veggie}} </p> {% endif %}
-                    <p>{{ kid.get_clean_special_food }}</p>
-                    {% endif %}
+                    <div class="print-nobreak">
+                        {% if kid.get_clean_special_food %}
+                        <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname|safe}} {{kid.kid_nachname|safe}}</a></span>: {% if kid.get_veggie|length < 2 %} {{kid.get_veggie}} // {% endif %} {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal BuDo{% endif %} </p>
+                        {% if kid.get_veggie|length >= 2 %}<p>Veggie: {{kid.get_veggie}} </p> {% endif %}
+                        <p>{{ kid.get_clean_special_food }}</p>
+                        {% endif %}
+                    </div>
                 {% endfor %}
             </div>
         </div>
@@ -113,6 +117,16 @@
             <div class="card-info-container">
                 {% for kid in geburtstagskinder %}
                     <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{ kid.kid_birthday }}</p>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="card" id="db-sechzehner">
+            <div class="info-header-container">
+                <h2>Verabschiedungsliste</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                {% for kid in goodbyes %}
+                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{kid.get_alter}} - {{ kid.kid_birthday }}</p>
                 {% endfor %}
             </div>
         </div>

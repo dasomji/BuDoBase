@@ -33,7 +33,6 @@
                     <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
                     <p><span class="label">Alter</span>: {{Kinder.get_alter}}</p>
                     <p><span class="label">Geburtstag</span>: {{Kinder.kid_birthday}}{% if Kinder.is_birthday_during_turnus %} 🥳 {% endif %}</p>
-                    <p><a href="/budo_familie/{{ Kinder.budo_family }}"><span class="label">Budo Familie</span>: {{ Kinder.budo_family }}</a></p>
                     <p><span class="label">Aufenthaltsdauer</span>: {{Kinder.turnus_dauer}}-wöchig</p>
                     <p><span class="label">Geschwister</span>: {{Kinder.geschwister}}</p>
                     <p><span class="label">Zeltwunsch</span>: {{Kinder.zeltwunsch}}</p>
@@ -46,9 +45,9 @@
                     <h2>BuDo</h2> {% include "components/openicon.html" %}
                 </div>
                 <div class="card-info-container">
-                    <p><span class="label">SWP1</span>: {{Kinder.sex}} </p>
-                    <p><span class="label">SWP2</span>: {{Kinder.kid_alter}}</p>
                     <p><a href="/budo_familie/{{ Kinder.budo_family }}"><span class="label">Budo Familie</span>: {{ Kinder.budo_family }}</a></p>
+                    <p><span class="label">SWP1</span>: {{Kinder.schwerpunkt_woche1}} </p>
+                    <p><span class="label">SWP2</span>: {{Kinder.schwerpunkt_woche2}}</p>
                 </div>
             </div>
         </div>
