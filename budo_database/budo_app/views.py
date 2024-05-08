@@ -192,7 +192,7 @@ def postprocess(request):
 
 
 def serienbrief(request):
-    kids = models.Kinder.objects.all().values()
+    kids = models.Kinder.objects.all()
     template = loader.get_template('serienbrief.html')
     context = {
         "kids": kids,

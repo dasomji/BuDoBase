@@ -208,7 +208,7 @@ class Kinder(models.Model):
 
     def get_clean_special_food(self):
         if self.special_food_description:
-            if self.special_food_description.lower().strip() in ("nein", "keine", "keinr", "nan", "ja"):
+            if self.special_food_description.lower() in ("nein", "keine", "keinr", "nan", "ja"):
                 return ""
             else:
                 return self.special_food_description
