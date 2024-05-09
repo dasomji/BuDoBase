@@ -3,9 +3,9 @@
 {% endblock %} {% block content %}
 <div class="flex-container" id="body-container">
   <div class="detail-column" id="left-column">
-    <div class="card">
+    <div class="card" id="swp-detail-info">
       <div class="info-header-container">
-        <h2>{{ schwerpunkt.swp_name }}</h2>
+        <h2>{{ schwerpunkt.swp_name }}</h2>{% include "components/openicon.html" %}
       </div>
       <div class="card-info-container">
         <p><span class="label">Beschreibung</span>: {{ schwerpunkt.beschreibung }}</p>
@@ -21,16 +21,16 @@
             <table class="card-table">
             <tr>
                 <th></th>
-                <th>Frühstück</th>
-                <th>Mittagessen</th>
-                <th>Abendessen</th>
+                <th class="text-cell">Frühstück</th>
+                <th class="text-cell">Mittagessen</th>
+                <th class="text-cell">Abendessen</th>
             </tr>
 
             {% for day, meals in meals_by_day.items %}
             <tr>
-                <td>Tag {{ day }}</td>
+                <td class="nowrap text-cell">Tag {{ day }}</td>
                 {% for meal in meals %}
-                <td>{{ meal.get_meal_type_display }}: {{ meal.meal_choice }}</td>
+                <td class="text-cell">{{ meal.meal_choice }}</td>
                 {% endfor %}
             </tr>
             {% endfor %}

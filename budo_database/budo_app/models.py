@@ -162,17 +162,8 @@ class Kinder(models.Model):
         max_length=1000, null=True, default="", blank=True)
 
     # Schwerpunkte & Familien
-    # schwerpunkt_woche1 = models.ForeignKey(
-    #     'Schwerpunkte', on_delete=models.SET_NULL, null=True, related_name='kinder_woche1', blank=True, verbose_name="Schwerpunkt Woche 1")
-    # schwerpunkt_woche2 = models.ForeignKey(
-    #     'Schwerpunkte', on_delete=models.SET_NULL, null=True, related_name='kinder_woche2', blank=True, verbose_name="Schwerpunkt Woche 2")
     schwerpunkte = models.ManyToManyField(
         'Schwerpunkte', blank=True, related_name="swp_kinder", verbose_name="Schwerpunkt")
-
-    # swp1 = models.ForeignKey(
-    #     "SchwerpunktOne", on_delete=models.SET_NULL, null=True, blank=True)
-    # swp2 = models.ForeignKey(
-    #     "SchwerpunktTwo", on_delete=models.SET_NULL, null=True, blank=True)
 
     def get_alter(self):
         if self.kid_birthday is None:

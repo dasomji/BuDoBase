@@ -15,6 +15,10 @@
     --button-color: #FFDD9B;
 }
 
+.nowrap{
+    white-space: nowrap;
+}
+
 h1 {
     font-size: 36px;
 }
@@ -181,7 +185,7 @@ h1 {
     padding: var(--l-padding);
 }
 
-#body-container:has(.table-container) {
+#body-container.table-only {
     padding: 0 var(--l-padding);
     flex-flow: column nowrap;
 }
@@ -274,16 +278,19 @@ h1 {
     padding-bottom: var(--m-padding);
 }
 
-/* .card-table{
-    padding-top: var(--m-padding);
-    padding-bottom: var(--m-padding);
-} */
+.card-table :is(th, td){
+    padding-right: var(--s-padding);
+}
+
+.input-container .card-info-container{
+    display:block;
+}
 
 .input-container p {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    gap: var(--m-padding)
+    gap: var(--m-padding);
 }
 
 .input-container label {
@@ -410,7 +417,7 @@ button,
 } */
 
 #kids-table td,
-th {
+#kids-table th {
     padding: var(--s-padding);
     vertical-align: top;
 }
@@ -485,7 +492,7 @@ table #alter {
 #id_betreuende {
     display: flex;
     flex-flow: row wrap;
-    gap: var(--m-padding)
+    gap: var(--m-padding);
 }
 
 #id_betreuende div {
@@ -500,7 +507,7 @@ table #alter {
 .meal-input {
     display: flex;
     justify-content: flex-start;
-    gap: var(--xl-padding)
+    gap: var(--xl-padding);
 }
 
 .meal-input label {
