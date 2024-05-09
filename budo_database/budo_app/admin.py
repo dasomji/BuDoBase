@@ -4,11 +4,11 @@ from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, Notizen, Documen
 
 
 class KinderAdminForm(forms.ModelForm):
-    schwerpunkt_zeit1 = forms.ModelChoiceField(
+    schwerpunkt_w1 = forms.ModelChoiceField(
         queryset=Schwerpunkte.objects.filter(schwerpunktzeit__woche='w1'),
         required=False,
     )
-    schwerpunkt_zeit2 = forms.ModelChoiceField(
+    schwerpunkt_w2 = forms.ModelChoiceField(
         queryset=Schwerpunkte.objects.filter(schwerpunktzeit__woche='w2'),
         required=False,
     )
@@ -16,17 +16,52 @@ class KinderAdminForm(forms.ModelForm):
     class Meta:
         model = Kinder
         fields = '__all__'
+        exclude = ['schwerpunkte']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields['schwerpunkt_w1'].initial = self.instance.schwerpunkte.filter(
+                schwerpunktzeit__woche='w1').first()
+            self.fields['schwerpunkt_w2'].initial = self.instance.schwerpunkte.filter(
+                schwerpunktzeit__woche='w2').first()
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+
+        # Save the instance first
         if commit:
             instance.save()
-            self.save_m2m()  # this will save the ManyToMany relations
+
+        # Clear the existing Schwerpunkte
+        instance.schwerpunkte.clear()
+
+        # Save the selected Schwerpunkte
+        if self.cleaned_data.get('schwerpunkt_w1'):
+            instance.schwerpunkte.add(self.cleaned_data.get('schwerpunkt_w1'))
+        if self.cleaned_data.get('schwerpunkt_w2'):
+            instance.schwerpunkte.add(self.cleaned_data.get('schwerpunkt_w2'))
+
+        # Save the instance again to update the ManyToManyField
+        if commit:
+            instance.save()
+
         return instance
 
 
 class KinderAdmin(admin.ModelAdmin):
     form = KinderAdminForm
+
+
+class KinderInline(admin.TabularInline):
+    model = Kinder.schwerpunkte.through
+    extra = 1
+    verbose_name = "Kind"
+    verbose_name_plural = "Kinder"
+
+    def kid_name(self, obj):
+        kid = obj.kinder
+        return f"{kid.kid_vorname} {kid.kid_nachname}"
 
 
 class NotizenAdmin(admin.ModelAdmin):
@@ -57,7 +92,7 @@ class SwpInline(admin.TabularInline):
 class SchwerpunkteAdmin(admin.ModelAdmin):
     list_display = ("__str__", "ort", "display_betreuende",
                     "schwerpunktzeit", "auslagern")
-    inlines = [MealInline]
+    inlines = [KinderInline, MealInline]
 
     def display_betreuende(self, obj):
         return ", ".join([str(betreuer) for betreuer in obj.betreuende.all()])
