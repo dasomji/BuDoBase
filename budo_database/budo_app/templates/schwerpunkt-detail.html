@@ -1,55 +1,90 @@
-{% extends 'master.html' %}
-{% block headertitle %}
-    <h1>{{ schwerpunkt.swp_name }}</h1>
-{% endblock %}
-
-{% block content %}
+{% extends 'master.html' %} {% block headertitle %}
+<h1>{{ schwerpunkt.swp_name }}</h1>
+{% endblock %} {% block content %}
 <div class="flex-container" id="body-container">
-    <div class="detail-column" id="single-column">  
-        <div class="card input-container">
-            <div class="info-header-container">
-                <h2>Schwerpunkt Details</h2>
-            </div>
-            <div class="card-info-container">
-                <p><label>Name</label>: {{ schwerpunkt.swp_name }}</p>
-                <p><label>Ort</label>: {{ schwerpunkt.ort }}</p>
-                <p><label>Auslagern</label>: {{ schwerpunkt.auslagern }}</p>
-                <p><label>Betreuende</label>: {{ schwerpunkt.get_betreuende_names }}</p>
-                <p><label>Beschreibung</label>: {{ schwerpunkt.beschreibung }}</p>
-                <p><label>Wann</label>: {{ schwerpunkt.schwerpunktzeit }}</p>
-                <p><label>Beginnt am</label>: {{ schwerpunkt.schwerpunktzeit.swp_beginn }}</p>
-                <h3>Essen</h3>
-                <table>
-                    <tr>
-                        <th></th>
-                        <th>Frühstück</th>
-                        <th>Mittagessen</th>
-                        <th>Abendessen</th>
-                    </tr>
-                
-                    {% for day, meals in meals_by_day.items %}
-                        <tr>
-                            <td>Tag {{ day }}</td>
-                            {% for meal in meals %}
-                                <td>{{ meal.get_meal_type_display }}: {{ meal.meal_choice }}</td>
-                            {% endfor %}
-                        </tr>
-                    {% endfor %}
-                </table>
-                {%if schwerpunkt.auslagern %}
-                <p><label>Abreise</label>: {{ schwerpunkt.geplante_abreise }}</p>
-                <p><label>Rückkehr</label>: {{ schwerpunkt.geplante_ankunft }}</p>
-                {% endif %}
-                <div class="button-container">
-                    <div class="form-buttons">
-                        <a href="{% url 'schwerpunkt-update' pk=schwerpunkt.pk %}" class="button">SWP bearbeiten</a>
-                    </div>
-                    <div class="form-buttons">
-                        <a href="{% url 'swpmeals' pk=schwerpunkt.pk %}" class="button">Essen bearbeiten</a>
-                    </div>
-                </div>
-            </div>
+  <div class="detail-column" id="left-column">
+    <div class="card">
+      <div class="info-header-container">
+        <h2>{{ schwerpunkt.swp_name }}</h2>
+      </div>
+      <div class="card-info-container">
+        <p><span class="label">Beschreibung</span>: {{ schwerpunkt.beschreibung }}</p>
+        <p><span class="label">Ort</span>: {{ schwerpunkt.ort }}</p>
+        <p><span class="label">Auslagern</span>: {{ schwerpunkt.get_auslagern }}</p>
+        <p><span class="label">Betreuende</span>: {{ schwerpunkt.get_betreuende_names }}</p>
+        <p><span class="label">Wann</span>: {{ schwerpunkt.schwerpunktzeit }}</p>
+        <p>
+          <span class="label">Beginnt am</span>: {{ schwerpunkt.schwerpunktzeit.swp_beginn}}
+        </p>
+        
+        <div class="card-table-container">
+            <table class="card-table">
+            <tr>
+                <th></th>
+                <th>Frühstück</th>
+                <th>Mittagessen</th>
+                <th>Abendessen</th>
+            </tr>
+
+            {% for day, meals in meals_by_day.items %}
+            <tr>
+                <td>Tag {{ day }}</td>
+                {% for meal in meals %}
+                <td>{{ meal.get_meal_type_display }}: {{ meal.meal_choice }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            </table>
         </div>
+        {%if schwerpunkt.auslagern %}
+        <p><span class="label">Geschätzte Abreise</span>: {{ schwerpunkt.geplante_abreise }}</p>
+        <p><span class="label">Geschätzte Rückkehr</span>: {{ schwerpunkt.geplante_ankunft }}</p>
+        {% endif %}
+        <div class="button-container">
+          <div class="form-buttons">
+            <a
+              href="{% url 'schwerpunkt-update' pk=schwerpunkt.pk %}"
+              class="button"
+              >SWP bearbeiten</a
+            >
+          </div>
+          <div class="form-buttons">
+            <a href="{% url 'swpmeals' pk=schwerpunkt.pk %}" class="button"
+              >Essen bearbeiten</a
+            >
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
+  <div class="detail-column" id="right-column">
+    <div class="table-container">
+        <table class="" id="kids-table">
+            <tr class="table-header">
+                <th class="headcol">Name</th>
+                <th>Familie</th>
+                <th>⚧</th>
+                <th>Alter</th>
+                <th>Ernährung </th>
+                <th>Medikamente</th>
+                <th>Gesundheitliches</th>
+                
+            </tr>
+            {% for x in schwerpunkt.swp_kinder.all %}
+            <tr class="table_row w3-padding-large">
+                  <td class="text-cell headcol" id="name"><a href="/kid_details/{{ x.id }}">
+                    {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a></td>
+                  <td class="item-cell budo_family">{{ x.budo_family }}</td>
+                  <td class="item-cell sex">{{ x.get_short_sex }}</td>
+                  <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>
+                  <td class="text-cell">{{ x.get_food }}</td>
+                  <td class="text-cell">{% if x.get_clean_drugs %}{{ x.get_clean_drugs }}{% else %} --- {% endif%} </td>
+                  <td class="text-cell">{% if x.get_clean_illness %}{{ x.get_clean_illness }}{% else %} --- {% endif%}</td>
+                  
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+  </div>
 </div>
 {% endblock content %}

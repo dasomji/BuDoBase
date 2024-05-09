@@ -166,6 +166,8 @@ class Kinder(models.Model):
         'Schwerpunkte', on_delete=models.SET_NULL, null=True, related_name='kinder_woche1', blank=True, verbose_name="Schwerpunkt Woche 1")
     schwerpunkt_woche2 = models.ForeignKey(
         'Schwerpunkte', on_delete=models.SET_NULL, null=True, related_name='kinder_woche2', blank=True, verbose_name="Schwerpunkt Woche 2")
+    schwerpunkte = models.ManyToManyField(
+        'Schwerpunkte', blank=True, related_name="swp_kinder", verbose_name="Schwerpunkt")
 
     # swp1 = models.ForeignKey(
     #     "SchwerpunktOne", on_delete=models.SET_NULL, null=True, blank=True)
@@ -365,6 +367,12 @@ class Schwerpunkte(models.Model):
 
     def get_betreuende_names(self):
         return ', '.join([betreuende.rufname for betreuende in self.betreuende.all()])
+
+    def get_auslagern(self):
+        if self.auslagern == True:
+            return "Ja"
+        else:
+            return "Nein"
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.

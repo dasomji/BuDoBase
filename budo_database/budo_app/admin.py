@@ -1,5 +1,32 @@
+from django import forms
 from django.contrib import admin
 from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, Notizen, Document, Profil, Meal, Schwerpunktzeit
+
+
+class KinderAdminForm(forms.ModelForm):
+    schwerpunkt_zeit1 = forms.ModelChoiceField(
+        queryset=Schwerpunkte.objects.filter(schwerpunktzeit__woche='w1'),
+        required=False,
+    )
+    schwerpunkt_zeit2 = forms.ModelChoiceField(
+        queryset=Schwerpunkte.objects.filter(schwerpunktzeit__woche='w2'),
+        required=False,
+    )
+
+    class Meta:
+        model = Kinder
+        fields = '__all__'
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            instance.save()
+            self.save_m2m()  # this will save the ManyToMany relations
+        return instance
+
+
+class KinderAdmin(admin.ModelAdmin):
+    form = KinderAdminForm
 
 
 class NotizenAdmin(admin.ModelAdmin):
@@ -45,7 +72,7 @@ class SchwerpunktzeitAdmin(admin.ModelAdmin):
     display_swps.short_description = 'Schwerpunkte'
 
 
-admin.site.register(Kinder)
+admin.site.register(Kinder, KinderAdmin)
 admin.site.register(Turnus, TurnusAdmin)
 admin.site.register(Auslagerorte)
 admin.site.register(Notizen, NotizenAdmin)

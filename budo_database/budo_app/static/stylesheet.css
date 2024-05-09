@@ -261,9 +261,23 @@ h1 {
     text-align: left;
 }
 
+.card p{
+    margin-bottom: 4px;
+}
+
 .card span.label {
     font-weight: bold;
 }
+
+.card-table-container{
+    padding-top: var(--m-padding);
+    padding-bottom: var(--m-padding);
+}
+
+/* .card-table{
+    padding-top: var(--m-padding);
+    padding-bottom: var(--m-padding);
+} */
 
 .input-container p {
     display: flex;
@@ -353,11 +367,12 @@ button,
 
 /* ---- Table ------------- */
 
-.table-container {
+.table-container:has(#kids-table) {
     max-height: 80vh;
     overflow: auto;
     border-radius: var(--corner-rad);
 }
+
 
 #kids-table {
     border-radius: var(--corner-rad);

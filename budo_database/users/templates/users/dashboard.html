@@ -5,8 +5,6 @@
 
 
 {% block content %}
-{% load static %}
-    <script src="{% static 'js/card_functionality.js' %}"></script>
 <div class="flex-container" id="body-container">
     <div class="detail-column" id="left-column">  
         <div class="card" id="db-profil">
@@ -19,6 +17,12 @@
                 <p><span class="label">Allergien</span>: {{profil.allergien}} </p>
                 <p><span class="label">Email</span>: <a href="mailto:{{profil.user.email}}">{{profil.user.email}}</a></p>
                 <p><span class="label">Mobil</span>: <a href="tel: {{profil.telefonnummer}}">{{profil.telefonnummer}}</a></p>
+                <p><span class="label">Meine Schwerpunkte</span>:</p>
+                <ul>
+                    {% for swp in profil.swp.all %}
+                        <li><a href="{% url 'schwerpunkt-detail' pk=swp.id %}"> {{swp}} </a></li>
+                    {% endfor %}
+                </ul>
                 <a class="button" href="/profil">Informationen aktuallisieren </a>
             </div>
         </div>
