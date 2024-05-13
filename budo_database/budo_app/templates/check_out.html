@@ -13,10 +13,10 @@
   <div class="detail-column" id="single-column">  
     <div class="card input-container">
       <div class="info-header-container">
-        <h2>Check-Out</h2>
+        <h2>Check-Out: {{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h2>
       </div>
       <div class="card-info-container">
-        <p style="color: green">Dieses Kind ist anwesend.</p>
+        <p style="color: green">{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }} ist anwesend.</p>
           <p>Wir hatten vom Kind folgendes:</p>      
           <ul>
             {% if Kinder.e_card == True %}

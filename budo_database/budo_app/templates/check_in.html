@@ -12,10 +12,10 @@
     <div class="detail-column" id="single-column">  
       <div class="card input-container">
         <div class="info-header-container">
-        <h2>Check-In</h2>
+        <h2>Check-In: {{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h2>
       </div>
       <div class="card-info-container">
-        <p style="color: red">Dieses Kind ist noch nicht eingecheckt!.</p>
+        <p style="color: red">{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }} ist noch nicht eingecheckt!</p>
         {% block forminput %}
           <form method="post">
             {%csrf_token %} {{ check_in_form.as_p }} {{ notiz_form.as_p }}
