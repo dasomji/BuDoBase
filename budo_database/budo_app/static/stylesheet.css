@@ -57,16 +57,7 @@ body {
     display: inline-block;
 }
 
-@media only screen and (min-width: 992px) {
 
-    #headertitle {
-        display: flex;
-        align-items: baseline;
-        flex-direction: row wrap;
-        justify-content: flex-start;
-        column-gap: 30px;
-    }
-}
 
 
 #headermenu {
@@ -85,7 +76,7 @@ body {
     display: flex;
     flex-direction: row;
     align-items: flex-start;
-    gap: var(--xl-padding);
+    gap: var(--m-padding);
     justify-content: space-between;
     align-items: center;
     padding: 0;
@@ -102,6 +93,7 @@ h1 {
 #headersearch {
     align-self: stretch;
     flex-grow: 1;
+    /* min-width: 200px; */
     display: flex;
     flex-direction: column;
     position: relative;
@@ -121,14 +113,55 @@ h1 {
     gap: 22px;
 }
 
-@media screen and (max-width: 1100px) {
+#menu-button{
+    display: none;
+    background-color: transparent;
+    font-size: 30px;
+    padding: 0;
+}
+
+/* @media only screen and (min-width: 992px) {
+
+    #headertitle {
+        display: flex;
+        align-items: baseline;
+        flex-direction: row wrap;
+        justify-content: flex-start;
+        column-gap: 30px;
+    }
+} */
+
+@media only screen and (min-width: 760px) and (max-width: 920px) {
     #headermenu #navmenu-container {
         display: none;
     }
 
-    #header-content {
+    /* #header-content {
         flex-wrap: wrap;
+    } */
+
+    #menu-button{
+        display: block;
     }
+
+}
+
+@media only screen and (max-width: 759px) {
+    #headermenu #navmenu-container, .desktop-navbar {
+        display: none;
+    }
+
+    /* #header-content {
+        flex-wrap: wrap;
+    } */
+
+    #menu-button{
+        display: block;
+    }
+    #headertitle{
+        display: none;
+    }
+
 }
 
 #navmenu-container a {
@@ -212,6 +245,15 @@ h1 {
     width: 100%;
   }
 
+  @media only screen and (max-width: 759px) {
+    #mySidebar{
+        width:100vw;
+    }
+    #sidebar-close-area{
+        display:none;
+    }
+}
+
   #mySidebar div{
     display: flex;
     flex-flow: column nowrap;
@@ -227,6 +269,7 @@ button.closebtn{
     top: 10px;
     right: 10px;
     background-color: transparent;
+    font-size: 30px;
 }
 
 #body-container {
@@ -424,6 +467,7 @@ button,
     border-radius: var(--corner-rad);
     color: black;
     text-decoration: none;
+    white-space: nowrap;
 }
 
 #anwesend-marker {
