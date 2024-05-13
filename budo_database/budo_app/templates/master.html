@@ -1,63 +1,78 @@
 {% load static %}
 <!DOCTYPE html>
 <html>
-<head>
-  <title>{% block title %}{% endblock %}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
-  <script src="{% static 'js/card_functionality.js' %}"></script>
-  <script src=" {% static 'js/header.js' %}"></script>
-  {% comment %} <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> {% endcomment %}
-  <link rel="stylesheet" href="{% static 'stylesheet.css' %}">
-  {% block header %}
-  {% endblock %}
-</head>
-<body>
-  <!-- Menubar Content -->
-  <!-- Mobile menue -->
-  <div class="w3-sidebar w3-bar-block w3-border-right w3-animate-left" style="display:none" id="mySidebar">
-    <button onclick="w3_close()" class="w3-bar-item w3-large">Close &times;</button>
-    {% include 'navbar.html' %}
+  <head>
+    <title>{% block title %}{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
+    <script src="{% static 'js/card_functionality.js' %}"></script>
+    <script src=" {% static 'js/header.js' %}"></script>
+    {% comment %}
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" />
+    {% endcomment %}
+    <link rel="stylesheet" href="{% static 'stylesheet.css' %}" />
+    {% block header %} {% endblock %}
+  </head>
+  <body>
+    <!-- Menubar Content -->
+    <!-- Mobile menue -->
+    <div id="sidebar-container">
+    <div class="" id="mySidebar">
+      <button onclick="closeNav()" class="closebtn">&times;</button>
+      <div id="menu-user-info">
+        <a href="/profil">User: {{ request.user }}</a>
+        <a href="/logout">Ausloggen</a>
+      </div>
+      {% include 'navbar.html' %}
+    </div>
+    <div id="sidebar-close-area" onclick="closeNav()"></div>
   </div>
-  
-  <!-- Desktop Menu -->
-  <div class="" id="headermenu">
-    <div class="w3-container" id="header-content">
-      <div id="logo">
-        <a href="/dashboard" class="">
-          <svg width="28" height="24" viewBox="0 0 28 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M26.6287 20.7499L15.0825 0.749945C14.9728 0.559936 14.815 0.402152 14.625 0.292452C14.435 0.182752 14.2194 0.125 14 0.125C13.7806 0.125 13.565 0.182752 13.375 0.292452C13.185 0.402152 13.0272 0.559936 12.9175 0.749945L1.37 20.7499H0.25V23.2499H27.75V20.7499H26.6287ZM8.5 20.7499H4.2575L14 3.87494L23.7425 20.7499H19.5L14 10.7499L8.5 20.7499ZM14 15.9374L16.6462 20.7499H11.355L14 15.9374Z" fill="black"/>
-          </svg>
-        </a>
+
+    <!-- Desktop Menu -->
+    <div class="" id="headermenu">
+      <div class="w3-container" id="header-content">
+        <div id="logo">
+          <a href="/dashboard" class="">
+            <svg
+              width="28"
+              height="24"
+              viewBox="0 0 28 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M26.6287 20.7499L15.0825 0.749945C14.9728 0.559936 14.815 0.402152 14.625 0.292452C14.435 0.182752 14.2194 0.125 14 0.125C13.7806 0.125 13.565 0.182752 13.375 0.292452C13.185 0.402152 13.0272 0.559936 12.9175 0.749945L1.37 20.7499H0.25V23.2499H27.75V20.7499H26.6287ZM8.5 20.7499H4.2575L14 3.87494L23.7425 20.7499H19.5L14 10.7499L8.5 20.7499ZM14 15.9374L16.6462 20.7499H11.355L14 15.9374Z"
+                fill="black"
+              />
+            </svg>
+          </a>
         </div>
         <div id="headertitle">
           {% block headertitle %}
-            <h1>My Page</h1>
+          <h1>My Page</h1>
           {% endblock %}
         </div>
-        {%if request.user.is_authenticated %}
-          {% if kids %}
-        <div id="headersearch">
-          {% include 'filter_search.html' %}
-        </div>
-          {% endif%}
+        {%if request.user.is_authenticated %} {% if kids %}
+        <div id="headersearch">{% include 'filter_search.html' %}</div>
+        {% endif%}
         <div class="desktop-navbar w3-hide-small">
-            {% include 'navbar.html' %}
+          {% include 'navbar.html' %}
         </div>
-        <div id="headerbutton">
-          {% block headerbutton %}
-          {% endblock %}
-        </div>
-        <button class="w3-button w3-xlarge w3-hide-large" onclick="w3_open()">☰</button>
+        <div id="headerbutton">{% block headerbutton %} {% endblock %}</div>
+        <button id="menu-button" class="button" onclick="openNav()">☰</button>
         {% endif %}
+      </div>
     </div>
-  </div>
-{% comment %} <div class="w3-margin-32"> {% endcomment %}
-{% block content %}
-{% endblock %}
-{% comment %} </div> {% endcomment %}
-</body>
+    {% comment %}
+    <div class="w3-margin-32">
+      {% endcomment %} {% block content %} {% endblock %} {% comment %}
+    </div>
+    {% endcomment %}
+  </body>
 </html>

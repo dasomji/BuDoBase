@@ -358,7 +358,6 @@ class Schwerpunkte(models.Model):
         on_delete=models.SET_NULL,
         null=True,
     )
-
     auslagern = models.BooleanField(null=True, default=None)
     geplante_abreise = models.DateTimeField(null=True, blank=True)
     geplante_ankunft = models.DateTimeField(null=True, blank=True)

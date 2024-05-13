@@ -6,10 +6,18 @@ $(window).on('resize', function () {
     }
 }).trigger('resize'); // Trigger the function on page load
 
-function w3_open() {
-    document.getElementById("mySidebar").style.display = "block";
+// function openNav() {
+//     document.getElementById("sidebar-container").style.display = "flex";
+// }
+
+// function closeNav() {
+//     document.getElementById("sidebar-container").style.display = "none";
+// }
+
+function openNav() {
+    document.getElementById("sidebar-container").classList.add('open');
 }
 
-function w3_close() {
-    document.getElementById("mySidebar").style.display = "none";
+function closeNav() {
+    document.getElementById("sidebar-container").classList.remove('open');
 }
