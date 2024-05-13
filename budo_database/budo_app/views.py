@@ -8,6 +8,7 @@ from django.urls import reverse_lazy
 from django.forms import modelformset_factory
 from django import forms
 from datetime import datetime
+from django.conf import settings
 from django.contrib import messages
 from . import models
 from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil
@@ -15,6 +16,7 @@ from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, UpdateView
 from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm
 from copy import deepcopy
+from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
 
 
@@ -191,6 +193,7 @@ def postprocess(request):
     postprocessing()
 
 
+@login_required
 def serienbrief(request):
     kids = models.Kinder.objects.all()
     template = loader.get_template('serienbrief.html')
@@ -201,6 +204,7 @@ def serienbrief(request):
     return HttpResponse(template.render(context, request))
 
 
+@login_required
 def murdergame(request):
     kids = models.Kinder.objects.filter(anwesend=True)
     team = models.Profil.objects.all()
@@ -213,7 +217,7 @@ def murdergame(request):
     return HttpResponse(template.render(context, request))
 
 
-class SchwerpunkteUpdate(UpdateView):
+class SchwerpunkteUpdate(LoginRequiredMixin, UpdateView):
     model = Schwerpunkte
     form_class = SchwerpunktForm
     template_name = "schwerpunkt-form.html"
@@ -231,7 +235,7 @@ class SchwerpunkteUpdate(UpdateView):
         return reverse_lazy('schwerpunkt-detail', kwargs={'pk': self.object.pk})
 
 
-class SchwerpunkteDetail(DetailView):
+class SchwerpunkteDetail(LoginRequiredMixin, DetailView):
     model = Schwerpunkte
     template_name = 'schwerpunkt-detail.html'
     context_object_name = 'schwerpunkt'
@@ -244,10 +248,11 @@ class SchwerpunkteDetail(DetailView):
                 meals_by_day[meal.day] = []
             meals_by_day[meal.day].append(meal)
         context['meals_by_day'] = meals_by_day
+        context["google_maps_api_key"] = settings.GOOGLE_MAPS_API_KEY
         return context
 
 
-class SchwerpunkteCreate(CreateView):
+class SchwerpunkteCreate(LoginRequiredMixin, CreateView):
     model = Schwerpunkte
     form_class = SchwerpunktForm
     template_name = 'schwerpunkt-form.html'
@@ -265,7 +270,7 @@ class SchwerpunkteCreate(CreateView):
         return reverse_lazy('schwerpunkt-detail', kwargs={'pk': self.object.pk})
 
 
-class MealUpdate(UpdateView):
+class MealUpdate(LoginRequiredMixin, UpdateView):
     model = Schwerpunkte
     form_class = MealChoiceForm
     template_name = "swpmeals.html"
@@ -292,8 +297,10 @@ class MealUpdate(UpdateView):
             return self.render_to_response(self.get_context_data(form=form))
 
 
+@login_required
 def swp_dashboard(request):
     template = loader.get_template('swp-dashboard.html')
+
     current_user = request.user
     profil = Profil.objects.get(user=current_user)
     kids = Kinder.objects.all()

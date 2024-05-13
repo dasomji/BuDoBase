@@ -1,11 +1,21 @@
 from django.db import models
 from django.dispatch import receiver
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.contrib.auth.models import User
 import datetime
 from datetime import timedelta
 from phonenumber_field.modelfields import PhoneNumberField
+import re
 # Create your models here.
+
+
+def get_coordinates_from_maps_link(maps_link):
+    match = re.search(r'@(-?\d+\.\d+),(-?\d+\.\d+)', maps_link)
+    if match:
+        lat, lon = map(float, match.groups())
+        return lat, lon
+    else:
+        return None, None
 
 
 class Profil(models.Model):
@@ -448,8 +458,18 @@ class Auslagerorte(models.Model):
     koordinaten = models.CharField(max_length=255, blank=True, null=True)
     maps_link = models.URLField(blank=True, verbose_name="Google Maps Link")
     beschreibung = models.TextField(blank=True)
+    maps_link_parkspot = models.URLField(
+        blank=True, verbose_name="Google Maps Link Parkspot")
     koordinaten_parkspot = models.CharField(
         max_length=255, blank=True, null=True)
+
+    def get_lat_ort(self):
+        if self.koordinaten:
+            return self.koordinaten.split(",")[0].strip()
+
+    def get_lng_ort(self):
+        if self.koordinaten:
+            return self.koordinaten.split(",")[1].strip()
 
     def __str__(self):
         return self.name
@@ -481,3 +501,10 @@ def create_user_profil(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profil(sender, instance, **kwargs):
     instance.profil.save()
+
+
+@receiver(pre_save, sender=Auslagerorte)
+def update_koordinaten(sender, instance, **kwargs):
+    lat, lon = get_coordinates_from_maps_link(instance.maps_link)
+    if lat and lon:
+        instance.koordinaten = f"{lat},{lon}"

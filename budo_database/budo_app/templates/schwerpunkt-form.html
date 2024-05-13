@@ -1,12 +1,12 @@
 {% extends 'master.html' %}
 {% block headertitle %}
-    <h1>{{ form.instance.swp_name }}</h1>
+    <h1>{% if form.instance.swp_name %} {{ form.instance.swp_name }} {% else %} Neuer SWP {% endif %} </h1>
 {% endblock %}
 
 {% block content %}
 <div class="flex-container" id="body-container">
     <div class="detail-column" id="single-column">  
-        <div class="card input-container">
+        <div class="card input-container" id="schwerpunkt-form">
             <div class="info-header-container">
                 <h2>Schwerpunkt {{action}}</h2>
             </div>

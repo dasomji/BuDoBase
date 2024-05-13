@@ -282,9 +282,9 @@ h1 {
     padding-right: var(--s-padding);
 }
 
-.input-container .card-info-container{
+/* .input-container .card-info-container{
     display:block;
-}
+} */
 
 .input-container p {
     display: flex;

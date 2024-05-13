@@ -1,6 +1,6 @@
 {% extends 'master.html' %}
 {% block headertitle %}
-            <h1>{{Dashboard}}</h1>
+            <h1>Schwerpunkte</h1>
 {% endblock %}
 
 {% block headerbutton %}
@@ -40,8 +40,8 @@
                                             {% if not forloop.last %}, {% endif %}
                                     {% endfor %}
                                 </td>
-                                <td class="item-cell">{{ swp.auslagern }}</td>
-                                <td class="number-cell">{{ swp.kinder_woche1.count }}</td>
+                                <td class="item-cell">{{ swp.get_auslagern }}</td>
+                                <td class="number-cell">{{ swp.swp_kinder.count }}</td>
                                 <td>
                                     <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
                                     <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
@@ -82,8 +82,8 @@
                                             {% if not forloop.last %}, {% endif %}
                                     {% endfor %}
                                 </td>
-                                <td class="item-cell">{{ swp.auslagern }}</td>
-                                <td class="number-cell">{{ swp.kinder_woche1.count }}</td>
+                                <td class="item-cell">{{ swp.get_auslagern }}</td>
+                                <td class="number-cell">{{ swp.swp_kinder.count }}</td>
                                 <td>
                                     <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
                                     <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
@@ -124,8 +124,8 @@
                                             {% if not forloop.last %}, {% endif %}
                                     {% endfor %}
                                 </td>
-                                <td class="item-cell">{{ swp.auslagern }}</td>
-                                <td class="number-cell">{{ swp.kinder_woche1.count }}</td>
+                                <td class="item-cell">{{ swp.get_auslagern }}</td>
+                                <td class="number-cell">{{ swp.swp_kinder.count }}</td>
                                 <td>
                                     <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
                                     <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
