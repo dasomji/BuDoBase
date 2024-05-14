@@ -327,6 +327,24 @@ button.closebtn{
     /* backdrop-filter: blur(10px); */
 }
 
+.transparent{
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.transparent .info-header-container{
+    background-color: transparent;
+}
+
+.transparent .table-container{
+    background-color: transparent;
+}
+
+.transparent .table-container table .table-header{
+    border-radius: var(--corner-rad) var(--corner-rad) 0 0;
+}
+
 @media print {
     .card {
         /* page-break-before: always; */
