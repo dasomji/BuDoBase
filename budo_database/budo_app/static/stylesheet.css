@@ -1,5 +1,5 @@
 :root {
-    --text-color: rgb(16, 16, 16);
+    --text-color: rgb(55, 55, 55);
     --blue: rgba(183, 220, 255, 0.34);
     --dark-blue: rgba(179, 202, 217, 0.95);
     --bg-blue: rgba(222, 240, 255, 0.7);
@@ -305,6 +305,10 @@ button.closebtn{
 
 #right-column {
     flex-basis: 40%;
+}
+
+#right-column:has(#ort-detail-info){
+    max-width: 300px;
 }
 
 #body-container:has(#single-column) {
@@ -628,6 +632,18 @@ table #alter {
     padding-top: var(--xl-padding);
 }
 
+#map{
+    height: 70vh;
+    border-radius: var(--corner-rad);
+    box-shadow: #acacac 4px 4px 4px;
+}
+
+.leaflet-text a{
+    font-size: 20px;
+    white-space: nowrap;
+    text-decoration: none;
+    color: var(--text-color)
+}
 
 /*---------Spezialdokumente------*/
 .serienbrief_name {
@@ -671,8 +687,6 @@ h2.murder_name{
     padding-top: var(--xl-padding);
     width: auto;
 }
-
-.mur
 
 /* ------------Numpad ---------*/
 .overlay {

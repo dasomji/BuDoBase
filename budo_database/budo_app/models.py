@@ -10,7 +10,7 @@ import re
 
 
 def get_coordinates_from_maps_link(maps_link):
-    match = re.search(r'@(-?\d+\.\d+),(-?\d+\.\d+)', maps_link)
+    match = re.search(r'3d(-?\d+\.\d+)!4d(-?\d+\.\d+)', maps_link)
     if match:
         lat, lon = map(float, match.groups())
         return lat, lon
@@ -507,3 +507,6 @@ def update_koordinaten(sender, instance, **kwargs):
     lat, lon = get_coordinates_from_maps_link(instance.maps_link)
     if lat and lon:
         instance.koordinaten = f"{lat},{lon}"
+    lat_p, lon_p = get_coordinates_from_maps_link(instance.maps_link_parkspot)
+    if lat and lon:
+        instance.koordinaten_parkspot = f"{lat_p},{lon_p}"

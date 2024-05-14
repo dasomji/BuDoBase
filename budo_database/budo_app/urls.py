@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail, SchwerpunkteCreate
+from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail, SchwerpunkteCreate, AuslagerorteCreate, AuslagerorteDetail, AuslagerorteUpdate
 
 urlpatterns = [
     path("upload/", views.uploadFile, name="uploadFile"),
@@ -22,6 +22,13 @@ urlpatterns = [
          SchwerpunkteUpdate.as_view(), name='schwerpunkt-update'),
     path('swpmeals/<int:pk>', MealUpdate.as_view(), name='swpmeals'),
     path("swp-dashboard/", views.swp_dashboard, name="swp-dashboard"),
+    path("auslagerorte-list/", views.auslagerorte_list, name="auslagerorte-list"),
+    path('auslagerorte/create',
+         AuslagerorteCreate.as_view(), name='auslagerorte-create'),
+    path('auslagerorte/<int:pk>', AuslagerorteDetail.as_view(),
+         name='auslagerorte-detail'),
+    path('auslagerorte/<int:pk>/update',
+         AuslagerorteUpdate.as_view(), name='auslagerorte-update'),
     # path('check_in_list/<int:id>', views.check_in_list, name='check_in_all'),
     # path('test', views.testing, name='testing'),
     # path('budo_families/', views.budo_family_overview,

@@ -1,0 +1,66 @@
+{% extends 'master.html' %} 
+{% block headertitle %}
+
+    <h1>Auslagerorte</h1>
+
+{% endblock %} 
+{% block extrahead %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script> 
+{% endblock %}
+{% block content %}
+<div class="flex-container" id="body-container">
+  <div class="detail-column" id="left-column">
+    <div id="map"></div>
+    <script>
+      window.onload = function(){
+          var map = L.map('map').setView([{{auslagerorte.all.0.koordinaten}}], 12);
+          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              maxZoom: 19,
+              attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          }).addTo(map);
+      
+          var markers = [];
+          {% for ort in auslagerorte.all %}
+              var auslagerortIcon = L.divIcon({className: 'leaflet-text', html: "<b><a href='{% url 'auslagerorte-detail' pk=ort.id %}'>📍{{ ort }}</a></b>"});
+              var marker = L.marker([{{ort.koordinaten}}], {icon: auslagerortIcon}).addTo(map);
+              markers.push(marker);
+          {% endfor %}
+      
+          var group = new L.featureGroup(markers);
+          map.fitBounds(group.getBounds(), {paddingBottomRight:[150,0]});
+          
+      }
+      </script>
+  </div>
+  <div class="detail-column" id="right-column">
+    <div class="table-container">
+      <table class="" id="kids-table">
+          <tr class="table-header">
+              <th class="headcol">Name</th>
+              <th>Wo</th>
+              <th>Parkspot</th>
+              <th>Aktionen</th>
+          </tr>
+          {% for x in auslagerorte.all %}
+          <tr class="table_row w3-padding-large">
+                <td class="text-cell headcol" id="name"><a href="/auslagerorte/{{ x.id }}"> {{x.name}} </a></td>
+                <td class="text-cell"><a href="{{x.maps_link}}"> Google Maps </a></td>
+                <td class="text-cell">{% if x.maps_link_parkspot %}<a href="{{x.maps_link_parkspot}}"> Google Maps</a> {% else %} -- {% endif %} </td>
+                <td>
+                  <a href="{% url 'auslagerorte-update' pk=x.id %}">✏️</a>
+                  <a href="{% url 'auslagerorte-detail' pk=x.id %}">👁️</a>
+              </td>
+                
+                
+          </tr>
+          {% endfor %}
+      </table>
+  </div>
+  </div>
+</div>
+{% endblock content %}

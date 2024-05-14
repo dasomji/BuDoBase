@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.forms import ModelForm, Form
-from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal
+from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte
 from django import forms
 from django.contrib.auth.models import User
 import datetime
@@ -66,6 +66,13 @@ class SchwerpunktForm(forms.ModelForm):
         fields = ['swp_name', 'ort', 'betreuende', 'beschreibung',
                   'schwerpunktzeit', 'auslagern', 'geplante_abreise', 'geplante_ankunft']
         widgets = {'betreuende': forms.CheckboxSelectMultiple}
+
+
+class AuslagerForm(forms.ModelForm):
+    class Meta:
+        model = Auslagerorte
+        fields = ['name', 'strasse', 'ort', 'bundesland', 'postleitzahl', 'land', 'koordinaten',
+                  'maps_link', 'beschreibung', 'maps_link_parkspot', 'koordinaten_parkspot', ]
 
 
 class MealChoiceForm(forms.ModelForm):

@@ -11,10 +11,10 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from . import models
-from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil
+from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil, Auslagerorte
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, UpdateView
-from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm
+from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm
 from copy import deepcopy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
@@ -268,6 +268,70 @@ class SchwerpunkteCreate(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return reverse_lazy('schwerpunkt-detail', kwargs={'pk': self.object.pk})
+
+
+# Auslagerorte
+class AuslagerorteUpdate(LoginRequiredMixin, UpdateView):
+    model = Auslagerorte
+    form_class = AuslagerForm
+    template_name = "auslagerorte-form.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['action'] = 'updaten'
+        return context
+
+    def form_valid(self, form):
+        messages.success(self.request, "Auslagerort upgedatet!")
+        return super(AuslagerorteUpdate, self).form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('auslagerorte-detail', kwargs={'pk': self.object.pk})
+
+
+class AuslagerorteDetail(LoginRequiredMixin, DetailView):
+    model = Auslagerorte
+    template_name = 'auslagerorte-detail.html'
+    context_object_name = 'ort'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["google_maps_api_key"] = settings.GOOGLE_MAPS_API_KEY
+        return context
+
+
+class AuslagerorteCreate(LoginRequiredMixin, CreateView):
+    model = Auslagerorte
+    form_class = AuslagerForm
+    template_name = 'auslagerorte-form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['action'] = 'erstellen'
+        return context
+
+    def form_valid(self, form):
+        messages.success(self.request, "Auslagerort hinzugefügt!")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('auslagerorte-detail', kwargs={'pk': self.object.pk})
+
+
+@login_required
+def auslagerorte_list(request):
+    template = loader.get_template('auslagerorte-list.html')
+
+    current_user = request.user
+
+    kids = Kinder.objects.all()
+    auslagerorte = Auslagerorte.objects.all()
+    context = {
+        "kids": kids,
+        "auslagerorte": auslagerorte,
+    }
+
+    return HttpResponse(template.render(context, request))
 
 
 class MealUpdate(LoginRequiredMixin, UpdateView):

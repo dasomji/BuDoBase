@@ -1,0 +1,75 @@
+{% extends 'master.html' %} 
+{% block headertitle %}
+<div class="" id="header-container">
+  <a href="/admin/budo_app/auslagerorte/{{ort.id}}/change/">
+    <h1>{{ ort }}</h1>
+  </a>
+</div>
+{% endblock %} 
+{% block extrahead %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script> 
+{% endblock %}
+{% block content %}
+<div class="flex-container" id="body-container">
+  <div class="detail-column" id="left-column">
+    <div id="map"></div>
+    <script>
+      window.onload = function(){
+          var map = L.map('map').setView([{{ort.koordinaten}}], 12);
+          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              maxZoom: 19,
+              attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          }).addTo(map);
+      
+          var auslagerortIcon = L.divIcon({className: 'leaflet-text', html: "<b>📍{{ ort }}</b>"});
+          var marker_auslagerort = L.marker([{{ort.koordinaten}}], {icon: auslagerortIcon}).addTo(map);
+      
+          var budoIcon = L.divIcon({className: 'leaflet-text', html: "<b>📍Budo</b>"});
+          var marker_budo = L.marker([48.6866122,15.0830972], {icon: budoIcon}).addTo(map);
+      
+          var group = new L.featureGroup([marker_auslagerort, marker_budo]);
+      
+          map.fitBounds(group.getBounds(), {paddingBottomRight:[150,0]});
+          
+      }
+      </script>
+  </div>
+  <div class="detail-column" id="right-column">
+    <div class="card" id="ort-detail-info">
+      <div class="info-header-container">
+        <h2>{{ ort }}</h2>{% include "components/openicon.html" %}
+      </div>
+      <div class="card-info-container">
+        <p><span class="label">Name</span>: {{ ort.name }}</p>
+        <p><span class="label">Beschreibung</span>: {{ ort.beschreibung }}</p>
+        <p><span class="label">Koordinaten</span>: {{ ort.koordinaten }}</p>
+        <p><span class="label">Google Maps Link</span>: <a href="{{ ort.maps_link }}">Link</a></p>
+        <p><span class="label">Google Maps Link Parkspot</span>: <a href="{{ ort.maps_link_parkspot }}">Link</a></p>
+        <p><span class="label">Koordinaten Parkspot</span>: {{ ort.koordinaten_parkspot }}</p>
+        <p><span class="label">Straße</span>: {{ ort.strasse }}</p>
+        <p><span class="label">Stadt</span>: {{ ort.ort }}</p>
+        <p><span class="label">Bundesland</span>: {{ ort.bundesland }}</p>
+        <p><span class="label">Postleitzahl</span>: {{ ort.postleitzahl }}</p>
+        <p><span class="label">Land</span>: {{ ort.land }}</p>
+        
+        
+        <div class="button-container">
+          <div class="form-buttons">
+            <a
+              href="{% url 'auslagerorte-update' pk=ort.pk %}"
+              class="button"
+              >Ort bearbeiten</a
+            >
+          </div>
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
