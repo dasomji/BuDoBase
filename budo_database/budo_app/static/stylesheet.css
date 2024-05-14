@@ -307,6 +307,10 @@ button.closebtn{
     flex-basis: 40%;
 }
 
+#right-column:has(#db-woche1){
+    flex-basis:20%;
+}
+
 #right-column:has(#ort-detail-info){
     max-width: 300px;
 }
