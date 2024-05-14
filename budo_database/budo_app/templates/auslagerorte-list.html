@@ -4,6 +4,9 @@
     <h1>Auslagerorte</h1>
 
 {% endblock %} 
+{% block headerbutton %}
+        <a href="/auslagerorte/create" class="button">Ort hinzufügen</a>
+{% endblock %}
 {% block extrahead %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -37,7 +40,7 @@ crossorigin=""/>
       }
       </script>
   </div>
-  <div class="detail-column" id="right-column">
+  <div class="detail-column normal-column" id="right-column">
     <div class="table-container">
       <table class="" id="kids-table">
           <tr class="table-header">

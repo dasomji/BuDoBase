@@ -307,7 +307,7 @@ button.closebtn{
     flex-basis: 40%;
 }
 
-#right-column:has(#db-woche1){
+#right-column.normal-column{
     flex-basis:20%;
 }
 
