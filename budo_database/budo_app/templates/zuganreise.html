@@ -1,0 +1,54 @@
+{% extends "master.html" %}
+
+{% block title %}
+  BuDo Kids Alle Kinder meiner Mama
+{% endblock %}
+
+{% block headertitle %}
+  {%if family %}
+    <h1>{{ family.title }}s</h1>
+  {% else %}
+    <h1><a href="https://www.youtube.com/watch?v=D9K-bA_MRTM">Alle Kinder</a></h1>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% load static %}
+  <script src="{% static 'js/filtertable.js' %}"></script>
+  <div class="w3-container table-only" id="body-container">
+    {% include 'filter-table.html' %}
+    <div class="table-container">
+        <table class="" id="kids-table">
+            <tr class="table-header">
+                <th class="headcol">Name</th>
+                <th>Alter</th>
+                <th>Anmelder</th>
+                <th>Anmelder Tel</th>
+                <th>Geschwister</th>
+                <th>Zuganreise</th>
+                <th>Zugabreise</th>
+                <th>Top-Jugendticket</th>
+                <th>Aktionen</th>
+                
+                
+            </tr>
+            {% for x in kids %}
+            <tr class="table_row w3-padding-large">
+                  <td class="text-cell headcol" id="name"><a href="/kid_details/{{ x.id }}">
+                    {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a>
+                  </td>
+                  <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>
+                  <td class="text-cell"><a href="tel: {{x.anmelder_mobil}}">{{ x.anmelder_vorname }} {{x.anmelder_nachname}}</a></td>
+                  <td class="number-cell"><a href="tel: {{x.anmelder_mobil}}">{{x.anmelder_mobil}}</a></td>
+                  <td class="text-cell">{% if x.get_clean_geschwister %}{{ x.get_clean_geschwister }}{% else %} --- {% endif%} </td>
+                  <td class="text-cell">{{ x.get_zuganreise }}</td>
+                  <td class="text-cell">{{ x.get_zugabreise }}</td>
+                  <td class="text-cell">{{ x.get_topjugendticket }}</td>
+                  <td class="text-cell">Switch</td>
+                  
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+  </div>
+{% endblock %}

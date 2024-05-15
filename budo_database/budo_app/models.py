@@ -276,6 +276,42 @@ class Kinder(models.Model):
         else:
             return ""
 
+    def get_clean_geschwister(self):
+        if self.geschwister:
+            if str(self.geschwister).lower().strip() in ("nein", "nan", "none", "-", "0", "bein"):
+                return ""
+            else:
+                return self.geschwister
+        else:
+            return ""
+
+    def get_clean_zeltwunsch(self):
+        if self.zeltwunsch:
+            if str(self.zeltwunsch).lower().strip() in ("nein", "nan", "none", "-", "0", "bein"):
+                return ""
+            else:
+                return self.zeltwunsch
+        else:
+            return ""
+
+    def get_zuganreise(self):
+        if self.zug_anreise == True:
+            return "Ja"
+        else:
+            return "Nein"
+
+    def get_zugabreise(self):
+        if self.zug_abreise == True:
+            return "Ja"
+        else:
+            return "Nein"
+
+    def get_topjugendticket(self):
+        if self.top_jugendticket == True:
+            return "Ja"
+        else:
+            return "Nein"
+
     class Meta:
         verbose_name_plural = "Kinder"
 

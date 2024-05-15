@@ -62,6 +62,15 @@ def kids_list(request):
     }
     return HttpResponse(template.render(context, request))
 
+@login_required
+def zuganreise(request):
+    kids = models.Kinder.objects.all()
+    template = loader.get_template('zuganreise.html')
+    context = {
+        'kids': kids,
+    }
+    return HttpResponse(template.render(context, request))
+
 
 @login_required
 def kid_details(request, id):
