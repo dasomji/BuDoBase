@@ -1,0 +1,39 @@
+<style>
+  .switch {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    padding: 0px;
+
+    border: 1px solid #000000;
+    border-radius: 32px;
+  }
+
+  .inner-switch {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    gap: 8px;
+
+    width: 64px;
+    {% comment %} height: 31px; {% endcomment %}
+  }
+  .inner-switch p{
+    text-align: center;
+    margin: 0;
+  }
+
+  .active {
+    background: #b3cad9;
+    border: 1px solid #000000;
+    border-radius: 32px;
+  }
+</style>
+
+<div class="switch ja">
+  <div class="inner-switch {%if bool %} active {% endif %}"><p>Ja</p></div>
+  <div class="inner-switch {%if not bool %} active {% endif %}"><p>Nein</p></div>
+</div>

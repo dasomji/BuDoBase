@@ -710,6 +710,11 @@ h2.murder_name{
     width: auto;
 }
 
+/* ------------Anreise/Abreise */
+.zug-switch{
+    cursor: pointer;
+}
+
 /* ------------Numpad ---------*/
 .overlay {
     position: fixed;

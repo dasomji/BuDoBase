@@ -98,6 +98,7 @@ class Kinder(models.Model):
     kid_birthday = models.DateField(null=True, default=None)
     zug_anreise = models.BooleanField(null=True, default=None)
     zug_abreise = models.BooleanField(null=True, default=None)
+    notiz_abreise = models.CharField(max_length=500, blank=True, default="")
     # script to filter for "kein Top Jugendticket vorhanden"
     top_jugendticket = models.BooleanField(null=True, default=None)
     # 1 oder 2 --> little script to convert

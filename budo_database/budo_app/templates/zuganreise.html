@@ -1,7 +1,12 @@
 {% extends "master.html" %}
+{% load static %}
 
 {% block title %}
   BuDo Kids Alle Kinder meiner Mama
+{% endblock %}
+{% block extrahead %}
+  <script src=" {% static 'js/zuganreise-toggle.js' %}"></script>
+  <script src="{% static 'js/filtertable.js' %}"></script>
 {% endblock %}
 
 {% block headertitle %}
@@ -13,22 +18,21 @@
 {% endblock %}
 
 {% block content %}
-  {% load static %}
-  <script src="{% static 'js/filtertable.js' %}"></script>
   <div class="w3-container table-only" id="body-container">
     {% include 'filter-table.html' %}
     <div class="table-container">
         <table class="" id="kids-table">
             <tr class="table-header">
                 <th class="headcol">Name</th>
+                <th>Zuganreise</th>
+                <th>Zugabreise</th>
+                <th>Abreise-Notiz</th>
+                <th>Abreise ändern</th>
+                <th>Top-Jugendticket</th>
                 <th>Alter</th>
                 <th>Anmelder</th>
                 <th>Anmelder Tel</th>
                 <th>Geschwister</th>
-                <th>Zuganreise</th>
-                <th>Zugabreise</th>
-                <th>Top-Jugendticket</th>
-                <th>Aktionen</th>
                 
                 
             </tr>
@@ -37,14 +41,15 @@
                   <td class="text-cell headcol" id="name"><a href="/kid_details/{{ x.id }}">
                     {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a>
                   </td>
+                  <td class="text-cell" id="zuganreise-{{ x.id }}">{{ x.get_zuganreise }}</td>
+                  <td class="text-cell" id="zugabreise-{{ x.id }}">{% include "components/ja_nein_switch.html" with bool=x.zug_abreise %}</td>
+                  <td class="text-cell">{{ x.notiz_abreise }}</td>
+                  <td class="text-cell zug-switch" id="switch-{{ x.id }}" data-kidname="{{x.kid_vorname}} {{x.kid_nachname}}" data-id="{{ x.id }}" data-url="{% url 'toggle_zug_abreise' %}">✏️</td>
+                  <td class="text-cell">{{ x.get_topjugendticket }}</td>
                   <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>
                   <td class="text-cell"><a href="tel: {{x.anmelder_mobil}}">{{ x.anmelder_vorname }} {{x.anmelder_nachname}}</a></td>
                   <td class="number-cell"><a href="tel: {{x.anmelder_mobil}}">{{x.anmelder_mobil}}</a></td>
                   <td class="text-cell">{% if x.get_clean_geschwister %}{{ x.get_clean_geschwister }}{% else %} --- {% endif%} </td>
-                  <td class="text-cell">{{ x.get_zuganreise }}</td>
-                  <td class="text-cell">{{ x.get_zugabreise }}</td>
-                  <td class="text-cell">{{ x.get_topjugendticket }}</td>
-                  <td class="text-cell">Switch</td>
                   
             </tr>
             {% endfor %}

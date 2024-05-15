@@ -2,7 +2,8 @@ from .models import Meal, Schwerpunkte
 from django.shortcuts import redirect
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.template import loader
 from django.urls import reverse_lazy
 from django.forms import modelformset_factory
@@ -62,6 +63,7 @@ def kids_list(request):
     }
     return HttpResponse(template.render(context, request))
 
+
 @login_required
 def zuganreise(request):
     kids = models.Kinder.objects.all()
@@ -70,6 +72,16 @@ def zuganreise(request):
         'kids': kids,
     }
     return HttpResponse(template.render(context, request))
+
+
+@csrf_exempt
+def toggle_zug_abreise(request):
+    if request.method == 'POST':
+        kid_id = request.POST.get('id')
+        kid = Kinder.objects.get(id=kid_id)
+        kid.zug_abreise = not kid.zug_abreise
+        kid.save()
+        return JsonResponse({'status': 'success'})
 
 
 @login_required

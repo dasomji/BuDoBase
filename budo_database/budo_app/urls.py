@@ -30,6 +30,8 @@ urlpatterns = [
          name='auslagerorte-detail'),
     path('auslagerorte/<int:pk>/update',
          AuslagerorteUpdate.as_view(), name='auslagerorte-update'),
+    path('toggle_zug_abreise/', views.toggle_zug_abreise,
+         name='toggle_zug_abreise'),
     # path('check_in_list/<int:id>', views.check_in_list, name='check_in_all'),
     # path('test', views.testing, name='testing'),
     # path('budo_families/', views.budo_family_overview,
