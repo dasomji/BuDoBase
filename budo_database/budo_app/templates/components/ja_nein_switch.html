@@ -26,14 +26,22 @@
     margin: 0;
   }
 
-  .active {
+  .ja > :first-child{
     background: #b3cad9;
     border: 1px solid #000000;
     border-radius: 32px;
-  }
+}
+
+
+.nein :nth-child(2) {
+    background: #b3cad9;
+    border: 1px solid #000000;
+    border-radius: 32px;
+}
+  
 </style>
 
-<div class="switch ja">
-  <div class="inner-switch {%if bool %} active {% endif %}"><p>Ja</p></div>
-  <div class="inner-switch {%if not bool %} active {% endif %}"><p>Nein</p></div>
+<div class="switch {%if bool %}ja{% else %}nein{% endif %}">
+  <div class="inner-switch"><p>Ja</p></div>
+  <div class="inner-switch"><p>Nein</p></div>
 </div>

@@ -5,7 +5,7 @@
   BuDo Kids Alle Kinder meiner Mama
 {% endblock %}
 {% block extrahead %}
-  <script src=" {% static 'js/zuganreise-toggle.js' %}"></script>
+  <script src=" {% static 'js/zugabreise-toggle.js' %}"></script>
   <script src="{% static 'js/filtertable.js' %}"></script>
 {% endblock %}
 
@@ -24,8 +24,8 @@
         <table class="" id="kids-table">
             <tr class="table-header">
                 <th class="headcol">Name</th>
-                <th>Zuganreise</th>
-                <th>Zugabreise</th>
+                <th class="zugabreise">Zugabreise</th>
+                <th class="zugabreise-toggle">Zugabreise</th>
                 <th>Abreise-Notiz</th>
                 <th>Abreise ändern</th>
                 <th>Top-Jugendticket</th>
@@ -41,8 +41,8 @@
                   <td class="text-cell headcol" id="name"><a href="/kid_details/{{ x.id }}">
                     {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a>
                   </td>
-                  <td class="text-cell" id="zuganreise-{{ x.id }}">{{ x.get_zuganreise }}</td>
-                  <td class="text-cell" id="zugabreise-{{ x.id }}">{% include "components/ja_nein_switch.html" with bool=x.zug_abreise %}</td>
+                  <td class="text-cell" id="zugabreise-{{ x.id }}">{{ x.get_zugabreise }}</td>
+                  <td class="text-cell" id="zugabreise-toggle-{{ x.id }}">{% include "components/ja_nein_switch.html" with bool=x.zug_abreise %}</td>
                   <td class="text-cell">{{ x.notiz_abreise }}</td>
                   <td class="text-cell zug-switch" id="switch-{{ x.id }}" data-kidname="{{x.kid_vorname}} {{x.kid_nachname}}" data-id="{{ x.id }}" data-url="{% url 'toggle_zug_abreise' %}">✏️</td>
                   <td class="text-cell">{{ x.get_topjugendticket }}</td>
