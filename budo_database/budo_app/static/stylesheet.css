@@ -500,6 +500,46 @@ button,
     color: green;
 }
 
+/* --------------- Ja-Nein-Toggle */
+.switch {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    padding: 0px;
+    border: 1px solid #000000;
+    border-radius: 32px;
+    cursor: pointer;
+    overflow: hidden; /* Hide overflow */
+    height: 40px; /* Adjust height as needed */
+}
+
+.inner-switch {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    gap: 8px;
+    width: 48px;
+    height: 100%; /* Ensure it takes the full height of the parent */
+}
+
+.inner-switch p {
+    text-align: center;
+    margin: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.ja > :first-child,
+.nein :nth-child(2) {
+    background: #b3cad9;
+    box-shadow: inset 0 0 0 1px #000000;
+    border-radius: 32px;
+    margin: -1px; /* Overlap the border on all sides */
+    height: calc(100% + 2px); /* Adjust height to cover top and bottom borders */
+}
 
 /* ---- Table ------------- */
 

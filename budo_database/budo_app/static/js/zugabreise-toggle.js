@@ -1,11 +1,11 @@
 document.addEventListener('DOMContentLoaded', function () {
-    var switches = document.querySelectorAll('[id^="switch-"]');
-    switches.forEach(function (switchElement) {
-        switchElement.addEventListener('click', function () {
+    var toggles = document.querySelectorAll('[id^="zugabreise-toggle-"]');
+    toggles.forEach(function (toggleElement) {
+        toggleElement.addEventListener('click', function () {
             var kidId = this.dataset.id;
             var kidname = this.dataset.kidname;
-            var zugabreise_feld = document.getElementById(`zugabreise-${kidId}`);
-            var zugabreise_toggle = document.getElementById(`zugabreise-toggle-${kidId}`);
+            var switchElementInner = this.querySelector(".switch");
+            var currentStatus = switchElementInner.classList.contains("ja") ? "Ja" : "Nein";
             var confirmAction = confirm(`Zugabreise-Status für ${kidname} ändern?`);
             if (confirmAction) {
                 var xhr = new XMLHttpRequest();
@@ -17,12 +17,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (this.status == 200) {
                         var response = JSON.parse(this.responseText);
                         if (response.status == 'success') {
-                            zugabreise_feld.textContent = zugabreise_feld.textContent === "Ja" ? "Nein" : "Ja";
-                            var switchElementInner = zugabreise_toggle.querySelector(".switch"); // Access .switch element directly from the zugabreise_toggle
-                            if (switchElementInner) {
-                                switchElementInner.classList.remove("ja", "nein"); // Remove both classes first
-                                switchElementInner.classList.add(zugabreise_feld.textContent.toLowerCase()); // Add the appropriate class based on the new text content
-                            }
+                            var newStatus = currentStatus === "Ja" ? "Nein" : "Ja";
+                            switchElementInner.classList.remove("ja", "nein"); // Remove both classes first
+                            switchElementInner.classList.add(newStatus.toLowerCase()); // Add the appropriate class based on the new status
                         }
                     }
                 };
