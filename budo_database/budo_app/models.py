@@ -313,6 +313,10 @@ class Kinder(models.Model):
         else:
             return "Nein"
 
+    @classmethod
+    def get_zugabreise_count(cls):
+        return cls.objects.filter(zug_abreise=True).count()
+
     class Meta:
         verbose_name_plural = "Kinder"
 

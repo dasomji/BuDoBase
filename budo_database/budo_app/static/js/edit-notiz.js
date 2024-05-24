@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
             currentKidId = this.getAttribute('data-id');
             notizInput.value = this.getAttribute('data-notiz');
             modal.style.display = "block";
+            notizInput.focus();  // Set focus on the input field
         });
     });
 

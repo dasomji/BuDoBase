@@ -69,9 +69,11 @@ def kids_list(request):
 @login_required
 def zuganreise(request):
     kids = models.Kinder.objects.all()
+    zugabreise_count = models.Kinder.get_zugabreise_count()
     template = loader.get_template('zuganreise.html')
     context = {
         'kids': kids,
+        'zugabreise_count': zugabreise_count,
     }
     return HttpResponse(template.render(context, request))
 
@@ -83,7 +85,12 @@ def toggle_zug_abreise(request):
         kid = Kinder.objects.get(id=kid_id)
         kid.zug_abreise = not kid.zug_abreise
         kid.save()
-        return JsonResponse({'status': 'success'})
+
+        # Get the updated count
+        zugabreise_count = Kinder.objects.filter(zug_abreise=True).count()
+
+        return JsonResponse({'status': 'success', 'new_count': zugabreise_count})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 
 @csrf_exempt

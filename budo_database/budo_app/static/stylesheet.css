@@ -502,7 +502,7 @@ button,
 
 /* --------------- Ja-Nein-Toggle */
 .switch {
-    display: flex;
+    display: inline-flex;
     flex-direction: row;
     justify-content: center;
     align-items: center;
@@ -511,7 +511,7 @@ button,
     border-radius: 32px;
     cursor: pointer;
     overflow: hidden; /* Hide overflow */
-    height: 40px; /* Adjust height as needed */
+    height: 40px;
 }
 
 .inner-switch {
@@ -521,7 +521,7 @@ button,
     justify-content: center;
     padding: 6px;
     gap: 8px;
-    width: 48px;
+    width: auto;
     height: 100%; /* Ensure it takes the full height of the parent */
 }
 

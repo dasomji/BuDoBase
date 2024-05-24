@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', function () {
                             var newStatus = currentStatus === "Ja" ? "Nein" : "Ja";
                             switchElementInner.classList.remove("ja", "nein"); // Remove both classes first
                             switchElementInner.classList.add(newStatus.toLowerCase()); // Add the appropriate class based on the new status
+
+                            // Update the zugabreise count
+                            var zugabreiseCountElement = document.querySelector('.zugabreise-toggle');
+                            zugabreiseCountElement.textContent = `Zugabreise: ${response.new_count}`;
                         }
                     }
                 };
