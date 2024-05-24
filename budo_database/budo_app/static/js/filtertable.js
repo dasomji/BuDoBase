@@ -2,8 +2,17 @@
 
 window.onload = function () {
     // Function to get the text content of a cell
+    // function getCellValue(row, columnIdx) {
+    //     return row.children[columnIdx].innerText || row.children[columnIdx].textContent;
+    // }
+
     function getCellValue(row, columnIdx) {
-        return row.children[columnIdx].innerText || row.children[columnIdx].textContent;
+        var cell = row.children[columnIdx];
+        if (cell.classList.contains('zug-toggle')) {
+            var switchElement = cell.querySelector('.switch');
+            return switchElement.classList.contains('ja') ? 'ja' : 'nein';
+        }
+        return cell.innerText || cell.textContent;
     }
 
     // Function to compare two rows based on the text content of a specific column
