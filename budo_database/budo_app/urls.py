@@ -5,6 +5,8 @@ from django.conf.urls.static import static
 from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail, SchwerpunkteCreate, AuslagerorteCreate, AuslagerorteDetail, AuslagerorteUpdate
 
 urlpatterns = [
+    path('update_notiz_abreise/', views.update_notiz_abreise,
+         name='update_notiz_abreise'),
     path("upload/", views.uploadFile, name="uploadFile"),
     #     path('', views.kids_list, name='kids_list'),
     path('all_kids', views.kids_list, name='kids_list'),

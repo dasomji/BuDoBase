@@ -19,6 +19,8 @@ from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceF
 from copy import deepcopy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
+from django.views.decorators.http import require_POST
+import json
 
 
 from .excelProcessor import process_excel, postprocessing
@@ -82,6 +84,22 @@ def toggle_zug_abreise(request):
         kid.zug_abreise = not kid.zug_abreise
         kid.save()
         return JsonResponse({'status': 'success'})
+
+
+@csrf_exempt
+@require_POST
+def update_notiz_abreise(request):
+    data = json.loads(request.body)
+    kid_id = data.get('id')
+    new_notiz_abreise = data.get('notiz_abreise')
+
+    try:
+        kid = Kinder.objects.get(id=kid_id)
+        kid.notiz_abreise = new_notiz_abreise
+        kid.save()
+        return JsonResponse({'status': 'success'})
+    except Kinder.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Kid not found'})
 
 
 @login_required
