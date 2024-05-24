@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.template import loader
 from .forms import LoginForm, RegisterForm
 from budo_app.forms import ProfilForm
-from budo_app.models import Kinder, Profil
+from budo_app.models import Kinder, Profil, Notizen
 from django.views.generic.edit import CreateView, UpdateView
 from django.urls import reverse_lazy
 from django.db.models import Q
@@ -104,6 +104,7 @@ def dashboard(request):
         kid.get_clean_drugs() or kid.get_clean_illness())]
     ersties = Kinder.objects.filter(budo_erfahrung=False)
     ersties_count = ersties.count()
+    notizen = Notizen.objects.all()
     context = {
         "profil": profil,
         "kids": kids,
@@ -124,6 +125,7 @@ def dashboard(request):
         "ersties": ersties,
         "ersties_count": ersties_count,
         "goodbyes": goodbyes,
+        "notizen": notizen,
     }
 
     return HttpResponse(template.render(context, request))

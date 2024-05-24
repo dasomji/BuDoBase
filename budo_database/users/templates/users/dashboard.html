@@ -1,12 +1,12 @@
 {% extends 'master.html' %}
 {% block headertitle %}
-            <h1>BuDo</h1>
+<h1>BuDo</h1>
 {% endblock %}
 
 
 {% block content %}
 <div class="flex-container" id="body-container">
-    <div class="detail-column" id="left-column">  
+    <div class="detail-column" id="left-column">
         <div class="card" id="db-profil">
             <div class="info-header-container">
                 <h2>Mein Profil</h2>{% include "components/openicon.html" %}
@@ -15,12 +15,14 @@
                 <p><span class="label">Rolle</span>: {{profil.get_rolle}} </p>
                 <p><span class="label">Essen</span>: {{profil.get_food}} </p>
                 <p><span class="label">Allergien</span>: {{profil.allergien}} </p>
-                <p><span class="label">Email</span>: <a href="mailto:{{profil.user.email}}">{{profil.user.email}}</a></p>
-                <p><span class="label">Mobil</span>: <a href="tel: {{profil.telefonnummer}}">{{profil.telefonnummer}}</a></p>
+                <p><span class="label">Email</span>: <a href="mailto:{{profil.user.email}}">{{profil.user.email}}</a>
+                </p>
+                <p><span class="label">Mobil</span>: <a
+                        href="tel: {{profil.telefonnummer}}">{{profil.telefonnummer}}</a></p>
                 <p><span class="label">Meine Schwerpunkte</span>:</p>
                 <ul>
                     {% for swp in profil.swp.all %}
-                        <li><a href="{% url 'schwerpunkt-detail' pk=swp.id %}"> {{swp}} </a></li>
+                    <li><a href="{% url 'schwerpunkt-detail' pk=swp.id %}"> {{swp}} </a></li>
                     {% endfor %}
                 </ul>
                 <a class="button" href="/profil">Informationen aktuallisieren </a>
@@ -32,22 +34,26 @@
             </div>
             <div class="card-info-container">
                 {% for teamer in team %}
-                    <p><span class="label">{{teamer.rufname}}</span>: {{ teamer.get_food }}</p>
-                    {% if teamer.allergien %}<li><span class="label">Allergien</span>: {{ teamer.allergien }}</li>{% endif %}
-                    {% if teamer.user.email %}<li><span class="label">Email</span>: <a href="mailto:{{teamer.user.email}}">{{teamer.user.email}}</a></li>{% endif %}
-                    {% if teamer.telefonnummer %}<li><span class="label">Mobil</span>: <a href="tel:{{teamer.telefonnummer}}">{{teamer.telefonnummer}}</a></li>{% endif %}
+                <p><span class="label">{{teamer.rufname}}</span>: {{ teamer.get_food }}</p>
+                {% if teamer.allergien %}<li><span class="label">Allergien</span>: {{ teamer.allergien }}</li>
+                {% endif %}
+                {% if teamer.user.email %}<li><span class="label">Email</span>: <a
+                        href="mailto:{{teamer.user.email}}">{{teamer.user.email}}</a></li>{% endif %}
+                {% if teamer.telefonnummer %}<li><span class="label">Mobil</span>: <a
+                        href="tel:{{teamer.telefonnummer}}">{{teamer.telefonnummer}}</a></li>{% endif %}
                 {% endfor %}
             </div>
         </div>
     </div>
-    <div class="detail-column" id="center-column"> 
+    <div class="detail-column" id="center-column">
         <div class="card" id="db-kinderübersicht">
             <div class="info-header-container">
                 <h2>Kinder: {{eingecheckte_kids}}</h2>{% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
                 <p><span class="label">Eingecheckt</span>: {{eingecheckte_kids}}/{{anzahl_kids}} </p>
-                <p><span class="label">Geschlechter</span>: {{ male_kids_count }} ♂ // {{ female_kids_count }} ♀ // {{ diverse_kids_count }} ⚧</p>
+                <p><span class="label">Geschlechter</span>: {{ male_kids_count }} ♂ // {{ female_kids_count }} ♀ //
+                    {{ diverse_kids_count }} ⚧</p>
                 <p><span class="label">Kids mit Budo-Erfahrung</span>: {{ kids_mit_budo_erfahrung }}</p>
                 <p><span class="label">Zuganreise</span>: {{ kids_zug_anreise_count }}</p>
                 <p><span class="label">Zugabreise</span>: {{ kids_zug_abreise_count }}</p>
@@ -61,24 +67,46 @@
                 <p><a href="/serienbrief">Serienbrief</a></p>
                 <p><a href="/murdergame">Mörderspiel Liste</a></p>
                 <p><a href="/zuganreise">Zuganreise</a></p>
-                
+
+            </div>
+        </div>
+        <div class="card" id="db-notizen">
+            <div class="info-header-container">
+                <h2>Notizen</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <ul>
+                    {% for notiz in notizen %}
+                    <li>
+                        <p><strong>{{ notiz.added_by.username }}</strong> am {{ notiz.date_added|date:"d.m." }}: <a
+                                href="/kid_details/{{ notiz.kinder.id }}">{{ notiz.kinder.kid_vorname }}
+                                {{ notiz.kinder.kid_nachname }}</a></p>
+                        <p>{{ notiz.notiz }}</p>
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
     </div>
-    <div class="detail-column" id="right-column">  
+    <div class="detail-column" id="right-column">
         <div class="card closed-card" id="db-ersties">
             <div class="info-header-container">
                 <h2>Erstes Mal im BuDO: {{ersties_count}}/{{anzahl_kids}} </h2>{% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
                 {% for kid in ersties %}
-                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{kid.get_alter}}</p>
-                    <ul>
-                    {% if kid.get_clean_anmerkung %}<li><span class="label">Anmerkung</span>: {{ kid.get_clean_anmerkung|safe }}</li>{% endif %}
-                    {% if kid.get_clean_anmerkung_buchung %}<li><span class="label">Anmerkung bei Buchung</span>: {{ kid.get_clean_anmerkung_buchung|safe }}</li>{% endif %}
-                    {% if kid.get_clean_illness %}<li><span class="label">Krankheiten</span>: {{ kid.get_clean_illness }}</li>{% endif %}
-                    {% if kid.get_clean_drugs %}<li><span class="label">Medikamente</span>: {{ kid.get_clean_drugs }}</li>{% endif %}
-                    </ul>
+                <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}}
+                            {{kid.kid_nachname}}</a></span>: {{kid.get_alter}}</p>
+                <ul>
+                    {% if kid.get_clean_anmerkung %}<li><span class="label">Anmerkung</span>:
+                        {{ kid.get_clean_anmerkung|safe }}</li>{% endif %}
+                    {% if kid.get_clean_anmerkung_buchung %}<li><span class="label">Anmerkung bei Buchung</span>:
+                        {{ kid.get_clean_anmerkung_buchung|safe }}</li>{% endif %}
+                    {% if kid.get_clean_illness %}<li><span class="label">Krankheiten</span>:
+                        {{ kid.get_clean_illness }}</li>{% endif %}
+                    {% if kid.get_clean_drugs %}<li><span class="label">Medikamente</span>: {{ kid.get_clean_drugs }}
+                    </li>{% endif %}
+                </ul>
                 {% endfor %}
             </div>
         </div>
@@ -88,15 +116,21 @@
             </div>
             <div class="card-info-container">
                 {% for kid in kids_attention %}
-                    <div class="print-nobreak">
-                        <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal BuDo{% endif %} </p>
-                        <ul>
-                        {% if kid.get_clean_illness %}<li><span class="label">Krankheiten</span>: {{ kid.get_clean_illness }}</li>{% endif %}
-                        {% if kid.get_clean_drugs %}<li><span class="label">Medikamente</span>: {{ kid.get_clean_drugs }}</li>{% endif %}
-                        {% if kid.get_clean_anmerkung %}<li><span class="label">Anmerkung</span>: {{ kid.get_clean_anmerkung|safe }}</li>{% endif %}
-                        {% if kid.get_clean_anmerkung_buchung %}<li><span class="label">Anmerkung bei Buchung</span>: {{ kid.get_clean_anmerkung_buchung|safe }}</li>{% endif %}
-                        </ul>
-                    </div>
+                <div class="print-nobreak">
+                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}}
+                                {{kid.kid_nachname}}</a></span>: {{kid.get_alter}} {% if not kid.budo_erfahrung %}//
+                        Erstes Mal BuDo{% endif %} </p>
+                    <ul>
+                        {% if kid.get_clean_illness %}<li><span class="label">Krankheiten</span>:
+                            {{ kid.get_clean_illness }}</li>{% endif %}
+                        {% if kid.get_clean_drugs %}<li><span class="label">Medikamente</span>:
+                            {{ kid.get_clean_drugs }}</li>{% endif %}
+                        {% if kid.get_clean_anmerkung %}<li><span class="label">Anmerkung</span>:
+                            {{ kid.get_clean_anmerkung|safe }}</li>{% endif %}
+                        {% if kid.get_clean_anmerkung_buchung %}<li><span class="label">Anmerkung bei Buchung</span>:
+                            {{ kid.get_clean_anmerkung_buchung|safe }}</li>{% endif %}
+                    </ul>
+                </div>
                 {% endfor %}
             </div>
         </div>
@@ -106,13 +140,16 @@
             </div>
             <div class="card-info-container">
                 {% for kid in kids %}
-                    <div class="print-nobreak">
-                        {% if kid.get_clean_special_food %}
-                        <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname|safe}} {{kid.kid_nachname|safe}}</a></span>: {% if kid.get_veggie|length < 2 %} {{kid.get_veggie}} // {% endif %} {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal BuDo{% endif %} </p>
-                        {% if kid.get_veggie|length >= 2 %}<p>Veggie: {{kid.get_veggie}} </p> {% endif %}
-                        <p>{{ kid.get_clean_special_food }}</p>
-                        {% endif %}
-                    </div>
+                <div class="print-nobreak">
+                    {% if kid.get_clean_special_food %}
+                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname|safe}}
+                                {{kid.kid_nachname|safe}}</a></span>: {% if kid.get_veggie|length < 2 %}
+                        {{kid.get_veggie}} // {% endif %} {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal
+                        BuDo{% endif %} </p>
+                    {% if kid.get_veggie|length >= 2 %}<p>Veggie: {{kid.get_veggie}} </p> {% endif %}
+                    <p>{{ kid.get_clean_special_food }}</p>
+                    {% endif %}
+                </div>
                 {% endfor %}
             </div>
         </div>
@@ -122,7 +159,8 @@
             </div>
             <div class="card-info-container">
                 {% for kid in geburtstagskinder %}
-                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{ kid.kid_birthday }}</p>
+                <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}}
+                            {{kid.kid_nachname}}</a></span>: {{ kid.kid_birthday }}</p>
                 {% endfor %}
             </div>
         </div>
@@ -132,7 +170,8 @@
             </div>
             <div class="card-info-container">
                 {% for kid in goodbyes %}
-                    <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}} {{kid.kid_nachname}}</a></span>: {{kid.get_alter}} - {{ kid.kid_birthday }}</p>
+                <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}}
+                            {{kid.kid_nachname}}</a></span>: {{kid.get_alter}} - {{ kid.kid_birthday }}</p>
                 {% endfor %}
             </div>
         </div>
