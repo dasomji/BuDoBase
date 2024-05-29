@@ -248,7 +248,10 @@ def postprocess(request):
 
 @login_required
 def serienbrief(request):
-    kids = models.Kinder.objects.all()
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    kids = models.Kinder.objects.filter(turnus=active_turnus)
     template = loader.get_template('serienbrief.html')
     context = {
         "kids": kids,
@@ -259,8 +262,11 @@ def serienbrief(request):
 
 @login_required
 def murdergame(request):
-    kids = models.Kinder.objects.filter(anwesend=True)
-    team = models.Profil.objects.all()
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    kids = models.Kinder.objects.filter(turnus=active_turnus, anwesend=True)
+    team = models.Profil.objects.filter(turnus=active_turnus)
     template = loader.get_template('murdergame.html')
     context = {
         "kids": kids,
@@ -292,6 +298,12 @@ class SchwerpunkteDetail(LoginRequiredMixin, DetailView):
     model = Schwerpunkte
     template_name = 'schwerpunkt-detail.html'
     context_object_name = 'schwerpunkt'
+
+    # def get_queryset(self):
+    #     current_user = self.request.user
+    #     profil = Profil.objects.get(user=current_user)
+    #     active_turnus = profil.turnus
+    #     return Schwerpunkte.objects.filter(schwerpunktzeit__turnus=active_turnus)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -420,6 +432,8 @@ def swp_dashboard(request):
 
     current_user = request.user
     profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+
     kids = Kinder.objects.all()
     anzahl_kids = Kinder.objects.all().count()
     kids_zug_anreise_count = Kinder.objects.filter(zug_anreise=True).count()
@@ -446,7 +460,8 @@ def swp_dashboard(request):
         kid.get_clean_drugs() or kid.get_clean_illness())]
     ersties = Kinder.objects.filter(budo_erfahrung=False)
     ersties_count = ersties.count()
-    swps = Schwerpunkte.objects.all()
+    swps = Schwerpunkte.objects.filter(schwerpunktzeit__turnus=active_turnus)
+
     context = {
         "profil": profil,
         "kids": kids,

@@ -1,7 +1,7 @@
 {% extends "master.html" %}
 
 {% block title %}
-  BuDo Kid Info
+BuDo Kid Info
 {% endblock %}
 
 {% block headertitle %}
@@ -13,97 +13,109 @@
 </div>
 {% endblock %}
 {% block headerbutton %}
-    {% if Kinder.anwesend == True %}
-        <a href="/check_out/{{ Kinder.id }}" class="button">Auschecken</a>
-    {% else %}
-        <a href="/check_in/{{ Kinder.id }}" class="button">Einchecken</a>
-    {% endif %}
+{% if Kinder.anwesend == True %}
+<a href="/check_out/{{ Kinder.id }}" class="button">Auschecken</a>
+{% else %}
+<a href="/check_in/{{ Kinder.id }}" class="button">Einchecken</a>
+{% endif %}
 {% endblock %}
 
-    {% block content %}
-    <div class="flex-container" id="body-container">
-        <div class="detail-column" id="left-column">
-            <div class="card" id="kinderinfos">
-                <div class="info-header-container">
-                    <h2>{{ Kinder.kid_vorname }}</h2> {% include "components/openicon.html" %}
-                </div>
-                <div class="card-info-container">
-                    <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
-                    <p><span class="label">Alter</span>: {{Kinder.get_alter}}</p>
-                    <p><span class="label">Geburtstag</span>: {{Kinder.kid_birthday}}{% if Kinder.is_birthday_during_turnus %} 🥳 {% endif %}</p>
-                    <p><span class="label">Aufenthaltsdauer</span>: {{Kinder.turnus_dauer}}-wöchig</p>
-                    <p><span class="label">Geschwister</span>: {{Kinder.geschwister}}</p>
-                    <p><span class="label">Zeltwunsch</span>: {{Kinder.zeltwunsch}}</p>
-                    <p><span class="label">War schon mal im Bunten Dorf</span>: {{Kinder.budo_erfahrung}}</p>
-                </div>
+{% block content %}
+<div class="flex-container" id="body-container">
+    <div class="detail-column" id="left-column">
+        <div class="card" id="kinderinfos">
+            <div class="info-header-container">
+                <h2>{{ Kinder.kid_vorname }}</h2> {% include "components/openicon.html" %}
             </div>
+            <div class="card-info-container">
+                <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
+                <p><span class="label">Alter</span>: {{Kinder.get_alter}}</p>
+                <p><span class="label">Geburtstag</span>:
+                    {{Kinder.kid_birthday}}{% if Kinder.is_birthday_during_turnus %} 🥳 {% endif %}</p>
+                <p><span class="label">Aufenthaltsdauer</span>: {{Kinder.turnus_dauer}}-wöchig</p>
+                <p><span class="label">Geschwister</span>: {{Kinder.geschwister}}</p>
+                <p><span class="label">Zeltwunsch</span>: {{Kinder.zeltwunsch}}</p>
+                <p><span class="label">War schon mal im Bunten Dorf</span>: {{Kinder.budo_erfahrung}}</p>
+            </div>
+        </div>
 
-            <div id="budo-container" class="card">
-                <div class="info-header-container">
-                    <h2>BuDo</h2> {% include "components/openicon.html" %}
-                </div>
-                <div class="card-info-container">
-                    <p><a href="/budo_familie/{{ Kinder.budo_family }}"><span class="label">Budo Familie</span>: {{ Kinder.budo_family }}</a></p>
-                    <p><span class="label">SWP1</span>: {{Kinder.schwerpunkt_woche1}} </p>
-                    <p><span class="label">SWP2</span>: {{Kinder.schwerpunkt_woche2}}</p>
-                </div>
+        <div id="budo-container" class="card">
+            <div class="info-header-container">
+                <h2>BuDo</h2> {% include "components/openicon.html" %}
             </div>
-        </div>
-        <div class="detail-column" id="center-column">
-            <div class="card" id="health_info">
-                <div class="info-header-container">
-                    <h2>Gesundheitsinfos</h2> {% include "components/openicon.html" %}
-                </div>
-                <div class="card-info-container">
-                    <p><span class="label">Sozialversicherungsnummer</span>: {{Kinder.sozialversicherungsnr}}</p>
-                    <p><span class="label">Krankheiten</span>: {% if x.get_clean_illness %}{{ x.get_clean_illness }}{% else %} --- {% endif%}</p>
-                    <p><span class="label">Medikamente</span>: {% if x.get_clean_drugs %}{{ x.get_clean_drugs }}{% else %} --- {% endif%}</p>
-                    <p><span class="label">Vegetarisch</span>: {{Kinder.vegetarisch}}</p>
-                    <p><span class="label">Ernährungsvorgaben</span>: {{Kinder.special_food_description}}</p>
-                    <p><span class="label">Schwimmkentnisse</span>: {{Kinder.swimmer}}</p>
-                </div>
-            </div>
-            
-            <div class="card" id="family_info">
-                <div class="info-header-container">
-                    <h2>Familie</h2> {% include "components/openicon.html" %}
-                </div>
-                <div class="card-info-container">
-                    <p><span class="label">Organisation</span>: {{Kinder.anmelde_organisation}}</p>
-                    <p><span class="label">Anmelder:in</span>: {{Kinder.anmelder_vorname}} {{Kinder.anmelder_nachname}}</p>
-                    <p><span class="label">Anmelder:in Email</span>: <a href="mailto:{{Kinder.anmelder_email}}">{{Kinder.anmelder_email}}</a></p>
-                    <p><span class="label">Anmelder:in Mobil</span>: <a href="tel: {{Kinder.anmelder_mobil}}">{{Kinder.anmelder_mobil}}</a></p>
-                    <p><span class="label">Hauptversichert bei</span>: {{Kinder.hauptversichert_bei}}</p>
-                    <p><span class="label">Notfallkontakte</span>: {% autoescape off %}{{Kinder.notfall_kontakte}}{% endautoescape %}</p>
-                </div>
-            </div>
-        </div>
-        <div class="detail-column" id="right-column">
-            <div class="card" id="notizen">
-                <div class="info-header-container">
-                    <h2>Notizen</h2> {% include "components/openicon.html" %}
-                </div>
-                <div class="card-info-container">
-                    <p><span class="label">Anmerkungen (Buchung)</span>: {% if x.get_clean_anmerkung_buchung %}{{ x.get_clean_anmerkung_buchung|safe }}{% else %} --- {% endif%}</p>
-                    <p><span class="label">Anmerkungen</span>: {% if x.get_clean_anmerkung %}{{ x.get_clean_anmerkung|safe }}{% else %} --- {% endif%}</p>
-                    {% comment %} <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team|safe}}</p> {% endcomment %}
-                    <ul>
-                        {% for notiz in Kinder.notizen.all %}
-                            <li>{{ notiz.added_by.username }} am {{ notiz.date_added|date:"d.m." }}: {{ notiz.notiz }}</li>
-                        {% empty %}
-                            <li>Noch keine Notizen.</li>
-                        {% endfor %}
-                    </ul>
-                    {% block forminput %}
-                        <form method="post">
-                            {%csrf_token %}
-                            {{ form.as_p }}
-                            <button type="submit">Notiz hinzufügen</button>
-                        </form>
-                    {% endblock %}
-                    </div>
+            <div class="card-info-container">
+                <p><span class="label">Turnus</span>: {{Kinder.turnus}}</p>
+                <p><a href="/budo_familie/{{ Kinder.budo_family }}"><span class="label">Budo Familie</span>:
+                        {{ Kinder.budo_family }}</a></p>
+                <p><span class="label">SWP1</span>: {{Kinder.schwerpunkt_woche1}} </p>
+                <p><span class="label">SWP2</span>: {{Kinder.schwerpunkt_woche2}}</p>
             </div>
         </div>
     </div>
-  
+    <div class="detail-column" id="center-column">
+        <div class="card" id="health_info">
+            <div class="info-header-container">
+                <h2>Gesundheitsinfos</h2> {% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <p><span class="label">Sozialversicherungsnummer</span>: {{Kinder.sozialversicherungsnr}}</p>
+                <p><span class="label">Krankheiten</span>:
+                    {% if x.get_clean_illness %}{{ x.get_clean_illness }}{% else %} --- {% endif%}</p>
+                <p><span class="label">Medikamente</span>: {% if x.get_clean_drugs %}{{ x.get_clean_drugs }}{% else %}
+                    --- {% endif%}</p>
+                <p><span class="label">Vegetarisch</span>: {{Kinder.vegetarisch}}</p>
+                <p><span class="label">Ernährungsvorgaben</span>: {{Kinder.special_food_description}}</p>
+                <p><span class="label">Schwimmkentnisse</span>: {{Kinder.swimmer}}</p>
+            </div>
+        </div>
+
+        <div class="card" id="family_info">
+            <div class="info-header-container">
+                <h2>Familie</h2> {% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <p><span class="label">Organisation</span>: {{Kinder.anmelde_organisation}}</p>
+                <p><span class="label">Anmelder:in</span>: {{Kinder.anmelder_vorname}} {{Kinder.anmelder_nachname}}</p>
+                <p><span class="label">Anmelder:in Email</span>: <a
+                        href="mailto:{{Kinder.anmelder_email}}">{{Kinder.anmelder_email}}</a></p>
+                <p><span class="label">Anmelder:in Mobil</span>: <a
+                        href="tel: {{Kinder.anmelder_mobil}}">{{Kinder.anmelder_mobil}}</a></p>
+                <p><span class="label">Hauptversichert bei</span>: {{Kinder.hauptversichert_bei}}</p>
+                <p><span class="label">Notfallkontakte</span>:
+                    {% autoescape off %}{{Kinder.notfall_kontakte}}{% endautoescape %}</p>
+            </div>
+        </div>
+    </div>
+    <div class="detail-column" id="right-column">
+        <div class="card" id="notizen">
+            <div class="info-header-container">
+                <h2>Notizen</h2> {% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <p><span class="label">Anmerkungen (Buchung)</span>:
+                    {% if x.get_clean_anmerkung_buchung %}{{ x.get_clean_anmerkung_buchung|safe }}{% else %} ---
+                    {% endif%}</p>
+                <p><span class="label">Anmerkungen</span>:
+                    {% if x.get_clean_anmerkung %}{{ x.get_clean_anmerkung|safe }}{% else %} --- {% endif%}</p>
+                {% comment %} <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team|safe}}
+                </p> {% endcomment %}
+                <ul>
+                    {% for notiz in Kinder.notizen.all %}
+                    <li>{{ notiz.added_by.username }} am {{ notiz.date_added|date:"d.m." }}: {{ notiz.notiz }}</li>
+                    {% empty %}
+                    <li>Noch keine Notizen.</li>
+                    {% endfor %}
+                </ul>
+                {% block forminput %}
+                <form method="post">
+                    {%csrf_token %}
+                    {{ form.as_p }}
+                    <button type="submit">Notiz hinzufügen</button>
+                </form>
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
