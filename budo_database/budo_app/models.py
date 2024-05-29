@@ -55,8 +55,9 @@ class Profil(models.Model):
         help_text="Was möchtest du essen?"
     )
 
-    turnus = models.ManyToManyField(
-        "Turnus", blank=True, related_name="teamer")
+    turnus = models.ForeignKey(
+        "Turnus", on_delete=models.SET_NULL, null=True, blank=True, related_name="teamer"
+    )
 
     class Meta:
         verbose_name_plural = "Profile"

@@ -70,13 +70,13 @@ class NotizenAdmin(admin.ModelAdmin):
 
 
 class TurnusAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "turnus_beginn", "get_turnus_ende")
+    list_display = ("__str__", "turnus_beginn", "get_turnus_ende", "id")
     readonly_fields = ('dateTimeOfUpload', "get_turnus_ende")
 # Register your models here.
 
 
 class ProfilAdmin(admin.ModelAdmin):
-    list_display = ("__str__", 'rolle', 'get_food', 'allergien')
+    list_display = ("__str__", 'rolle', 'get_food', 'allergien', 'turnus')
 
 
 class MealInline(admin.TabularInline):
