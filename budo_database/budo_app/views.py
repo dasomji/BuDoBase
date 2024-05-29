@@ -58,7 +58,10 @@ def uploadFile(request):
 
 @login_required
 def kids_list(request):
-    kids = models.Kinder.objects.all()
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    kids = models.Kinder.objects.filter(turnus=active_turnus)
     template = loader.get_template('kids_list.html')
     context = {
         'kids': kids,
@@ -68,8 +71,12 @@ def kids_list(request):
 
 @login_required
 def zuganreise(request):
-    kids = models.Kinder.objects.all()
-    zugabreise_count = models.Kinder.get_zugabreise_count()
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    kids = models.Kinder.objects.filter(turnus=active_turnus)
+    zugabreise_count = models.Kinder.get_zugabreise_count(
+        turnus=active_turnus)  # Pass the active turnus
     template = loader.get_template('zuganreise.html')
     context = {
         'kids': kids,

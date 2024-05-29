@@ -315,7 +315,9 @@ class Kinder(models.Model):
             return "Nein"
 
     @classmethod
-    def get_zugabreise_count(cls):
+    def get_zugabreise_count(cls, turnus=None):
+        if turnus:
+            return cls.objects.filter(zug_abreise=True, turnus=turnus).count()
         return cls.objects.filter(zug_abreise=True).count()
 
     class Meta:

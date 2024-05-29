@@ -76,18 +76,18 @@ def dashboard(request):
     template = loader.get_template('users/dashboard.html')
     current_user = request.user
     profil = Profil.objects.get(user=current_user)
-    kids = Kinder.objects.all()
-    anzahl_kids = Kinder.objects.all().count()
-    kids_zug_anreise_count = Kinder.objects.filter(zug_anreise=True).count()
-    kids_zug_abreise_count = Kinder.objects.filter(zug_abreise=True).count()
-    male_kids_count = Kinder.objects.filter(sex="männlich").count()
-    female_kids_count = Kinder.objects.filter(sex="weiblich").count()
-    diverse_kids_count = Kinder.objects.exclude(
+    active_turnus = profil.turnus
+
+    kids = Kinder.objects.filter(turnus=active_turnus)
+    anzahl_kids = kids.count()
+    kids_zug_anreise_count = kids.filter(zug_anreise=True).count()
+    kids_zug_abreise_count = kids.filter(zug_abreise=True).count()
+    male_kids_count = kids.filter(sex="männlich").count()
+    female_kids_count = kids.filter(sex="weiblich").count()
+    diverse_kids_count = kids.exclude(
         sex__in=["männlich", "weiblich"]).count()
-    kids_mit_budo_erfahrung = Kinder.objects.filter(
+    kids_mit_budo_erfahrung = kids.filter(
         budo_erfahrung=True).count()
-    # geburtstagskinder = [
-    #     kid for kid in kids if kid.is_birthday_during_turnus()]
     geburtstagskinder = sorted(
         [kid for kid in kids if kid.is_birthday_during_turnus()],
         key=lambda kid: (kid.kid_birthday.month, kid.kid_birthday.day)
@@ -95,16 +95,16 @@ def dashboard(request):
     goodbyes = sorted([kid for kid in kids if (kid.get_alter()
                       and (kid.get_alter() > 14.8))], key=lambda kid: kid.get_alter())
     geburtstage = len(geburtstagskinder)
-    eingecheckte_kids = Kinder.objects.filter(anwesend=True).count()
-    team = Profil.objects.all()
+    eingecheckte_kids = kids.filter(anwesend=True).count()
+    team = Profil.objects.filter(turnus=active_turnus)
 
     medikamente = [kid for kid in kids if kid.get_clean_drugs()]
     gesundheit = [kid for kid in kids if kid.get_clean_illness()]
     kids_attention = [kid for kid in kids if (
         kid.get_clean_drugs() or kid.get_clean_illness())]
-    ersties = Kinder.objects.filter(budo_erfahrung=False)
+    ersties = kids.filter(budo_erfahrung=False)
     ersties_count = ersties.count()
-    notizen = Notizen.objects.all()
+    notizen = Notizen.objects.filter(kinder__turnus=active_turnus)
     context = {
         "profil": profil,
         "kids": kids,
