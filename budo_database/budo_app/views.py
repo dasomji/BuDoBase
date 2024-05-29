@@ -299,12 +299,6 @@ class SchwerpunkteDetail(LoginRequiredMixin, DetailView):
     template_name = 'schwerpunkt-detail.html'
     context_object_name = 'schwerpunkt'
 
-    # def get_queryset(self):
-    #     current_user = self.request.user
-    #     profil = Profil.objects.get(user=current_user)
-    #     active_turnus = profil.turnus
-    #     return Schwerpunkte.objects.filter(schwerpunktzeit__turnus=active_turnus)
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         meals_by_day = {}

@@ -484,7 +484,10 @@ class Schwerpunktzeit(models.Model):
     dauer = models.IntegerField(choices=DayDuration.choices)
 
     def __str__(self):
-        return f"{self.get_woche_display()} ({self.dauer} Tage)"
+        if self.woche == "u":
+            return self.get_woche_display()
+        else:
+            return f"{self.get_woche_display()} ({self.dauer} Tage)"
 
 
 class Auslagerorte(models.Model):
