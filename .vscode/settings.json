@@ -2,5 +2,10 @@
   "[python]": {
     "editor.defaultFormatter": "ms-python.autopep8"
   },
-  "python.formatting.provider": "none"
+  "python.formatting.provider": "none",
+  "python.pythonPath": "/path/to/your/virtualenv/bin/python",
+  "python.analysis.extraPaths": [
+    "./path/to/your/django/project",
+    "./path/to/your/django/project/app"
+  ]
 }
