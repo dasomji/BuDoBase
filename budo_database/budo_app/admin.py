@@ -91,12 +91,16 @@ class SwpInline(admin.TabularInline):
 
 class SchwerpunkteAdmin(admin.ModelAdmin):
     list_display = ("__str__", "ort", "display_betreuende",
-                    "schwerpunktzeit", "auslagern")
+                    "schwerpunktzeit", "get_turnus", "auslagern")
     inlines = [KinderInline, MealInline]
 
     def display_betreuende(self, obj):
         return ", ".join([str(betreuer) for betreuer in obj.betreuende.all()])
     display_betreuende.short_description = 'Betreuende'
+
+    def get_turnus(self, obj):
+        return obj.get_turnus()
+    get_turnus.short_description = 'Turnus'
 
 
 class SchwerpunktzeitAdmin(admin.ModelAdmin):

@@ -63,7 +63,7 @@ crossorigin=""/>
                         {% if swp.schwerpunktzeit.woche == "u" %}
                             <tr class="table_row">
                                 <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
-                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.ort }}</a></td>
+                                <td class="text-cell">{% if swp.ort.id %}<a href="{% url 'auslagerorte-detail' pk=swp.ort.id %}">{{ swp.ort }}</a>{% endif %}</td>
                                 <td class="text-cell">
                                     {% for profil in swp.betreuende.all %}
                                         {{ profil }}
@@ -105,7 +105,7 @@ crossorigin=""/>
                         {% if swp.schwerpunktzeit.woche == "w1" %}
                             <tr class="table_row">
                                 <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
-                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.ort }}</a></td>
+                                <td class="text-cell">{% if swp.ort.id %}<a href="{% url 'auslagerorte-detail' pk=swp.ort.id %}">{{ swp.ort }}</a>{% endif %}</td>
                                 <td class="text-cell">
                                     {% for profil in swp.betreuende.all %}
                                         {{ profil }}
@@ -147,7 +147,7 @@ crossorigin=""/>
                             {% if swp.schwerpunktzeit.woche == "w2" %}
                             <tr class="table_row">
                                 <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
-                                <td class="text-cell"><a href="{% url 'auslagerorte-detail' pk=swp.ort.id %}">{{ swp.ort }}</a></td>
+                                <td class="text-cell">{% if swp.ort.id %}<a href="{% url 'auslagerorte-detail' pk=swp.ort.id %}">{{ swp.ort }}</a>{% endif %}</td>
                                 <td class="text-cell">
                                     {% for profil in swp.betreuende.all %}
                                         {{ profil }}

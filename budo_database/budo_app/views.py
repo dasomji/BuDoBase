@@ -26,6 +26,19 @@ import json
 from .excelProcessor import process_excel, postprocessing
 
 
+# def get_related_data_for_user(user):
+#     profil = Profil.objects.get(user=user)
+#     active_turnus = profil.turnus
+#     kids = Kinder.objects.filter(turnus=active_turnus)
+#     schwerpunkte = Schwerpunkte.objects.filter(schwerpunktzeit__turnus=active_turnus)
+#     auslagerorte = Auslagerorte.objects.filter(schwerpunkte__schwerpunktzeit__turnus=active_turnus).distinct()
+#     return {
+#         'kids': kids,
+#         'schwerpunkte': schwerpunkte,
+#         'auslagerorte': auslagerorte,
+#     }
+
+
 def budo_app(request):
     template = loader.get_template('main.html')
     checked_in_kids = len(models.Kinder.objects.all())

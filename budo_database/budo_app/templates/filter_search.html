@@ -1,29 +1,45 @@
-<input class="w3-input w3-border w3-padding filter-table" type="text" placeholder="Such nach Kindern..." id="myInput" onclick="searchFunction()" onkeyup="searchFunction()">
+<input class="w3-input w3-border w3-padding filter-table" type="text"
+  placeholder="Such nach Kindern, Schwerpunkten, oder Auslagerorten..." id="myInput" onclick="searchFunction()"
+  onkeyup="searchFunction()">
 <div id="searchresults-container">
   <div id="searchResults" class="search-results">
     {% for x in kids %}
-      <a href="/kid_details/{{ x.id }}">
-        <div class="" id="name">
-          {% if not x.anwesend %}❌ {% endif %}{{ x.kid_vorname }} {{ x.kid_nachname }}
-        </div>
-      </a>
+    <a href="/kid_details/{{ x.id }}">
+      <div class="search-item" id="name">
+        {% if not x.anwesend %}❌ {% endif %}{{ x.kid_vorname }} {{ x.kid_nachname }}
+      </div>
+    </a>
+    {% endfor %}
+    {% for s in schwerpunkte %}
+    <a href="/schwerpunkt_details/{{ s.id }}">
+      <div class="search-item" id="schwerpunkt">
+        {{ s.swp_name }}
+      </div>
+    </a>
+    {% endfor %}
+    {% for a in auslagerorte %}
+    <a href="/auslagerort_details/{{ a.id }}">
+      <div class="search-item" id="auslagerort">
+        {{ a.name }}
+      </div>
+    </a>
     {% endfor %}
   </div>
 </div>
 <script>
   var timeoutId;
 
-  document.getElementById("myInput").addEventListener("focus", function() {
+  document.getElementById("myInput").addEventListener("focus", function () {
     if (document.getElementById("searchResults").children.length < 15) {
-        document.getElementById("searchResults").style.display = "block";
+      document.getElementById("searchResults").style.display = "block";
     }
-});
+  });
 
-document.getElementById("myInput").addEventListener("blur", function() {
-    timeoutId = setTimeout(function() {
-        document.getElementById("searchResults").style.display = "none";
+  document.getElementById("myInput").addEventListener("blur", function () {
+    timeoutId = setTimeout(function () {
+      document.getElementById("searchResults").style.display = "none";
     }, 100); // delay, otherwise it gets hidden before a link can be clicked
-});
+  });
 
   function searchFunction() {
     var input, filter, div, a, i, txtValue;
@@ -31,25 +47,26 @@ document.getElementById("myInput").addEventListener("blur", function() {
     input = document.getElementById("myInput");
     filter = input.value.toUpperCase();
     div = document.getElementById("searchResults");
-    a = div.getElementsByTagName("div");
+    a = div.getElementsByClassName("search-item");
     for (i = 0; i < a.length; i++) {
-        txtValue = a[i].textContent || a[i].innerText;
-        if (txtValue.toUpperCase().indexOf(filter) > -1) {
-            results.push(txtValue);
-            a[i].parentNode.style.display = "";
-        } else {
-            a[i].parentNode.style.display = "none";
-        }
+      txtValue = a[i].textContent || a[i].innerText;
+      if (txtValue.toUpperCase().indexOf(filter) > -1) {
+        results.push(txtValue);
+        a[i].parentNode.style.display = "";
+      } else {
+        a[i].parentNode.style.display = "none";
+      }
     }
     displayResults(results);
-}
+  }
 
-function displayResults(results) {
+  function displayResults(results) {
     var searchResults = document.getElementById("searchResults");
     if (results.length < 20) {
-        searchResults.style.display = "block";
+      searchResults.style.display = "block";
     } else {
-        searchResults.style.display = "none";
+      searchResults.style.display = "none";
     }
-}
+  }
+</script>
 </script>

@@ -401,6 +401,7 @@ class Schwerpunkte(models.Model):
         related_name="swp",
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
     )
     auslagern = models.BooleanField(null=True, default=None)
     geplante_abreise = models.DateTimeField(null=True, blank=True)
@@ -418,15 +419,20 @@ class Schwerpunkte(models.Model):
         else:
             return "Nein"
 
+    def get_turnus(self):
+        return self.schwerpunktzeit.turnus
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
         schwerpunktzeit = self.schwerpunktzeit
-        if schwerpunktzeit.woche in ["w1", "w2"]:
+        if schwerpunktzeit and schwerpunktzeit.woche in ["w1", "w2"]:
             for day in range(1, schwerpunktzeit.dauer + 1):
                 for meal_type in ['breakfast', 'lunch', 'dinner']:
                     if not Meal.objects.filter(schwerpunkt=self, day=day, meal_type=meal_type).exists():
                         Meal.objects.create(
                             schwerpunkt=self, day=day, meal_type=meal_type)
+        else:
+            pass
 
     class Meta:
         verbose_name_plural = "Schwerpunkte"
@@ -459,10 +465,10 @@ class Meal(models.Model):
 
 
 class DayDuration(models.IntegerChoices):
-    SUPERKURZ = 1, 'superkurz'
-    KURZ = 2, 'kurz'
-    LANG = 3, 'lang'
-    SUPERLANG = 4, 'superlang'
+    SUPERKURZ = 1, '1 Tag - superkurz'
+    KURZ = 2, '2 Tage - kurz'
+    LANG = 3, '3 Tage - lang'
+    SUPERLANG = 4, '4 Tage - superlang'
 
 
 class Schwerpunktzeit(models.Model):
