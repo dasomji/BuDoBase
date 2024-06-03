@@ -290,6 +290,7 @@ button.closebtn{
 #body-container.table-only {
     padding: 0 var(--l-padding);
     flex-flow: column nowrap;
+    justify-content: flex-start;
 }
 
 
