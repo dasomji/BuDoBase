@@ -481,6 +481,10 @@ class Meal(models.Model):
     def __str__(self):
         return f"{self.schwerpunkt} Tag {self.day} {self.meal_type}"
 
+    def get_kids_count(self):
+
+        return self.schwerpunkt.swp_kinder.count()
+
     class Meta:
         # prevent duplicate meals
         unique_together = ('schwerpunkt', 'day', 'meal_type')
