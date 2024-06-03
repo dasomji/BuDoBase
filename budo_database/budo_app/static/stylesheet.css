@@ -345,9 +345,9 @@ button.closebtn{
     background-color: transparent;
 }
 
-.transparent .table-container table .table-header{
+/* .transparent .table-container table .table-header{
     border-radius: var(--corner-rad) var(--corner-rad) 0 0;
-}
+} */
 
 @media print {
     .card {
@@ -553,11 +553,12 @@ button,
 #kids-table {
     border-radius: var(--corner-rad);
     padding: var(--m-padding);
+    overflow: hidden;
 }
 
-#kids-table .table-header {
+/* #kids-table .table-header {
     border-radius: var(--corner-rad);
-}
+} */
 
 .table-header th {
     background-color: var(--dark-blue);
