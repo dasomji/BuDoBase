@@ -314,6 +314,18 @@ class Kinder(models.Model):
         else:
             return "Nein"
 
+    def get_swp1(self):
+        if self.schwerpunkte.filter(schwerpunktzeit__woche="w1").exists():
+            return self.schwerpunkte.filter(schwerpunktzeit__woche="w1").first()
+        else:
+            return "---"
+
+    def get_swp2(self):
+        if self.schwerpunkte.filter(schwerpunktzeit__woche="w2").exists():
+            return self.schwerpunkte.filter(schwerpunktzeit__woche="w2").first()
+        else:
+            return "---"
+
     @classmethod
     def get_zugabreise_count(cls, turnus=None):
         if turnus:
