@@ -64,11 +64,21 @@ body {
     display: flex;
     justify-content: center;
     padding: var(--xl-padding);
-    background: linear-gradient(92.05deg, #FFF4DE 7.23%, rgba(153, 146, 133, 0.17) 98.57%);
+    background: linear-gradient(92.05deg, #FFF4DE 7.23%, rgba(153, 146, 133, 0.17) 98.57%), radial-gradient(59.33% 87.53% at 38.82% 60.76%, #FFFFFF 0%, #F7EBE0 22%, #999999 100%);
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: 99;
 }
+
+/* #headermenu:before{
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: white;
+} */
 
 #header-content {
     align-self: stretch;
@@ -700,6 +710,7 @@ table #alter {
     height: 70vh;
     border-radius: var(--corner-rad);
     box-shadow: #acacac 4px 4px 4px;
+    z-index: 1;
 }
 
 .leaflet-text a{
