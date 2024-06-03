@@ -1,0 +1,63 @@
+{% extends 'master.html' %}
+{% block headertitle %}
+<h1>Schwerpunkte</h1>
+{% endblock %}
+
+{% block headerbutton %}
+<a href="/schwerpunkt/create" class="button">SWP hinzufügen</a>
+{% endblock %}
+
+{% block extrahead %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+{% endblock %}
+
+{% block content %}
+<div class="flex-container" id="body-container">
+  <div class="detail-column" id="left-column">
+
+  </div>
+  <div class="detail-column normal-column" id="right-column">
+
+    {% for week, week_data in meal_counts.items %}
+    <div class="card transparent" id="db-{{ week }}">
+      <div class="info-header-container">
+        <h2>Woche {{ week }}</h2>{% include "components/openicon.html" %}
+      </div>
+      <div class="card-info-container table-container">
+        {% for day, meals in week_data.items %}
+        <table id="meals-table-{{ week }}-{{ day }}">
+          <tr class="table-header">
+            <th class="text-cell">Essen</th>
+            <th class="text-cell">Box</th>
+            <th class="text-cell">BuDo</th>
+            <th class="text-cell">Warm</th>
+          </tr>
+          <tr>
+            <td class="text-cell">Frühstück</td>
+            <td class="text-cell">{{ meals.breakfast.box }}</td>
+            <td class="text-cell">{{ meals.breakfast.budo }}</td>
+            <td class="text-cell">{{ meals.breakfast.warm }}</td>
+          </tr>
+          <tr>
+            <td class="text-cell">Mittagessen</td>
+            <td class="text-cell">{{ meals.lunch.box }}</td>
+            <td class="text-cell">{{ meals.lunch.budo }}</td>
+            <td class="text-cell">{{ meals.lunch.warm }}</td>
+          </tr>
+          <tr>
+            <td class="text-cell">Abendessen</td>
+            <td class="text-cell">{{ meals.dinner.box }}</td>
+            <td class="text-cell">{{ meals.dinner.budo }}</td>
+            <td class="text-cell">{{ meals.dinner.warm }}</td>
+          </tr>
+        </table>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock content %}

@@ -516,3 +516,42 @@ def swp_dashboard(request):
     }
 
     return HttpResponse(template.render(context, request))
+
+
+@login_required
+def kitchen(request):
+    template = loader.get_template('kitchen.html')
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus)
+    print("Schwerpunkte:", schwerpunkte)
+    auslagerorte = Auslagerorte.objects.all()
+
+    meal_counts = {
+        "w1": {day: {"breakfast": {"box": 0, "budo": 0, "warm": 0},
+                     "lunch": {"box": 0, "budo": 0, "warm": 0},
+                     "dinner": {"box": 0, "budo": 0, "warm": 0}}
+               for day in range(1, schwerpunkte[0].schwerpunktzeit.dauer + 1)},
+        "w2": {day: {"breakfast": {"box": 0, "budo": 0, "warm": 0},
+                     "lunch": {"box": 0, "budo": 0, "warm": 0},
+                     "dinner": {"box": 0, "budo": 0, "warm": 0}}
+               for day in range(1, schwerpunkte[1].schwerpunktzeit.dauer + 1)}
+    }
+
+    for swp in schwerpunkte:
+        week = swp.schwerpunktzeit.woche
+        for meal in swp.meals.all():
+            if week in meal_counts and meal.day in meal_counts[week] and meal.meal_type in meal_counts[week][meal.day] and meal.meal_choice in meal_counts[week][meal.day][meal.meal_type]:
+                meal_counts[week][meal.day][meal.meal_type][meal.meal_choice] += 1
+
+    print("Meal Counts:", meal_counts)  # Debugging statement
+    context = {
+        "profil": profil,
+        "schwerpunkte": schwerpunkte,
+        "auslagerorte": auslagerorte,
+        "meal_counts": meal_counts,
+    }
+    return HttpResponse(template.render(context, request))

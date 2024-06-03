@@ -34,12 +34,7 @@ urlpatterns = [
          AuslagerorteUpdate.as_view(), name='auslagerorte-update'),
     path('toggle_zug_abreise/', views.toggle_zug_abreise,
          name='toggle_zug_abreise'),
-    # path('check_in_list/<int:id>', views.check_in_list, name='check_in_all'),
-    # path('test', views.testing, name='testing'),
-    # path('budo_families/', views.budo_family_overview,
-    #      name='budo_family_overview'),
-    # path('budo_familie/<str:budo_family>',
-    #      views.budo_family, name='budo_family'),
+    path('kitchen', views.kitchen, name='kitchen'),
 ]
 
 if settings.DEBUG:
