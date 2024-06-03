@@ -440,14 +440,21 @@ class Schwerpunkte(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
         schwerpunktzeit = self.schwerpunktzeit
-        if schwerpunktzeit and schwerpunktzeit.woche in ["w1", "w2"]:
+
+        if schwerpunktzeit:
+            # Get the current number of days for the meals
+            current_days = self.meals.values_list('day', flat=True).distinct()
+
+            # If the duration has changed, delete meals for days greater than the new duration
+            if current_days and max(current_days) > schwerpunktzeit.dauer:
+                self.meals.filter(day__gt=schwerpunktzeit.dauer).delete()
+
+            # Create missing meals if the duration is longer
             for day in range(1, schwerpunktzeit.dauer + 1):
                 for meal_type in ['breakfast', 'lunch', 'dinner']:
                     if not Meal.objects.filter(schwerpunkt=self, day=day, meal_type=meal_type).exists():
                         Meal.objects.create(
                             schwerpunkt=self, day=day, meal_type=meal_type)
-        else:
-            pass
 
     class Meta:
         verbose_name_plural = "Schwerpunkte"
