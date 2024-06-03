@@ -434,6 +434,9 @@ class Schwerpunkte(models.Model):
     def get_turnus(self):
         return self.schwerpunktzeit.turnus
 
+    def get_essenseinteilung(self):
+        return any(meal.meal_choice for meal in self.meals.all())
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
         schwerpunktzeit = self.schwerpunktzeit

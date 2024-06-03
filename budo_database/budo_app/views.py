@@ -469,7 +469,9 @@ class MealUpdate(LoginRequiredMixin, UpdateView):
     model = Schwerpunkte
     form_class = MealChoiceForm
     template_name = "swpmeals.html"
-    success_url = reverse_lazy('swp-dashboard')
+
+    def get_success_url(self):
+        return reverse_lazy('schwerpunkt-detail', kwargs={'pk': self.object.pk})
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)

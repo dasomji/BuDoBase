@@ -55,6 +55,7 @@ crossorigin=""/>
                             <th class="text-cell">Betreuende</th>
                             <th class="item-cell">Auslagern</th>
                             <th class="number-cell">Kinder</th>
+                            <th class="text-cell">Essenseinteilung</th>
                             <th class="item-cell">Aktionen</th>
                         </tr>
                 
@@ -72,6 +73,7 @@ crossorigin=""/>
                                 </td>
                                 <td class="item-cell">{{ swp.get_auslagern }}</td>
                                 <td class="number-cell">{{ swp.swp_kinder.count }}</td>
+                                <td class="text-cell">{{ swp.get_essenseinteilung|yesno:"Ja,Nein" }}</td>
                                 <td>
                                     <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
                                     <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
@@ -97,6 +99,7 @@ crossorigin=""/>
                             <th class="text-cell">Betreuende</th>
                             <th class="item-cell">Auslagern</th>
                             <th class="number-cell">Kinder</th>
+                            <th class="text-cell">Essenseinteilung</th>
                             <th class="item-cell">Aktionen</th>
                         </tr>
                 
@@ -114,6 +117,7 @@ crossorigin=""/>
                                 </td>
                                 <td class="item-cell">{{ swp.get_auslagern }}</td>
                                 <td class="number-cell">{{ swp.swp_kinder.count }}</td>
+                                <td class="text-cell">{{ swp.get_essenseinteilung|yesno:"Ja,Nein" }}</td>
                                 <td>
                                     <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
                                     <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
@@ -139,6 +143,7 @@ crossorigin=""/>
                             <th class="text-cell">Betreuende</th>
                             <th class="item-cell">Auslagern</th>
                             <th class="number-cell">Kinder</th>
+                            <th class="text-cell">Essenseinteilung</th>
                             <th class="item-cell">Aktionen</th>
                         </tr>
                 
@@ -156,6 +161,7 @@ crossorigin=""/>
                                 </td>
                                 <td class="item-cell">{{ swp.get_auslagern }}</td>
                                 <td class="number-cell">{{ swp.swp_kinder.count }}</td>
+                                <td class="text-cell">{{ swp.get_essenseinteilung|yesno:"Ja,Nein" }}</td>
                                 <td>
                                     <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
                                     <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
