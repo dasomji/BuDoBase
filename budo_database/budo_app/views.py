@@ -500,32 +500,8 @@ def swp_dashboard(request):
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
 
-    kids = Kinder.objects.all()
-    anzahl_kids = Kinder.objects.all().count()
-    kids_zug_anreise_count = Kinder.objects.filter(zug_anreise=True).count()
-    kids_zug_abreise_count = Kinder.objects.filter(zug_abreise=True).count()
-    male_kids_count = Kinder.objects.filter(sex="männlich").count()
-    female_kids_count = Kinder.objects.filter(sex="weiblich").count()
-    diverse_kids_count = Kinder.objects.exclude(
-        sex__in=["männlich", "weiblich"]).count()
-    kids_mit_budo_erfahrung = Kinder.objects.filter(
-        budo_erfahrung=True).count()
-    # geburtstagskinder = [
-    #     kid for kid in kids if kid.is_birthday_during_turnus()]
-    geburtstagskinder = sorted(
-        [kid for kid in kids if kid.is_birthday_during_turnus()],
-        key=lambda kid: (kid.kid_birthday.month, kid.kid_birthday.day)
-    )
-    geburtstage = len(geburtstagskinder)
-    eingecheckte_kids = Kinder.objects.filter(anwesend=True).count()
-    team = Profil.objects.all()
+    kids = Kinder.objects.filter(turnus=active_turnus)
 
-    medikamente = [kid for kid in kids if kid.get_clean_drugs()]
-    gesundheit = [kid for kid in kids if kid.get_clean_illness()]
-    kids_attention = [kid for kid in kids if (
-        kid.get_clean_drugs() or kid.get_clean_illness())]
-    ersties = Kinder.objects.filter(budo_erfahrung=False)
-    ersties_count = ersties.count()
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)
     auslagerorte = Auslagerorte.objects.all()
@@ -533,22 +509,6 @@ def swp_dashboard(request):
     context = {
         "profil": profil,
         "kids": kids,
-        "kids_zug_anreise_count": kids_zug_anreise_count,
-        "kids_zug_abreise_count": kids_zug_abreise_count,
-        "male_kids_count": male_kids_count,
-        "female_kids_count": female_kids_count,
-        "diverse_kids_count": diverse_kids_count,
-        "kids_mit_budo_erfahrung": kids_mit_budo_erfahrung,
-        "geburtstagskinder": geburtstagskinder,
-        "geburtstage": geburtstage,
-        "eingecheckte_kids": eingecheckte_kids,
-        "anzahl_kids": anzahl_kids,
-        "team": team,
-        "medikamente": medikamente,
-        "gesundheit": gesundheit,
-        "kids_attention": kids_attention,
-        "ersties": ersties,
-        "ersties_count": ersties_count,
         "schwerpunkte": schwerpunkte,
         "auslagerorte": auslagerorte,
     }
