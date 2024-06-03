@@ -58,7 +58,7 @@
         <div class="schwerpunkt-container">
           {% for swp in schwerpunkte %}
           {% if swp.schwerpunktzeit.woche == week %}
-          <div class="card" id="swp-{{ swp.swp_name }}">
+          <div class="card swp-card" id="swp-{{ swp.swp_name }}">
             <div class="info-header-container">
               <h2>{{ swp.swp_name }}</h2>{% include "components/openicon.html" %}
             </div>
