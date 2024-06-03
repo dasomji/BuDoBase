@@ -11,16 +11,16 @@
     </a>
     {% endfor %}
     {% for s in schwerpunkte %}
-    <a href="/schwerpunkt_details/{{ s.id }}">
+    <a href="/schwerpunkt/{{ s.id }}">
       <div class="search-item" id="schwerpunkt">
-        {{ s.swp_name }}
+        🚀{{ s.swp_name }}
       </div>
     </a>
     {% endfor %}
     {% for a in auslagerorte %}
-    <a href="/auslagerort_details/{{ a.id }}">
+    <a href="/auslagerorte/{{ a.id }}">
       <div class="search-item" id="auslagerort">
-        {{ a.name }}
+        🏡 {{ a.name }}
       </div>
     </a>
     {% endfor %}

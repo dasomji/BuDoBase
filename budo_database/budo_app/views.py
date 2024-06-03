@@ -75,9 +75,14 @@ def kids_list(request):
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     kids = models.Kinder.objects.filter(turnus=active_turnus)
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus)
+    auslagerorte = Auslagerorte.objects.all()
     template = loader.get_template('kids_list.html')
     context = {
         'kids': kids,
+        'schwerpunkte': schwerpunkte,
+        'auslagerorte': auslagerorte,
     }
     return HttpResponse(template.render(context, request))
 
@@ -88,12 +93,17 @@ def zuganreise(request):
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     kids = models.Kinder.objects.filter(turnus=active_turnus)
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus)
+    auslagerorte = Auslagerorte.objects.all()
     zugabreise_count = models.Kinder.get_zugabreise_count(
         turnus=active_turnus)  # Pass the active turnus
     template = loader.get_template('zuganreise.html')
     context = {
         'kids': kids,
         'zugabreise_count': zugabreise_count,
+        'schwerpunkte': schwerpunkte,
+        'auslagerorte': auslagerorte,
     }
     return HttpResponse(template.render(context, request))
 
@@ -131,8 +141,14 @@ def update_notiz_abreise(request):
 
 @login_required
 def kid_details(request, id):
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
     this_kid = models.Kinder.objects.get(id=id)
     kids = models.Kinder.objects.all().values()
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus)
+    auslagerorte = Auslagerorte.objects.all()
     template = loader.get_template('kids_data.html')
     today = datetime.today().strftime('%Y-%m-%d')
     notizen = this_kid.notizen.all()
@@ -142,6 +158,8 @@ def kid_details(request, id):
         "Kinder": this_kid,
         "Notizen": notizen,
         "kids": kids,
+        'schwerpunkte': schwerpunkte,
+        'auslagerorte': auslagerorte,
     }
 
     if request.method == 'POST':
@@ -163,9 +181,15 @@ def kid_details(request, id):
 
 @login_required
 def check_in(request, id):
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
     this_kid = models.Kinder.objects.get(id=id)
     original_kid = deepcopy(this_kid)
     kids = models.Kinder.objects.all().values()
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus)
+    auslagerorte = Auslagerorte.objects.all()
     template = loader.get_template('check_in.html')
     today = datetime.today().strftime('%Y-%m-%d')
     today_time = datetime.today().strftime('%d.%m.@%H:%M')
@@ -173,6 +197,8 @@ def check_in(request, id):
         "today_date": today,
         'Kinder': this_kid,
         "kids": kids,
+        'schwerpunkte': schwerpunkte,
+        'auslagerorte': auslagerorte,
     }
 
     if request.method == 'POST':
@@ -212,15 +238,23 @@ def check_in(request, id):
 
 @login_required
 def check_out(request, id):
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
     this_kid = models.Kinder.objects.get(id=id)
     original_kid = deepcopy(this_kid)
     kids = models.Kinder.objects.all().values()
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus)
+    auslagerorte = Auslagerorte.objects.all()
     template = loader.get_template('check_out.html')
     today = datetime.today().strftime('%Y-%m-%d')
     context = {
         "today_date": today,
         'Kinder': this_kid,
         "kids": kids,
+        'schwerpunkte': schwerpunkte,
+        'auslagerorte': auslagerorte,
     }
 
     if request.method == 'POST':
@@ -313,6 +347,13 @@ class SchwerpunkteDetail(LoginRequiredMixin, DetailView):
     context_object_name = 'schwerpunkt'
 
     def get_context_data(self, **kwargs):
+        current_user = self.request.user
+        profil = Profil.objects.get(user=current_user)
+        active_turnus = profil.turnus
+        schwerpunkte = Schwerpunkte.objects.filter(
+            schwerpunktzeit__turnus=active_turnus)
+        auslagerorte = Auslagerorte.objects.all()
+        kids = models.Kinder.objects.filter(turnus=active_turnus)
         context = super().get_context_data(**kwargs)
         meals_by_day = {}
         for meal in self.object.meals.all():
@@ -320,7 +361,10 @@ class SchwerpunkteDetail(LoginRequiredMixin, DetailView):
                 meals_by_day[meal.day] = []
             meals_by_day[meal.day].append(meal)
         context['meals_by_day'] = meals_by_day
-        context["google_maps_api_key"] = settings.GOOGLE_MAPS_API_KEY
+        context['schwerpunkte'] = schwerpunkte
+        context['auslagerorte'] = auslagerorte
+        context['kids'] = kids
+
         return context
 
 
@@ -367,8 +411,18 @@ class AuslagerorteDetail(LoginRequiredMixin, DetailView):
     context_object_name = 'ort'
 
     def get_context_data(self, **kwargs):
+        current_user = self.request.user
+        profil = Profil.objects.get(user=current_user)
+        active_turnus = profil.turnus
+        schwerpunkte = Schwerpunkte.objects.filter(
+            schwerpunktzeit__turnus=active_turnus)
+        auslagerorte = Auslagerorte.objects.all()
+        kids = models.Kinder.objects.filter(turnus=active_turnus)
         context = super().get_context_data(**kwargs)
-        context["google_maps_api_key"] = settings.GOOGLE_MAPS_API_KEY
+        context['schwerpunkte'] = schwerpunkte
+        context['auslagerorte'] = auslagerorte
+        context['kids'] = kids
+
         return context
 
 
@@ -395,12 +449,17 @@ def auslagerorte_list(request):
     template = loader.get_template('auslagerorte-list.html')
 
     current_user = request.user
-
-    kids = Kinder.objects.all()
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    kids = models.Kinder.objects.all().values()
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus)
+    auslagerorte = Auslagerorte.objects.all()
     auslagerorte = Auslagerorte.objects.all()
     context = {
         "kids": kids,
         "auslagerorte": auslagerorte,
+        "schwerpunkte": schwerpunkte,
     }
 
     return HttpResponse(template.render(context, request))
@@ -467,7 +526,9 @@ def swp_dashboard(request):
         kid.get_clean_drugs() or kid.get_clean_illness())]
     ersties = Kinder.objects.filter(budo_erfahrung=False)
     ersties_count = ersties.count()
-    swps = Schwerpunkte.objects.filter(schwerpunktzeit__turnus=active_turnus)
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus)
+    auslagerorte = Auslagerorte.objects.all()
 
     context = {
         "profil": profil,
@@ -488,7 +549,8 @@ def swp_dashboard(request):
         "kids_attention": kids_attention,
         "ersties": ersties,
         "ersties_count": ersties_count,
-        "swps": swps,
+        "schwerpunkte": schwerpunkte,
+        "auslagerorte": auslagerorte,
     }
 
     return HttpResponse(template.render(context, request))
