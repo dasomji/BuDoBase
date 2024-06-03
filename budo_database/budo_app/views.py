@@ -524,7 +524,8 @@ def kitchen(request):
     current_user = request.user
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
-
+    team = Profil.objects.filter(turnus=active_turnus)
+    kids = Kinder.objects.filter(turnus=active_turnus)
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)
     print("Schwerpunkte:", schwerpunkte)
@@ -558,5 +559,7 @@ def kitchen(request):
         "schwerpunkte": schwerpunkte,
         "auslagerorte": auslagerorte,
         "meal_counts": meal_counts,
+        "kids": kids,
+        "team": team,
     }
     return HttpResponse(template.render(context, request))

@@ -11,7 +11,7 @@ $(document).ready(function () {
         });
     }
     // Show open cards
-    $('.card:not(.closed-card) .card-info-container').show();
+    $('.card:not(.closed-card) > .card-info-container').show();
     // $('.card:not(.closed-card) .vertical-line').fadeToggle();
 
     // Save state to cookie when a card is clicked

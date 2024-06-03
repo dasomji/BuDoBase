@@ -229,6 +229,15 @@ class Kinder(models.Model):
         else:
             return "🥩"
 
+    def get_veggie_bool(self):
+        if self.vegetarisch:
+            if self.vegetarisch.lower() == "ja":
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def get_food(self):
         veggie = self.get_veggie()
         if self.special_food_description:
@@ -436,6 +445,12 @@ class Schwerpunkte(models.Model):
 
     def get_essenseinteilung(self):
         return any(meal.meal_choice for meal in self.meals.all())
+
+    def get_vegetarische_kids(self):
+        return sum(1 for kid in self.swp_kinder.all() if kid.get_veggie_bool())
+
+    def get_fleischkids(self):
+        return sum(1 for kid in self.swp_kinder.all() if not kid.get_veggie_bool())
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.

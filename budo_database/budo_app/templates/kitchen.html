@@ -1,10 +1,10 @@
 {% extends 'master.html' %}
 {% block headertitle %}
-<h1>Schwerpunkte</h1>
+<h1>Küche</h1>
 {% endblock %}
 
 {% block headerbutton %}
-<a href="/schwerpunkt/create" class="button">SWP hinzufügen</a>
+
 {% endblock %}
 
 {% block extrahead %}
@@ -16,48 +16,108 @@
 
 {% block content %}
 <div class="flex-container" id="body-container">
-  <div class="detail-column" id="left-column">
-
-  </div>
-  <div class="detail-column normal-column" id="right-column">
+  <div class="table-column normal-column" id="left-column">
 
     {% for week, week_data in meal_counts.items %}
-    <div class="card transparent" id="db-{{ week }}">
+    <div class="card transparent meal-card" id="db-{{ week }}">
       <div class="info-header-container">
         <h2>Woche {{ week }}</h2>{% include "components/openicon.html" %}
       </div>
-      <div class="card-info-container table-container">
+      <div class="card-info-container meal-container table-container">
         {% for day, meals in week_data.items %}
-        <table id="meals-table-{{ week }}-{{ day }}">
-          <tr class="table-header">
-            <th class="text-cell">Tag {{day}}</th>
-            <th class="text-cell">Box</th>
-            <th class="text-cell">BuDo</th>
-            <th class="text-cell">Warm</th>
-          </tr>
-          <tr>
-            <td class="text-cell">Frühstück</td>
-            <td class="text-cell">{{ meals.breakfast.box }}</td>
-            <td class="text-cell">{{ meals.breakfast.budo }}</td>
-            <td class="text-cell">{{ meals.breakfast.warm }}</td>
-          </tr>
-          <tr>
-            <td class="text-cell">Mittagessen</td>
-            <td class="text-cell">{{ meals.lunch.box }}</td>
-            <td class="text-cell">{{ meals.lunch.budo }}</td>
-            <td class="text-cell">{{ meals.lunch.warm }}</td>
-          </tr>
-          <tr>
-            <td class="text-cell">Abendessen</td>
-            <td class="text-cell">{{ meals.dinner.box }}</td>
-            <td class="text-cell">{{ meals.dinner.budo }}</td>
-            <td class="text-cell">{{ meals.dinner.warm }}</td>
-          </tr>
-        </table>
+        <div class="meal-container">
+          <table class="meal-table" id="meals-table-{{ week }}-{{ day }}">
+            <tr class="table-header">
+              <th class="text-cell">Tag {{day}}</th>
+              <th class="number-cell">Box</th>
+              <th class="number-cell">BuDo</th>
+              <th class="number-cell">Warm</th>
+            </tr>
+            <tr>
+              <td class="text-cell">Frühstück</td>
+              <td class="number-cell">{{ meals.breakfast.box }}</td>
+              <td class="number-cell">{{ meals.breakfast.budo }}</td>
+              <td class="number-cell">{{ meals.breakfast.warm }}</td>
+            </tr>
+            <tr>
+              <td class="text-cell">Mittagessen</td>
+              <td class="number-cell">{{ meals.lunch.box }}</td>
+              <td class="number-cell">{{ meals.lunch.budo }}</td>
+              <td class="number-cell">{{ meals.lunch.warm }}</td>
+            </tr>
+            <tr>
+              <td class="text-cell">Abendessen</td>
+              <td class="number-cell">{{ meals.dinner.box }}</td>
+              <td class="number-cell">{{ meals.dinner.budo }}</td>
+              <td class="number-cell">{{ meals.dinner.warm }}</td>
+            </tr>
+          </table>
+        </div>
         {% endfor %}
+
+        <div class="schwerpunkt-container">
+          {% for swp in schwerpunkte %}
+          {% if swp.schwerpunktzeit.woche == week %}
+          <div class="card" id="swp-{{ swp.swp_name }}">
+            <div class="info-header-container">
+              <h2>{{ swp.swp_name }}</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+              <p>Vegetarier: {{ swp.get_vegetarische_kids }}</p>
+              <p>Fleisch: {{ swp.get_fleischkids }}</p>
+              <p>Unverträglichkeiten:</p>
+              <ul>
+                {% for kid in swp.swp_kinder.all %}
+                {% if kid.get_clean_special_food %}
+                <li>{{ kid.kid_vorname }}: {{ kid.get_clean_special_food }}</li>
+                {% endif %}
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
       </div>
     </div>
     {% endfor %}
+  </div>
+  <div class="detail-column normal-column" id="right-column">
+    <div class="card closed-card" id="db-essen">
+      <div class="info-header-container">
+        <h2>Essen & Allergien</h2>{% include "components/openicon.html" %}
+      </div>
+      <div class="card-info-container">
+        {% for kid in kids %}
+        <div class="print-nobreak">
+          {% if kid.get_clean_special_food %}
+          <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname|safe}}
+                {{kid.kid_nachname|safe}}</a></span>: {% if kid.get_veggie|length < 2 %}
+            {{kid.get_veggie}} // {% endif %} {{kid.get_alter}} {% if not kid.budo_erfahrung %}// Erstes Mal
+            BuDo{% endif %} </p>
+          {% if kid.get_veggie|length >= 2 %}<p>Veggie: {{kid.get_veggie}} </p> {% endif %}
+          <p>{{ kid.get_clean_special_food }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card" id="db-team">
+      <div class="info-header-container">
+        <h2>Team</h2>{% include "components/openicon.html" %}
+      </div>
+      <div class="card-info-container">
+        {% for teamer in team %}
+        <p><span class="label">{{teamer.rufname}}</span>: {{ teamer.get_food }}</p>
+        {% if teamer.allergien %}<li><span class="label">Allergien</span>: {{ teamer.allergien }}</li>
+        {% endif %}
+        {% if teamer.user.email %}<li><span class="label">Email</span>: <a
+            href="mailto:{{teamer.user.email}}">{{teamer.user.email}}</a></li>{% endif %}
+        {% if teamer.telefonnummer %}<li><span class="label">Mobil</span>: <a
+            href="tel:{{teamer.telefonnummer}}">{{teamer.telefonnummer}}</a></li>{% endif %}
+        {% endfor %}
+      </div>
+    </div>
   </div>
 </div>
 {% endblock content %}

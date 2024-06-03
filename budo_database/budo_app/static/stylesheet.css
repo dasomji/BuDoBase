@@ -311,7 +311,11 @@ button.closebtn{
     flex-grow: 1;
     flex-flow: column nowrap;
     gap: var(--l-padding);
+}
 
+.table-column{
+    flex-basis: 70%;
+    flex-grow: 1;
 }
 
 #right-column {
@@ -348,7 +352,7 @@ button.closebtn{
     box-shadow: none;
 }
 
-.transparent .info-header-container{
+.transparent > .info-header-container{
     background-color: transparent;
 }
 
@@ -356,9 +360,12 @@ button.closebtn{
     background-color: transparent;
 }
 
-/* .transparent .table-container table .table-header{
-    border-radius: var(--corner-rad) var(--corner-rad) 0 0;
-} */
+.meal-table{
+    border-radius: var(--corner-rad);
+    padding: var(--m-padding);
+    overflow: hidden;
+}
+
 
 @media print {
     .card {
@@ -598,7 +605,9 @@ button,
 } */
 
 #kids-table td,
-#kids-table th {
+#kids-table th, 
+.meal-table td,
+.meal-table th {
     padding: var(--s-padding);
     vertical-align: top;
 }
@@ -617,13 +626,13 @@ th.headcol {
     z-index: 3;
 }
 
-#kids-table tr {
+.meal-table tr, #kids-table tr {
     background-color: var(--bg-blue);
     border-bottom: 1px solid #8F8F8F;
     padding: var(--m-padding);
 }
 
-#kids-table tr:last-of-type {
+.meal-table tr:last-of-type, #kids-table tr:last-of-type {
     border-bottom: none;
 }
 
@@ -718,6 +727,24 @@ table #alter {
     white-space: nowrap;
     text-decoration: none;
     color: var(--text-color)
+}
+
+/* ------------kitchen/Küche ------------*/
+.meal-container{
+    display: flex;
+    flex-flow: row wrap;
+    gap: var(--l-padding);
+}
+
+.schwerpunkt-container{
+    display: flex;
+    flex-flow: row wrap;
+    gap: var(--l-padding);
+    width:100%;
+}
+
+.schwerpunkt-container .card{
+    flex-basis: 30%;
 }
 
 /*---------Spezialdokumente------*/
