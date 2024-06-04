@@ -32,6 +32,7 @@
               <th class="number-cell">Box</th>
               <th class="number-cell">BuDo</th>
               <th class="number-cell">Warm</th>
+              <th class="number-cell">Kochportionen</th> <!-- New column header -->
             </tr>
             <tr>
               <td class="text-cell">Frühstück</td>
@@ -52,6 +53,13 @@
               <td class="number-cell">
                 {% if meals.breakfast.warm %}
                 {{ meals.breakfast.warm|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
+              <td class="number-cell">
+                {% if meals.breakfast.kochportionen %}
+                {{ meals.breakfast.kochportionen|join:"<br>"|safe }}
                 {% else %}
                 ---
                 {% endif %}
@@ -80,6 +88,13 @@
                 ---
                 {% endif %}
               </td>
+              <td class="number-cell">
+                {% if meals.lunch.kochportionen %}
+                {{ meals.lunch.kochportionen|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
             </tr>
             <tr>
               <td class="text-cell">Abendessen</td>
@@ -100,6 +115,13 @@
               <td class="number-cell">
                 {% if meals.dinner.warm %}
                 {{ meals.dinner.warm|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
+              <td class="number-cell">
+                {% if meals.dinner.kochportionen %}
+                {{ meals.dinner.kochportionen|join:"<br>"|safe }}
                 {% else %}
                 ---
                 {% endif %}

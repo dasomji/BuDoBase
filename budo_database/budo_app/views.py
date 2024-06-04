@@ -531,51 +531,55 @@ def kitchen(request):
     print("Schwerpunkte:", schwerpunkte)
     auslagerorte = Auslagerorte.objects.all()
 
+    meal_types = ["breakfast", "lunch", "dinner"]
     meal_counts = {}
 
     for swp in schwerpunkte:
         week = swp.schwerpunktzeit.woche
         dauer = swp.schwerpunktzeit.dauer
 
-        # if week not in meal_counts:
-        #     meal_counts[week] = {
-        #         day: {"breakfast": {"box": 0, "budo": 0, "warm": 0},
-        #               "lunch": {"box": 0, "budo": 0, "warm": 0},
-        #               "dinner": {"box": 0, "budo": 0, "warm": 0}}
-        #         for day in range(1, dauer + 1)
-        #     }
-
-        # for meal in swp.meals.all():
-        #     if meal.day <= dauer:
-        #         # Assuming `meal.kids_count()` returns the number of kids for this meal
-        #         kids_count = meal.get_kids_count()
-        #         print(kids_count)
-        #         if meal.day in meal_counts[week] and meal.meal_type in meal_counts[week][meal.day] and meal.meal_choice in meal_counts[week][meal.day][meal.meal_type]:
-        #             meal_counts[week][meal.day][meal.meal_type][meal.meal_choice] += kids_count
-
         if week not in meal_counts:
             meal_counts[week] = {
-                day: {"breakfast": {"box": [], "budo": [], "warm": []},
-                      "lunch": {"box": [], "budo": [], "warm": []},
-                      "dinner": {"box": [], "budo": [], "warm": []}}
+                day: {
+                    "breakfast": {"box": [], "budo": [], "warm": [], "kochportionen": 0},
+                    "lunch": {"box": [], "budo": [], "warm": [], "kochportionen": 0},
+                    "dinner": {"box": [], "budo": [], "warm": [], "kochportionen": 0}
+                }
                 for day in range(1, dauer + 1)
             }
 
         for meal in swp.meals.all():
             if meal.day <= dauer:
                 kids_count = meal.get_kids_count()
-                if meal.meal_choice not in meal_counts[week][meal.day][meal.meal_type]:
-                    meal_counts[week][meal.day][meal.meal_type][meal.meal_choice] = []
-                meal_counts[week][meal.day][meal.meal_type][meal.meal_choice].append(
-                    f"{swp.swp_name} ({kids_count})")
+                if meal.meal_choice:  # Check if meal.meal_choice is not empty
+                    meal_counts[week][meal.day][meal.meal_type][meal.meal_choice].append(
+                        f"{swp.swp_name} ({kids_count})")
+                    if meal.meal_choice in ["budo", "warm"]:
+                        meal_counts[week][meal.day][meal.meal_type]["kochportionen"] += kids_count
 
-    print("Meal Counts:", meal_counts)  # Debugging statement
+    # Format the meal counts data for the template
+    formatted_meal_counts = {}
+    for week, week_data in meal_counts.items():
+        formatted_meal_counts[week] = {}
+        for day, meals in week_data.items():
+            formatted_meal_counts[week][day] = {
+                meal_type: {
+                    'box': meals[meal_type].get('box', []),
+                    'budo': meals[meal_type].get('budo', []),
+                    'warm': meals[meal_type].get('warm', []),
+                    'kochportionen': meals[meal_type].get('kochportionen', 0)
+                }
+                for meal_type in meal_types
+            }
+
+    print("Formatted Meal Counts:", formatted_meal_counts)  # Debugging statement
     context = {
         "profil": profil,
         "schwerpunkte": schwerpunkte,
         "auslagerorte": auslagerorte,
-        "meal_counts": meal_counts,
+        "meal_counts": formatted_meal_counts,
         "kids": kids,
         "team": team,
+        "meal_types": meal_types,
     }
     return HttpResponse(template.render(context, request))
