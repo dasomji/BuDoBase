@@ -25,110 +25,119 @@
       </div>
       <div class="card-info-container meal-container table-container">
         {% for day, meals in week_data.items %}
-        <div class="meal-container">
-          <table class="meal-table" id="meals-table-{{ week }}-{{ day }}">
-            <tr class="table-header">
-              <th class="text-cell">Tag {{day}}</th>
-              <th class="number-cell">Box</th>
-              <th class="number-cell">BuDo</th>
-              <th class="number-cell">Warm</th>
-              <th class="number-cell">Kochportionen</th> <!-- New column header -->
-            </tr>
-            <tr>
-              <td class="text-cell">Frühstück</td>
-              <td class="number-cell">
-                {% if meals.breakfast.box %}
-                {{ meals.breakfast.box|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-              <td class="number-cell">
-                {% if meals.breakfast.budo %}
-                {{ meals.breakfast.budo|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-              <td class="number-cell">
-                {% if meals.breakfast.warm %}
-                {{ meals.breakfast.warm|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-              <td class="number-cell">
-                {% if meals.breakfast.kochportionen %}
-                {{ meals.breakfast.kochportionen|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-            </tr>
-            <tr>
-              <td class="text-cell">Mittagessen</td>
-              <td class="number-cell">
-                {% if meals.lunch.box %}
-                {{ meals.lunch.box|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-              <td class="number-cell">
-                {% if meals.lunch.budo %}
-                {{ meals.lunch.budo|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-              <td class="number-cell">
-                {% if meals.lunch.warm %}
-                {{ meals.lunch.warm|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-              <td class="number-cell">
-                {% if meals.lunch.kochportionen %}
-                {{ meals.lunch.kochportionen|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-            </tr>
-            <tr>
-              <td class="text-cell">Abendessen</td>
-              <td class="number-cell">
-                {% if meals.dinner.box %}
-                {{ meals.dinner.box|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-              <td class="number-cell">
-                {% if meals.dinner.budo %}
-                {{ meals.dinner.budo|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-              <td class="number-cell">
-                {% if meals.dinner.warm %}
-                {{ meals.dinner.warm|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-              <td class="number-cell">
-                {% if meals.dinner.kochportionen %}
-                {{ meals.dinner.kochportionen|join:"<br>"|safe }}
-                {% else %}
-                ---
-                {% endif %}
-              </td>
-            </tr>
-          </table>
+        <div class="card transparent meal-card" id="card-{{ week }}-{{day}}">
+          <div class="info-header-container">
+            <h2>Tag {{ day }}</h2>
+            {% include "components/openicon.html" %}
+          </div>
+          <div class="card-info-container">
+            <div class="meal-container">
+              <table class="meal-table" id="meals-table-{{ week }}-{{ day }}">
+                <tr class="table-header">
+                  <th class="text-cell">Tag {{day}}</th>
+                  <th class="number-cell">Box</th>
+                  <th class="number-cell">BuDo</th>
+                  <th class="number-cell">Warm</th>
+                  <th class="number-cell">Kochportionen</th> <!-- New column header -->
+                </tr>
+                <tr>
+                  <td class="text-cell">Frühstück</td>
+                  <td class="number-cell">
+                    {% if meals.breakfast.box %}
+                    {{ meals.breakfast.box|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                  <td class="number-cell">
+                    {% if meals.breakfast.budo %}
+                    {{ meals.breakfast.budo|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                  <td class="number-cell">
+                    {% if meals.breakfast.warm %}
+                    {{ meals.breakfast.warm|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                  <td class="number-cell">
+                    {% if meals.breakfast.kochportionen %}
+                    {{ meals.breakfast.kochportionen|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-cell">Mittagessen</td>
+                  <td class="number-cell">
+                    {% if meals.lunch.box %}
+                    {{ meals.lunch.box|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                  <td class="number-cell">
+                    {% if meals.lunch.budo %}
+                    {{ meals.lunch.budo|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                  <td class="number-cell">
+                    {% if meals.lunch.warm %}
+                    {{ meals.lunch.warm|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                  <td class="number-cell">
+                    {% if meals.lunch.kochportionen %}
+                    {{ meals.lunch.kochportionen|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-cell">Abendessen</td>
+                  <td class="number-cell">
+                    {% if meals.dinner.box %}
+                    {{ meals.dinner.box|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                  <td class="number-cell">
+                    {% if meals.dinner.budo %}
+                    {{ meals.dinner.budo|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                  <td class="number-cell">
+                    {% if meals.dinner.warm %}
+                    {{ meals.dinner.warm|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                  <td class="number-cell">
+                    {% if meals.dinner.kochportionen %}
+                    {{ meals.dinner.kochportionen|join:"<br>"|safe }}
+                    {% else %}
+                    ---
+                    {% endif %}
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </div>
         </div>
+
         {% endfor %}
 
         <div class="schwerpunkt-container">
