@@ -452,6 +452,14 @@ class Schwerpunkte(models.Model):
     def get_fleischkids(self):
         return sum(1 for kid in self.swp_kinder.all() if not kid.get_veggie_bool())
 
+    def get_meals_by_day(self):
+        meals_by_day = {}
+        for meal in self.meals.all():
+            if meal.day not in meals_by_day:
+                meals_by_day[meal.day] = []
+            meals_by_day[meal.day].append(meal)
+        return meals_by_day
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
         schwerpunktzeit = self.schwerpunktzeit

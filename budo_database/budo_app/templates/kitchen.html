@@ -21,7 +21,7 @@
     {% for week, week_data in meal_counts.items %}
     <div class="card transparent meal-card" id="db-{{ week }}">
       <div class="info-header-container">
-        <h2>Woche {{ week }}</h2>{% include "components/openicon.html" %}
+        <h2>Woche {% if week == "w1" %}1{% else %}2{% endif %}</h2>{% include "components/openicon.html" %}
       </div>
       <div class="card-info-container meal-container table-container">
         {% for day, meals in week_data.items %}
@@ -63,6 +63,25 @@
               <h2>{{ swp.swp_name }}</h2>{% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
+              <div class="card-table-container">
+                <table class="card-table">
+                  <tr>
+                    <th></th>
+                    <th class="text-cell">Frühstück</th>
+                    <th class="text-cell">Mittagessen</th>
+                    <th class="text-cell">Abendessen</th>
+                  </tr>
+
+                  {% for day, meals in swp.get_meals_by_day.items %}
+                  <tr>
+                    <td class="nowrap text-cell">Tag {{ day }}</td>
+                    {% for meal in meals %}
+                    <td class="text-cell">{{ meal.meal_choice }}</td>
+                    {% endfor %}
+                  </tr>
+                  {% endfor %}
+                </table>
+              </div>
               <p>Vegetarier: {{ swp.get_vegetarische_kids }}</p>
               <p>Fleisch: {{ swp.get_fleischkids }}</p>
               <p>Unverträglichkeiten:</p>
