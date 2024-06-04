@@ -537,21 +537,37 @@ def kitchen(request):
         week = swp.schwerpunktzeit.woche
         dauer = swp.schwerpunktzeit.dauer
 
+        # if week not in meal_counts:
+        #     meal_counts[week] = {
+        #         day: {"breakfast": {"box": 0, "budo": 0, "warm": 0},
+        #               "lunch": {"box": 0, "budo": 0, "warm": 0},
+        #               "dinner": {"box": 0, "budo": 0, "warm": 0}}
+        #         for day in range(1, dauer + 1)
+        #     }
+
+        # for meal in swp.meals.all():
+        #     if meal.day <= dauer:
+        #         # Assuming `meal.kids_count()` returns the number of kids for this meal
+        #         kids_count = meal.get_kids_count()
+        #         print(kids_count)
+        #         if meal.day in meal_counts[week] and meal.meal_type in meal_counts[week][meal.day] and meal.meal_choice in meal_counts[week][meal.day][meal.meal_type]:
+        #             meal_counts[week][meal.day][meal.meal_type][meal.meal_choice] += kids_count
+
         if week not in meal_counts:
             meal_counts[week] = {
-                day: {"breakfast": {"box": 0, "budo": 0, "warm": 0},
-                      "lunch": {"box": 0, "budo": 0, "warm": 0},
-                      "dinner": {"box": 0, "budo": 0, "warm": 0}}
+                day: {"breakfast": {"box": [], "budo": [], "warm": []},
+                      "lunch": {"box": [], "budo": [], "warm": []},
+                      "dinner": {"box": [], "budo": [], "warm": []}}
                 for day in range(1, dauer + 1)
             }
 
         for meal in swp.meals.all():
             if meal.day <= dauer:
-                # Assuming `meal.kids_count()` returns the number of kids for this meal
                 kids_count = meal.get_kids_count()
-                print(kids_count)
-                if meal.day in meal_counts[week] and meal.meal_type in meal_counts[week][meal.day] and meal.meal_choice in meal_counts[week][meal.day][meal.meal_type]:
-                    meal_counts[week][meal.day][meal.meal_type][meal.meal_choice] += kids_count
+                if meal.meal_choice not in meal_counts[week][meal.day][meal.meal_type]:
+                    meal_counts[week][meal.day][meal.meal_type][meal.meal_choice] = []
+                meal_counts[week][meal.day][meal.meal_type][meal.meal_choice].append(
+                    f"{swp.swp_name} ({kids_count})")
 
     print("Meal Counts:", meal_counts)  # Debugging statement
     context = {

@@ -35,21 +35,75 @@
             </tr>
             <tr>
               <td class="text-cell">Frühstück</td>
-              <td class="number-cell">{{ meals.breakfast.box }}</td>
-              <td class="number-cell">{{ meals.breakfast.budo }}</td>
-              <td class="number-cell">{{ meals.breakfast.warm }}</td>
+              <td class="number-cell">
+                {% if meals.breakfast.box %}
+                {{ meals.breakfast.box|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
+              <td class="number-cell">
+                {% if meals.breakfast.budo %}
+                {{ meals.breakfast.budo|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
+              <td class="number-cell">
+                {% if meals.breakfast.warm %}
+                {{ meals.breakfast.warm|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
             </tr>
             <tr>
               <td class="text-cell">Mittagessen</td>
-              <td class="number-cell">{{ meals.lunch.box }}</td>
-              <td class="number-cell">{{ meals.lunch.budo }}</td>
-              <td class="number-cell">{{ meals.lunch.warm }}</td>
+              <td class="number-cell">
+                {% if meals.lunch.box %}
+                {{ meals.lunch.box|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
+              <td class="number-cell">
+                {% if meals.lunch.budo %}
+                {{ meals.lunch.budo|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
+              <td class="number-cell">
+                {% if meals.lunch.warm %}
+                {{ meals.lunch.warm|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
             </tr>
             <tr>
               <td class="text-cell">Abendessen</td>
-              <td class="number-cell">{{ meals.dinner.box }}</td>
-              <td class="number-cell">{{ meals.dinner.budo }}</td>
-              <td class="number-cell">{{ meals.dinner.warm }}</td>
+              <td class="number-cell">
+                {% if meals.dinner.box %}
+                {{ meals.dinner.box|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
+              <td class="number-cell">
+                {% if meals.dinner.budo %}
+                {{ meals.dinner.budo|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
+              <td class="number-cell">
+                {% if meals.dinner.warm %}
+                {{ meals.dinner.warm|join:"<br>"|safe }}
+                {% else %}
+                ---
+                {% endif %}
+              </td>
             </tr>
           </table>
         </div>
@@ -60,7 +114,11 @@
           {% if swp.schwerpunktzeit.woche == week %}
           <div class="card swp-card" id="swp-{{ swp.swp_name }}">
             <div class="info-header-container">
-              <h2>{{ swp.swp_name }}</h2>{% include "components/openicon.html" %}
+              <div class="swp-info">
+                <h2>{{ swp.swp_name }}</h2>
+                <p>{{ swp.ort}}</p>
+              </div>
+              {% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
               <div class="card-table-container">
