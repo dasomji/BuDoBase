@@ -1,70 +1,39 @@
-<!DOCTYPE html>
-{% load static %}
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Django File Upload</title>
-    <style>
-      @import url("https://fonts.googleapis.com/css2?family=Roboto&display=swap");
+{% extends 'master.html' %}
+{% block headertitle %}
+<h1> Turnis </h1>
+{% endblock %}
 
-      * {
-        font-family: "Roboto";
-      }
+{% block headerbutton %}
 
-      body {
-        background-color: #f5f5f5;
-      }
+{% endblock %}
 
-      form {
-        background-color: #ffffff;
-        padding: 25px;
-      }
-
-      table {
-        width: 100%;
-        text-align: center;
-        margin-top: 25px;
-        padding: 25px;
-        background-color: #ffffff;
-      }
-
-      table tr td {
-        padding-top: 15px;
-      }
-    </style>
-  </head>
-  <body>
-    <form
-      action="{% url 'uploadFile' %}"
-      method="POST"
-      enctype="multipart/form-data"
-    >
-      {{ upload_form.as_p}}
-      {% csrf_token %}
-      <input type="submit" value="Upload" />
-    </form>
-    <table>
-      {{uploud_form.as_table}}
-    </table>
-    <table>
-      <tr>
-        <th>Turnus</th>
-        <th>ID</th>
-        <th>Turnusbeginn</th>
-        <th>Dateipfad</th>
-        <th>Upload Zeit & Datum</th>
-      </tr>
-      {% for file in documents %}
-      <tr>
-        <td>{{ file }}</td>
-        <td>{{ file.id }}</td>
-        <td>{{ file.get_turnus_beginn_formatiert }}</td>
-        <td>{{ file.uploadedFile.url }}</td>
-        <td>{{ file.get_upload_time }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-  </body>
-</html>
+{% block content %}
+<div class="flex-container" id="body-container">
+  <form action="{% url 'uploadFile' %}" method="POST" enctype="multipart/form-data">
+    {{ upload_form.as_p}}
+    {% csrf_token %}
+    <input type="submit" value="Upload" />
+  </form>
+  <table>
+    {{uploud_form.as_table}}
+  </table>
+  <table>
+    <tr>
+      <th>Turnus</th>
+      <th>ID</th>
+      <th>Turnusbeginn</th>
+      <th>Dateipfad</th>
+      <th>Upload Zeit & Datum</th>
+    </tr>
+    {% for file in documents %}
+    <tr>
+      <td>{{ file }}</td>
+      <td>{{ file.id }}</td>
+      <td>{{ file.get_turnus_beginn_formatiert }}</td>
+      <td>{{ file.uploadedFile.url }}</td>
+      <td>{{ file.get_upload_time }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div> <!-- end of body container -->
+{% endblock content %}
