@@ -313,11 +313,6 @@ button.closebtn{
     gap: var(--l-padding);
 }
 
-.table-column{
-    flex-basis: 70%;
-    flex-grow: 1;
-}
-
 #right-column {
     flex-basis: 40%;
 }
@@ -736,6 +731,10 @@ table #alter {
     gap: var(--l-padding);
 }
 
+.meal-card{
+    width: 100%;
+}
+
 .schwerpunkt-container{
     display: flex;
     flex-flow: row wrap;
@@ -748,6 +747,11 @@ table #alter {
     /* width: 282px; */
     
     height: fit-content;
+}
+
+.table-column{
+    flex-basis: 60%;
+    flex-grow: 1;
 }
 
 /*---------Spezialdokumente------*/
