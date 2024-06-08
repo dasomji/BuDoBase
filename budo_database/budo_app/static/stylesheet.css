@@ -593,12 +593,6 @@ button,
     box-sizing: border-box;
 }
 
-/* .table-header th::after {
-    content: url("img/sort.svg");
-    padding-left: 5px;
-    display: inline-block;
-} */
-
 #kids-table td,
 #kids-table th, 
 .meal-table td,
