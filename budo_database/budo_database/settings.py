@@ -40,8 +40,14 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get('DJANGO_DEBUG', '') != 'False'
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://budobase-production.up.railway.app',
+]
+
 ALLOWED_HOSTS = [
     'budobase-production.up.railway.app',
+    '127.0.0.1',
+    'localhost',
 ]
 
 
