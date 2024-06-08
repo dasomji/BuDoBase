@@ -87,6 +87,9 @@ def upload_excel(request, turnus_id):
 @login_required
 def kids_list(request):
     current_user = request.user
+    if not current_user.is_authenticated:
+        # Redirect to the login page if not authenticated
+        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     kids = models.Kinder.objects.filter(turnus=active_turnus)
@@ -105,6 +108,9 @@ def kids_list(request):
 @login_required
 def zuganreise(request):
     current_user = request.user
+    if not current_user.is_authenticated:
+        # Redirect to the login page if not authenticated
+        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     kids = models.Kinder.objects.filter(turnus=active_turnus)
@@ -157,6 +163,9 @@ def update_notiz_abreise(request):
 @login_required
 def kid_details(request, id):
     current_user = request.user
+    if not current_user.is_authenticated:
+        # Redirect to the login page if not authenticated
+        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     this_kid = models.Kinder.objects.get(id=id)
@@ -197,6 +206,9 @@ def kid_details(request, id):
 @login_required
 def check_in(request, id):
     current_user = request.user
+    if not current_user.is_authenticated:
+        # Redirect to the login page if not authenticated
+        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     this_kid = models.Kinder.objects.get(id=id)
@@ -254,6 +266,9 @@ def check_in(request, id):
 @login_required
 def check_out(request, id):
     current_user = request.user
+    if not current_user.is_authenticated:
+        # Redirect to the login page if not authenticated
+        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     this_kid = models.Kinder.objects.get(id=id)
@@ -311,6 +326,9 @@ def postprocess(request):
 @login_required
 def serienbrief(request):
     current_user = request.user
+    if not current_user.is_authenticated:
+        # Redirect to the login page if not authenticated
+        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     kids = models.Kinder.objects.filter(turnus=active_turnus)
@@ -325,6 +343,9 @@ def serienbrief(request):
 @login_required
 def murdergame(request):
     current_user = request.user
+    if not current_user.is_authenticated:
+        # Redirect to the login page if not authenticated
+        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     kids = models.Kinder.objects.filter(turnus=active_turnus, anwesend=True)
@@ -464,6 +485,9 @@ def auslagerorte_list(request):
     template = loader.get_template('auslagerorte-list.html')
 
     current_user = request.user
+    if not current_user.is_authenticated:
+        # Redirect to the login page if not authenticated
+        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     kids = models.Kinder.objects.all().values()
@@ -514,6 +538,9 @@ def swp_dashboard(request):
     template = loader.get_template('swp-dashboard.html')
 
     current_user = request.user
+    if not current_user.is_authenticated:
+        # Redirect to the login page if not authenticated
+        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
 
@@ -537,6 +564,9 @@ def swp_dashboard(request):
 def kitchen(request):
     template = loader.get_template('kitchen.html')
     current_user = request.user
+    if not current_user.is_authenticated:
+        # Redirect to the login page if not authenticated
+        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     team = Profil.objects.filter(turnus=active_turnus)

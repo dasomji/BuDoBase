@@ -75,6 +75,9 @@ def sign_up(request):
 def dashboard(request):
     template = loader.get_template('users/dashboard.html')
     current_user = request.user
+    if not current_user.is_authenticated:
+        # Redirect to the login page if not authenticated
+        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
 
