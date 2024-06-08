@@ -13,13 +13,18 @@ def from_excel_ordinal(ordinal: float, _epoch0=datetime(1899, 12, 31)) -> dateti
 
 def process_excel():
     this_turnus = models.Turnus.objects.last()
-    path = os.path.join(MEDIA_ROOT, str(this_turnus.uploadedFile))
+    if this_turnus.uploadedFile:
+        path = os.path.join(MEDIA_ROOT, str(this_turnus.uploadedFile))
 
     budo = pd.read_excel(
         open(path, "rb"), sheet_name="DataCleaner", header=1)
     budo_raw = pd.read_excel(
         open(path, "rb"), sheet_name="RawData", header=0)
     for i in range(0, len(budo)):
+        # Skip entries with "MANUAL OVERRIDE"
+        if budo_raw["Submitted"][i] == "MANUAL OVERRIDE" or budo_raw["Anmelder Email"][i] == "MANUAL OVERRIDE":
+            continue
+
         # turn Anreise string into boolean, True = Zuganreise
         if "Betreute Anreise" in budo["AnreiseText"][i]:
             kid_anreise = True
@@ -36,7 +41,7 @@ def process_excel():
         else:
             kid_jugendticket = False
         # extract from Turnusdauer if kid stays one or two weeks
-        if "ganz" in budo["Turnusdauer"][i]:
+        if "ganz" in str(budo["Turnusdauer"][i]):
             kid_dauer = 2
         else:
             kid_dauer = 1
@@ -53,7 +58,11 @@ def process_excel():
         cleaned_notfall = str(budo_raw["Notfall Kontakte"][i]).replace(
             "<p>", "").replace("</p>", "")
 
-        birthday = from_excel_ordinal(float(budo["Kind_Geburtsdatum"][i]))
+        birthday_value = budo["Kind_Geburtsdatum"][i]
+        if isinstance(birthday_value, pd.Timestamp):
+            birthday_value = birthday_value.toordinal() + 366  # Convert to Excel ordinal
+
+        birthday = from_excel_ordinal(float(birthday_value))
 
         kid = models.Kinder(
             kid_index=budo["Index"][i],

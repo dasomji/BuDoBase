@@ -1,0 +1,9 @@
+{% extends 'master.html' %}
+{% block content %}
+<h1>Excel-Datei hochladen für Turnus {{ turnus.turnus_nr }}</h1>
+<form action="" method="POST" enctype="multipart/form-data">
+  {{ form.as_p }}
+  {% csrf_token %}
+  <input type="submit" value="Hochladen" />
+</form>
+{% endblock %}

@@ -58,15 +58,30 @@ def uploadFile(request):
         "documents": documents,
     }
     if request.method == "POST":
-        upload_form = UploadForm(request.POST)
+        upload_form = UploadForm(request.POST, request.FILES)
         context["upload_form"] = upload_form
         if upload_form.is_valid():
-            process_excel()
+            turnus = upload_form.save()
+            if 'uploadedFile' in request.FILES:
+                process_excel()
     else:
         upload_form = UploadForm()
         context["upload_form"] = upload_form
 
     return HttpResponse(template.render(context, request))
+
+
+def upload_excel(request, turnus_id):
+    turnus = get_object_or_404(models.Turnus, id=turnus_id)
+    if request.method == "POST":
+        form = UploadForm(request.POST, request.FILES, instance=turnus)
+        if form.is_valid():
+            form.save()
+            process_excel()
+            return redirect('uploadFile')
+    else:
+        form = UploadForm(instance=turnus)
+    return render(request, 'upload_excel.html', {'form': form, 'turnus': turnus})
 
 
 @login_required

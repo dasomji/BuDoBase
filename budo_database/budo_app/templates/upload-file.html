@@ -4,7 +4,7 @@
 {% endblock %}
 
 {% block headerbutton %}
-
+<a href="/upload" class="button">Turnus hinzufügen</a>
 {% endblock %}
 
 {% block content %}
@@ -12,26 +12,35 @@
   <form action="{% url 'uploadFile' %}" method="POST" enctype="multipart/form-data">
     {{ upload_form.as_p}}
     {% csrf_token %}
-    <input type="submit" value="Upload" />
+    <input type="submit" value="Turnus hinzufügen" />
   </form>
-  <table>
-    {{uploud_form.as_table}}
-  </table>
   <table>
     <tr>
       <th>Turnus</th>
       <th>ID</th>
       <th>Turnusbeginn</th>
-      <th>Dateipfad</th>
+      <th>Excel-Datei</th>
       <th>Upload Zeit & Datum</th>
+      <th>Aktionen</th>
     </tr>
     {% for file in documents %}
     <tr>
       <td>{{ file }}</td>
       <td>{{ file.id }}</td>
       <td>{{ file.get_turnus_beginn_formatiert }}</td>
-      <td>{{ file.uploadedFile.url }}</td>
+      <td>
+        {% if file.uploadedFile and file.uploadedFile.url %}
+        ✅
+        {% else %}
+        ❌
+        {% endif %}
+      </td>
       <td>{{ file.get_upload_time }}</td>
+      <td>
+        {% if not file.uploadedFile %}
+        <a href="{% url 'upload_excel' file.id %}" class="button">Excel hochladen</a>
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </table>

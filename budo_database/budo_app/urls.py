@@ -8,6 +8,8 @@ urlpatterns = [
     path('update_notiz_abreise/', views.update_notiz_abreise,
          name='update_notiz_abreise'),
     path("upload/", views.uploadFile, name="uploadFile"),
+    path('upload_excel/<int:turnus_id>/',
+         views.upload_excel, name='upload_excel'),
     #     path('', views.kids_list, name='kids_list'),
     path('all_kids', views.kids_list, name='kids_list'),
     path('zuganreise', views.zuganreise, name='zuganreise'),

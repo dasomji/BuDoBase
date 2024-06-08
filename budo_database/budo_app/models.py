@@ -365,7 +365,8 @@ class Notizen(models.Model):
 class Turnus(models.Model):
     turnus_nr = models.IntegerField(null=True, default=None)
     turnus_beginn = models.DateField()
-    uploadedFile = models.FileField(upload_to="Uploaded Files/")
+    uploadedFile = models.FileField(
+        upload_to="Uploaded Files/", blank=True, null=True)
     dateTimeOfUpload = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -529,10 +530,9 @@ class Schwerpunktzeit(models.Model):
     woche = models.CharField(
         max_length=2,
         choices=WOCHEN_AUSWAHL,
-        default="u",
-        unique=True
+        default="u"
     )
-    turnus = models.ForeignKey("Turnus", on_delete=models.SET_NULL, null=True,
+    turnus = models.ForeignKey("Turnus", on_delete=models.CASCADE, null=True,
                                help_text="In welchem Turnus findet dieser Schwerpunkt statt?")
     swp_beginn = models.DateField()
 
@@ -543,6 +543,9 @@ class Schwerpunktzeit(models.Model):
             return self.get_woche_display()
         else:
             return f"{self.get_woche_display()} ({self.dauer} Tage)"
+
+    class Meta:
+        unique_together = ('turnus', 'woche')
 
 
 class Auslagerorte(models.Model):

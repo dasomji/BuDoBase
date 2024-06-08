@@ -47,10 +47,15 @@ class CheckOutForm(forms.ModelForm):
 
 class UploadForm(forms.ModelForm):
     class Meta:
+        today = datetime.date.today().strftime('%Y-%m-%d')
         model = Turnus
         fields = ['turnus_nr', 'turnus_beginn', 'uploadedFile']
         labels = {"turnus_nr": "Turnus Nummer",
                   "turnus_beginn": "Beginn des Turnus", "uploadedFile": "Excel-File"}
+        widgets = {
+            'uploadedFile': forms.ClearableFileInput(attrs={'required': False}),
+            'turnus_beginn': forms.DateInput(attrs={'type': 'date', 'class': '', "value": f"{today}"}),
+        }
 
 
 class ProfilForm(forms.ModelForm):
