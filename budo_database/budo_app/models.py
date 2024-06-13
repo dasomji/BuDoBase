@@ -335,6 +335,9 @@ class Kinder(models.Model):
         else:
             return "---"
 
+    def get_taschengeld_sum(self):
+        return sum(t.amount for t in self.geld.all())
+
     @classmethod
     def get_zugabreise_count(cls, turnus=None):
         if turnus:
@@ -360,6 +363,20 @@ class Notizen(models.Model):
 
     class Meta:
         verbose_name_plural = "Notizen"
+
+
+class Geld(models.Model):
+    kinder = models.ForeignKey(
+        Kinder, on_delete=models.CASCADE, related_name='geld')
+    amount = models.FloatField(null=True, blank=True)
+    date_added = models.DateTimeField(auto_now_add=True)
+    added_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.amount} EUR"
+
+    class Meta:
+        verbose_name_plural = "Taschengeld"
 
 
 class Turnus(models.Model):
