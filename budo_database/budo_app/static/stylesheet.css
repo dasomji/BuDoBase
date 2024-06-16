@@ -348,13 +348,18 @@ button.closebtn{
     box-shadow: none;
 }
 
+.transparent .transparent{
+    padding-left: var(--xl-padding);
+    padding-right: var(--xl-padding);
+}
+
 .transparent > .info-header-container{
     background-color: transparent;
     padding-left: var(--xs-padding);
     padding-right: var(--xs-padding);
 }
 
-.transparent .card-info-container{
+.transparent > .card-info-container{
     padding-left: 0;
     padding-right: 0;
 }
@@ -796,12 +801,13 @@ table #alter {
     flex-flow: row wrap;
     gap: var(--l-padding);
     width:100%;
+    padding-right: 44px;
 }
 
 .schwerpunkt-container .card{
     /* flex-basis: 30%; */
     /* width: 282px; */
-    
+    width: 100%;
     height: fit-content;
 }
 
