@@ -1,0 +1,9 @@
+<div class="card transparent" id="swp-map">
+    <div class="info-header-container">
+        <h2>Karte</h2>{% include "components/openicon.html" %}
+    </div>
+    <div class="card-info-container table-container">
+        <div id="map"></div>
+        {{ orte_json|json_script:"map-data" }}
+    </div>
+</div>

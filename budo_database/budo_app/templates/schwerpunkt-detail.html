@@ -70,8 +70,7 @@
         </div>
       </div>
     </div>
-    <div id="map"></div>
-    {{ auslagerorte_json|json_script:"map-data" }}
+    {% include "components/map.html" %}
   </div>
   <div class="detail-column" id="right-column">
     <div class="table-container">

@@ -17,8 +17,7 @@
 {% block content %}
 <div class="flex-container" id="body-container">
   <div class="detail-column" id="left-column">
-    <div id="map"></div>
-    {{ auslagerorte_json|json_script:"map-data" }}
+    {% include "components/map.html" %}
   </div>
   <div class="detail-column" id="right-column">
     <div class="card" id="ort-detail-info">

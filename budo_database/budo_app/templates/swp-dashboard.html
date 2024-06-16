@@ -19,16 +19,9 @@
 {% block content %}
 <div class="flex-container" id="body-container">
     <div class="detail-column" id="left-column">
-        <div class="card transparent" id="swp-map">
-            <div class="info-header-container">
-                <h2>Karte</h2>{% include "components/openicon.html" %}
-            </div>
-            <div class="card-info-container table-container">
-                <div id="map"></div>
-            </div>
-        </div>
+        {% include "components/map.html" %}
     </div>
-    {{ schwerpunkte_json|json_script:"map-data" }}
+
     <div class="detail-column normal-column" id="right-column">
         <div class="card transparent" id="db-keinewoche">
             <div class="info-header-container">

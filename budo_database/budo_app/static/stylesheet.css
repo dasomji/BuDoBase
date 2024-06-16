@@ -350,6 +350,13 @@ button.closebtn{
 
 .transparent > .info-header-container{
     background-color: transparent;
+    padding-left: var(--xs-padding);
+    padding-right: var(--xs-padding);
+}
+
+.transparent .card-info-container{
+    padding-left: 0;
+    padding-right: 0;
 }
 
 .transparent .table-container{

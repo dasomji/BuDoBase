@@ -421,7 +421,7 @@ class SchwerpunkteDetail(LoginRequiredMixin, DetailView):
         except Auslagerorte.DoesNotExist:
             pass
 
-        context['auslagerorte_json'] = json.dumps({
+        context['orte_json'] = json.dumps({
             'orte': auslagerorte_data,
         })
 
@@ -504,7 +504,7 @@ class AuslagerorteDetail(LoginRequiredMixin, DetailView):
         except Auslagerorte.DoesNotExist:
             pass
 
-        context['auslagerorte_json'] = json.dumps({
+        context['orte_json'] = json.dumps({
             'orte': auslagerorte_data,
         })
 
@@ -556,7 +556,7 @@ def auslagerorte_list(request):
         "kids": kids,
         "auslagerorte": auslagerorte,
         "schwerpunkte": schwerpunkte,
-        "auslagerorte_json": json.dumps({
+        "orte_json": json.dumps({
             'orte': auslagerorte_data,
         }),
     }
@@ -623,7 +623,7 @@ def swp_dashboard(request):
         "profil": profil,
         "kids": kids,
         "schwerpunkte": schwerpunkte,
-        'schwerpunkte_json': json.dumps({
+        'orte_json': json.dumps({
             'orte': schwerpunkte_data,
         }),
         "auslagerorte": auslagerorte,
