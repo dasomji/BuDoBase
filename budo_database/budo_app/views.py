@@ -401,6 +401,30 @@ class SchwerpunkteDetail(LoginRequiredMixin, DetailView):
         context['auslagerorte'] = auslagerorte
         context['kids'] = kids
 
+        # Add the single schwerpunkt data in the same format as auslagerorte_list
+        schwerpunkt = self.get_object()
+        auslagerorte_data = [{
+            'id': schwerpunkt.id,
+            'name': schwerpunkt.swp_name,
+            'koordinaten': schwerpunkt.ort.koordinaten if schwerpunkt.ort else '',
+            'kind': 'schwerpunkt',
+        }]
+
+        try:
+            budo_ort = Auslagerorte.objects.get(name="BuDo")
+            auslagerorte_data.append({
+                'id': budo_ort.id,
+                'name': budo_ort.name,
+                'koordinaten': budo_ort.koordinaten,
+                'kind': 'auslagerorte',
+            })
+        except Auslagerorte.DoesNotExist:
+            pass
+
+        context['auslagerorte_json'] = json.dumps({
+            'orte': auslagerorte_data,
+        })
+
         return context
 
 

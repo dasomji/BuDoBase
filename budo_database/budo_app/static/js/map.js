@@ -35,12 +35,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
         console.log(markers.length)
 
-        // if (markers.length === 1) {
-        //     var budoIcon = L.divIcon({ className: 'leaflet-text', html: `<b><a href='/schwerpunkt/1/'>📍Budo</a></b>` });
-        //     var marker_budo = L.marker([48.6866122, 15.0830972], { icon: budoIcon }).addTo(map);
-        //     markers.push(marker_budo);
-        // }
-
         if (markers.length > 0) {
             var group = new L.featureGroup(markers);
             map.fitBounds(group.getBounds(), { paddingBottomRight: [150, 0] });
