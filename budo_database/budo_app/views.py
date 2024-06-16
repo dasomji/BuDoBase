@@ -558,12 +558,6 @@ def swp_dashboard(request):
                     'koordinaten': swp.ort.koordinaten,
                 },
             })
-        else:
-            schwerpunkte_data.append({
-                'id': swp.id,
-                'swp_name': swp.swp_name,
-                'ort': None,
-            })
     auslagerorte = Auslagerorte.objects.all()
 
     context = {
