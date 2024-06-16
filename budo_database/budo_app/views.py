@@ -459,6 +459,31 @@ class AuslagerorteDetail(LoginRequiredMixin, DetailView):
         context['auslagerorte'] = auslagerorte
         context['kids'] = kids
 
+        # Add the single ort data in the same format as auslagerorte_list
+        ort = self.get_object()
+        auslagerorte_data = [{
+            'id': ort.id,
+            'name': ort.name,
+            'koordinaten': ort.koordinaten,
+            'kind': 'auslagerorte',
+        }]
+
+        # Check if there is an Ort with the name "BuDo" and add it to the list
+        try:
+            budo_ort = Auslagerorte.objects.get(name="BuDo")
+            auslagerorte_data.append({
+                'id': budo_ort.id,
+                'name': budo_ort.name,
+                'koordinaten': budo_ort.koordinaten,
+                'kind': 'auslagerorte',
+            })
+        except Auslagerorte.DoesNotExist:
+            pass
+
+        context['auslagerorte_json'] = json.dumps({
+            'orte': auslagerorte_data,
+        })
+
         return context
 
 
@@ -501,6 +526,7 @@ def auslagerorte_list(request):
                 'id': ort.id,
                 'name': ort.name,
                 'koordinaten': ort.koordinaten,
+                'kind': 'auslagerorte',
             })
     context = {
         "kids": kids,
@@ -565,6 +591,7 @@ def swp_dashboard(request):
                 'id': swp.id,
                 'name': swp.swp_name,
                 'koordinaten': swp.ort.koordinaten,
+                'kind': 'schwerpunkt',
             })
     auslagerorte = Auslagerorte.objects.all()
 
