@@ -283,7 +283,8 @@ button.closebtn{
 }
 
 #body-container {
-    min-height: calc(100vh - 92px);
+    min-height: 100vh;
+    /* height: 100%; */
     position: relative;
     background: url("img/BudoMap20a.png"), radial-gradient(59.33% 87.53% at 38.82% 60.76%, #FFFFFF 0%, #F7EBE0 22%, #999999 100%);
     background-repeat: no-repeat;
@@ -562,14 +563,14 @@ button,
     border-radius: var(--corner-rad);
 }
 
-/* Adjust the max-height for mobile devices */
+/* Adjust the max-height for mobile devices
 @media only screen and (max-width: 759px) {
     .table-container:has(#kids-table) {
-        max-height: none; /* Remove max-height restriction */
-        height: auto; /* Allow the table to expand as needed */
-        overflow: visible; /* Ensure the table content is visible */
+        max-height: none;
+        height: auto; 
+        overflow: visible; 
     }
-}
+} */
 
 
 #kids-table {

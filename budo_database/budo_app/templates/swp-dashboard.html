@@ -1,46 +1,34 @@
 {% extends 'master.html' %}
+{% load static %}
 {% block headertitle %}
-            <h1>Schwerpunkte</h1>
+<h1>Schwerpunkte</h1>
 {% endblock %}
 
 {% block headerbutton %}
-        <a href="/schwerpunkt/create" class="button">SWP hinzufügen</a>
+<a href="/schwerpunkt/create" class="button">SWP hinzufügen</a>
 {% endblock %}
 
 {% block extrahead %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-crossorigin=""/>
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-     crossorigin=""></script> 
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="{% static 'js/map.js' %}" defer></script>
 {% endblock %}
 
 {% block content %}
 <div class="flex-container" id="body-container">
     <div class="detail-column" id="left-column">
-        <div id="map"></div>
-    <script>
-      window.onload = function(){
-          var map = L.map('map').setView([{{schwerpunkte.all.0.ort.koordinaten}}], 12);
-          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              maxZoom: 19,
-              attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          }).addTo(map);
-      
-          var markers = [];
-          {% for swp in schwerpunkte.all %}
-              var auslagerortIcon = L.divIcon({className: 'leaflet-text', html: "<b><a href='{% url 'schwerpunkt-detail' pk=swp.id %}'>📍{{ swp }}</a></b>"});
-              var marker = L.marker([{{swp.ort.koordinaten}}], {icon: auslagerortIcon}).addTo(map);
-              markers.push(marker);
-          {% endfor %}
-      
-          var group = new L.featureGroup(markers);
-          map.fitBounds(group.getBounds(), {paddingBottomRight:[150,0]});
-          
-      }
-      </script>  
+        <div class="card transparent" id="swp-map">
+            <div class="info-header-container">
+                <h2>Karte</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container table-container">
+                <div id="map"></div>
+            </div>
+        </div>
     </div>
+    {{ schwerpunkte_json|json_script:"map-data" }}
     <div class="detail-column normal-column" id="right-column">
         <div class="card transparent" id="db-keinewoche">
             <div class="info-header-container">
@@ -48,83 +36,89 @@ crossorigin=""/>
             </div>
             <div class="card-info-container table-container">
                 <table id="kids-table">
-                    
-                        <tr class="table-header">
-                            <th class="text-cell">Name</th>
-                            <th class="text-cell">Ort</th>
-                            <th class="text-cell">Betreuende</th>
-                            <th class="item-cell">Auslagern</th>
-                            <th class="number-cell">Kinder</th>
-                            <th class="text-cell">Essenseinteilung</th>
-                            <th class="item-cell">Aktionen</th>
-                        </tr>
-                
+
+                    <tr class="table-header">
+                        <th class="text-cell">Name</th>
+                        <th class="text-cell">Ort</th>
+                        <th class="text-cell">Betreuende</th>
+                        <th class="item-cell">Auslagern</th>
+                        <th class="number-cell">Kinder</th>
+                        <th class="text-cell">Essenseinteilung</th>
+                        <th class="item-cell">Aktionen</th>
+                    </tr>
+
                     <tbody>
                         {% for swp in schwerpunkte %}
                         {% if swp.schwerpunktzeit.woche == "u" %}
-                            <tr class="table_row">
-                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
-                                <td class="text-cell">{% if swp.ort.id %}<a href="{% url 'auslagerorte-detail' pk=swp.ort.id %}">{{ swp.ort }}</a>{% endif %}</td>
-                                <td class="text-cell">
-                                    {% for profil in swp.betreuende.all %}
-                                        {{ profil }}
-                                            {% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                </td>
-                                <td class="item-cell">{{ swp.get_auslagern }}</td>
-                                <td class="number-cell">{{ swp.swp_kinder.count }}</td>
-                                <td class="text-cell">{{ swp.get_essenseinteilung|yesno:"Ja,Nein" }}</td>
-                                <td>
-                                    <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
-                                    <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
-                                    <a href="{% url 'schwerpunkt-detail' pk=swp.id %}">👁️</a>
-                                </td>
-                            </tr>
-                            {% endif %}
+                        <tr class="table_row">
+                            <td class="text-cell"><a
+                                    href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
+                            <td class="text-cell">{% if swp.ort.id %}<a
+                                    href="{% url 'auslagerorte-detail' pk=swp.ort.id %}">{{ swp.ort }}</a>{% endif %}
+                            </td>
+                            <td class="text-cell">
+                                {% for profil in swp.betreuende.all %}
+                                {{ profil }}
+                                {% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td class="item-cell">{{ swp.get_auslagern }}</td>
+                            <td class="number-cell">{{ swp.swp_kinder.count }}</td>
+                            <td class="text-cell">{{ swp.get_essenseinteilung|yesno:"Ja,Nein" }}</td>
+                            <td>
+                                <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
+                                <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
+                                <a href="{% url 'schwerpunkt-detail' pk=swp.id %}">👁️</a>
+                            </td>
+                        </tr>
+                        {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </div>  
+        </div>
         <div class="card transparent" id="db-woche1">
             <div class="info-header-container">
                 <h2>Woche 1</h2>{% include "components/openicon.html" %}
             </div>
             <div class="card-info-container table-container">
                 <table id="kids-table">
-                    
-                        <tr class="table-header">
-                            <th class="text-cell">Name</th>
-                            <th class="text-cell">Ort</th>
-                            <th class="text-cell">Betreuende</th>
-                            <th class="item-cell">Auslagern</th>
-                            <th class="number-cell">Kinder</th>
-                            <th class="text-cell">Essenseinteilung</th>
-                            <th class="item-cell">Aktionen</th>
-                        </tr>
-                
+
+                    <tr class="table-header">
+                        <th class="text-cell">Name</th>
+                        <th class="text-cell">Ort</th>
+                        <th class="text-cell">Betreuende</th>
+                        <th class="item-cell">Auslagern</th>
+                        <th class="number-cell">Kinder</th>
+                        <th class="text-cell">Essenseinteilung</th>
+                        <th class="item-cell">Aktionen</th>
+                    </tr>
+
                     <tbody>
                         {% for swp in schwerpunkte %}
                         {% if swp.schwerpunktzeit.woche == "w1" %}
-                            <tr class="table_row">
-                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
-                                <td class="text-cell">{% if swp.ort.id %}<a href="{% url 'auslagerorte-detail' pk=swp.ort.id %}">{{ swp.ort }}</a>{% endif %}</td>
-                                <td class="text-cell">
-                                    {% for profil in swp.betreuende.all %}
-                                        {{ profil }}
-                                            {% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                </td>
-                                <td class="item-cell">{{ swp.get_auslagern }}</td>
-                                <td class="number-cell">{{ swp.swp_kinder.count }}</td>
-                                <td class="text-cell">{{ swp.get_essenseinteilung|yesno:"Ja,Nein" }}</td>
-                                <td>
-                                    <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
-                                    <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
-                                    <a href="{% url 'schwerpunkt-detail' pk=swp.id %}">👁️</a>
-                                </td>
-                            </tr>
-                            {% endif %}
+                        <tr class="table_row">
+                            <td class="text-cell"><a
+                                    href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
+                            <td class="text-cell">{% if swp.ort.id %}<a
+                                    href="{% url 'auslagerorte-detail' pk=swp.ort.id %}">{{ swp.ort }}</a>{% endif %}
+                            </td>
+                            <td class="text-cell">
+                                {% for profil in swp.betreuende.all %}
+                                {{ profil }}
+                                {% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td class="item-cell">{{ swp.get_auslagern }}</td>
+                            <td class="number-cell">{{ swp.swp_kinder.count }}</td>
+                            <td class="text-cell">{{ swp.get_essenseinteilung|yesno:"Ja,Nein" }}</td>
+                            <td>
+                                <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
+                                <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
+                                <a href="{% url 'schwerpunkt-detail' pk=swp.id %}">👁️</a>
+                            </td>
+                        </tr>
+                        {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
@@ -136,39 +130,42 @@ crossorigin=""/>
             </div>
             <div class="card-info-container table-container">
                 <table id="kids-table">
-                    
-                        <tr class="table-header">
-                            <th class="text-cell">Name</th>
-                            <th class="text-cell">Ort</th>
-                            <th class="text-cell">Betreuende</th>
-                            <th class="item-cell">Auslagern</th>
-                            <th class="number-cell">Kinder</th>
-                            <th class="text-cell">Essenseinteilung</th>
-                            <th class="item-cell">Aktionen</th>
-                        </tr>
-                
+
+                    <tr class="table-header">
+                        <th class="text-cell">Name</th>
+                        <th class="text-cell">Ort</th>
+                        <th class="text-cell">Betreuende</th>
+                        <th class="item-cell">Auslagern</th>
+                        <th class="number-cell">Kinder</th>
+                        <th class="text-cell">Essenseinteilung</th>
+                        <th class="item-cell">Aktionen</th>
+                    </tr>
+
                     <tbody>
                         {% for swp in schwerpunkte %}
-                            {% if swp.schwerpunktzeit.woche == "w2" %}
-                            <tr class="table_row">
-                                <td class="text-cell"><a href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
-                                <td class="text-cell">{% if swp.ort.id %}<a href="{% url 'auslagerorte-detail' pk=swp.ort.id %}">{{ swp.ort }}</a>{% endif %}</td>
-                                <td class="text-cell">
-                                    {% for profil in swp.betreuende.all %}
-                                        {{ profil }}
-                                            {% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                </td>
-                                <td class="item-cell">{{ swp.get_auslagern }}</td>
-                                <td class="number-cell">{{ swp.swp_kinder.count }}</td>
-                                <td class="text-cell">{{ swp.get_essenseinteilung|yesno:"Ja,Nein" }}</td>
-                                <td>
-                                    <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
-                                    <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
-                                    <a href="{% url 'schwerpunkt-detail' pk=swp.id %}">👁️</a>
-                                </td>
-                            </tr>
-                            {% endif %}
+                        {% if swp.schwerpunktzeit.woche == "w2" %}
+                        <tr class="table_row">
+                            <td class="text-cell"><a
+                                    href="{% url 'schwerpunkt-detail' pk=swp.id %}">{{ swp.swp_name }}</a></td>
+                            <td class="text-cell">{% if swp.ort.id %}<a
+                                    href="{% url 'auslagerorte-detail' pk=swp.ort.id %}">{{ swp.ort }}</a>{% endif %}
+                            </td>
+                            <td class="text-cell">
+                                {% for profil in swp.betreuende.all %}
+                                {{ profil }}
+                                {% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td class="item-cell">{{ swp.get_auslagern }}</td>
+                            <td class="number-cell">{{ swp.swp_kinder.count }}</td>
+                            <td class="text-cell">{{ swp.get_essenseinteilung|yesno:"Ja,Nein" }}</td>
+                            <td>
+                                <a href="{% url 'swpmeals' pk=swp.id %}">🍔</a>
+                                <a href="{% url 'schwerpunkt-update' pk=swp.id %}">✏️</a>
+                                <a href="{% url 'schwerpunkt-detail' pk=swp.id %}">👁️</a>
+                            </td>
+                        </tr>
+                        {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>

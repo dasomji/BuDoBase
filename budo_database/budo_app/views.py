@@ -548,14 +548,35 @@ def swp_dashboard(request):
 
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)
+    schwerpunkte_data = []
+    for swp in schwerpunkte:
+        if swp.ort:
+            schwerpunkte_data.append({
+                'id': swp.id,
+                'swp_name': swp.swp_name,
+                'ort': {
+                    'koordinaten': swp.ort.koordinaten,
+                },
+            })
+        else:
+            schwerpunkte_data.append({
+                'id': swp.id,
+                'swp_name': swp.swp_name,
+                'ort': None,
+            })
     auslagerorte = Auslagerorte.objects.all()
 
     context = {
         "profil": profil,
         "kids": kids,
         "schwerpunkte": schwerpunkte,
+        'schwerpunkte_json': json.dumps({
+            'mainView': schwerpunkte.first().ort.koordinaten if schwerpunkte.first() and schwerpunkte.first().ort else [0, 0],
+            'schwerpunkte': schwerpunkte_data,
+        }),
         "auslagerorte": auslagerorte,
     }
+    print(context)
 
     return HttpResponse(template.render(context, request))
 
