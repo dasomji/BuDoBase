@@ -494,11 +494,21 @@ def auslagerorte_list(request):
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)
     auslagerorte = Auslagerorte.objects.all()
-    auslagerorte = Auslagerorte.objects.all()
+    auslagerorte_data = []
+    for ort in auslagerorte:
+        if ort:
+            auslagerorte_data.append({
+                'id': ort.id,
+                'name': ort.name,
+                'koordinaten': ort.koordinaten,
+            })
     context = {
         "kids": kids,
         "auslagerorte": auslagerorte,
         "schwerpunkte": schwerpunkte,
+        "auslagerorte_json": json.dumps({
+            'orte': auslagerorte_data,
+        }),
     }
 
     return HttpResponse(template.render(context, request))
@@ -553,10 +563,8 @@ def swp_dashboard(request):
         if swp.ort:
             schwerpunkte_data.append({
                 'id': swp.id,
-                'swp_name': swp.swp_name,
-                'ort': {
-                    'koordinaten': swp.ort.koordinaten,
-                },
+                'name': swp.swp_name,
+                'koordinaten': swp.ort.koordinaten,
             })
     auslagerorte = Auslagerorte.objects.all()
 
@@ -565,8 +573,7 @@ def swp_dashboard(request):
         "kids": kids,
         "schwerpunkte": schwerpunkte,
         'schwerpunkte_json': json.dumps({
-            'mainView': schwerpunkte.first().ort.koordinaten if schwerpunkte.first() and schwerpunkte.first().ort else [0, 0],
-            'schwerpunkte': schwerpunkte_data,
+            'orte': schwerpunkte_data,
         }),
         "auslagerorte": auslagerorte,
     }

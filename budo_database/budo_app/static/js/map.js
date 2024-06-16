@@ -5,8 +5,10 @@ window.addEventListener('DOMContentLoaded', () => {
         const data = JSON.parse(jsonString);
 
         // Parse mainView string into an array of numbers
-        const mainView = data.mainView.split(',').map(Number);
-        const schwerpunkte = data.schwerpunkte;
+        const firstSchwerpunkt = data.orte[0];
+        const mainViewRaw = firstSchwerpunkt.koordinaten;
+        const mainView = mainViewRaw.split(',').map(Number);
+        const orte = data.orte;
 
         console.log("Main View Coordinates:", mainView); // Debugging line
 
@@ -17,17 +19,17 @@ window.addEventListener('DOMContentLoaded', () => {
         }).addTo(map);
 
         var markers = [];
-        schwerpunkte.forEach(function (swp) {
-            console.log(swp.ort);
-            if (swp.ort && swp.ort.koordinaten) {
+        orte.forEach(function (swp) {
+            console.log(swp);
+            if (swp.koordinaten) {
                 // Parse the coordinates string into an array of numbers
-                const coordinates = swp.ort.koordinaten.split(',').map(Number);
-                console.log("Adding marker for:", swp.swp_name, "at", coordinates); // Debugging line
-                var auslagerortIcon = L.divIcon({ className: 'leaflet-text', html: "<b><a href='/schwerpunkt/" + swp.id + "/'>📍" + swp.swp_name + "</a></b>" });
+                const coordinates = swp.koordinaten.split(',').map(Number);
+                console.log("Adding marker for:", swp.name, "at", coordinates); // Debugging line
+                var auslagerortIcon = L.divIcon({ className: 'leaflet-text', html: "<b><a href='/schwerpunkt/" + swp.id + "/'>📍" + swp.name + "</a></b>" });
                 var marker = L.marker(coordinates, { icon: auslagerortIcon }).addTo(map);
                 markers.push(marker);
             } else {
-                console.warn("Missing coordinates for:", swp.swp_name); // Debugging line
+                console.warn("Missing coordinates for:", swp.name); // Debugging line
             }
         });
 
