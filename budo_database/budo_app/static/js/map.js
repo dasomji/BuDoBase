@@ -1,5 +1,6 @@
 window.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
+        const key = '1kn4MSxztk96Wwv8LkgK';
         const mapData = document.getElementById('map-data').textContent;
         const jsonString = JSON.parse(mapData);
         const data = JSON.parse(jsonString);
@@ -13,9 +14,10 @@ window.addEventListener('DOMContentLoaded', () => {
         console.log("Main View Coordinates:", mainView); // Debugging line
 
         var map = L.map('map').setView(mainView, 12);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        const mtLayer = L.maptilerLayer({
             maxZoom: 19,
-            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            apiKey: key,
+            style: "0c0b0e33-3ca7-4c0b-98b0-8cbd7f8600f4", //optional
         }).addTo(map);
 
         var markers = [];
@@ -43,3 +45,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
     }, 100);
 });
+
+function toggleModal(cardId) {
+    const card = document.getElementById(cardId);
+    card.classList.toggle('map-modal');
+}

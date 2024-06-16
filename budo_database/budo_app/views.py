@@ -411,13 +411,14 @@ class SchwerpunkteDetail(LoginRequiredMixin, DetailView):
         }]
 
         try:
-            budo_ort = Auslagerorte.objects.get(name="BuDo")
-            auslagerorte_data.append({
-                'id': budo_ort.id,
-                'name': budo_ort.name,
-                'koordinaten': budo_ort.koordinaten,
-                'kind': 'auslagerorte',
-            })
+            if schwerpunkt.ort.name != "BuDo":
+                budo_ort = Auslagerorte.objects.get(name="BuDo")
+                auslagerorte_data.append({
+                    'id': budo_ort.id,
+                    'name': budo_ort.name,
+                    'koordinaten': budo_ort.koordinaten,
+                    'kind': 'auslagerorte',
+                })
         except Auslagerorte.DoesNotExist:
             pass
 

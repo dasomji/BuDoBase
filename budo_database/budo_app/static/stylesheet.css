@@ -369,6 +369,51 @@ button.closebtn{
     overflow: hidden;
 }
 
+/* ----------------- Map ----------------- */
+
+/* Modal styles */
+.card.map-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--bg-blue);
+    z-index: 999;
+    padding: var(--l-padding);
+    box-shadow: none;
+    overflow: auto;
+}
+
+.card.map-modal .info-header-container{
+    display: none;
+}
+
+.card.map-modal .card-info-container {
+    display: block;
+    padding-top: 0;
+}
+
+.card.map-modal .leaflet-gl-layer.maplibregl-map{
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
+.card.card.map-modal #map{
+    width: 98vw;
+    height: 95vh;
+}
+
+.expand-icon {
+    cursor: pointer;
+    font-size: 24px;
+    margin-left: auto;
+    position: absolute;
+    right: var(--xl-padding);
+    top: var(--xl-padding);
+    z-index: 1000;
+}
+
 
 @media print {
     .card {
