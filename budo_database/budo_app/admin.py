@@ -50,6 +50,7 @@ class KinderAdminForm(forms.ModelForm):
 
 
 class KinderAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "turnus")
     form = KinderAdminForm
 
 
