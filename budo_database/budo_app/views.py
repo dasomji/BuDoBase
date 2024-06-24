@@ -365,8 +365,18 @@ class SchwerpunkteUpdate(LoginRequiredMixin, UpdateView):
     template_name = "schwerpunkt-form.html"
 
     def get_context_data(self, **kwargs):
+        current_user = self.request.user
+        profil = Profil.objects.get(user=current_user)
+        active_turnus = profil.turnus
+        schwerpunkte = Schwerpunkte.objects.filter(
+            schwerpunktzeit__turnus=active_turnus)
+        auslagerorte = Auslagerorte.objects.all()
+        kids = models.Kinder.objects.filter(turnus=active_turnus)
         context = super().get_context_data(**kwargs)
         context['action'] = 'updaten'
+        context['schwerpunkte'] = schwerpunkte
+        context['auslagerorte'] = auslagerorte
+        context['kids'] = kids
         return context
 
     def form_valid(self, form):
