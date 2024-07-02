@@ -294,7 +294,7 @@ button.closebtn{
     min-height: 100vh;
     /* height: 100%; */
     position: relative;
-    background: url("img/BudoMap20a.png"), radial-gradient(59.33% 87.53% at 38.82% 60.76%, #FFFFFF 0%, #F7EBE0 22%, #999999 100%);
+    background: url("img/BudoMap20a.a72f19e16ece.png"), radial-gradient(59.33% 87.53% at 38.82% 60.76%, #FFFFFF 0%, #F7EBE0 22%, #999999 100%);
     background-repeat: no-repeat;
     background-position: bottom center;
     background-attachment: fixed;

@@ -15,23 +15,30 @@
     --button-color: #FFDD9B;
 }
 
-.nowrap{
-    white-space: nowrap;
+body{
+    font-family: "Roboto", sans-serif;
+    font-weight: 300;
+    font-style: normal;
+    font-size: 1rem;
 }
 
+
 h1 {
-    font-size: 36px;
+    font-size: 2rem;
+    font-weight: 400;
 }
 
 h2 {
-    font-size: 21px;
-    font-family: "Roboto";
+    font-size: 1.4rem;
+    font-weight: 400;
     margin: 0px;
 }
 
 a {
-    color: var(--text-color)
+    color: var(--text-color);
+    font-weight: 400;
 }
+
 
 input {
     border-radius: var(--corner-rad);
@@ -48,10 +55,9 @@ select {
     border: 2px solid var(--grey);
 }
 
-body {
-    font-family: "Roboto";
+.nowrap{
+    white-space: nowrap;
 }
-
 /*------- Header ---------*/
 #headertitle {
     display: inline-block;
@@ -240,14 +246,16 @@ h1 {
     overflow-x: hidden;
     transition: 0.5s;
     padding-top: 40px;
-    /* padding-left: var(--xl-padding);
-    padding-right: var(--xl-padding); */
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
-    /* z-index: 99; */
     gap: var(--m-padding);
+  }
+
+  #mySidebar a{
+    text-decoration: none;
+    font-size: 1.5rem;
   }
 
   #sidebar-close-area{
@@ -469,7 +477,7 @@ button.closebtn{
 }
 
 .card span.label {
-    font-weight: bold;
+    font-weight: 500;
 }
 
 .card-table-container{
@@ -496,7 +504,7 @@ button.closebtn{
     /* flex-basis: 1; */
     /* align-self: center; */
     width: 180px;
-    font-weight: bold;
+    font-weight: 500;
 }
 
 .input-container input {
@@ -714,7 +722,7 @@ table {
 }
 
 table #name {
-    font-weight: bold;
+    font-weight: 500;
     /* white-space: nowrap; */
 }
 
@@ -1028,7 +1036,7 @@ h2.murder_name{
     padding: var(--s-padding);
     border-radius: var(--corner-rad);
     cursor: pointer;
-    z-index: 800;
+    z-index: 80;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
