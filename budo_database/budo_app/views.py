@@ -20,11 +20,15 @@ from copy import deepcopy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
 from django.views.decorators.http import require_POST
+import os
 import json
+import toml
 
 
 from .excelProcessor import process_excel, postprocessing
 
+info_file_path = os.path.join(settings.BASE_DIR, "info.toml")
+info = toml.load(info_file_path)
 
 # def get_related_data_for_user(user):
 #     profil = Profil.objects.get(user=user)
@@ -125,6 +129,36 @@ def zugabreise(request):
         'zugabreise_count': zugabreise_count,
         'schwerpunkte': schwerpunkte,
         'auslagerorte': auslagerorte,
+    }
+    return HttpResponse(template.render(context, request))
+
+
+@login_required
+def zuganreise(request):
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    kids = models.Kinder.objects.filter(
+        turnus=active_turnus, zug_anreise=True).order_by('kid_vorname')
+    kids_with_top_jugendticket_count = kids.filter(
+        top_jugendticket=True).count()
+    kids_without_top_jugendticket_count = kids.exclude(
+        top_jugendticket=True).count()
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus)
+    auslagerorte = Auslagerorte.objects.all()
+    zuganreise_count = models.Kinder.get_zuganreise_count(
+        turnus=active_turnus)
+    busunternehmen = info['busunternehmen']
+    template = loader.get_template('zuganreise.html')
+    context = {
+        'kids': kids,
+        'zuganreise_count': zuganreise_count,
+        'schwerpunkte': schwerpunkte,
+        'auslagerorte': auslagerorte,
+        'kids_with_top_jugendticket_count': kids_with_top_jugendticket_count,
+        'kids_without_top_jugendticket_count': kids_without_top_jugendticket_count,
+        'busunternehmen': busunternehmen,
     }
     return HttpResponse(template.render(context, request))
 

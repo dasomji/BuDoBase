@@ -20,6 +20,7 @@ pytz==2023.3
 requests==2.32.3
 six==1.16.0
 sqlparse==0.5.0
+toml==0.10.2
 typing_extensions==4.6.3
 tzdata==2023.3
 urllib3==2.2.2

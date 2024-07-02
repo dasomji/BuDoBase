@@ -1,0 +1,58 @@
+{% extends "master.html" %}
+{% load static %}
+
+{% block title %}
+Zuganreise
+{% endblock %}
+{% block extrahead %}
+{% comment %} <script src=" {% static 'js/zugabreise-toggle.js' %}"></script> {% endcomment %}
+<script src="{% static 'js/filtertable.js' %}"></script>
+{% comment %} <script src="{% static 'js/edit-notiz.js' %}"></script> {% endcomment %}
+{% endblock %}
+
+{% block headertitle %}
+<h1>Zuganreise</h1>
+{% endblock %}
+
+{% block content %}
+<div class="print_only" id="zuganreise-info">
+  <h1>Zuganreise</h1>
+  <p>Kinder, die ihr abholt: {{zuganreise_count}} <br>
+    Kinder mit Top-Jugendticket (kurz: Top-Jt): {{ kids_with_top_jugendticket_count }} <br>
+    Kinder ohne Top-Jugendticket: {{ kids_without_top_jugendticket_count }} <br>
+    Ihr könnt Einfach Raus-Tickets sowohl für die Fahrt nach als auch von Wien nutzen. <br>
+    Wichtig, ihr braucht nur für euch und für die Kids OHNE Top-Jugendticket Tickets kaufen</p>
+  <p>Telefonnummer des Busunternehmens ({{busunternehmen.name}}): {{busunternehmen.phone}}</p>
+</div>
+<div class="w3-container table-only" id="body-container">
+  {% include 'filter-table.html' %}
+  <div class="table-container">
+    <table class="" id="kids-table">
+      <tr class="table-header">
+        <th class="headcol">Gesamt: {{zuganreise_count}}</th>
+        <th>Zuganreise</th>
+        <th>Top-Jt</th>
+        <th>Alter</th>
+        <th>Anmelder</th>
+        <th>Anmelder Tel</th>
+        <th>Geschwister</th>
+      </tr>
+      {% for x in kids %}
+      <tr class="table_row w3-padding-large">
+        <td class="text-cell headcol" id="name"><a href="/kid_details/{{ x.id }}">
+            {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.budo_erfahrung %} 🆕{% endif %} </a>
+        </td>
+        <td class="text-cell">{{ x.get_zuganreise }}</td>
+        <td class="text-cell">{{ x.get_topjugendticket }}</td>
+        <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>
+        <td class="text-cell"><a href="tel: {{x.anmelder_mobil}}">{{ x.anmelder_vorname }} {{x.anmelder_nachname}}</a>
+        </td>
+        <td class="text-cell"><a href="tel: {{x.anmelder_mobil}}">{{x.anmelder_mobil}}</a></td>
+        <td class="text-cell">{% if x.get_clean_geschwister %}{{ x.get_clean_geschwister }}{% else %} --- {% endif%}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}
