@@ -184,18 +184,39 @@ def kid_details(request, id):
     }
 
     if request.method == 'POST':
-        form = NotizForm(request.POST)
-        context["form"] = form
-        if form.is_valid():
-            notiz = form.save(commit=False)
-            notiz.kinder = this_kid
-            notiz.added_by = request.user
-            notiz.save()
-            return redirect('kid_details', id=id)
-    else:
-        form = NotizForm()
+        notiz_form = NotizForm(request.POST)
+        geld_form = GeldForm(request.POST)
+        context["notiz_form"] = notiz_form
+        context["geld_form"] = geld_form
 
-    context["form"] = form
+        if notiz_form.is_valid():
+            print("Notiz form is valid")
+            notiz = notiz_form.cleaned_data.get('notiz')
+            if notiz:
+                print(notiz)
+                notiz = notiz_form.save(commit=False)
+                notiz.kinder = this_kid
+                notiz.added_by = request.user
+                notiz.save()
+
+        if geld_form.is_valid():
+            print("Geld form is valid")
+            geld = geld_form.cleaned_data.get("amount")
+            if geld:
+                print(geld)
+                geld = geld_form.save(commit=False)
+                geld.kinder = this_kid
+                geld.added_by = request.user
+                geld.save()
+            return redirect('kid_details', id=id)
+        else:
+            # Debugging statement
+            print("Geld form is not valid:", geld_form.errors)
+    else:
+        notiz_form = NotizForm()
+        geld_form = GeldForm()
+        context["notiz_form"] = notiz_form
+        context["geld_form"] = geld_form
 
     return HttpResponse(template.render(context, request))
 
@@ -249,10 +270,6 @@ def check_in(request, id):
         if check_in_form.is_valid():
             this_kid = check_in_form.save(commit=False)
             this_kid.anwesend = True
-            # print(this_kid.check_in_date)
-            # print(
-            #     f'Turnusbeginn: {this_kid.turnus.turnus_beginn.strftime("%Y-%m-%d")}')
-            # print(datetime.today().strftime("%Y-%m-%d"))
             if this_kid.check_in_date.strftime("%Y-%m-%d") != this_kid.turnus.turnus_beginn.strftime("%Y-%m-%d"):
                 this_kid.late_anreise = this_kid.check_in_date
                 if original_kid.check_in_date != None:

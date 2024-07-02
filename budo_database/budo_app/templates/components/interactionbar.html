@@ -7,11 +7,62 @@
         {% block forminput %}
         <form method="post">
             {%csrf_token %}
-            {{ form.as_p }}
-            <button type="submit">hinzufügen</button>
+            <div id="notiz-form">{{ notiz_form.as_p }}</div>
+            <div id="geld-form" class="hidden">{{ geld_form.as_p }}</div>
+            <button type="submit">Hinzufgen</button>
         </form>
         {% endblock %}
     </div>
     {% comment %} <div id="interaction-send">
     </div> {% endcomment %}
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const formDivs = document.querySelectorAll('#interaction-input form > div');
+        const cookieName = 'interaction-bar';
+
+        // Function to get cookie value by name
+        function getCookie(name) {
+            let value = "; " + document.cookie;
+            let parts = value.split("; " + name + "=");
+            if (parts.length === 2) return parts.pop().split(";").shift();
+        }
+
+        // Function to set cookie
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                let date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+
+        // Check for existing cookie and set visibility
+        const visibleDivId = getCookie(cookieName);
+        if (visibleDivId) {
+            formDivs.forEach(div => {
+                if (div.id === visibleDivId) {
+                    div.classList.remove('hidden');
+                } else {
+                    div.classList.add('hidden');
+                }
+            });
+        }
+
+        formDivs.forEach(div => {
+            const label = div.querySelector('label');
+            if (label) {
+                label.addEventListener('click', function () {
+                    let currentIndex = Array.from(formDivs).indexOf(div);
+                    formDivs[currentIndex].classList.add('hidden');
+                    let nextIndex = (currentIndex + 1) % formDivs.length;
+                    formDivs[nextIndex].classList.remove('hidden');
+                    setCookie(cookieName, formDivs[nextIndex].id,
+                        7); // Save visible div id in cookie for 7 days
+                });
+            }
+        });
+    });
+</script>
