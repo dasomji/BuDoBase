@@ -1026,6 +1026,10 @@ h2.murder_name{
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
+.toggle-all-button.no-bar{
+    bottom: 20px;
+}
+
 .toggle-all-button:hover {
     background-color: #e6c78b;
 }
