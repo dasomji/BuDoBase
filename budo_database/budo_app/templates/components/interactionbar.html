@@ -1,0 +1,17 @@
+<div id="interaction-bar">
+    {% comment %} <div id="interaction-switcher">
+        <p>Note</p>
+        <p>📝</p>
+    </div> {% endcomment %}
+    <div id="interaction-input">
+        {% block forminput %}
+        <form method="post">
+            {%csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">hinzufügen</button>
+        </form>
+        {% endblock %}
+    </div>
+    {% comment %} <div id="interaction-send">
+    </div> {% endcomment %}
+</div>
