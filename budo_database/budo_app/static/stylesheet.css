@@ -74,6 +74,7 @@ select {
     position: sticky;
     top: 0;
     z-index: 98;
+    flex: 0 1 100vw;
 }
 
 /* #headermenu:before{
@@ -88,7 +89,6 @@ select {
 
 #header-content {
     align-self: stretch;
-    flex-grow: 1;
     display: flex;
     flex-direction: row;
     align-items: flex-start;
@@ -96,7 +96,12 @@ select {
     justify-content: space-between;
     align-items: center;
     padding: 0;
+    flex: 0 1 100vw;
 }
+
+/* #header-content div{
+    flex: 1 1 auto;
+} */
 
 #header-content #headertitle a,
 h1 {
@@ -108,19 +113,18 @@ h1 {
 
 #headersearch {
     align-self: stretch;
-    flex-grow: 1;
+    flex: 3 2 80vw;
     /* min-width: 200px; */
     display: flex;
-    flex-direction: column;
     position: relative;
+    align-items: baseline;
 }
 
 #headersearch input {
     margin: 0;
     border-radius: var(--corner-rad);
     align-self: stretch;
-    flex-grow: 1;
-    flex-shrink: 50px;
+    flex: 1 1 100vw;
 }
 
 #headermenu #navmenu-container {
@@ -147,7 +151,7 @@ h1 {
     }
 } */
 
-@media only screen and (min-width: 760px) and (max-width: 920px) {
+@media only screen and (min-width: 760px) and (max-width: 1080px) {
     #headermenu #navmenu-container {
         display: none;
     }
@@ -573,6 +577,11 @@ button,
     color: black;
     text-decoration: none;
     white-space: nowrap;
+}
+
+button a{
+    text-decoration: none;
+    font-weight: 300;
 }
 
 #anwesend-marker {
