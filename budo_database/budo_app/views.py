@@ -163,9 +163,6 @@ def update_notiz_abreise(request):
 @login_required
 def kid_details(request, id):
     current_user = request.user
-    if not current_user.is_authenticated:
-        # Redirect to the login page if not authenticated
-        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     this_kid = models.Kinder.objects.get(id=id)
