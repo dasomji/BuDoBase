@@ -106,7 +106,7 @@ def kids_list(request):
 
 
 @login_required
-def zuganreise(request):
+def zugabreise(request):
     current_user = request.user
     if not current_user.is_authenticated:
         # Redirect to the login page if not authenticated
@@ -119,7 +119,7 @@ def zuganreise(request):
     auslagerorte = Auslagerorte.objects.all()
     zugabreise_count = models.Kinder.get_zugabreise_count(
         turnus=active_turnus)  # Pass the active turnus
-    template = loader.get_template('zuganreise.html')
+    template = loader.get_template('zugabreise.html')
     context = {
         'kids': kids,
         'zugabreise_count': zugabreise_count,
