@@ -614,6 +614,7 @@ button a{
 
 .table-header th {
     background-color: var(--dark-blue);
+    font-weight: 500;
     white-space: nowrap;
     cursor: pointer;
     position: sticky;
@@ -850,16 +851,18 @@ h2.murder_name{
 
 /* Modal Content */
 .modal-content {
-    background-color: #fefefe;
+    display: flex;
+    background-color: var(--bg-blue);
     margin: 5% auto;
     padding: 20px;
     border: 1px solid #888;
     width: 80%;
+    gap: var(--m-padding);
 }
 
 /* The Close Button */
 .close {
-    color: #aaa;
+    color: #232323;
     float: right;
     font-size: 28px;
     font-weight: bold;
