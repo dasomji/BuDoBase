@@ -24,8 +24,11 @@ body{
 
 
 h1 {
-    font-size: 2rem;
+    font-size: 1.8rem;
     font-weight: 400;
+    padding: 0;
+    margin: 0;
+    white-space: nowrap;
 }
 
 h2 {
@@ -55,16 +58,15 @@ select {
     border: 2px solid var(--grey);
 }
 
+/* used for table-cells mostly */
 .nowrap{
     white-space: nowrap;
 }
+
 /*------- Header ---------*/
 #headertitle {
     display: inline-block;
 }
-
-
-
 
 #headermenu {
     display: flex;
@@ -76,16 +78,6 @@ select {
     z-index: 98;
     flex: 0 1 100vw;
 }
-
-/* #headermenu:before{
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: white;
-} */
 
 #header-content {
     align-self: stretch;
@@ -99,22 +91,9 @@ select {
     flex: 0 1 100vw;
 }
 
-/* #header-content div{
-    flex: 1 1 auto;
-} */
-
-#header-content #headertitle a,
-h1 {
-    text-decoration: none;
-    padding: 0;
-    margin: 0;
-    white-space: nowrap;
-}
-
 #headersearch {
     align-self: stretch;
-    flex: 3 2 80vw;
-    /* min-width: 200px; */
+    flex: 1 1 auto;
     display: flex;
     position: relative;
     align-items: baseline;
@@ -124,7 +103,8 @@ h1 {
     margin: 0;
     border-radius: var(--corner-rad);
     align-self: stretch;
-    flex: 1 1 100vw;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 #headermenu #navmenu-container {
@@ -140,25 +120,10 @@ h1 {
     padding: 0;
 }
 
-/* @media only screen and (min-width: 992px) {
-
-    #headertitle {
-        display: flex;
-        align-items: baseline;
-        flex-direction: row wrap;
-        justify-content: flex-start;
-        column-gap: 30px;
-    }
-} */
-
 @media only screen and (min-width: 760px) and (max-width: 1080px) {
     #headermenu #navmenu-container {
         display: none;
     }
-
-    /* #header-content {
-        flex-wrap: wrap;
-    } */
 
     #menu-button{
         display: block;
@@ -170,10 +135,6 @@ h1 {
     #headermenu #navmenu-container, .desktop-navbar {
         display: none;
     }
-
-    /* #header-content {
-        flex-wrap: wrap;
-    } */
 
     #menu-button{
         display: block;
@@ -222,6 +183,8 @@ h1 {
 #myInput:focus+.search-results {
     display: block;
 }
+
+/* ----------mobile menu ----------*/
 
 #sidebar-container{
     position: fixed;
@@ -294,9 +257,10 @@ button.closebtn{
     font-size: 30px;
 }
 
+/* ----------body ----------*/
+
 #body-container {
     min-height: 100vh;
-    /* height: 100%; */
     position: relative;
     background: url("img/BudoMap20a.png"), radial-gradient(59.33% 87.53% at 38.82% 60.76%, #FFFFFF 0%, #F7EBE0 22%, #999999 100%);
     background-repeat: no-repeat;
@@ -347,11 +311,12 @@ button.closebtn{
     max-width: 500px;
 }
 
+/* ---------card------------- */
+
 .card {
     border-radius: var(--corner-rad);
     background-color: var(--bg-blue);
     box-shadow: #acacac 4px 4px 4px;
-    /* backdrop-filter: blur(10px); */
 }
 
 .transparent{
@@ -493,10 +458,6 @@ button.closebtn{
     padding-right: var(--s-padding);
 }
 
-/* .input-container .card-info-container{
-    display:block;
-} */
-
 .input-container p {
     display: flex;
     justify-content: flex-start;
@@ -505,17 +466,12 @@ button.closebtn{
 }
 
 .input-container label {
-    /* flex-basis: 1; */
-    /* align-self: center; */
     width: 180px;
     font-weight: 500;
 }
 
 .input-container input {
-    /* flex-basis: 30%; */
     border-radius: var(--corner-rad);
-    /* align-self: center; */
-    /* align-self: flex-start; */
 }
 
 .input-container input[type="checkbox"] {
@@ -637,25 +593,11 @@ button a{
     border-radius: var(--corner-rad);
 }
 
-/* Adjust the max-height for mobile devices
-@media only screen and (max-width: 759px) {
-    .table-container:has(#kids-table) {
-        max-height: none;
-        height: auto; 
-        overflow: visible; 
-    }
-} */
-
 
 #kids-table {
     border-radius: var(--corner-rad);
-    /* padding: var(--m-padding); */
     overflow: hidden;
 }
-
-/* #kids-table .table-header {
-    border-radius: var(--corner-rad);
-} */
 
 .table-header th {
     background-color: var(--dark-blue);
@@ -714,9 +656,7 @@ th.headcol {
 }
 
 #kids-table a:hover {
-    /* background-color: #dcdcdc93; */
     border-radius: var(--corner-rad);
-    /* padding: var(--s-padding); */
     box-shadow: #8F8F8F;
 }
 
@@ -732,7 +672,6 @@ table {
 
 table #name {
     font-weight: 500;
-    /* white-space: nowrap; */
 }
 
 table #alter {
@@ -822,8 +761,6 @@ table #alter {
 }
 
 .schwerpunkt-container .card{
-    /* flex-basis: 30%; */
-    /* width: 282px; */
     width: 100%;
     height: fit-content;
 }
@@ -961,7 +898,6 @@ h2.murder_name{
 
 /* ------------interaction bar---------*/
 #interaction-bar{
-    /* Auto layout */
     display: flex;
     flex-direction: row;
     justify-content: center;
@@ -988,7 +924,6 @@ h2.murder_name{
 
 #interaction-bar form{
     display: flex;
-    /* width: 100%; */
     flex-grow: 2;
     gap: var(--m-padding);
     height: fit-content;
@@ -1015,7 +950,6 @@ h2.murder_name{
 
 #interaction-bar form label{
     font-size: 0px;
-    /* visibility: hidden; */
 }
 
 #interaction-bar form label[for="id_notiz"]::after{
