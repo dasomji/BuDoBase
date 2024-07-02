@@ -13,6 +13,19 @@
     --l-padding: 20px;
     --xl-padding: 24px;
     --button-color: #FFDD9B;
+
+    --z-search-results: 2;
+    --z-table-header: 2;
+    --z-headcol: 3;
+    --z-th-headcol: 4;
+    --z-interaction-bar: 80;
+    --z-toggle-button: 80;
+    --z-headermenu: 80;
+    --z-sidebar: 99;
+    --z-map-modal: 999;
+    --z-modal: 999;
+    --z-expand-icon: 1000;
+    --z-overlay: 9999;
 }
 
 body{
@@ -75,7 +88,7 @@ select {
     background: linear-gradient(92.05deg, #FFF4DE 7.23%, rgba(153, 146, 133, 0.17) 98.57%), radial-gradient(59.33% 87.53% at 38.82% 60.76%, #FFFFFF 0%, #F7EBE0 22%, #999999 100%);
     position: sticky;
     top: 0;
-    z-index: 98;
+    z-index: var(--z-headermenu);
     flex: 0 1 100vw;
 }
 
@@ -161,7 +174,7 @@ select {
     /* border: 1px solid #ccc; */
     overflow-y: auto;
     display: none;
-    z-index: 2;
+    z-index: var(--z-search-results);
     left: 0;
     right: 0;
     border-radius: 0 0 var(--corner-rad) var(--corner-rad);
@@ -193,7 +206,7 @@ select {
     display: none;
     width: 100vw;
     height: 100vh;
-    z-index: 99;
+    z-index: var(--z-sidebar);
     transition: transform 1s ease-out;
     transform: translateX(-100%);
 }
@@ -361,7 +374,7 @@ button.closebtn{
     width: 100vw;
     height: 100vh;
     background-color: var(--bg-blue);
-    z-index: 999;
+    z-index: var(--z-map-modal);
     padding: var(--l-padding);
     box-shadow: none;
     overflow: auto;
@@ -381,7 +394,7 @@ button.closebtn{
     height: 100vh !important;
 }
 
-.card.card.map-modal #map{
+.card.map-modal #map{
     width: 98vw;
     height: 95vh;
 }
@@ -393,7 +406,7 @@ button.closebtn{
     position: absolute;
     right: var(--xl-padding);
     top: var(--xl-padding);
-    z-index: 1000;
+    z-index: var(--z-expand-icon);
 }
 
 
@@ -596,7 +609,7 @@ button a{
 
 #kids-table {
     border-radius: var(--corner-rad);
-    overflow: hidden;
+    /* overflow: hidden; It's super important that the overflow is not hidden, otherwise sticky elements don't work!*/
 }
 
 .table-header th {
@@ -605,7 +618,7 @@ button a{
     cursor: pointer;
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: var(--z-table-header);
 }
 
 .table-header th::after {
@@ -627,19 +640,20 @@ button a{
     vertical-align: top;
 }
 
-.headcol {
+#kids-table td.headcol {
     position: sticky;
     left: 0;
-    z-index: 2;
-}
-
-#kids-table td.headcol {
+    z-index: var(--z-headcol);
     background-color: var(--dark-blue);
 }
 
-th.headcol {
-    z-index: 3;
+#kids-table th.headcol {
+    z-index: var(--z-th-headcol);
+    left: 0;
+    top: 0;
+    background-color: var(--dark-blue);
 }
+
 
 .meal-table tr, #kids-table tr {
     background-color: var(--bg-blue);
@@ -823,7 +837,7 @@ h2.murder_name{
 .modal {
     display: none;
     position: fixed;
-    z-index: 1;
+    z-index: var(--z-modal);
     left: 0;
     top: 0;
     width: 100%;
@@ -832,7 +846,6 @@ h2.murder_name{
     background-color: rgb(0,0,0);
     background-color: rgba(0,0,0,0.4);
     padding-top: 60px;
-    z-index: 999;
 }
 
 /* Modal Content */
@@ -878,7 +891,7 @@ h2.murder_name{
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 9999;
+    z-index: var(--z-overlay);
 }
 
 .number-pad {
@@ -910,6 +923,7 @@ h2.murder_name{
     bottom: 0px;
     
     background: linear-gradient(90.42deg, #C8C2BD -7.4%, #BDB8B4 94.69%);
+    z-index: var(--z-interaction-bar);
 }
 
 #interaction-input{
@@ -979,7 +993,7 @@ h2.murder_name{
     padding: var(--s-padding);
     border-radius: var(--corner-rad);
     cursor: pointer;
-    z-index: 80;
+    z-index: var(--z-toggle-button);
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
