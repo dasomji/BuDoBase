@@ -1012,3 +1012,20 @@ h2.murder_name{
     height: 48px;
     padding: 8px;
 }
+
+/* --------toggle all cards button----- */
+.toggle-all-button {
+    position: fixed;
+    bottom: 110px;
+    right: 20px;
+    background-color: var(--button-color);
+    padding: var(--s-padding);
+    border-radius: var(--corner-rad);
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.toggle-all-button:hover {
+    background-color: #e6c78b;
+}
