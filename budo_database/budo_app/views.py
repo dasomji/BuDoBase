@@ -15,7 +15,7 @@ from . import models
 from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil, Auslagerorte
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, UpdateView
-from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm
+from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, GeldForm
 from copy import deepcopy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
@@ -228,8 +228,10 @@ def check_in(request, id):
     if request.method == 'POST':
         check_in_form = CheckInForm(request.POST, instance=this_kid)
         notiz_form = NotizForm(request.POST)
+        geld_form = GeldForm(request.POST)
         context["check_in_form"] = check_in_form
         context["notiz_form"] = notiz_form
+        context["geld_form"] = geld_form
         if notiz_form.is_valid():
             notiz = notiz_form.cleaned_data.get('notiz')
             if notiz:
@@ -237,6 +239,13 @@ def check_in(request, id):
                 notiz.kinder = this_kid
                 notiz.added_by = request.user
                 notiz.save()
+        if geld_form.is_valid():
+            geld = geld_form.cleaned_data.get("amount")
+            if geld:
+                geld = geld_form.save(commit=False)
+                geld.kinder = this_kid
+                geld.added_by = request.user
+                geld.save()
         if check_in_form.is_valid():
             this_kid = check_in_form.save(commit=False)
             this_kid.anwesend = True
@@ -254,8 +263,10 @@ def check_in(request, id):
     else:
         check_in_form = CheckInForm()
         notiz_form = NotizForm()
+        geld_form = GeldForm()
         context["check_in_form"] = check_in_form
         context["notiz_form"] = notiz_form
+        context["geld_form"] = geld_form
 
     return HttpResponse(template.render(context, request))
 
@@ -287,8 +298,10 @@ def check_out(request, id):
     if request.method == 'POST':
         check_out_form = CheckOutForm(request.POST, instance=this_kid)
         notiz_form = NotizForm(request.POST)
+        geld_form = GeldForm(request.POST)
         context["check_out_form"] = check_out_form
         context["notiz_form"] = notiz_form
+        context["geld_form"] = geld_form
         if notiz_form.is_valid():
             notiz = notiz_form.cleaned_data.get('notiz')
             if notiz:
@@ -296,6 +309,13 @@ def check_out(request, id):
                 notiz.kinder = this_kid
                 notiz.added_by = request.user
                 notiz.save()
+        if geld_form.is_valid():
+            geld = geld_form.cleaned_data.get("amount")
+            if geld:
+                geld = geld_form.save(commit=False)
+                geld.kinder = this_kid
+                geld.added_by = request.user
+                geld.save()
         if check_out_form.is_valid():
             this_kid = check_out_form.save(commit=False)
             this_kid.anwesend = False
@@ -310,8 +330,11 @@ def check_out(request, id):
     else:
         check_out_form = CheckOutForm()
         notiz_form = NotizForm()
+        geld_form = GeldForm(
+            initial={'amount': -this_kid.get_taschengeld_sum()})
         context["check_out_form"] = check_out_form
         context["notiz_form"] = notiz_form
+        context["geld_form"] = geld_form
 
     return HttpResponse(template.render(context, request))
 

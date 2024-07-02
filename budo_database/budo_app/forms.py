@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.forms import ModelForm, Form
-from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, Schwerpunktzeit
+from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, Schwerpunktzeit, Geld
 from django import forms
 from django.contrib.auth.models import User
 import datetime
@@ -16,20 +16,29 @@ class NotizForm(forms.ModelForm):
         }
 
 
+class GeldForm(forms.ModelForm):
+    class Meta:
+        model = Geld
+        fields = ['amount']
+
+        widgets = {
+            "amount": forms.NumberInput(attrs={'class': 'w3-input'})
+        }
+
+
 class CheckInForm(forms.ModelForm):
 
     class Meta:
         today = datetime.date.today().strftime('%Y-%m-%d')
         model = Kinder
-        fields = ['check_in_date', 'ausweis', 'e_card', 'einverstaendnis_erklaerung',
-                  'taschengeld']
+        fields = ['check_in_date', 'ausweis',
+                  'e_card', 'einverstaendnis_erklaerung']
 
         widgets = {
             'check_in_date': forms.DateInput(attrs={'type': 'date', 'class': '', "value": f"{today}"}),
             'ausweis': forms.CheckboxInput(attrs={'class': ''}),
             'e_card': forms.CheckboxInput(attrs={'class': ''}),
             'einverstaendnis_erklaerung': forms.CheckboxInput(attrs={'class': ''}),
-            'taschengeld': forms.TextInput(attrs={'class': ''})
         }
         labels = {'einverstaendnis_erklaerung': "Einverständniserklärung"}
 

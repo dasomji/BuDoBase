@@ -1,4 +1,4 @@
-{% extends "master.html" %} {% block title %} BuDo Kid Info {% endblock %} 
+{% extends "master.html" %} {% block title %} BuDo Kid Info {% endblock %}
 {% block headertitle %}
 
 <div class="flex-container">
@@ -6,23 +6,23 @@
     <h1>{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}{% if not Kinder.anwesend %} ❌{% endif %}</h1>
   </a>
 </div>
-{% endblock %} 
+{% endblock %}
 {% block content %}
-  <div class="flex-container" id="body-container">
-    <div class="detail-column" id="single-column">  
-      <div class="card input-container">
-        <div class="info-header-container">
+<div class="flex-container" id="body-container">
+  <div class="detail-column" id="single-column">
+    <div class="card input-container">
+      <div class="info-header-container">
         <h2>Check-In: {{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }}</h2>
       </div>
       <div class="card-info-container">
         <p style="color: red">{{ Kinder.kid_vorname }} {{ Kinder.kid_nachname }} ist noch nicht eingecheckt!</p>
         {% block forminput %}
-          <form method="post">
-            {%csrf_token %} {{ check_in_form.as_p }} {{ notiz_form.as_p }}
-            <button type="submit">Einchecken</button>
-          </form>
-        {% endblock %} 
+        <form method="post">
+          {%csrf_token %} {{ check_in_form.as_p }} {{ notiz_form.as_p }}{{geld_form.as_p}}
+          <button type="submit">Einchecken</button>
+        </form>
+        {% endblock %}
       </div>
     </div>
   </div>
-{% endblock %}
+  {% endblock %}
