@@ -1,8 +1,10 @@
+from .models import Profil
+from django.http import FileResponse, HttpResponse
 from .models import Meal, Schwerpunkte
 from django.shortcuts import redirect
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, FileResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.template import loader
 from django.urls import reverse_lazy
@@ -23,9 +25,10 @@ from django.views.decorators.http import require_POST
 import os
 import json
 import toml
-
+import shutil
 
 from .excelProcessor import process_excel, postprocessing
+from .updateExcel import update_excel_file
 
 info_file_path = os.path.join(settings.BASE_DIR, "info.toml")
 info = toml.load(info_file_path)
@@ -117,7 +120,8 @@ def zugabreise(request):
         return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
-    kids = models.Kinder.objects.filter(turnus=active_turnus)
+    kids = models.Kinder.objects.filter(
+        turnus=active_turnus).order_by('-zug_abreise', 'kid_vorname')
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)
     auslagerorte = Auslagerorte.objects.all()
@@ -794,3 +798,35 @@ def kitchen(request):
         "meal_types": meal_types,
     }
     return HttpResponse(template.render(context, request))
+
+
+@login_required
+def download_updated_excel(request):
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+
+    if not active_turnus:
+        return HttpResponse("No active turnus found.", status=404)
+
+    file_path = os.path.join(
+        settings.MEDIA_ROOT, f"updated_excel_{active_turnus.id}.xlsx")
+
+    # Call the function to update the Excel file
+    update_excel_file(file_path, active_turnus)
+
+    # Serve the file as a download
+    response = FileResponse(
+        open(file_path, 'rb'), as_attachment=True, filename=os.path.basename(file_path))
+    response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+
+    # Delete the file after serving it
+    def delete_file():
+        try:
+            os.remove(file_path)
+        except Exception as e:
+            print(f"Error deleting file: {e}")
+
+    response.close = delete_file
+
+    return response

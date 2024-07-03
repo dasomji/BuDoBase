@@ -10,6 +10,8 @@ urlpatterns = [
     path("upload/", views.uploadFile, name="uploadFile"),
     path('upload_excel/<int:turnus_id>/',
          views.upload_excel, name='upload_excel'),
+    path('download-updated-excel/', views.download_updated_excel,
+         name='download_updated_excel'),
     #     path('', views.kids_list, name='kids_list'),
     path('all_kids', views.kids_list, name='kids_list'),
     path('zugabreise', views.zugabreise, name='zugabreise'),
