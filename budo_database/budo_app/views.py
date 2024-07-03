@@ -810,7 +810,7 @@ def download_updated_excel(request):
         return HttpResponse("No active turnus found.", status=404)
 
     file_path = os.path.join(
-        settings.MEDIA_ROOT, f"updated_excel_{active_turnus.id}.xlsx")
+        settings.MEDIA_ROOT, f"Aufenthaltsdoku_{active_turnus}_ID{active_turnus.id}.xlsx")
 
     # Call the function to update the Excel file
     update_excel_file(file_path, active_turnus)
