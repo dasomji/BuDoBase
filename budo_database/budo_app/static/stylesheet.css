@@ -1043,3 +1043,14 @@ h2.murder_name {
     padding: var(--xs-padding);
   }
 }
+
+#image-gallery .card-info-container {
+  display: flex;
+  flex-flow: row wrap;
+  gap: var(--m-padding);
+}
+
+#image-gallery .card-info-container img {
+  max-width: 200px;
+  height: auto;
+}

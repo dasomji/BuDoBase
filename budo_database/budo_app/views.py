@@ -14,10 +14,10 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from . import models
-from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil, Auslagerorte
+from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil, Auslagerorte, AuslagerorteImage
 from django.views.generic import DetailView
-from django.views.generic.edit import CreateView, UpdateView
-from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, GeldForm
+from django.views.generic.edit import CreateView, UpdateView, FormView
+from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, AuslagerorteImageForm, GeldForm
 from copy import deepcopy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
@@ -579,6 +579,7 @@ class AuslagerorteDetail(LoginRequiredMixin, DetailView):
         context['schwerpunkte'] = schwerpunkte
         context['auslagerorte'] = auslagerorte
         context['kids'] = kids
+        context['form'] = AuslagerorteImageForm()
 
         # Add the single ort data in the same format as auslagerorte_list
         ort = self.get_object()
@@ -624,6 +625,26 @@ class AuslagerorteCreate(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return reverse_lazy('auslagerorte-detail', kwargs={'pk': self.object.pk})
+
+
+class AuslagerorteImageUpload(LoginRequiredMixin, FormView):
+    form_class = AuslagerorteImageForm
+    template_name = 'auslagerorte-image-upload.html'
+
+    def form_valid(self, form):
+        auslagerort = get_object_or_404(Auslagerorte, pk=self.kwargs['pk'])
+        images = form.cleaned_data['images']
+        for image in images:
+            AuslagerorteImage.objects.create(
+                auslagerort=auslagerort, image=image)
+        messages.success(self.request, "Bilder hochgeladen!")
+        return redirect('auslagerorte-detail', pk=auslagerort.pk)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['auslagerort'] = get_object_or_404(
+            Auslagerorte, pk=self.kwargs['pk'])
+        return context
 
 
 @login_required

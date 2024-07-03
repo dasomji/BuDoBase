@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail, SchwerpunkteCreate, AuslagerorteCreate, AuslagerorteDetail, AuslagerorteUpdate
+from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail, SchwerpunkteCreate, AuslagerorteCreate, AuslagerorteImageUpload, AuslagerorteDetail, AuslagerorteUpdate
 
 urlpatterns = [
     path('update_notiz_abreise/', views.update_notiz_abreise,
@@ -37,6 +37,8 @@ urlpatterns = [
          name='auslagerorte-detail'),
     path('auslagerorte/<int:pk>/update',
          AuslagerorteUpdate.as_view(), name='auslagerorte-update'),
+    path('auslagerorte/<int:pk>/upload-image/',
+         AuslagerorteImageUpload.as_view(), name='auslagerorte-image-upload'),
     path('toggle_zug_abreise/', views.toggle_zug_abreise,
          name='toggle_zug_abreise'),
     path('kitchen', views.kitchen, name='kitchen'),

@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.forms import ModelForm, Form
-from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, Schwerpunktzeit, Geld
+from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, AuslagerorteImage, Schwerpunktzeit, Geld
 from django import forms
 from django.contrib.auth.models import User
 import datetime
@@ -90,6 +90,31 @@ class AuslagerForm(forms.ModelForm):
         model = Auslagerorte
         fields = ['name', 'strasse', 'ort', 'bundesland', 'postleitzahl', 'land', 'koordinaten',
                   'maps_link', 'beschreibung', 'maps_link_parkspot', 'koordinaten_parkspot', ]
+
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single_file_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            result = [single_file_clean(d, initial) for d in data]
+        else:
+            result = single_file_clean(data, initial)
+        return result
+
+
+class AuslagerorteImageForm(forms.Form):
+    images = MultipleFileField(
+        label="Select multiple images",
+        required=False
+    )
 
 
 class MealChoiceForm(forms.ModelForm):

@@ -1,0 +1,23 @@
+{% extends 'master.html' %}
+
+{% block content %}
+<div class="flex-container" id="body-container">
+  <div class="detail-column" id="single-column">
+    <div class="card input-container">
+      <div class="info-header-container">
+        <h2>Upload Images for {{ auslagerort.name }}</h2>
+      </div>
+      <div class="card-info-container">
+        <div class="image-upload-form">
+          <form method="post" enctype="multipart/form-data" action="{% url 'auslagerorte-image-upload' pk=ort.pk %}">
+            {% csrf_token %}
+            {{ form.images.label_tag }}
+            {{ form.images }}
+            <input type="submit" value="Bilder hochladen" class="button" />
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

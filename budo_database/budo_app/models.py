@@ -608,6 +608,12 @@ class Auslagerorte(models.Model):
         verbose_name_plural = "Auslagerorte"
 
 
+class AuslagerorteImage(models.Model):
+    auslagerort = models.ForeignKey(
+        Auslagerorte, related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='auslagerorte_images/')
+
+
 class Document(models.Model):
     title = models.CharField(max_length=200)
     uploadedFile = models.FileField(upload_to="Uploaded Files/")

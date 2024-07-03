@@ -15,7 +15,7 @@
   <div class="detail-column" id="left-column">
     {% include "components/map.html" %}
   </div>
-  <div class="detail-column" id="right-column">
+  <div class="detail-column" id="center-column">
     <div class="card" id="ort-detail-info">
       <div class="info-header-container">
         <h2>{{ ort }}</h2>{% include "components/openicon.html" %}
@@ -37,8 +37,30 @@
             <a href="{% url 'auslagerorte-update' pk=ort.pk %}" class="button">Ort bearbeiten</a>
           </div>
         </div>
+
+        <div class="image-upload-form">
+          <h3>Bilder hochladen</h3>
+          <form method="post" enctype="multipart/form-data" action="{% url 'auslagerorte-image-upload' pk=ort.pk %}">
+            {% csrf_token %}
+            {{ form.images.label_tag }}
+            {{ form.images }}
+            <input type="submit" value="Bilder hochladen" class="button" />
+          </form>
+        </div>
+
       </div>
     </div>
   </div>
-</div>
-{% endblock content %}
+  <div class="detail-column" id="right-column">
+    <div class="card" id="image-gallery">
+      <div class="info-header-container">
+        <h2>Bilder</h2>{% include "components/openicon.html" %}
+      </div>
+      <div class="card-info-container">
+        {% for image in ort.images.all %}
+        <img src="{{ image.image.url }}" alt="Image of {{ ort.name }}">
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endblock content %}
