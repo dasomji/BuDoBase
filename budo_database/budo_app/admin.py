@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib import admin
-from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, Notizen, Document, Profil, Meal, Schwerpunktzeit
+from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, AuslagerorteImage, AuslagerorteNotizen, Notizen, Document, Profil, Meal, Schwerpunktzeit
 
 
 class KinderAdminForm(forms.ModelForm):
@@ -70,6 +70,15 @@ class NotizenAdmin(admin.ModelAdmin):
     readonly_fields = ('date_added',)
 
 
+class AuslagerorteNotizenAdmin(admin.ModelAdmin):
+    list_display = ("notiz", "auslagerort", "added_by", "date_added")
+    readonly_fields = ('date_added',)
+
+
+class AuslagerorteImageAdmin(admin.ModelAdmin):
+    list_display = ("image", "auslagerort")
+
+
 class TurnusAdmin(admin.ModelAdmin):
     list_display = ("__str__", "turnus_beginn", "get_turnus_ende", "id")
     readonly_fields = ('dateTimeOfUpload', "get_turnus_ende")
@@ -115,6 +124,8 @@ class SchwerpunktzeitAdmin(admin.ModelAdmin):
 admin.site.register(Kinder, KinderAdmin)
 admin.site.register(Turnus, TurnusAdmin)
 admin.site.register(Auslagerorte)
+admin.site.register(AuslagerorteImage, AuslagerorteImageAdmin)
+admin.site.register(AuslagerorteNotizen, AuslagerorteNotizenAdmin)
 admin.site.register(Notizen, NotizenAdmin)
 admin.site.register(Document)
 admin.site.register(Profil, ProfilAdmin)
