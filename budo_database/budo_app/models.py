@@ -614,6 +614,20 @@ class AuslagerorteImage(models.Model):
     image = models.ImageField(upload_to='auslagerorte_images/')
 
 
+class AuslagerorteNotizen(models.Model):
+    auslagerort = models.ForeignKey(
+        Auslagerorte, on_delete=models.CASCADE, related_name='auslagernotizen')
+    notiz = models.TextField(null=True, blank=True)
+    date_added = models.DateTimeField(auto_now_add=True)
+    added_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.notiz
+
+    class Meta:
+        verbose_name_plural = "Auslagerorte Notizen"
+
+
 class Document(models.Model):
     title = models.CharField(max_length=200)
     uploadedFile = models.FileField(upload_to="Uploaded Files/")

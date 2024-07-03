@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.forms import ModelForm, Form
-from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, AuslagerorteImage, Schwerpunktzeit, Geld
+from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, AuslagerorteNotizen, AuslagerorteImage, Schwerpunktzeit, Geld
 from django import forms
 from django.contrib.auth.models import User
 import datetime
@@ -90,6 +90,16 @@ class AuslagerForm(forms.ModelForm):
         model = Auslagerorte
         fields = ['name', 'strasse', 'ort', 'bundesland', 'postleitzahl', 'land', 'koordinaten',
                   'maps_link', 'beschreibung', 'maps_link_parkspot', 'koordinaten_parkspot', ]
+
+
+class AuslagerNotizForm(forms.ModelForm):
+    class Meta:
+        model = AuslagerorteNotizen
+        fields = ['notiz']
+
+        widgets = {
+            "notiz": forms.TextInput(attrs={'class': 'w3-input'})
+        }
 
 
 class MultipleFileInput(forms.ClearableFileInput):

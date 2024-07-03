@@ -17,7 +17,7 @@ from . import models
 from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil, Auslagerorte, AuslagerorteImage
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, UpdateView, FormView
-from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, AuslagerorteImageForm, GeldForm
+from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm, GeldForm
 from copy import deepcopy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
@@ -568,6 +568,7 @@ class AuslagerorteDetail(LoginRequiredMixin, DetailView):
     context_object_name = 'ort'
 
     def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         current_user = self.request.user
         profil = Profil.objects.get(user=current_user)
         active_turnus = profil.turnus
@@ -575,13 +576,15 @@ class AuslagerorteDetail(LoginRequiredMixin, DetailView):
             schwerpunktzeit__turnus=active_turnus)
         auslagerorte = Auslagerorte.objects.all()
         kids = models.Kinder.objects.filter(turnus=active_turnus)
-        context = super().get_context_data(**kwargs)
-        context['schwerpunkte'] = schwerpunkte
-        context['auslagerorte'] = auslagerorte
-        context['kids'] = kids
-        context['form'] = AuslagerorteImageForm()
 
-        # Add the single ort data in the same format as auslagerorte_list
+        context.update({
+            'schwerpunkte': schwerpunkte,
+            'auslagerorte': auslagerorte,
+            'kids': kids,
+            'form': AuslagerorteImageForm(),
+            'auslagernotiz_form': AuslagerNotizForm(),
+        })
+
         ort = self.get_object()
         auslagerorte_data = [{
             'id': ort.id,
@@ -590,7 +593,6 @@ class AuslagerorteDetail(LoginRequiredMixin, DetailView):
             'kind': 'auslagerorte',
         }]
 
-        # Check if there is an Ort with the name "BuDo" and add it to the list
         try:
             budo_ort = Auslagerorte.objects.get(name="BuDo")
             auslagerorte_data.append({
@@ -607,6 +609,21 @@ class AuslagerorteDetail(LoginRequiredMixin, DetailView):
         })
 
         return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        auslagernotiz_form = AuslagerNotizForm(request.POST)
+
+        if auslagernotiz_form.is_valid():
+            notiz = auslagernotiz_form.save(commit=False)
+            notiz.auslagerort = self.object
+            notiz.added_by = request.user
+            notiz.save()
+            return redirect('auslagerorte-detail', pk=self.object.pk)
+
+        context = self.get_context_data(object=self.object)
+        context['auslagernotiz_form'] = auslagernotiz_form
+        return self.render_to_response(context)
 
 
 class AuslagerorteCreate(LoginRequiredMixin, CreateView):

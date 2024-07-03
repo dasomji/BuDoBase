@@ -42,6 +42,21 @@
         </div>
       </div>
     </div>
+    <div class="card" id="auslagernotizen">
+      <div class="info-header-container">
+        <h2>Kommentare</h2>{% include "components/openicon.html" %}
+      </div>
+      <div class="card-info-container">
+        <ul>
+          {% for notiz in ort.auslagernotizen.all %}
+          <li>
+            <p><strong>{{ notiz.added_by.username }}</strong> am {{ notiz.date_added|date:"d.m." }}:
+              <p>{{ notiz.notiz }}</p>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
   </div>
   <div class="detail-column" id="right-column">
     <div class="card" id="image-gallery">
@@ -60,6 +75,19 @@
     {% include "components/map.html" %}
   </div>
 </div>
+
+<div id="interaction-bar">
+  <div id="interaction-input">
+    {% block forminput %}
+    <form method="post">
+      {%csrf_token %}
+      <div id="auslagernotiz-form">{{ auslagernotiz_form.as_p }}</div>
+      <button type="submit">Hinzufügen</button>
+    </form>
+    {% endblock %}
+  </div>
+</div>
+
 <div id="fullscreen-modal" class="fullscreen-modal">
   <span class="close-modal">&times;</span>
   <div class="modal-content">
