@@ -883,6 +883,11 @@ def swp_einteilung_w1(request):
                  queryset=SchwerpunktWahl.objects.filter(
                      schwerpunktzeit=schwerpunktzeit),
                  to_attr='w1_wahl')
+    ).prefetch_related(
+        Prefetch('schwerpunkte',
+                 queryset=Schwerpunkte.objects.filter(
+                     schwerpunktzeit__woche="w1"),
+                 to_attr='w1_schwerpunkt')
     )
 
     schwerpunkte = Schwerpunkte.objects.filter(
