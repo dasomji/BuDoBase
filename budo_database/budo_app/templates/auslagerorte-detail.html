@@ -35,10 +35,12 @@
         <div class="button-container">
           <div class="form-buttons">
             <a href="{% url 'auslagerorte-update' pk=ort.pk %}" class="button">Ort bearbeiten</a>
+            <a href="{% url 'auslagerorte-image-upload' pk=ort.pk %}" class="button">Bilder hochladen</a>
+
           </div>
         </div>
 
-        <div class="image-upload-form">
+        {% comment %} <div class="image-upload-form">
           <h3>Bilder hochladen</h3>
           <form method="post" enctype="multipart/form-data" action="{% url 'auslagerorte-image-upload' pk=ort.pk %}">
             {% csrf_token %}
@@ -46,7 +48,7 @@
             {{ form.images }}
             <input type="submit" value="Bilder hochladen" class="button" />
           </form>
-        </div>
+        </div> {% endcomment %}
 
       </div>
     </div>
