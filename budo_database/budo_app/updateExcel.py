@@ -1,4 +1,5 @@
 import pandas as pd
+from openpyxl import load_workbook
 from . import models
 
 
@@ -36,4 +37,22 @@ def update_excel_file(file_path, turnus):
 
     # Save the DataFrame to a new Excel file
     df.to_excel(file_path, index=False)
+
+    # Auto-fit column widths
+    workbook = load_workbook(file_path)
+    worksheet = workbook.active
+
+    for column in worksheet.columns:
+        max_length = 0
+        column_letter = column[0].column_letter  # Get the column name
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        worksheet.column_dimensions[column_letter].width = adjusted_width
+
+    workbook.save(file_path)
     print("update_excel_file completed")
