@@ -9,47 +9,37 @@
 {% endblock %}
 {% block extrahead %}
 {% include "components/mapheader.html" %}
+<script src="{% static 'js/image-gallery.js' %}"></script>
 {% endblock %}
 {% block content %}
-<div class="flex-container" id="body-container">
+<div class="flex-container auslagerorte-detail" id="body-container">
+
   <div class="detail-column" id="left-column">
-    {% include "components/map.html" %}
-  </div>
-  <div class="detail-column" id="center-column">
     <div class="card" id="ort-detail-info">
       <div class="info-header-container">
         <h2>{{ ort }}</h2>{% include "components/openicon.html" %}
       </div>
       <div class="card-info-container">
-        <p><span class="label">Name</span>: {{ ort.name }}</p>
-        <p><span class="label">Beschreibung</span>: {{ ort.beschreibung }}</p>
-        <p><span class="label">Koordinaten</span>: {{ ort.koordinaten }}</p>
-        <p><span class="label">Google Maps Link</span>: <a href="{{ ort.maps_link }}">Link</a></p>
-        <p><span class="label">Google Maps Link Parkspot</span>: <a href="{{ ort.maps_link_parkspot }}">Link</a></p>
-        <p><span class="label">Koordinaten Parkspot</span>: {{ ort.koordinaten_parkspot }}</p>
-        <p><span class="label">Straße</span>: {{ ort.strasse }}</p>
-        <p><span class="label">Stadt</span>: {{ ort.ort }}</p>
-        <p><span class="label">Bundesland</span>: {{ ort.bundesland }}</p>
-        <p><span class="label">Postleitzahl</span>: {{ ort.postleitzahl }}</p>
-        <p><span class="label">Land</span>: {{ ort.land }}</p>
+        {% if ort.name %}<p><span class="label">Name</span>: {{ ort.name }}</p>{% endif %}
+        {% if ort.beschreibung %}<p><span class="label">Beschreibung</span>: {{ ort.beschreibung }}</p>{% endif %}
+        {% if ort.koordinaten %}<p><span class="label">Koordinaten</span>: {{ ort.koordinaten }}</p>{% endif %}
+        {% if ort.maps_link %}<p><span class="label">Google Maps Link</span>: <a href="{{ ort.maps_link }}">Link</a></p>
+        {% endif %}
+        {% if ort.maps_link_parkspot %}<p><span class="label">Google Maps Link Parkspot</span>: <a
+            href="{{ ort.maps_link_parkspot }}">Link</a></p>{% endif %}
+        {% if ort.koordinaten_parkspot %}<p><span class="label">Koordinaten Parkspot</span>:
+          {{ ort.koordinaten_parkspot }}</p>{% endif %}
+        {% if ort.strasse %}<p><span class="label">Straße</span>: {{ ort.strasse }}</p>{% endif %}
+        {% if ort.ort %}<p><span class="label">Stadt</span>: {{ ort.ort }}</p>{% endif %}
+        {% if ort.bundesland %}<p><span class="label">Bundesland</span>: {{ ort.bundesland }}</p>{% endif %}
+        {% if ort.postleitzahl %}<p><span class="label">Postleitzahl</span>: {{ ort.postleitzahl }}</p>{% endif %}
+        {% if ort.land %}<p><span class="label">Land</span>: {{ ort.land }}</p>{% endif %}
         <div class="button-container">
-          <div class="form-buttons">
-            <a href="{% url 'auslagerorte-update' pk=ort.pk %}" class="button">Ort bearbeiten</a>
-            <a href="{% url 'auslagerorte-image-upload' pk=ort.pk %}" class="button">Bilder hochladen</a>
 
-          </div>
+          <a href="{% url 'auslagerorte-update' pk=ort.pk %}" class="button">Ort bearbeiten</a>
+          <a href="{% url 'auslagerorte-image-upload' pk=ort.pk %}" class="button">Bilder hochladen</a>
+
         </div>
-
-        {% comment %} <div class="image-upload-form">
-          <h3>Bilder hochladen</h3>
-          <form method="post" enctype="multipart/form-data" action="{% url 'auslagerorte-image-upload' pk=ort.pk %}">
-            {% csrf_token %}
-            {{ form.images.label_tag }}
-            {{ form.images }}
-            <input type="submit" value="Bilder hochladen" class="button" />
-          </form>
-        </div> {% endcomment %}
-
       </div>
     </div>
   </div>
@@ -60,9 +50,22 @@
       </div>
       <div class="card-info-container">
         {% for image in ort.images.all %}
-        <img src="{{ image.image.url }}" alt="Image of {{ ort.name }}">
+        <img src="{{ image.image.url }}" alt="Image of {{ ort.name }}" class="gallery-image"
+          data-index="{{ forloop.counter0 }}">
         {% endfor %}
       </div>
     </div>
   </div>
-  {% endblock content %}
+  <div class="detail-column" id="bottom-column">
+    {% include "components/map.html" %}
+  </div>
+</div>
+<div id="fullscreen-modal" class="fullscreen-modal">
+  <span class="close-modal">&times;</span>
+  <div class="modal-content">
+    <img id="fullscreen-image" src="" alt="Fullscreen image">
+  </div>
+  <button class="nav-button prev">&lt;</button>
+  <button class="nav-button next">&gt;</button>
+</div>
+{% endblock content %}
