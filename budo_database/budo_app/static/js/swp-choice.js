@@ -37,6 +37,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                     // Add .active class to the clicked element
                     clickedElement.classList.add('active');
+
+                    // Update the schwerpunkt-selection cell if erste_wahl is selected
+                    if (choiceRank === '1') {
+                        const schwerpunktSelectionCell = parentRow.querySelector('.schwerpunkt-selection');
+                        schwerpunktSelectionCell.textContent = clickedElement.closest('.swp-choice').dataset.swpName;
+                    }
                 } else {
                     console.error('Error updating Schwerpunkt choice');
                 }

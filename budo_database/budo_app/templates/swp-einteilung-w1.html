@@ -48,7 +48,7 @@ SWP-Einteilung Woche 1
         <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>
         <td class="text-cell">{% if x.get_clean_geschwister %}{{ x.get_clean_geschwister }}{% else %} --- {% endif%}
         </td>
-        <td class="text-cell">
+        <td class="text-cell schwerpunkt-selection">
           {% if x.w1_schwerpunkt %}
           {{ x.w1_schwerpunkt.0.swp_name }}
           {% else %}
@@ -57,7 +57,8 @@ SWP-Einteilung Woche 1
         </td>
         {% for swp in schwerpunkte %}
         <td class="text-cell">
-          <span class="swp-choice" data-kid-id="{{ x.id }}" data-swp-id="{{ swp.id }}">
+          <span class="swp-choice" data-kid-id="{{ x.id }}" data-swp-id="{{ swp.id }}"
+            data-swp-name="{{ swp.swp_name }}">
             {% with wahl=x.w1_wahl.0 %}
             <a href="#" class="swp-choice-link one {% if wahl.erste_wahl == swp %}active{% endif %}"
               data-choice="1">1</a>
