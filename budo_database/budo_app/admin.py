@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib import admin
-from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, AuslagerorteImage, AuslagerorteNotizen, Notizen, Document, Profil, Meal, Schwerpunktzeit
+from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, AuslagerorteImage, AuslagerorteNotizen, Notizen, Document, Profil, Meal, Schwerpunktzeit, SchwerpunktWahl
 
 
 class KinderAdminForm(forms.ModelForm):
@@ -132,3 +132,4 @@ admin.site.register(Profil, ProfilAdmin)
 admin.site.register(Schwerpunkte, SchwerpunkteAdmin)
 admin.site.register(Meal)
 admin.site.register(Schwerpunktzeit, SchwerpunktzeitAdmin)
+admin.site.register(SchwerpunktWahl)

@@ -1,7 +1,7 @@
 import re
 import datetime
 from datetime import timedelta
-
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.dispatch import receiver
 from django.db.models.signals import post_save, pre_save
@@ -571,6 +571,42 @@ class Schwerpunktzeit(models.Model):
 
     class Meta:
         unique_together = ('turnus', 'woche')
+
+
+class SchwerpunktWahl(models.Model):
+    kind = models.ForeignKey(
+        Kinder, on_delete=models.CASCADE, related_name='schwerpunkt_wahl')
+    schwerpunktzeit = models.ForeignKey(
+        Schwerpunktzeit, on_delete=models.CASCADE, related_name='wahlen')
+    erste_wahl = models.ForeignKey(
+        Schwerpunkte, on_delete=models.CASCADE, related_name='erste_wahl', null=True, blank=True)
+    zweite_wahl = models.ForeignKey(
+        Schwerpunkte, on_delete=models.CASCADE, related_name='zweite_wahl', null=True, blank=True)
+    dritte_wahl = models.ForeignKey(
+        Schwerpunkte, on_delete=models.CASCADE, related_name='dritte_wahl', null=True, blank=True)
+
+    class Meta:
+        unique_together = ('kind', 'schwerpunktzeit')
+        verbose_name = "Schwerpunkt Wahl"
+        verbose_name_plural = "Schwerpunkt Wahlen"
+
+    def __str__(self):
+        return f"{self.kind} - {self.schwerpunktzeit}"
+
+    def clean(self):
+        # Create a set of unique choices
+        choices = set(
+            filter(None, [self.erste_wahl, self.zweite_wahl, self.dritte_wahl]))
+
+        # If the number of unique choices is less than the number of non-null choices,
+        # it means there are duplicate choices
+        if len(choices) < sum(1 for choice in [self.erste_wahl, self.zweite_wahl, self.dritte_wahl] if choice is not None):
+            raise ValidationError(
+                "Ein Schwerpunkt kann nicht mehrfach gewählt werden.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
 
 class Auslagerorte(models.Model):

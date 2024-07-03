@@ -1,20 +1,20 @@
 from .models import Profil
 from django.http import FileResponse, HttpResponse
 from .models import Meal, Schwerpunkte
-from django.shortcuts import redirect
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse, FileResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.template import loader
 from django.urls import reverse_lazy
+from django.db.models import Prefetch
 from django.forms import modelformset_factory
 from django import forms
 from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from . import models
-from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil, Auslagerorte, AuslagerorteImage
+from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil, Auslagerorte, AuslagerorteImage, SchwerpunktWahl, Schwerpunktzeit
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, UpdateView, FormView
 from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm, GeldForm
@@ -868,3 +868,63 @@ def download_updated_excel(request):
     response.close = delete_file
 
     return response
+
+
+@login_required
+def swp_einteilung_w1(request):
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    schwerpunktzeit = Schwerpunktzeit.objects.get(
+        turnus=active_turnus, woche="w1")
+
+    kids = models.Kinder.objects.filter(turnus=active_turnus).prefetch_related(
+        Prefetch('schwerpunkt_wahl',
+                 queryset=SchwerpunktWahl.objects.filter(
+                     schwerpunktzeit=schwerpunktzeit),
+                 to_attr='w1_wahl')
+    )
+
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus, schwerpunktzeit__woche="w1")
+    auslagerorte = Auslagerorte.objects.all()
+
+    template = loader.get_template('swp-einteilung-w1.html')
+    context = {
+        'kids': kids,
+        'schwerpunkte': schwerpunkte,
+        'auslagerorte': auslagerorte,
+    }
+    return HttpResponse(template.render(context, request))
+
+
+@require_POST
+@csrf_protect
+def update_schwerpunkt_wahl(request):
+    data = json.loads(request.body)
+    kid_id = data.get('kid_id')
+    swp_id = data.get('swp_id')
+    choice_rank = data.get('choice_rank')
+
+    try:
+        kid = Kinder.objects.get(id=kid_id)
+        schwerpunkt = Schwerpunkte.objects.get(id=swp_id)
+        schwerpunktzeit = schwerpunkt.schwerpunktzeit
+
+        schwerpunkt_wahl, created = SchwerpunktWahl.objects.get_or_create(
+            kind=kid,
+            schwerpunktzeit=schwerpunktzeit
+        )
+
+        if choice_rank == '1':
+            schwerpunkt_wahl.erste_wahl = schwerpunkt
+        elif choice_rank == '2':
+            schwerpunkt_wahl.zweite_wahl = schwerpunkt
+        elif choice_rank == '3':
+            schwerpunkt_wahl.dritte_wahl = schwerpunkt
+
+        schwerpunkt_wahl.save()
+
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})

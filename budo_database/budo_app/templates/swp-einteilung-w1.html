@@ -1,0 +1,79 @@
+{% extends "master.html" %}
+{% load static %}
+
+{% block title %}
+BuDo Kids Alle Kinder meiner Mama
+{% endblock %}
+{% block extrahead %}
+<script src=" {% static 'js/zugabreise-toggle.js' %}"></script>
+<script src="{% static 'js/filtertable.js' %}"></script>
+<script src="{% static 'js/edit-notiz.js' %}"></script>
+<script src="{% static 'js/swp-choice.js' %}"></script>
+{% endblock %}
+
+{% block headertitle %}
+SWP-Einteilung Woche 1
+{% endblock %}
+
+{% block content %}
+<div class="w3-container table-only" id="body-container">
+  {% include 'filter-table.html' %}
+  <div class="table-container">
+    <table class="" id="kids-table">
+      <tr class="table-header">
+        <th class="headcol">Name</th>
+        {% comment %} <th class="zugabreise-toggle">Zugabreise: {{zugabreise_count}}</th> {% endcomment %}
+        <th>Freunde</th>
+        <th>Alter</th>
+        <th>Geschwister</th>
+        {% for swp in schwerpunkte %}
+        <th>{{swp.swp_name}}</th>
+        {% endfor %}
+      </tr>
+      {% for x in kids %}
+      <tr class="table_row w3-padding-large">
+        <td class="text-cell headcol" id="name"><a href="/kid_details/{{ x.id }}">
+            {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a>
+        </td>
+        {% comment %} <td class="text-cell zug-toggle" id="zugabreise-toggle-{{ x.id }}"
+          data-kidname="{{x.kid_vorname}} {{x.kid_nachname}}" data-id="{{ x.id }}"
+          data-url="{% url 'toggle_zug_abreise' %}">
+          {% include "components/ja_nein_switch.html" with bool=x.zug_abreise %}
+        </td> {% endcomment %}
+        <td class="text-cell">
+          <span id="freunde-{{ x.id }}">{{ x.freunde }}</span>
+          <button class="edit-freunde-btn" data-id="{{ x.id }}" data-notiz="{{ x.freunde }}">✏️</button>
+        </td>
+        <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>
+        <td class="text-cell">{% if x.get_clean_geschwister %}{{ x.get_clean_geschwister }}{% else %} --- {% endif%}
+        </td>
+        {% for swp in schwerpunkte %}
+        <td class="text-cell">
+          <span class="swp-choice" data-kid-id="{{ x.id }}" data-swp-id="{{ swp.id }}">
+            {% with wahl=x.w1_wahl.0 %}
+            <a href="#" class="swp-choice-link one {% if wahl.erste_wahl == swp %}active{% endif %}"
+              data-choice="1">1</a>
+            <a href="#" class="swp-choice-link two {% if wahl.zweite_wahl == swp %}active{% endif %}"
+              data-choice="2">2</a>
+            <a href="#" class="swp-choice-link three {% if wahl.dritte_wahl == swp %}active{% endif %}"
+              data-choice="3">3</a>
+            {% endwith %}
+          </span>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+
+<!-- Modal for editing Abreise-Notiz -->
+<div id="notizModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Edit Abreise-Notiz</h2>
+    <textarea id="notizInput" rows="4" cols="50"></textarea>
+    <button id="saveNotizBtn">Speichern</button>
+  </div>
+</div>
+{% endblock %}

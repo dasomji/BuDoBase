@@ -42,6 +42,9 @@ urlpatterns = [
     path('toggle_zug_abreise/', views.toggle_zug_abreise,
          name='toggle_zug_abreise'),
     path('kitchen', views.kitchen, name='kitchen'),
+    path('swp-einteilung-w1', views.swp_einteilung_w1, name='swp-einteilung-w1'),
+    path('update-schwerpunkt-wahl/', views.update_schwerpunkt_wahl,
+         name='update_schwerpunkt_wahl'),
 ]
 
 if settings.DEBUG:

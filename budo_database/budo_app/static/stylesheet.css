@@ -1151,3 +1151,42 @@ h2.murder_name {
 .next {
   right: 20px;
 }
+
+/* ------swp-wahl------- */
+.swp-choice {
+  display: flex;
+  justify-content: space-around;
+  gap: var(--xs-padding);
+}
+
+.swp-choice-link {
+  cursor: pointer;
+  border: 1px solid black;
+  border-radius: 100px;
+  padding: var(--xs-padding) var(--s-padding);
+  background-color: #fefefe61;
+}
+
+#kids-table .swp-choice-link:hover {
+  border: 1px solid black;
+  border-radius: 100px;
+  padding: var(--xs-padding) var(--s-padding);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  transform: scale(1.05) translate(0px, -5px);
+  transition: transform 0.1s ease-in-out;
+}
+
+#kids-table .swp-choice-link.one.active,
+#kids-table .swp-choice-link.one:hover {
+  background-color: gold;
+}
+
+#kids-table .swp-choice-link.two.active,
+#kids-table .swp-choice-link.two:hover {
+  background-color: silver;
+}
+
+#kids-table .swp-choice-link.three.active,
+#kids-table .swp-choice-link.three:hover {
+  background-color: #cd7f32;
+}
