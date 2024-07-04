@@ -42,7 +42,7 @@ SWP-Einteilung Woche 1
           {% include "components/ja_nein_switch.html" with bool=x.zug_abreise %}
         </td> {% endcomment %}
         <td class="text-cell">
-          <span id="freunde-{{ x.id }}">{{ x.freunde }}</span>
+          <span>{{x.schwerpunkt_wahl.freunde}} </span>
           <button class="edit-freunde-btn" data-id="{{ x.id }}" data-notiz="{{ x.freunde }}">✏️</button>
         </td>
         <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>

@@ -584,6 +584,7 @@ class SchwerpunktWahl(models.Model):
         Schwerpunkte, on_delete=models.CASCADE, related_name='zweite_wahl', null=True, blank=True)
     dritte_wahl = models.ForeignKey(
         Schwerpunkte, on_delete=models.CASCADE, related_name='dritte_wahl', null=True, blank=True)
+    freunde = models.CharField(max_length=500, blank=True, default="")
 
     class Meta:
         unique_together = ('kind', 'schwerpunktzeit')
