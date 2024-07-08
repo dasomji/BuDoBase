@@ -938,3 +938,21 @@ def update_schwerpunkt_wahl(request):
         return JsonResponse({'status': 'success'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
+
+
+@require_POST
+@csrf_protect
+def update_freunde(request):
+    data = json.loads(request.body)
+    kid_id = data.get('kid_id')
+    freunde = data.get('freunde')
+
+    try:
+        kid = Kinder.objects.get(id=kid_id)
+        schwerpunkt_wahl = SchwerpunktWahl.objects.get(
+            kind=kid, schwerpunktzeit__woche="w1")
+        schwerpunkt_wahl.freunde = freunde
+        schwerpunkt_wahl.save()
+        return JsonResponse({'status': 'success'})
+    except (Kinder.DoesNotExist, SchwerpunktWahl.DoesNotExist):
+        return JsonResponse({'status': 'error', 'message': 'Kid or SchwerpunktWahl not found'})

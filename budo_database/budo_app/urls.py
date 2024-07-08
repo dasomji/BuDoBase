@@ -45,6 +45,7 @@ urlpatterns = [
     path('swp-einteilung-w1', views.swp_einteilung_w1, name='swp-einteilung-w1'),
     path('update-schwerpunkt-wahl/', views.update_schwerpunkt_wahl,
          name='update_schwerpunkt_wahl'),
+    path('update_freunde/', views.update_freunde, name='update_freunde'),
 ]
 
 if settings.DEBUG:

@@ -888,7 +888,8 @@ h2.murder_name {
   cursor: pointer;
 }
 
-.edit-notiz-btn {
+.edit-notiz-btn,
+.edit-freunde-btn {
   background-color: transparent;
   border: none;
   padding: 0;

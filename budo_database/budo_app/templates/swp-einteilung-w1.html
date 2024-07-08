@@ -2,17 +2,17 @@
 {% load static %}
 
 {% block title %}
-BuDo Kids Alle Kinder meiner Mama
+SWP-Einteilung Woche 1
 {% endblock %}
 {% block extrahead %}
 <script src=" {% static 'js/zugabreise-toggle.js' %}"></script>
 <script src="{% static 'js/filtertable.js' %}"></script>
-<script src="{% static 'js/edit-notiz.js' %}"></script>
+<script src="{% static 'js/edit-freunde.js' %}"></script>
 <script src="{% static 'js/swp-choice.js' %}"></script>
 {% endblock %}
 
 {% block headertitle %}
-SWP-Einteilung Woche 1
+<h2>SWP-Einteilung Woche 1</h2>
 {% endblock %}
 
 {% block content %}
@@ -42,8 +42,8 @@ SWP-Einteilung Woche 1
           {% include "components/ja_nein_switch.html" with bool=x.zug_abreise %}
         </td> {% endcomment %}
         <td class="text-cell">
-          <span>{{x.schwerpunkt_wahl.freunde}} </span>
-          <button class="edit-freunde-btn" data-id="{{ x.id }}" data-notiz="{{ x.freunde }}">✏️</button>
+          <span class="freunde-text" data-kid-id="{{ x.id }}">{{x.w1_wahl.0.freunde}}</span>
+          <button class="edit-freunde-btn" data-kid-id="{{ x.id }}">✏️</button>
         </td>
         <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>
         <td class="text-cell">{% if x.get_clean_geschwister %}{{ x.get_clean_geschwister }}{% else %} --- {% endif%}
@@ -77,12 +77,12 @@ SWP-Einteilung Woche 1
 </div>
 
 <!-- Modal for editing Abreise-Notiz -->
-<div id="notizModal" class="modal">
+<div id="freundeModal" class="modal">
   <div class="modal-content">
     <span class="close">&times;</span>
-    <h2>Edit Abreise-Notiz</h2>
-    <textarea id="notizInput" rows="4" cols="50"></textarea>
-    <button id="saveNotizBtn">Speichern</button>
+    <h2>Freunde bearbeiten</h2>
+    <textarea id="freundeInput" rows="4" cols="50"></textarea>
+    <button id="saveFreundeBtn">Speichern</button>
   </div>
 </div>
 {% endblock %}
