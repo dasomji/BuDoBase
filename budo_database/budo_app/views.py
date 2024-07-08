@@ -922,9 +922,12 @@ def update_schwerpunkt_wahl(request):
         )
 
         if choice_rank == '1':
+            # Remove any existing schwerpunkt for this week
+            kid.schwerpunkte.remove(
+                *kid.schwerpunkte.filter(schwerpunktzeit=schwerpunktzeit))
+
             schwerpunkt_wahl.erste_wahl = schwerpunkt
-            if not kid.schwerpunkte.filter(id=schwerpunkt.id).exists():
-                kid.schwerpunkte.add(schwerpunkt)
+            kid.schwerpunkte.add(schwerpunkt)
         elif choice_rank == '2':
             schwerpunkt_wahl.zweite_wahl = schwerpunkt
         elif choice_rank == '3':

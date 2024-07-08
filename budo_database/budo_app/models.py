@@ -594,20 +594,20 @@ class SchwerpunktWahl(models.Model):
     def __str__(self):
         return f"{self.kind} - {self.schwerpunktzeit}"
 
-    def clean(self):
-        # Create a set of unique choices
-        choices = set(
-            filter(None, [self.erste_wahl, self.zweite_wahl, self.dritte_wahl]))
+    # def clean(self):
+    #     # Create a set of unique choices
+    #     choices = set(
+    #         filter(None, [self.erste_wahl, self.zweite_wahl, self.dritte_wahl]))
 
-        # If the number of unique choices is less than the number of non-null choices,
-        # it means there are duplicate choices
-        if len(choices) < sum(1 for choice in [self.erste_wahl, self.zweite_wahl, self.dritte_wahl] if choice is not None):
-            raise ValidationError(
-                "Ein Schwerpunkt kann nicht mehrfach gewählt werden.")
+    #     # If the number of unique choices is less than the number of non-null choices,
+    #     # it means there are duplicate choices
+    #     if len(choices) < sum(1 for choice in [self.erste_wahl, self.zweite_wahl, self.dritte_wahl] if choice is not None):
+    #         raise ValidationError(
+    #             "Ein Schwerpunkt kann nicht mehrfach gewählt werden.")
 
-    def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     self.clean()
+    #     super().save(*args, **kwargs)
 
 
 class Auslagerorte(models.Model):
