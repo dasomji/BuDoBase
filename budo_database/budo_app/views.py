@@ -903,6 +903,39 @@ def swp_einteilung_w1(request):
     return HttpResponse(template.render(context, request))
 
 
+@login_required
+def swp_einteilung_w2(request):
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    schwerpunktzeit = Schwerpunktzeit.objects.get(
+        turnus=active_turnus, woche="w2")
+
+    kids = models.Kinder.objects.filter(turnus=active_turnus).prefetch_related(
+        Prefetch('schwerpunkt_wahl',
+                 queryset=SchwerpunktWahl.objects.filter(
+                     schwerpunktzeit=schwerpunktzeit),
+                 to_attr='w2_wahl')
+    ).prefetch_related(
+        Prefetch('schwerpunkte',
+                 queryset=Schwerpunkte.objects.filter(
+                     schwerpunktzeit__woche="w2"),
+                 to_attr='w2_schwerpunkt')
+    )
+
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus, schwerpunktzeit__woche="w2")
+    auslagerorte = Auslagerorte.objects.all()
+
+    template = loader.get_template('swp-einteilung-w2.html')
+    context = {
+        'kids': kids,
+        'schwerpunkte': schwerpunkte,
+        'auslagerorte': auslagerorte,
+    }
+    return HttpResponse(template.render(context, request))
+
+
 @require_POST
 @csrf_protect
 def update_schwerpunkt_wahl(request):

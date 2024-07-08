@@ -43,6 +43,7 @@ urlpatterns = [
          name='toggle_zug_abreise'),
     path('kitchen', views.kitchen, name='kitchen'),
     path('swp-einteilung-w1', views.swp_einteilung_w1, name='swp-einteilung-w1'),
+    path('swp-einteilung-w2', views.swp_einteilung_w2, name='swp-einteilung-w2'),
     path('update-schwerpunkt-wahl/', views.update_schwerpunkt_wahl,
          name='update_schwerpunkt_wahl'),
     path('update_freunde/', views.update_freunde, name='update_freunde'),
