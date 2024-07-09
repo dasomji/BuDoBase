@@ -35,6 +35,8 @@ class Profil(models.Model):
         max_length=255, blank=True, default="", help_text="Wie willst du genannt werden?")
     telefonnummer = PhoneNumberField(blank=True)
     allergien = models.CharField(max_length=500, blank=True, default="")
+    coffee = models.CharField(max_length=500, blank=True,
+                              default="", help_text="Wie magst du deinen Kaffee?")
     rolle = models.CharField(
         max_length=1,
         choices=ROLLEN,
