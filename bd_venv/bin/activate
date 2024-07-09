@@ -67,3 +67,6 @@ fi
 if [ -n "${BASH:-}" -o -n "${ZSH_VERSION:-}" ] ; then
     hash -r 2> /dev/null
 fi
+
+# Custom alias for pip freeze without graphviz
+alias pipfreeze='pip freeze | grep -v "^graphviz==" > requirements.txt'

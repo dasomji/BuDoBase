@@ -23,4 +23,7 @@ endif
 
 alias pydoc python -m pydoc
 
+# Custom alias for pip freeze without graphviz
+alias pipfreeze='pip freeze | grep -v "^graphviz==" > requirements.txt'
+
 rehash
