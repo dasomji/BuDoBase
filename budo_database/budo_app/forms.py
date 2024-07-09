@@ -12,7 +12,7 @@ class NotizForm(forms.ModelForm):
         fields = ['notiz']
 
         widgets = {
-            "notiz": forms.TextInput(attrs={'class': 'w3-input'})
+            "notiz": forms.TextInput(attrs={'class': 'w3-input', 'placeholder': 'Notiz...'})
         }
 
 
@@ -22,7 +22,7 @@ class GeldForm(forms.ModelForm):
         fields = ['amount']
 
         widgets = {
-            "amount": forms.NumberInput(attrs={'class': 'w3-input'})
+            "amount": forms.NumberInput(attrs={'class': 'w3-input', 'placeholder': 'Taschengeld...'})
         }
 
 
@@ -98,7 +98,7 @@ class AuslagerNotizForm(forms.ModelForm):
         fields = ['notiz']
 
         widgets = {
-            "notiz": forms.TextInput(attrs={'class': 'w3-input'})
+            "notiz": forms.TextInput(attrs={'class': 'w3-input', 'placeholder': 'Kommentar...'})
         }
 
 
