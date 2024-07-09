@@ -9,7 +9,6 @@ from django.template import loader
 from django.urls import reverse_lazy
 from django.db.models import Prefetch
 from django.forms import modelformset_factory
-from django import forms
 from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
@@ -25,7 +24,8 @@ from django.views.decorators.http import require_POST
 import os
 import json
 import toml
-import shutil
+import csv
+
 
 from .excelProcessor import process_excel, postprocessing
 from .updateExcel import update_excel_file
@@ -989,3 +989,26 @@ def update_freunde(request):
         return JsonResponse({'status': 'success'})
     except (Kinder.DoesNotExist, SchwerpunktWahl.DoesNotExist):
         return JsonResponse({'status': 'error', 'message': 'Kid or SchwerpunktWahl not found'})
+
+
+@login_required
+def happy_cleaning(request):
+    # Get the current turnus (you might need to adjust this based on how you store the current turnus)
+    current_turnus = request.user.profil.turnus
+
+    # Query kids from the current turnus
+    kids = Kinder.objects.filter(turnus=current_turnus)
+
+    # Create the HttpResponse object with CSV header
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="happy_cleaning.csv"'
+
+    # Create the CSV writer
+    writer = csv.writer(response)
+    writer.writerow(['ID', 'Kindername'])
+
+    # Write data rows
+    for kid in kids:
+        writer.writerow([kid.id, f"{kid.kid_vorname} {kid.kid_nachname}"])
+
+    return response
