@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib import admin
+from django.template.defaultfilters import filesizeformat
 from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, AuslagerorteImage, AuslagerorteNotizen, Notizen, Document, Profil, Meal, Schwerpunktzeit, SchwerpunktWahl
 
 
@@ -76,7 +77,13 @@ class AuslagerorteNotizenAdmin(admin.ModelAdmin):
 
 
 class AuslagerorteImageAdmin(admin.ModelAdmin):
-    list_display = ("image", "auslagerort")
+    list_display = ("image", "auslagerort", "file_size")
+
+    def file_size(self, obj):
+        if obj.image and hasattr(obj.image, 'size'):
+            return filesizeformat(obj.image.size)
+        return "N/A"
+    file_size.short_description = "File Size"
 
 
 class TurnusAdmin(admin.ModelAdmin):

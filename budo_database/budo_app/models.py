@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save, pre_save
 from django.contrib.auth.models import User
 from phonenumber_field.modelfields import PhoneNumberField
+from django_resized import ResizedImageField
 
 # Create your models here.
 
@@ -648,7 +649,12 @@ class Auslagerorte(models.Model):
 class AuslagerorteImage(models.Model):
     auslagerort = models.ForeignKey(
         Auslagerorte, related_name='images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='auslagerorte_images/')
+    image = ResizedImageField(
+        size=[1080, 1080],
+        force_format="jpeg",
+        quality=75,
+        upload_to='auslagerorte_images/'
+    )
 
 
 class AuslagerorteNotizen(models.Model):
