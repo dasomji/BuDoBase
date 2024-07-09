@@ -16,7 +16,6 @@ pandas==2.2.2
 phonenumbers==8.13.36
 pillow==10.4.0
 psycopg2-binary==2.9.9
-pygraphviz==1.13
 python-dateutil==2.8.2
 python-dotenv==1.0.1
 pytz==2023.3
