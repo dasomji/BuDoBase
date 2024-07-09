@@ -13,10 +13,8 @@
 {% endblock %}
 {% block content %}
 <div class="flex-container" id="body-container">
-    <div class="detail-column" id="left-column">
-        {% include "components/map.html" %}
-    </div>
-    <div class="detail-column normal-column" id="right-column">
+
+    <div class="detail-column normal-column" id="left-column">
         <div class="table-container">
             <table class="" id="kids-table">
                 <tr class="table-header">
@@ -39,6 +37,9 @@
                 {% endfor %}
             </table>
         </div>
+    </div>
+    <div class="detail-column" id="right-column">
+        {% include "components/map.html" %}
     </div>
 </div>
 {% endblock content %}

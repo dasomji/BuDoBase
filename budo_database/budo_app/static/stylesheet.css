@@ -160,11 +160,17 @@ select {
   #menu-button {
     display: block;
   }
-  #headertitle {
-    order: 3;
-  }
+}
+
+@media screen and (max-width: 615px) {
   #headerbutton {
     order: 4;
+  }
+}
+
+@media screen and (max-width: 470px) {
+  #headertitle {
+    order: 3;
   }
 }
 
