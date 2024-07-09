@@ -103,7 +103,7 @@ select {
 #header-content {
   align-self: stretch;
   display: flex;
-  flex-direction: row;
+  flex-flow: row wrap;
   align-items: flex-start;
   gap: var(--m-padding);
   justify-content: space-between;
@@ -161,7 +161,10 @@ select {
     display: block;
   }
   #headertitle {
-    display: none;
+    order: 3;
+  }
+  #headerbutton {
+    order: 4;
   }
 }
 
@@ -242,7 +245,7 @@ select {
 
 #mySidebar a {
   text-decoration: none;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
 }
 
 #sidebar-close-area {
@@ -251,6 +254,9 @@ select {
 }
 
 @media only screen and (max-width: 759px) {
+  h1 {
+    font-size: 1.5rem;
+  }
   #mySidebar {
     width: 100vw;
   }
@@ -313,6 +319,12 @@ button.closebtn {
   flex-grow: 1;
   flex-flow: column nowrap;
   gap: var(--l-padding);
+}
+
+@media only screen and (max-width: 760px) {
+  .detail-column {
+    min-width: 300px;
+  }
 }
 
 #right-column {
@@ -1233,4 +1245,10 @@ h2.murder_name {
 #kids-table .swp-choice-link.three.active,
 #kids-table .swp-choice-link.three:hover {
   background-color: #cd7f32;
+}
+
+@media screen and (max-width: 767px) {
+  #db-spezial {
+    display: none;
+  }
 }

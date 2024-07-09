@@ -36,7 +36,15 @@
           <a href="/profil">User: {{ request.user }}</a>
           <a href="/logout">Ausloggen</a>
         </div>
+        <p>-------------</p>
         {% include 'navbar.html' %}
+        <p>-------------</p>
+        <div id="mobile-menu-content-2">
+          <a href="/zugabreise">Zugabreise</a>
+          <a href="/zuganreise">Zuganreise</a>
+          <a href="/swp-einteilung-w1">SWP-Einteilung Woche 1</a>
+          <a href="/swp-einteilung-w2">SWP-Einteilung Woche 2</a>
+        </div>
       </div>
     </div>
     <div id="sidebar-close-area" onclick="closeNav()"></div>

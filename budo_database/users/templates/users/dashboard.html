@@ -1,6 +1,6 @@
 {% extends 'master.html' %}
 {% block headertitle %}
-<h1>BuDo</h1>
+<h1>BuDo Dashboard</h1>
 {% endblock %}
 
 
@@ -66,15 +66,15 @@
                 <h2>Speziallisten</h2>{% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
-                <p><a href="/serienbrief">Serienbrief</a></p>
-                <p><a href="/murdergame">Mörderspiel Liste</a></p>
-                <p><a href="/zugabreise">Zugabreise</a></p>
-                <p><a href="/zuganreise">Zuganreise</a></p>
-                <p><a href="/upload">Turnis</a></p>
-                <p><a href="/download-updated-excel">Aufenthalts-Doku</a></p>
-                <p><a href="/swp-einteilung-w1">SWP-Einteilung Woche 1</a></p>
-                <p><a href="/swp-einteilung-w2">SWP-Einteilung Woche 2</a></p>
-                <p><a href="/happy-cleaning">Happy Cleaning</a></p>
+                <p id="db-serienbrief"><a href="/serienbrief">Serienbrief</a></p>
+                <p id="db-murdergame"><a href="/murdergame">Mrderspiel Liste</a></p>
+                <p id="db-zugabreise"><a href="/zugabreise">Zugabreise</a></p>
+                <p id="db-zuganreise"><a href="/zuganreise">Zuganreise</a></p>
+                <p id="db-turnis"><a href="/upload">Turnis</a></p>
+                <p id="db-aufenthaltsdoku"><a href="/download-updated-excel">Aufenthalts-Doku</a></p>
+                <p id="db-swp-einteilung-w1"><a href="/swp-einteilung-w1">SWP-Einteilung Woche 1</a></p>
+                <p id="db-swp-einteilung-w2"><a href="/swp-einteilung-w2">SWP-Einteilung Woche 2</a></p>
+                <p id="db-happy-cleaning"><a href="/happy-cleaning">Happy Cleaning</a></p>
             </div>
         </div>
         <div class="card" id="db-notizen">
