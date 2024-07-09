@@ -1,5 +1,10 @@
 $(document).ready(function () {
-    // Restore state from cookie
+    // Function to check if the device is mobile or tablet
+    function isMobileOrTablet() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    // Restore state from cookie or close all cards on mobile/tablet if no cookie
     let closedCards = Cookies.get('closedCards');
     if (closedCards) {
         closedCards = JSON.parse(closedCards);
@@ -9,7 +14,16 @@ $(document).ready(function () {
             // card.find('.vertical-line').hide();
             card.find('.card-info-container').hide();
         });
+    } else if (isMobileOrTablet()) {
+        $('.card').addClass('closed-card');
+        $('.card .card-info-container').hide();
+        // Update cookie
+        closedCards = $('.card').map(function () {
+            return this.id;
+        }).get();
+        Cookies.set('closedCards', JSON.stringify(closedCards));
     }
+
     // Show open cards
     $('.card:not(.closed-card) > .card-info-container').show();
     // $('.card:not(.closed-card) .vertical-line').fadeToggle();
