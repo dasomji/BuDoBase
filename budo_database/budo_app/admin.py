@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.html import format_html
 from django.contrib import admin
 from django.template.defaultfilters import filesizeformat
 from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, AuslagerorteImage, AuslagerorteNotizen, Notizen, Document, Profil, Meal, Schwerpunktzeit, SchwerpunktWahl
@@ -86,6 +87,36 @@ class AuslagerorteImageAdmin(admin.ModelAdmin):
     file_size.short_description = "File Size"
 
 
+class AuslagerorteNotizenInline(admin.TabularInline):
+    model = AuslagerorteNotizen
+    extra = 1
+
+
+class AuslagerorteImageInline(admin.TabularInline):
+    model = AuslagerorteImage
+    extra = 1
+    readonly_fields = ['image_preview']
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="max-height: 150px; max-width: 150px;" />', obj.image.url)
+        return "No Image"
+    image_preview.short_description = 'Image Preview'
+
+
+class AuslagerorteAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "get_notizen_count", "get_images_count")
+    inlines = [AuslagerorteNotizenInline, AuslagerorteImageInline]
+
+    def get_notizen_count(self, obj):
+        return obj.auslagernotizen.count()
+    get_notizen_count.short_description = 'Notizen'
+
+    def get_images_count(self, obj):
+        return obj.images.count()
+    get_images_count.short_description = 'Bilder'
+
+
 class TurnusAdmin(admin.ModelAdmin):
     list_display = ("__str__", "turnus_beginn", "get_turnus_ende", "id")
     readonly_fields = ('dateTimeOfUpload', "get_turnus_ende")
@@ -130,7 +161,7 @@ class SchwerpunktzeitAdmin(admin.ModelAdmin):
 
 admin.site.register(Kinder, KinderAdmin)
 admin.site.register(Turnus, TurnusAdmin)
-admin.site.register(Auslagerorte)
+admin.site.register(Auslagerorte, AuslagerorteAdmin)
 admin.site.register(AuslagerorteImage, AuslagerorteImageAdmin)
 admin.site.register(AuslagerorteNotizen, AuslagerorteNotizenAdmin)
 admin.site.register(Notizen, NotizenAdmin)
