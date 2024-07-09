@@ -4,12 +4,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const closeBtn = document.getElementsByClassName('close-modal')[0];
     const prevBtn = document.querySelector('.nav-button.prev');
     const nextBtn = document.querySelector('.nav-button.next');
-    const galleryImages = document.querySelectorAll('.gallery-image');
+    const galleryItems = document.querySelectorAll('.gallery-item');
     let currentIndex = 0;
 
     function openModal(index) {
         modal.style.display = 'block';
-        modalImg.src = galleryImages[index].src;
+        modalImg.src = galleryItems[index].querySelector('img').src;
         currentIndex = index;
     }
 
@@ -18,17 +18,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function showNextImage() {
-        currentIndex = (currentIndex + 1) % galleryImages.length;
-        modalImg.src = galleryImages[currentIndex].src;
+        currentIndex = (currentIndex + 1) % galleryItems.length;
+        modalImg.src = galleryItems[currentIndex].querySelector('img').src;
     }
 
     function showPrevImage() {
-        currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length;
-        modalImg.src = galleryImages[currentIndex].src;
+        currentIndex = (currentIndex - 1 + galleryItems.length) % galleryItems.length;
+        modalImg.src = galleryItems[currentIndex].querySelector('img').src;
     }
 
-    galleryImages.forEach((img, index) => {
-        img.addEventListener('click', () => openModal(index));
+    galleryItems.forEach((item, index) => {
+        item.addEventListener('click', () => openModal(index));
     });
 
     closeBtn.addEventListener('click', closeModal);

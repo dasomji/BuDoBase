@@ -37,7 +37,7 @@
         <div class="button-container">
 
           <a href="{% url 'auslagerorte-update' pk=ort.pk %}" class="button">Ort bearbeiten</a>
-          <a href="{% url 'auslagerorte-image-upload' pk=ort.pk %}" class="button">Bilder hochladen</a>
+
 
         </div>
       </div>
@@ -61,20 +61,26 @@
   <div class="detail-column" id="right-column">
     <div class="card" id="image-gallery">
       <div class="info-header-container">
-        <h2>Bilder</h2>{% include "components/openicon.html" %}
+        <h2>Bilder</h2>
+
+        {% include "components/openicon.html" %}
       </div>
       <div class="card-info-container">
-        {% for image in ort.images.all %}
-        <img src="{{ image.image.url }}" alt="Image of {{ ort.name }}" class="gallery-image"
-          data-index="{{ forloop.counter0 }}">
-        {% endfor %}
+        <div class="gallery-container">
+          {% for image in ort.images.all %}
+          <div class="gallery-item" style="background-image: url('{{ image.image.url }}')"
+            data-index="{{ forloop.counter0 }}">
+            <img src="{{ image.image.url }}" alt="Image of {{ ort.name }}">
+          </div>
+          {% endfor %}
+        </div>
+        <div class="button-container">
+          <a href="{% url 'auslagerorte-image-upload' pk=ort.pk %}" class="button">Bilder hochladen</a>
+        </div>
       </div>
     </div>
     {% include "components/map.html" %}
   </div>
-  {% comment %} <div class="detail-column" id="bottom-column">
-    {% include "components/map.html" %}
-  </div> {% endcomment %}
 </div>
 
 <div id="interaction-bar">
@@ -91,7 +97,7 @@
 
 <div id="fullscreen-modal" class="fullscreen-modal">
   <span class="close-modal">&times;</span>
-  <div class="modal-content">
+  <div class="image-modal-content">
     <img id="fullscreen-image" src="" alt="Fullscreen image">
   </div>
   <button class="nav-button prev">&lt;</button>

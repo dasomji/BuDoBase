@@ -521,6 +521,12 @@ button.closebtn {
   display: inline-block;
 }
 
+.info-header-container .mini-container {
+  display: flex;
+  flex-flow: row nowrap;
+  gap: var(--s-padding);
+}
+
 .closed-card .info-header-container {
   border-radius: var(--corner-rad);
 }
@@ -751,8 +757,12 @@ table #alter {
 
 .button-container {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding-top: var(--xl-padding);
+}
+
+.info-header-container .button-container {
+  padding-top: 0;
 }
 
 #map {
@@ -1045,17 +1055,6 @@ h2.murder_name {
   }
 }
 
-#image-gallery .card-info-container {
-  display: flex;
-  flex-flow: row wrap;
-  gap: var(--m-padding);
-}
-
-#image-gallery .card-info-container img {
-  max-width: 200px;
-  height: auto;
-}
-
 /* -----auslagerorte ---- */
 .auslagerorte-detail {
   display: flex;
@@ -1086,7 +1085,7 @@ h2.murder_name {
   }
 }
 
-#image-gallery .card-info-container {
+/* #image-gallery .card-info-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--xs-padding);
@@ -1096,6 +1095,50 @@ h2.murder_name {
   height: 100%;
   object-fit: cover;
   border-radius: var(--corner-rad);
+} */
+
+/* #image-gallery .card-info-container {
+  display: flex;
+  flex-flow: row wrap;
+  gap: var(--m-padding);
+} */
+
+/* #image-gallery .card-info-container img {
+  max-width: 200px;
+  height: auto;
+} */
+
+#image-gallery .gallery-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-padding);
+  /* margin: 0 -0.5rem; */
+}
+
+#image-gallery .card-info-container .gallery-item {
+  background-position: center center;
+  background-size: cover;
+  flex: auto;
+  height: 15vw;
+  /* margin: 0 0.5rem 1rem; */
+  max-height: 10rem;
+  min-width: 150px;
+  border-radius: var(--corner-rad);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#image-gallery .card-info-container .gallery-item img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  opacity: 0;
+}
+
+@media (max-width: 767px) {
+  #image-gallery .card-info-container .gallery-item {
+    height: 30vw;
+  }
 }
 
 /* Fullscreen Modal */
@@ -1110,7 +1153,7 @@ h2.murder_name {
   background-color: rgba(0, 0, 0, 0.9);
 }
 
-.fullscreen-modal .modal-content {
+.fullscreen-modal .image-modal-content {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1118,8 +1161,8 @@ h2.murder_name {
 }
 
 .fullscreen-modal img {
-  max-width: 90%;
-  max-height: 90%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 
