@@ -8,17 +8,10 @@ from django.db.models.signals import post_save, pre_save
 from django.contrib.auth.models import User
 from phonenumber_field.modelfields import PhoneNumberField
 from django_resized import ResizedImageField
+import requests
+from urllib.parse import urlparse, parse_qs
 
 # Create your models here.
-
-
-def get_coordinates_from_maps_link(maps_link):
-    match = re.search(r'3d(-?\d+\.\d+)!4d(-?\d+\.\d+)', maps_link)
-    if match:
-        lat, lon = map(float, match.groups())
-        return lat, lon
-    else:
-        return None, None
 
 
 class Profil(models.Model):
@@ -696,11 +689,32 @@ def save_user_profil(sender, instance, **kwargs):
     instance.profil.save()
 
 
+def extract_coordinates_from_maps_link(url):
+    try:
+        # Expand the shortened URL
+        response = requests.get(url, allow_redirects=True)
+        full_url = response.url
+        print(url)
+        print(full_url)
+
+        match = re.search(r'3d(-?\d+\.\d+)!4d(-?\d+\.\d+)', full_url)
+        if match:
+            lat, lon = map(float, match.groups())
+            return lat, lon
+    except Exception as e:
+        print(f"Error extracting coordinates: {e}")
+    return None, None
+
+
 @receiver(pre_save, sender=Auslagerorte)
 def update_koordinaten(sender, instance, **kwargs):
-    lat, lon = get_coordinates_from_maps_link(instance.maps_link)
-    if lat and lon:
-        instance.koordinaten = f"{lat},{lon}"
-    lat_p, lon_p = get_coordinates_from_maps_link(instance.maps_link_parkspot)
-    if lat and lon:
-        instance.koordinaten_parkspot = f"{lat_p},{lon_p}"
+    if instance.maps_link:
+        lat, lon = extract_coordinates_from_maps_link(instance.maps_link)
+        if lat and lon:
+            instance.koordinaten = f"{lat},{lon}"
+
+    if instance.maps_link_parkspot:
+        lat_p, lon_p = extract_coordinates_from_maps_link(
+            instance.maps_link_parkspot)
+        if lat_p and lon_p:
+            instance.koordinaten_parkspot = f"{lat_p},{lon_p}"
