@@ -1,3 +1,4 @@
+{% load static %}
 <div id="interaction-bar">
     <div id="interaction-input">
         {% block forminput %}
@@ -5,7 +6,7 @@
             {%csrf_token %}
             <div id="notiz-form">{{ notiz_form.as_p }}</div>
             <div id="geld-form" class="hidden">{{ geld_form.as_p }}</div>
-            <button type="submit">Hinzufgen</button>
+            <button type="submit"><img src="{% static 'img/send-button.svg' %}" alt="send"></button>
         </form>
         {% endblock %}
     </div>

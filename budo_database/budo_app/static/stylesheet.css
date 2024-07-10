@@ -589,12 +589,17 @@ which is changed through js--------------------------------------*/
 button,
 .button {
   background-color: var(--button-color);
-  padding: var(--s-padding);
+  padding: 0.45rem;
   border: none;
   border-radius: var(--corner-rad);
   color: black;
   text-decoration: none;
   white-space: nowrap;
+}
+
+button:has(img) {
+  background: none;
+  border: none;
 }
 
 button a {
@@ -971,7 +976,7 @@ h2.murder_name {
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  padding: var(--m-padding) var(--s-padding);
+  /* padding: var(--m-padding) var(--s-padding); */
   position: sticky;
   width: 100vw;
   height: auto;
@@ -1014,7 +1019,7 @@ h2.murder_name {
 
 #interaction-bar form input {
   width: 100%;
-  height: 48px;
+  height: 2rem;
   flex: 10 5 10;
 }
 
@@ -1024,19 +1029,19 @@ h2.murder_name {
 
 #interaction-bar form label[for="id_notiz"]::after {
   content: "📝";
-  font-size: 2.5rem;
+  font-size: 2rem;
   cursor: pointer;
 }
 
 #interaction-bar form label[for="id_amount"]::after {
   content: "💶";
-  font-size: 2.5rem;
+  font-size: 2rem;
   cursor: pointer;
 }
 
 #interaction-bar form button {
-  height: 48px;
-  padding: 8px;
+  height: 2rem;
+  padding: 0;
 }
 
 /* --------toggle all cards button----- */
