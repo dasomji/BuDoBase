@@ -12,9 +12,20 @@
                 <h2>Registrieren</h2>
             </div>
             <div class="card-info-container">
+                {% if messages %}
+                <ul class="messages">
+                    {% for message in messages %}
+                    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
                 <form method="POST" novalidate>
                     {% csrf_token %}
-                    {{ form.as_p }}		
+                    {{ form.as_p }}
+                    <p>
+                        <label for="passphrase">Geheime Zugangskennung:</label>
+                        <input type="password" name="passphrase" id="passphrase" required>
+                    </p>
                     <input type="submit" value="Register" />
                 </form>
             </div>

@@ -51,8 +51,6 @@ def sign_up(request):
         context = {
             'kids': kids,
         }
-        print(kids)
-        # return render(request, 'users/already_registered.html', {"context": context})
         return HttpResponse(template.render(context, request))
 
     if request.method == 'GET':
@@ -61,14 +59,19 @@ def sign_up(request):
 
     if request.method == 'POST':
         form = RegisterForm(request.POST)
-        if form.is_valid():
+        passphrase = request.POST.get('passphrase')
+
+        if form.is_valid() and passphrase == "lifeiswonderful":
             user = form.save(commit=False)
             user.username = user.username.lower()
             user.save()
-            messages.success(request, 'You have singed up successfully.')
+            messages.success(request, 'You have signed up successfully.')
             login(request, user)
             return redirect('profil')
         else:
+            if passphrase != "lifeiswonderful":
+                messages.error(
+                    request, 'Invalid passphrase. Please try again.')
             return render(request, 'users/register.html', {'form': form})
 
 

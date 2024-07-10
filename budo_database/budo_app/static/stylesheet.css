@@ -82,7 +82,7 @@ select {
 #headermenu {
   display: flex;
   justify-content: center;
-  padding: var(--xl-padding);
+  padding: var(--m-padding);
   background: linear-gradient(
       92.05deg,
       #fff4de 7.23%,
@@ -113,7 +113,7 @@ select {
 }
 
 #headersearch {
-  align-self: stretch;
+  /* align-self: stretch; */
   flex: 1 1 auto;
   display: flex;
   position: relative;
@@ -126,6 +126,7 @@ select {
   align-self: stretch;
   flex: 1 1 auto;
   min-width: 0;
+  height: 2rem;
 }
 
 #headermenu #navmenu-container {
@@ -507,6 +508,7 @@ button.closebtn {
   justify-content: flex-start;
   align-items: center;
   gap: var(--m-padding);
+  flex-flow: row wrap;
 }
 
 .input-container label {
@@ -523,6 +525,16 @@ button.closebtn {
   width: 24px;
   border: none;
   border-radius: var(--corner-rad) !important;
+}
+
+.input-container input[type="password"],
+.input-container input[type="email"],
+.input-container input[type="text"] {
+  flex: 1 1 130px;
+}
+
+.messages .error {
+  color: #ae2525;
 }
 
 .info-header-container {
@@ -1087,7 +1099,7 @@ h2.murder_name {
 
 .auslagerorte-detail #right-column {
   flex: 1 1 350px;
-  min-width: 350px;
+  /* min-width: 350px; */
 }
 
 .auslagerorte-detail #bottom-column {
