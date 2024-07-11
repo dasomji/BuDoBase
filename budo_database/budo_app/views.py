@@ -871,77 +871,51 @@ def download_updated_excel(request):
 
 
 @login_required
-def swp_einteilung_w1(request):
+def swp_einteilung(request, week):
     current_user = request.user
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     schwerpunktzeit = Schwerpunktzeit.objects.get(
-        turnus=active_turnus, woche="w1")
+        turnus=active_turnus, woche=f"w{week}")
 
     kids = models.Kinder.objects.filter(turnus=active_turnus).prefetch_related(
         Prefetch('schwerpunkt_wahl',
                  queryset=SchwerpunktWahl.objects.filter(
                      schwerpunktzeit=schwerpunktzeit),
-                 to_attr='w1_wahl')
+                 to_attr='wahl')
     ).prefetch_related(
         Prefetch('schwerpunkte',
                  queryset=Schwerpunkte.objects.filter(
-                     schwerpunktzeit__woche="w1"),
-                 to_attr='w1_schwerpunkt')
+                     schwerpunktzeit__woche=f"w{week}"),
+                 to_attr='schwerpunkt')
     )
 
     schwerpunkte = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=active_turnus, schwerpunktzeit__woche="w1")
+        schwerpunktzeit__turnus=active_turnus, schwerpunktzeit__woche=f"w{week}")
     auslagerorte = Auslagerorte.objects.all()
 
     # Count kids not grouped yet
-    ungrouped_count = sum(1 for kid in kids if not kid.w1_schwerpunkt)
+    ungrouped_count = sum(1 for kid in kids if not kid.schwerpunkt)
 
-    template = loader.get_template('swp-einteilung-w1.html')
+    template = loader.get_template('swp-einteilung.html')
     context = {
         'kids': kids,
         'schwerpunkte': schwerpunkte,
         'auslagerorte': auslagerorte,
         'ungrouped_count': ungrouped_count,
+        'week_number': week,
     }
     return HttpResponse(template.render(context, request))
 
 
 @login_required
+def swp_einteilung_w1(request):
+    return swp_einteilung(request, 1)
+
+
+@login_required
 def swp_einteilung_w2(request):
-    current_user = request.user
-    profil = Profil.objects.get(user=current_user)
-    active_turnus = profil.turnus
-    schwerpunktzeit = Schwerpunktzeit.objects.get(
-        turnus=active_turnus, woche="w2")
-
-    kids = models.Kinder.objects.filter(turnus=active_turnus).prefetch_related(
-        Prefetch('schwerpunkt_wahl',
-                 queryset=SchwerpunktWahl.objects.filter(
-                     schwerpunktzeit=schwerpunktzeit),
-                 to_attr='w2_wahl')
-    ).prefetch_related(
-        Prefetch('schwerpunkte',
-                 queryset=Schwerpunkte.objects.filter(
-                     schwerpunktzeit__woche="w2"),
-                 to_attr='w2_schwerpunkt')
-    )
-
-    schwerpunkte = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=active_turnus, schwerpunktzeit__woche="w2")
-    auslagerorte = Auslagerorte.objects.all()
-
-    # Count kids not grouped yet
-    ungrouped_count = sum(1 for kid in kids if not kid.w2_schwerpunkt)
-
-    template = loader.get_template('swp-einteilung-w2.html')
-    context = {
-        'kids': kids,
-        'schwerpunkte': schwerpunkte,
-        'auslagerorte': auslagerorte,
-        'ungrouped_count': ungrouped_count,
-    }
-    return HttpResponse(template.render(context, request))
+    return swp_einteilung(request, 2)
 
 
 @require_POST

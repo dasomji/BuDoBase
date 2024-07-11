@@ -2,17 +2,17 @@
 {% load static %}
 
 {% block title %}
-SWP-Einteilung Woche 1
+SWP-Einteilung Woche {{ week_number }}
 {% endblock %}
 {% block extrahead %}
-<script src=" {% static 'js/zugabreise-toggle.js' %}"></script>
+<script src="{% static 'js/zugabreise-toggle.js' %}"></script>
 <script src="{% static 'js/filtertable.js' %}"></script>
 <script src="{% static 'js/edit-freunde.js' %}"></script>
 <script src="{% static 'js/swp-choice.js' %}"></script>
 {% endblock %}
 
 {% block headertitle %}
-<h2>SWP-Einteilung Woche 1</h2>
+<h2>SWP-Einteilung Woche {{ week_number }}</h2>
 {% endblock %}
 
 {% block content %}
@@ -57,9 +57,8 @@ SWP-Einteilung Woche 1
         <td class="text-cell headcol" id="name"><a href="/kid_details/{{ x.id }}">
             {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a>
         </td>
-
         <td class="text-cell">
-          <span class="freunde-text" data-kid-id="{{ x.id }}">{{x.w1_wahl.0.freunde}}</span>
+          <span class="freunde-text" data-kid-id="{{ x.id }}">{{x.wahl.0.freunde}}</span>
           <button class="edit-freunde-btn" data-kid-id="{{ x.id }}">✏️</button>
         </td>
         <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>
@@ -69,7 +68,7 @@ SWP-Einteilung Woche 1
           <select class="schwerpunkt-dropdown" data-kid-id="{{ x.id }}">
             <option value="">---</option>
             {% for swp in schwerpunkte %}
-            <option value="{{ swp.id }}" {% if x.w1_schwerpunkt.0.id == swp.id %}selected{% endif %}>
+            <option value="{{ swp.id }}" {% if x.schwerpunkt.0.id == swp.id %}selected{% endif %}>
               {{ swp.swp_name }}
             </option>
             {% endfor %}
@@ -79,7 +78,7 @@ SWP-Einteilung Woche 1
         <td class="text-cell">
           <span class="swp-choice" data-kid-id="{{ x.id }}" data-swp-id="{{ swp.id }}"
             data-swp-name="{{ swp.swp_name }}">
-            {% with wahl=x.w1_wahl.0 %}
+            {% with wahl=x.wahl.0 %}
             <a href="#" class="swp-choice-link one {% if wahl.erste_wahl == swp %}active{% endif %}"
               data-choice="1">1</a>
             <a href="#" class="swp-choice-link two {% if wahl.zweite_wahl == swp %}active{% endif %}"
