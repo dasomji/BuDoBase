@@ -22,16 +22,16 @@ SWP-Einteilung Woche {{ week_number }}
       {% for swp in schwerpunkte %}
       <div class="overview-item card" id="swp-{{ swp.id }}">
         <div class="info-header-container">
-          <h2>{{ swp.swp_name }}</h2>
+          <h2><a href="/schwerpunkt/{{ swp.id }}">{{ swp.swp_name }}: {{ swp.swp_kinder.count }}</a></h2>
         </div>
         <div class="card-info-container">
-          <p>Kinder: {{ swp.swp_kinder.count }}</p>
+          <p>Auslagerort: {{ swp.ort }}</p>
         </div>
       </div>
       {% endfor %}
       <div class="overview-item card" id="ungrouped">
         <div class="info-header-container">
-          <h2>Nicht zugeordnet</h2>
+          <h2>Nicht zugeordnet: {{ ungrouped_count }}</h2>
         </div>
         <div class="card-info-container">
           <p>Anzahl Kinder: {{ ungrouped_count }}</p>

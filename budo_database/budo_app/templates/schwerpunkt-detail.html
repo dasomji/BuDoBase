@@ -19,6 +19,7 @@
       </div>
       <div class="card-info-container">
         <p><span class="label">Beschreibung</span>: {{ schwerpunkt.beschreibung }}</p>
+        <p><span class="label">Kinder</span>: {{ schwerpunkt.swp_kinder.count }}</p>
         <p><span class="label">Ort</span>:
           {% if schwerpunkt.ort %}
           <a href="{% url 'auslagerorte-detail' pk=schwerpunkt.ort.pk %}">{{ schwerpunkt.ort }}</a>

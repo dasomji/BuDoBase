@@ -743,6 +743,10 @@ def swp_dashboard(request):
 
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)
+
+    schwerpunkte_u = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus, schwerpunktzeit__woche='u')
+
     schwerpunkte_data = []
     for swp in schwerpunkte:
         if swp.ort:
@@ -762,6 +766,7 @@ def swp_dashboard(request):
             'orte': schwerpunkte_data,
         }),
         "auslagerorte": auslagerorte,
+        "schwerpunkte_u": schwerpunkte_u,
     }
     print(context)
 
