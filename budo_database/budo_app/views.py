@@ -931,11 +931,15 @@ def swp_einteilung_w2(request):
         schwerpunktzeit__turnus=active_turnus, schwerpunktzeit__woche="w2")
     auslagerorte = Auslagerorte.objects.all()
 
+    # Count kids not grouped yet
+    ungrouped_count = sum(1 for kid in kids if not kid.w2_schwerpunkt)
+
     template = loader.get_template('swp-einteilung-w2.html')
     context = {
         'kids': kids,
         'schwerpunkte': schwerpunkte,
         'auslagerorte': auslagerorte,
+        'ungrouped_count': ungrouped_count,
     }
     return HttpResponse(template.render(context, request))
 
