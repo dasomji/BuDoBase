@@ -1270,6 +1270,25 @@ h2.murder_name {
   background-color: #cd7f32;
 }
 
+.schwerpunkt-overview {
+  padding-top: var(--xl-padding);
+}
+
+.schwerpunkt-overview .overview-grid {
+  display: flex;
+  flex-flow: row wrap;
+  gap: var(--m-padding);
+  justify-content: space-evenly;
+}
+
+.schwerpunkt-overview .overview-grid .card {
+  flex: 0 1 200px;
+}
+
+.schwerpunkt-overview .overview-grid .card .card-info-container {
+  padding: var(--s-padding);
+}
+
 @media screen and (max-width: 767px) {
   #db-spezial {
     display: none;

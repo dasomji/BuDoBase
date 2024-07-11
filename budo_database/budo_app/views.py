@@ -894,11 +894,15 @@ def swp_einteilung_w1(request):
         schwerpunktzeit__turnus=active_turnus, schwerpunktzeit__woche="w1")
     auslagerorte = Auslagerorte.objects.all()
 
+    # Count kids not grouped yet
+    ungrouped_count = sum(1 for kid in kids if not kid.w1_schwerpunkt)
+
     template = loader.get_template('swp-einteilung-w1.html')
     context = {
         'kids': kids,
         'schwerpunkte': schwerpunkte,
         'auslagerorte': auslagerorte,
+        'ungrouped_count': ungrouped_count,
     }
     return HttpResponse(template.render(context, request))
 
@@ -954,17 +958,23 @@ def update_schwerpunkt_wahl(request):
             schwerpunktzeit=schwerpunktzeit
         )
 
-        if choice_rank == '1':
-            # Remove any existing schwerpunkt for this week
+        if choice_rank is not None:
+            if choice_rank == '1':
+                # Remove any existing schwerpunkt for this week
+                kid.schwerpunkte.remove(
+                    *kid.schwerpunkte.filter(schwerpunktzeit=schwerpunktzeit))
+
+                schwerpunkt_wahl.erste_wahl = schwerpunkt
+                kid.schwerpunkte.add(schwerpunkt)
+            elif choice_rank == '2':
+                schwerpunkt_wahl.zweite_wahl = schwerpunkt
+            elif choice_rank == '3':
+                schwerpunkt_wahl.dritte_wahl = schwerpunkt
+        else:
+            # Only update the assigned schwerpunkt without changing ranks
             kid.schwerpunkte.remove(
                 *kid.schwerpunkte.filter(schwerpunktzeit=schwerpunktzeit))
-
-            schwerpunkt_wahl.erste_wahl = schwerpunkt
             kid.schwerpunkte.add(schwerpunkt)
-        elif choice_rank == '2':
-            schwerpunkt_wahl.zweite_wahl = schwerpunkt
-        elif choice_rank == '3':
-            schwerpunkt_wahl.dritte_wahl = schwerpunkt
 
         schwerpunkt_wahl.save()
 

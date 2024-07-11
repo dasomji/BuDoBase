@@ -17,12 +17,33 @@ SWP-Einteilung Woche 1
 
 {% block content %}
 <div class="w3-container table-only" id="body-container">
+  <div class="schwerpunkt-overview">
+    <div class="overview-grid">
+      {% for swp in schwerpunkte %}
+      <div class="overview-item card" id="swp-{{ swp.id }}">
+        <div class="info-header-container">
+          <h2>{{ swp.swp_name }}</h2>
+        </div>
+        <div class="card-info-container">
+          <p>Kinder: {{ swp.swp_kinder.count }}</p>
+        </div>
+      </div>
+      {% endfor %}
+      <div class="overview-item card" id="ungrouped">
+        <div class="info-header-container">
+          <h2>Nicht zugeordnet</h2>
+        </div>
+        <div class="card-info-container">
+          <p>Anzahl Kinder: {{ ungrouped_count }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
   {% include 'filter-table.html' %}
   <div class="table-container">
     <table class="" id="kids-table">
       <tr class="table-header">
         <th class="headcol">Name</th>
-        {% comment %} <th class="zugabreise-toggle">Zugabreise: {{zugabreise_count}}</th> {% endcomment %}
         <th>Freunde</th>
         <th>Alter</th>
         <th>Geschwister</th>
@@ -36,11 +57,7 @@ SWP-Einteilung Woche 1
         <td class="text-cell headcol" id="name"><a href="/kid_details/{{ x.id }}">
             {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a>
         </td>
-        {% comment %} <td class="text-cell zug-toggle" id="zugabreise-toggle-{{ x.id }}"
-          data-kidname="{{x.kid_vorname}} {{x.kid_nachname}}" data-id="{{ x.id }}"
-          data-url="{% url 'toggle_zug_abreise' %}">
-          {% include "components/ja_nein_switch.html" with bool=x.zug_abreise %}
-        </td> {% endcomment %}
+
         <td class="text-cell">
           <span class="freunde-text" data-kid-id="{{ x.id }}">{{x.w1_wahl.0.freunde}}</span>
           <button class="edit-freunde-btn" data-kid-id="{{ x.id }}">✏️</button>
@@ -49,11 +66,14 @@ SWP-Einteilung Woche 1
         <td class="text-cell">{% if x.get_clean_geschwister %}{{ x.get_clean_geschwister }}{% else %} --- {% endif%}
         </td>
         <td class="text-cell schwerpunkt-selection">
-          {% if x.w1_schwerpunkt %}
-          {{ x.w1_schwerpunkt.0.swp_name }}
-          {% else %}
-          ---
-          {% endif %}
+          <select class="schwerpunkt-dropdown" data-kid-id="{{ x.id }}">
+            <option value="">---</option>
+            {% for swp in schwerpunkte %}
+            <option value="{{ swp.id }}" {% if x.w1_schwerpunkt.0.id == swp.id %}selected{% endif %}>
+              {{ swp.swp_name }}
+            </option>
+            {% endfor %}
+          </select>
         </td>
         {% for swp in schwerpunkte %}
         <td class="text-cell">

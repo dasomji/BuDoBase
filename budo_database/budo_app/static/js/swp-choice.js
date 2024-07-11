@@ -12,6 +12,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // Add event listener for schwerpunkt dropdowns
+    const schwerpunktDropdowns = document.querySelectorAll('.schwerpunkt-dropdown');
+    schwerpunktDropdowns.forEach(dropdown => {
+        dropdown.addEventListener('change', function () {
+            const kidId = this.dataset.kidId;
+            const swpId = this.value;
+            updateSchwerpunktWahl(kidId, swpId, null, this);
+        });
+    });
+
     function updateSchwerpunktWahl(kidId, swpId, choiceRank, clickedElement) {
         fetch('/update-schwerpunkt-wahl/', {
             method: 'POST',
@@ -29,19 +39,22 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (data.status === 'success') {
                     console.log('Schwerpunkt choice updated successfully');
-                    // Find the parent row of the clicked element
-                    const parentRow = clickedElement.closest('tr');
-                    // Remove .active class from all links in the same row with the same choice rank
-                    parentRow.querySelectorAll(`.swp-choice-link[data-choice="${choiceRank}"]`).forEach(link => {
-                        link.classList.remove('active');
-                    });
-                    // Add .active class to the clicked element
-                    clickedElement.classList.add('active');
+                    if (clickedElement.tagName === 'SELECT') {
+                        // Update the schwerpunkt-selection cell
+                        const schwerpunktSelectionCell = clickedElement.closest('.schwerpunkt-selection');
+                        schwerpunktSelectionCell.querySelector('select').value = swpId;
+                    } else {
+                        // Existing code for handling non-dropdown updates
+                        const parentRow = clickedElement.closest('tr');
+                        parentRow.querySelectorAll(`.swp-choice-link[data-choice="${choiceRank}"]`).forEach(link => {
+                            link.classList.remove('active');
+                        });
+                        clickedElement.classList.add('active');
 
-                    // Update the schwerpunkt-selection cell if erste_wahl is selected
-                    if (choiceRank === '1') {
-                        const schwerpunktSelectionCell = parentRow.querySelector('.schwerpunkt-selection');
-                        schwerpunktSelectionCell.textContent = clickedElement.closest('.swp-choice').dataset.swpName;
+                        if (choiceRank === '1') {
+                            const schwerpunktSelectionCell = parentRow.querySelector('.schwerpunkt-selection');
+                            schwerpunktSelectionCell.querySelector('select').value = swpId;
+                        }
                     }
                 } else {
                     console.error('Error updating Schwerpunkt choice');
