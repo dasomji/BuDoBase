@@ -1,4 +1,7 @@
 <div id="navmenu-container">
+  {% if perms.budo_app.change_kinder %}
+  <a href="/admin" class="">Admin</a>
+  {% endif %}
   <a href="/all_kids" class="">Alle Kinder</a>
   <a href="/swp-dashboard" class="">SWPs</a>
   <a href="/auslagerorte-list" class="">Auslagerorte</a>
