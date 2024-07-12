@@ -46,7 +46,7 @@ $(document).ready(function () {
 
     // Append toggle-all button if there is at least one card
     if ($('.card').length > 1) {
-        let toggleAllButton = $('<div id="toggle-all" class="toggle-all-button">Toggle cards</div>');
+        let toggleAllButton = $('<div id="toggle-all" class="toggle-all-button button">Toggle cards</div>');
 
         // Check if #interaction-bar exists
         if ($('#interaction-bar').length === 0) {

@@ -82,7 +82,7 @@ select {
 #headermenu {
   display: flex;
   justify-content: center;
-  padding: var(--m-padding);
+  padding: var(--xs-padding) var(--l-padding);
   background: linear-gradient(
       92.05deg,
       #fff4de 7.23%,
@@ -319,6 +319,15 @@ button.closebtn {
   justify-content: flex-start;
 }
 
+#body-container:has(#single-column) {
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+
+#body-container:has(#swp-map) {
+  flex-wrap: wrap-reverse;
+}
+
 .detail-column {
   display: flex;
   flex-basis: 25%;
@@ -326,6 +335,10 @@ button.closebtn {
   flex-grow: 1;
   flex-flow: column nowrap;
   gap: var(--l-padding);
+}
+
+.detail-column:has(#swp-map) {
+  min-width: 500px;
 }
 
 @media only screen and (max-width: 760px) {
@@ -344,11 +357,6 @@ button.closebtn {
 
 #right-column:has(#ort-detail-info) {
   max-width: 300px;
-}
-
-#body-container:has(#single-column) {
-  justify-content: center;
-  flex-wrap: nowrap;
 }
 
 #single-column {
@@ -527,9 +535,9 @@ button.closebtn {
   border-radius: var(--corner-rad) !important;
 }
 
-.input-container input[type="password"],
-.input-container input[type="email"],
-.input-container input[type="text"] {
+.input-container[style*="flex-direction: row"] input[type="password"],
+.input-container[style*="flex-direction: row"] input[type="email"],
+.input-container[style*="flex-direction: row"] input[type="text"] {
   flex: 1 1 130px;
 }
 
@@ -589,7 +597,7 @@ which is changed through js--------------------------------------*/
 button,
 .button {
   background-color: var(--button-color);
-  padding: 0.45rem;
+  padding: 0.45rem var(--s-padding);
   border: none;
   border-radius: var(--corner-rad);
   color: black;
@@ -605,6 +613,24 @@ button:has(img) {
 button a {
   text-decoration: none;
   font-weight: 300;
+}
+
+.toggle-all-button {
+  position: fixed;
+  bottom: 110px;
+  right: 20px;
+  z-index: var(--z-toggle-button);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.toggle-all-button.no-bar {
+  bottom: 20px;
+}
+
+button:hover,
+.button:hover {
+  background-color: #e6c78b;
 }
 
 #anwesend-marker {
@@ -1045,25 +1071,6 @@ h2.murder_name {
 }
 
 /* --------toggle all cards button----- */
-.toggle-all-button {
-  position: fixed;
-  bottom: 110px;
-  right: 20px;
-  background-color: var(--button-color);
-  padding: var(--s-padding);
-  border-radius: var(--corner-rad);
-  cursor: pointer;
-  z-index: var(--z-toggle-button);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.toggle-all-button.no-bar {
-  bottom: 20px;
-}
-
-.toggle-all-button:hover {
-  background-color: #e6c78b;
-}
 
 .hidden {
   display: none;
@@ -1304,7 +1311,6 @@ h2.murder_name {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: var(--bg-blue);
 }
 
 .gesamtkinderzahl-container {

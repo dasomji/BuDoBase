@@ -88,8 +88,8 @@ class SchwerpunktForm(forms.ModelForm):
 class AuslagerForm(forms.ModelForm):
     class Meta:
         model = Auslagerorte
-        fields = ['name', 'strasse', 'ort', 'bundesland', 'postleitzahl', 'land', 'koordinaten',
-                  'maps_link', 'beschreibung', 'maps_link_parkspot', 'koordinaten_parkspot', ]
+        fields = ['name', 'strasse', 'ort', 'bundesland', 'postleitzahl', 'land',
+                  'maps_link', 'beschreibung', 'maps_link_parkspot', ]
 
 
 class AuslagerNotizForm(forms.ModelForm):

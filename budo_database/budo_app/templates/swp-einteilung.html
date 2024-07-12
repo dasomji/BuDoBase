@@ -44,25 +44,18 @@ SWP-Einteilung Woche {{ week_number }}
     <table class="" id="kids-table">
       <tr class="table-header">
         <th class="headcol">Name</th>
-        <th>Freunde</th>
-        <th>Alter</th>
-        <th>Geschwister</th>
         <th>Schwerpunkt</th>
         {% for swp in schwerpunkte %}
         <th>{{swp.swp_name}}</th>
         {% endfor %}
+        <th>Freunde</th>
+        <th>Alter</th>
+        <th>Geschwister</th>
       </tr>
       {% for x in kids %}
       <tr class="table_row w3-padding-large">
         <td class="text-cell headcol" id="name"><a href="/kid_details/{{ x.id }}">
             {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a>
-        </td>
-        <td class="text-cell">
-          <span class="freunde-text" data-kid-id="{{ x.id }}">{{x.wahl.0.freunde}}</span>
-          <button class="edit-freunde-btn" data-kid-id="{{ x.id }}">✏️</button>
-        </td>
-        <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>
-        <td class="text-cell">{% if x.get_clean_geschwister %}{{ x.get_clean_geschwister }}{% else %} --- {% endif%}
         </td>
         <td class="text-cell schwerpunkt-selection">
           <select class="schwerpunkt-dropdown" data-kid-id="{{ x.id }}">
@@ -89,6 +82,13 @@ SWP-Einteilung Woche {{ week_number }}
           </span>
         </td>
         {% endfor %}
+        <td class="text-cell">
+          <span class="freunde-text" data-kid-id="{{ x.id }}">{{x.wahl.0.freunde}}</span>
+          <button class="edit-freunde-btn" data-kid-id="{{ x.id }}">✏️</button>
+        </td>
+        <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>
+        <td class="text-cell">{% if x.get_clean_geschwister %}{{ x.get_clean_geschwister }}{% else %} --- {% endif%}
+        </td>
       </tr>
       {% endfor %}
     </table>
