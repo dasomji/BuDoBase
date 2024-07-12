@@ -2,7 +2,7 @@ from django import forms
 from django.utils.html import format_html
 from django.contrib import admin
 from django.template.defaultfilters import filesizeformat
-from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, AuslagerorteImage, AuslagerorteNotizen, Notizen, Document, Profil, Meal, Schwerpunktzeit, SchwerpunktWahl
+from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, AuslagerorteImage, AuslagerorteNotizen, Notizen, Document, Profil, Meal, Schwerpunktzeit, SchwerpunktWahl, SpezialFamilien
 
 
 class KinderAdminForm(forms.ModelForm):
@@ -139,7 +139,7 @@ class SwpInline(admin.TabularInline):
 
 class SchwerpunkteAdmin(admin.ModelAdmin):
     list_display = ("__str__", "ort", "display_betreuende",
-                    "schwerpunktzeit", "get_turnus", "auslagern")
+                    "schwerpunktzeit", "get_turnus", "auslagern", "get_kids_count")
     inlines = [KinderInline, MealInline]
 
     def display_betreuende(self, obj):
@@ -149,6 +149,18 @@ class SchwerpunkteAdmin(admin.ModelAdmin):
     def get_turnus(self, obj):
         return obj.get_turnus()
     get_turnus.short_description = 'Turnus'
+
+    def get_kids_count(self, obj):
+        return obj.swp_kinder.count()
+    get_kids_count.short_description = 'Kinder'
+
+
+class SpezialFamilienAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "turnus", "get_kids_count")
+
+    def get_kids_count(self, obj):
+        return obj.kinder.count()
+    get_kids_count.short_description = 'Kinder'
 
 
 class SchwerpunktzeitAdmin(admin.ModelAdmin):
@@ -171,3 +183,4 @@ admin.site.register(Schwerpunkte, SchwerpunkteAdmin)
 admin.site.register(Meal)
 admin.site.register(Schwerpunktzeit, SchwerpunktzeitAdmin)
 admin.site.register(SchwerpunktWahl)
+admin.site.register(SpezialFamilien, SpezialFamilienAdmin)

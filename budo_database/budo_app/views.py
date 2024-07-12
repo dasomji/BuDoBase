@@ -94,12 +94,10 @@ def upload_excel(request, turnus_id):
 @login_required
 def kids_list(request):
     current_user = request.user
-    if not current_user.is_authenticated:
-        # Redirect to the login page if not authenticated
-        return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
-    kids = models.Kinder.objects.filter(turnus=active_turnus)
+    kids = models.Kinder.objects.filter(
+        turnus=active_turnus).order_by('kid_vorname')
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)
     auslagerorte = Auslagerorte.objects.all()

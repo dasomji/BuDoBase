@@ -75,6 +75,18 @@ class Profil(models.Model):
         return dict(self.ROLLEN).get(self.rolle)
 
 
+class SpezialFamilien(models.Model):
+    name = models.CharField(max_length=255)
+    turnus = models.ForeignKey(
+        "Turnus", on_delete=models.SET_NULL, null=True, blank=True, related_name="spezial_familien")
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name_plural = "Spezialfamilien"
+
+
 class Kinder(models.Model):
     BUDO_FAMILIES = [
         ("S", "Smallie"),
@@ -161,6 +173,8 @@ class Kinder(models.Model):
         max_length=20, null=True, default="", blank=True)
     budo_family = models.CharField(
         max_length=30, choices=BUDO_FAMILIES, null=True, blank=True)
+    spezial_familien = models.ForeignKey(
+        "SpezialFamilien", on_delete=models.SET_NULL, null=True, blank=True, related_name="kinder")
     late_anreise = models.DateField(null=True, blank=True)
     early_abreise_date = models.DateField(null=True, blank=True)
     early_abreise_abholer = models.CharField(
