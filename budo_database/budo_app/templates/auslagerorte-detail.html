@@ -2,9 +2,13 @@
 {% load static %}
 {% block headertitle %}
 <div class="" id="header-container">
+  {% if perms.budo_app.change_auslagerorte %}
   <a href="/admin/budo_app/auslagerorte/{{ort.id}}/change/">
     <h1>{{ ort }}</h1>
   </a>
+  {% else %}
+  <h1>{{ ort }}</h1>
+  {% endif %}
 </div>
 {% endblock %}
 {% block extrahead %}

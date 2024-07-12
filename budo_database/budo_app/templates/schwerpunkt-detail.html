@@ -2,9 +2,13 @@
 {% load static %}
 {% block headertitle %}
 <div class="" id="header-container">
+  {% if perms.budo_app.change_schwerpunkte %}
   <a href="/admin/budo_app/schwerpunkte/{{schwerpunkt.id}}/change/">
     <h1>{{ schwerpunkt.swp_name }}</h1>
   </a>
+  {% else %}
+  <h1>{{ schwerpunkt.swp_name }}</h1>
+  {% endif %}
 </div>
 {% endblock %}
 {% block extrahead %}
