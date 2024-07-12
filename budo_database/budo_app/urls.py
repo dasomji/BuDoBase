@@ -48,6 +48,7 @@ urlpatterns = [
          name='update_schwerpunkt_wahl'),
     path('update_freunde/', views.update_freunde, name='update_freunde'),
     path('happy-cleaning/', views.happy_cleaning, name='happy_cleaning'),
+    path('kindergesamtzahl/', views.kindergesamtzahl, name='kindergesamtzahl'),
 ]
 
 if settings.DEBUG:

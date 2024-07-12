@@ -1294,3 +1294,31 @@ h2.murder_name {
     display: none;
   }
 }
+
+/* -------gesamtkinderzahl---------- */
+/* Gesamtkinderzahl styles */
+.gesamtkinderzahl-body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--bg-blue);
+}
+
+.gesamtkinderzahl-container {
+  width: 100%;
+  padding: var(--xl-padding);
+  box-sizing: border-box;
+}
+
+.gesamtkinderzahl {
+  font-size: 20vw;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

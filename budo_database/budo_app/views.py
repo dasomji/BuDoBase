@@ -1005,3 +1005,18 @@ def happy_cleaning(request):
         writer.writerow([kid.id, f"{kid.kid_vorname} {kid.kid_nachname}"])
 
     return response
+
+
+@login_required
+def kindergesamtzahl(request):
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    checked_in_count = Kinder.objects.filter(
+        turnus=active_turnus, anwesend=True).count()
+    total_kids = Kinder.objects.filter(turnus=active_turnus).count()
+    context = {
+        'checked_in_count': checked_in_count,
+        'total_kids': total_kids,
+    }
+    return render(request, 'kindergesamtzahl.html', context)
