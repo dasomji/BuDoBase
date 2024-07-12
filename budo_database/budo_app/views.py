@@ -170,13 +170,17 @@ def zuganreise(request):
 @csrf_exempt
 def toggle_zug_abreise(request):
     if request.method == 'POST':
+        current_user = request.user
+        profil = Profil.objects.get(user=current_user)
+        active_turnus = profil.turnus
         kid_id = request.POST.get('id')
         kid = Kinder.objects.get(id=kid_id)
         kid.zug_abreise = not kid.zug_abreise
         kid.save()
 
         # Get the updated count
-        zugabreise_count = Kinder.objects.filter(zug_abreise=True).count()
+        zugabreise_count = Kinder.objects.filter(
+            zug_abreise=True, turnus=active_turnus).count()
 
         return JsonResponse({'status': 'success', 'new_count': zugabreise_count})
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
