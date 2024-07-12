@@ -111,6 +111,29 @@ def kids_list(request):
 
 
 @login_required
+def budo_families(request):
+    familien = {}
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    kids = models.Kinder.objects.filter(
+        turnus=active_turnus).order_by('kid_vorname')
+    for kid in kids:
+        family_name = kid.budo_family
+        if family_name not in familien:
+            familien[family_name] = {
+                'name': family_name,
+                'kids': []
+            }
+        familien[family_name]['kids'].append(kid)
+
+    context = {
+        'familien': familien
+    }
+    return render(request, 'budo_familien.html', context)
+
+
+@login_required
 def zugabreise(request):
     current_user = request.user
     if not current_user.is_authenticated:

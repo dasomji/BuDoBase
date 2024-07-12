@@ -1,0 +1,32 @@
+   {% extends "master.html" %}
+
+   {% block title %}
+   BuDo Familien
+   {% endblock %}
+
+   {% block headertitle %}
+   <h1>BuDo Familien</h1>
+   {% endblock %}
+
+   {% block content %}
+   <div class="flex-container" id="body-container">
+     {% for familie, info in familien.items %}
+     <div class="detail-column">
+       <div class="card" id="budo-family-{{familie.id}}">
+         <div class="info-header-container">
+           <h2><a href="/budo_familie/{{info.name}}">{{ info.name.title }}</a> ({{ info.kids|length }})</h2>
+         </div>
+         <div class="card-info-container">
+           <ul>
+             {% for kid in info.kids %}
+             <li><a href="/kid_details/{{ kid.id }}">{{ kid.kid_vorname }} {{kid.kid_nachname}} -
+                 {{kid.get_alter}}</a>
+             </li>
+             {% endfor %}
+           </ul>
+         </div>
+       </div>
+     </div>
+     {% endfor %}
+   </div>
+   {% endblock %}
