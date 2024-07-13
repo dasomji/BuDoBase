@@ -281,7 +281,7 @@ class Kinder(models.Model):
 
     def get_clean_anmerkung(self):
         if self.anmerkung:
-            if str(self.anmerkung).lower().strip() in ("nein", "nan", "none", "-", "0"):
+            if str(self.anmerkung).lower().strip() in ("nein", "nan", "none", "-", "0", "/"):
                 return ""
             else:
                 return self.anmerkung
@@ -290,7 +290,7 @@ class Kinder(models.Model):
 
     def get_clean_anmerkung_buchung(self):
         if self.anmerkung_buchung:
-            if str(self.anmerkung).lower().strip() in ("nein", "nan", "none", "-", "0"):
+            if str(self.anmerkung).lower().strip() in ("nein", "nan", "none", "-", "0", "/"):
                 return ""
             elif self.anmerkung == 0:
                 return ""

@@ -489,6 +489,10 @@ button.closebtn {
   td {
     display: table-cell !important;
   }
+
+  .toggle-all-button {
+    display: none;
+  }
 }
 
 .card :is(h1, h2) {
