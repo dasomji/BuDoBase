@@ -325,8 +325,8 @@ button.closebtn {
   flex-wrap: nowrap;
 }
 
-#body-container:has(#swp-map) {
-  flex-wrap: wrap-reverse;
+#swp-map {
+  order: 3;
 }
 
 .detail-column {
@@ -343,7 +343,8 @@ button.closebtn {
 }
 
 @media only screen and (max-width: 760px) {
-  .detail-column {
+  .detail-column,
+  .detail-column:has(#swp-map) {
     min-width: 300px;
   }
 }
