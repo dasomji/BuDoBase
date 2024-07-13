@@ -17,7 +17,6 @@ urlpatterns = [
     path('zugabreise', views.zugabreise, name='zugabreise'),
     path('zuganreise', views.zuganreise, name='zuganreise'),
     path('kid_details/<int:id>', views.kid_details, name='kid_details'),
-    path('postprocess', views.postprocess, name='postprocess'),
     path('check_in/<int:id>', views.check_in, name='check_in'),
     path('check_out/<int:id>', views.check_out, name='check_out'),
     path('serienbrief', views.serienbrief, name='serienbrief'),

@@ -27,7 +27,7 @@ import toml
 import csv
 
 
-from .excelProcessor import process_excel, postprocessing
+from .excelProcessor import process_excel
 from .updateExcel import update_excel_file
 
 info_file_path = os.path.join(settings.BASE_DIR, "info.toml")
@@ -46,15 +46,15 @@ info = toml.load(info_file_path)
 #     }
 
 
-def budo_app(request):
-    template = loader.get_template('main.html')
-    checked_in_kids = len(models.Kinder.objects.all())
-    kids = models.Kinder.objects.all()
-    context = {
-        "kids": kids,
-        "checked_in_kids": checked_in_kids
-    }
-    return HttpResponse(template.render(context, request))
+# def budo_app(request):
+#     template = loader.get_template('main.html')
+#     checked_in_kids = len(models.Kinder.objects.all())
+#     kids = models.Kinder.objects.all()
+#     context = {
+#         "kids": kids,
+#         "checked_in_kids": checked_in_kids
+#     }
+#     return HttpResponse(template.render(context, request))
 
 
 @login_required
@@ -71,6 +71,7 @@ def uploadFile(request):
             turnus = upload_form.save()
             if 'uploadedFile' in request.FILES:
                 process_excel()
+
     else:
         upload_form = UploadForm()
         context["upload_form"] = upload_form
@@ -85,6 +86,7 @@ def upload_excel(request, turnus_id):
         if form.is_valid():
             form.save()
             process_excel()
+
             return redirect('uploadFile')
     else:
         form = UploadForm(instance=turnus)
@@ -417,10 +419,6 @@ def check_out(request, id):
         context["geld_form"] = geld_form
 
     return HttpResponse(template.render(context, request))
-
-
-def postprocess(request):
-    postprocessing()
 
 
 @login_required

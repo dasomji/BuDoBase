@@ -20,6 +20,9 @@ def process_excel():
         open(path, "rb"), sheet_name="DataCleaner", header=1)
     budo_raw = pd.read_excel(
         open(path, "rb"), sheet_name="RawData", header=0)
+
+    processed_kids = []
+
     for i in range(0, len(budo)):
         # Skip entries with "MANUAL OVERRIDE"
         if budo_raw["Submitted"][i] == "MANUAL OVERRIDE" or budo_raw["Anmelder Email"][i] == "MANUAL OVERRIDE":
@@ -59,10 +62,18 @@ def process_excel():
             "<p>", "").replace("</p>", "")
 
         birthday_value = budo["Kind_Geburtsdatum"][i]
+
         if isinstance(birthday_value, pd.Timestamp):
             birthday_value = birthday_value.toordinal() + 366  # Convert to Excel ordinal
-
-        birthday = from_excel_ordinal(float(birthday_value))
+            birthday = from_excel_ordinal(float(birthday_value))
+        else:
+            try:
+                # Try to parse as a float (Excel ordinal)
+                birthday = from_excel_ordinal(float(birthday_value))
+            except ValueError:
+                # If parsing as float fails, assume it's a date string in dd.mm.yyyy format
+                birthday = datetime.strptime(
+                    birthday_value, "%d.%m.%Y").strftime('%Y-%m-%d')
 
         kid = models.Kinder(
             kid_index=budo["Index"][i],
@@ -112,26 +123,39 @@ def process_excel():
             rezeptfreie_medikamente=budo["Stimmen_Sie_der_Verabreichung_von_NICHT-rezeptpflichtigen_Medikamenten_zu,_wie_zum_Beispiel_Salbe_bei_Insektenstich?"][i],
             rezept_medikamente=budo["Stimmen_Sie_der_Verabreichung_von_rezeptpflichtigen_Medikamenten_zu,_welche_Ihrem_Kind_von_einem_Arzt_verordnet_wurden?"][i],
             swimmer=budo["Schwimmkenntnisse"][i],
-            covid=budo["Covid"][i],
+            # covid=budo["Covid"][i],
 
             # Anwesenheit & Schwerpunkte werden nicht aus dem Excel-File extrahiert sondern durch Eingaben ergänzt
 
         )
         kid.save()
+        processed_kids.append(kid)
 
+    # Integrate put_kids_into_families logic here
+    today = this_turnus.turnus_beginn
 
-def postprocessing():
-    age_ordered = models.Kinder.objects.all().order_by('get_alter')
-    length = len(models.Kinder.objects.all())
+    # Calculate age for each kid and store it in a list of tuples (kid, age)
+    kids_with_age = []
+    for kid in processed_kids:
+        delta = today - datetime.strptime(kid.kid_birthday, '%Y-%m-%d').date()
+        age = round(delta.days / 365.25, 2) if kid.kid_birthday else None
+        kids_with_age.append((kid, age))
 
-    for i, kid in enumerate(age_ordered):
-        x = age_ordered[i]
-        if i < length/4:
-            x.budo_family = "S"
-        elif i < length/2:
-            x.budo_family = "M"
-        elif i < (length*3/4):
-            x.budo_family = "L"
+    print(kids_with_age)
+
+    # Sort the list of tuples by age
+    kids_with_age.sort(key=lambda x: x[1]
+                       if x[1] is not None else float('inf'))
+
+    length = len(kids_with_age)
+
+    for i, (kid, age) in enumerate(kids_with_age):
+        if i < length / 4:
+            kid.budo_family = "S"
+        elif i < length / 2:
+            kid.budo_family = "M"
+        elif i < (length * 3 / 4):
+            kid.budo_family = "L"
         else:
-            x.budo_family = "XL"
-        x.save()
+            kid.budo_family = "XL"
+        kid.save()
