@@ -429,7 +429,8 @@ def serienbrief(request):
         return redirect('login')
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
-    kids = models.Kinder.objects.filter(turnus=active_turnus)
+    kids = models.Kinder.objects.filter(
+        turnus=active_turnus).order_by('kid_vorname')
     template = loader.get_template('serienbrief.html')
     context = {
         "kids": kids,
