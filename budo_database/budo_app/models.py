@@ -577,7 +577,7 @@ class Schwerpunktzeit(models.Model):
         if self.woche == "u":
             return self.get_woche_display()
         else:
-            return f"{self.get_woche_display()} ({self.dauer} Tage)"
+            return f"{self.get_woche_display()} ({self.dauer} Tage) - {self.turnus}"
 
     class Meta:
         unique_together = ('turnus', 'woche')
