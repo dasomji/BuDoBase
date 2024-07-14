@@ -5,10 +5,10 @@ from django.http import HttpResponse
 from django.template import loader
 from .forms import LoginForm, RegisterForm
 from budo_app.forms import ProfilForm
-from budo_app.models import Kinder, Profil, Notizen
+from budo_app.models import Kinder, Profil, Notizen, Geld
 from django.views.generic.edit import CreateView, UpdateView
 from django.urls import reverse_lazy
-from django.db.models import Q
+from django.db.models import Sum
 
 
 def sign_in(request):
@@ -111,6 +111,8 @@ def dashboard(request):
     ersties = kids.filter(budo_erfahrung=False)
     ersties_count = ersties.count()
     notizen = Notizen.objects.filter(kinder__turnus=active_turnus)
+    total_taschengeld = Geld.objects.filter(
+        kinder__turnus=active_turnus).aggregate(Sum('amount'))['amount__sum'] or 0
     context = {
         "profil": profil,
         "kids": kids,
@@ -132,6 +134,7 @@ def dashboard(request):
         "ersties_count": ersties_count,
         "goodbyes": goodbyes,
         "notizen": notizen,
+        "total_taschengeld": total_taschengeld,
     }
 
     return HttpResponse(template.render(context, request))
