@@ -527,7 +527,7 @@ class SchwerpunkteDetail(LoginRequiredMixin, DetailView):
                     'koordinaten': budo_ort.koordinaten,
                     'kind': 'auslagerorte',
                 })
-        except Auslagerorte.DoesNotExist:
+        except (Auslagerorte.DoesNotExist, AttributeError):
             pass
 
         context['orte_json'] = json.dumps({
