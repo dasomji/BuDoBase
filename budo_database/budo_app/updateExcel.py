@@ -8,7 +8,7 @@ def update_excel_file(file_path, turnus):
         f"Starting update_excel_file with file_path: {file_path} and turnus: {turnus}")
 
     # Create a new DataFrame with the required columns
-    columns = ['Index', 'Vorname', 'Nachname', 'Anwesend 1. Woche',
+    columns = ['Index', 'Vorname', 'Nachname', 'Alter', 'Taschengeld', 'Anwesend 1. Woche',
                'Anwesend 2. Woche', 'verspätete Anreise', 'vorzeitige Abreise',
                'Zuganreise', 'Zugabreise', 'Abreisenotiz']  # Added 'Zuganreise', 'Zugabreise', and 'Abreisenotiz'
     df = pd.DataFrame(columns=columns)
@@ -22,6 +22,8 @@ def update_excel_file(file_path, turnus):
             'Index': kid.kid_index,
             'Vorname': kid.kid_vorname,
             'Nachname': kid.kid_nachname,
+            'Alter': kid.get_alter(),
+            'Taschengeld': kid.get_taschengeld_sum(),
             'Anwesend 1. Woche': 'ja' if kid.check_in_date and kid.turnus_dauer in [1, 2] else '',
             'Anwesend 2. Woche': 'ja' if kid.check_in_date and kid.turnus_dauer == 2 else '',
             'verspätete Anreise': kid.check_in_date.strftime('%Y-%m-%d') if kid.check_in_date and kid.check_in_date.strftime('%Y-%m-%d') != turnus.get_turnus_beginn_formatiert() else '',
