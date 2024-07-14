@@ -113,6 +113,8 @@ def dashboard(request):
     notizen = Notizen.objects.filter(kinder__turnus=active_turnus)
     total_taschengeld = Geld.objects.filter(
         kinder__turnus=active_turnus).aggregate(Sum('amount'))['amount__sum'] or 0
+    geld_transactions = Geld.objects.filter(
+        kinder__turnus=active_turnus).order_by('-date_added')
     context = {
         "profil": profil,
         "kids": kids,
@@ -135,6 +137,7 @@ def dashboard(request):
         "goodbyes": goodbyes,
         "notizen": notizen,
         "total_taschengeld": total_taschengeld,
+        "geld_transactions": geld_transactions,
     }
 
     return HttpResponse(template.render(context, request))

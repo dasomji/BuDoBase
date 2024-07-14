@@ -96,6 +96,23 @@
                 </ul>
             </div>
         </div>
+        <div class="card" id="db-geld">
+            <div class="info-header-container">
+                <h2>Taschengeld-Transaktionen</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <ul>
+                    {% for geld in geld_transactions %}
+                    <li>
+                        <p><strong>{{ geld.added_by.username }}</strong> am {{ geld.date_added|date:"d.m." }}: <a
+                                href="/kid_details/{{ geld.kinder.id }}">{{ geld.kinder.kid_vorname }}
+                                {{ geld.kinder.kid_nachname }}</a></p>
+                        <p>Betrag: {{ geld.amount }} €</p>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
     </div>
     <div class="detail-column" id="right-column">
         <div class="card closed-card" id="db-ersties">
