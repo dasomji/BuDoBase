@@ -2,10 +2,14 @@ import pandas as pd
 from openpyxl import load_workbook
 from . import models
 
+import os
+
 
 def update_excel_file(file_path, turnus):
     print(
         f"Starting update_excel_file with file_path: {file_path} and turnus: {turnus}")
+
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
     # Create a new DataFrame with the required columns
     columns = ['Index', 'Vorname', 'Nachname', 'Alter', 'Taschengeld', 'Anwesend 1. Woche',
