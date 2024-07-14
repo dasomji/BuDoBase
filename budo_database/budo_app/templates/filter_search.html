@@ -2,7 +2,6 @@
   onclick="searchFunction()" onkeyup="searchFunction()">
 <div id="searchresults-container">
   <div id="searchResults" class="search-results">
-    {% if kids %}
     {% for x in kids %}
     <a href="/kid_details/{{ x.id }}">
       <div class="search-item" id="name">
@@ -10,8 +9,6 @@
       </div>
     </a>
     {% endfor %}
-    {% endif %}
-    {% if schwerpunkte %}
     {% for s in schwerpunkte %}
     <a href="/schwerpunkt/{{ s.id }}">
       <div class="search-item" id="schwerpunkt">
@@ -19,8 +16,6 @@
       </div>
     </a>
     {% endfor %}
-    {% endif %}
-    {% if auslagerorte %}
     {% for a in auslagerorte %}
     <a href="/auslagerorte/{{ a.id }}">
       <div class="search-item" id="auslagerort">
@@ -29,7 +24,6 @@
     </a>
     {% endfor %}
   </div>
-  {% endif %}
 </div>
 <script>
   var timeoutId;
@@ -73,5 +67,4 @@
       searchResults.style.display = "none";
     }
   }
-</script>
 </script>

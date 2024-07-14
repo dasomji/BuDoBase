@@ -739,6 +739,8 @@ class MealUpdate(LoginRequiredMixin, UpdateView):
         else:
             data['meal_formset'] = MealFormSet(
                 queryset=Meal.objects.filter(schwerpunkt=self.object))
+
+        data['exclude_search'] = True
         return data
 
     def form_valid(self, form):

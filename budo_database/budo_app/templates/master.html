@@ -67,7 +67,9 @@
         {% endblock %}
       </div>
       {%if request.user.is_authenticated %}
+      {% if not exclude_search %}
       <div id="headersearch">{% include 'filter_search.html' %}</div>
+      {% endif %}
       <div class="desktop-navbar">
         {% include 'navbar.html' %}
       </div>
