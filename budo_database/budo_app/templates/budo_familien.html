@@ -13,9 +13,9 @@
      {% for familie, info in familien.items %}
      <div class="detail-column">
        <div class="card" id="budo-family-{{familie.id}}">
-         {% include "components/openicon.html" %}
          <div class="info-header-container">
            <h2><a href="/budo_familie/{{info.name}}">{{ info.name.title }}</a> ({{ info.kids|length }})</h2>
+           {% include "components/openicon.html" %}
          </div>
          <div class="card-info-container">
            <ul>

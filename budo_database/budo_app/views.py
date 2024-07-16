@@ -123,6 +123,9 @@ def budo_families(request):
     active_turnus = profil.turnus
     kids = models.Kinder.objects.filter(
         turnus=active_turnus).order_by('kid_vorname')
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus)
+    auslagerorte = Auslagerorte.objects.all()
     for kid in kids:
         family_name = kid.budo_family
         if family_name not in familien:
@@ -133,7 +136,10 @@ def budo_families(request):
         familien[family_name]['kids'].append(kid)
 
     context = {
-        'familien': familien
+        'familien': familien,
+        'schwerpunkte': schwerpunkte,
+        'auslagerorte': auslagerorte,
+        'kids': kids,
     }
     return render(request, 'budo_familien.html', context)
 
@@ -146,6 +152,9 @@ def spezial_familien(request):
     active_turnus = profil.turnus
     kids = models.Kinder.objects.filter(
         turnus=active_turnus).order_by('kid_vorname')
+    schwerpunkte = Schwerpunkte.objects.filter(
+        schwerpunktzeit__turnus=active_turnus)
+    auslagerorte = Auslagerorte.objects.all()
     for kid in kids:
         family_name = kid.spezial_familien.name if kid.spezial_familien else None
         if family_name:
@@ -157,7 +166,10 @@ def spezial_familien(request):
             spezial_familien[family_name]['kids'].append(kid)
 
     context = {
-        'spezial_familien': spezial_familien
+        'spezial_familien': spezial_familien,
+        'schwerpunkte': schwerpunkte,
+        'auslagerorte': auslagerorte,
+        'kids': kids,
     }
     return render(request, 'spezial_familien.html', context)
 
@@ -258,7 +270,7 @@ def kid_details(request, id):
     profil = Profil.objects.get(user=current_user)
     active_turnus = profil.turnus
     this_kid = models.Kinder.objects.get(id=id)
-    kids = models.Kinder.objects.all().values()
+    kids = models.Kinder.objects.filter(turnus=active_turnus).values()
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)
     auslagerorte = Auslagerorte.objects.all()
@@ -1085,18 +1097,11 @@ def upload_spezialfamilien(request):
             profil = Profil.objects.get(user=current_user)
             active_turnus = profil.turnus
 
-            logger.debug(f"Processing XLSX file for turnus: {active_turnus}")
-
             try:
                 df = pd.read_excel(xlsx_file)
-                logger.debug(f"XLSX file contents:\n{df.head()}")
-
-                # Print the column names for debugging
-                logger.debug(f"XLSX columns: {df.columns.tolist()}")
 
                 # Normalize column names to lower case and strip spaces
                 df.columns = df.columns.str.strip().str.lower()
-                logger.debug(f"Normalized XLSX columns: {df.columns.tolist()}")
 
                 # Check for the 'index' and 'coven' columns
                 if 'index' not in df.columns or 'coven' not in df.columns:
@@ -1113,41 +1118,28 @@ def upload_spezialfamilien(request):
 
                     # Skip rows with no index or summary rows
                     if pd.isna(kid_index) or kid_index == '' or 'Kiddos' in kid_index:
-                        logger.debug(f"Skipping row: {row}")
                         continue
-
-                    logger.debug(
-                        f"Processing row: Index={kid_index}, Coven={coven_name}")
 
                     try:
                         # Assuming kid_index in the database is stored as "T2-39"
                         kid = Kinder.objects.get(
                             kid_index=kid_index, turnus=active_turnus)
-                        logger.debug(f"Found kid: {kid}")
 
                         spezial_familie, created = SpezialFamilien.objects.get_or_create(
                             name=coven_name,
                             turnus=active_turnus
                         )
-                        logger.debug(
-                            f"SpezialFamilien {'created' if created else 'retrieved'}: {spezial_familie}")
 
                         kid.spezial_familien = spezial_familie
                         kid.save()
-                        logger.debug(
-                            f"Updated kid {kid} with spezial_familie {spezial_familie}")
 
                     except Kinder.DoesNotExist:
-                        logger.warning(
-                            f"Kid with index {kid_index} not found in turnus {active_turnus}")
                         continue
 
                 messages.success(
                     request, "Spezialfamilien wurden erfolgreich aktualisiert.")
-                logger.info("Spezialfamilien update completed successfully")
                 return redirect('upload_csv')
             except Exception as e:
-                logger.error(f"Error processing XLSX: {str(e)}", exc_info=True)
                 messages.error(
                     request, f"Ein Fehler ist aufgetreten: {str(e)}")
     else:
