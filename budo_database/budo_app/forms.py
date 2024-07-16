@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.forms import ModelForm, Form
-from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, AuslagerorteNotizen, AuslagerorteImage, Schwerpunktzeit, Geld
+from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, AuslagerorteNotizen, AuslagerorteImage, Schwerpunktzeit, Geld, BetreuerinnenGeld
 from django import forms
 from django.contrib.auth.models import User
 import datetime
@@ -138,3 +138,13 @@ class MealChoiceForm(forms.ModelForm):
 
 class CSVUploadForm(forms.Form):
     csv_file = forms.FileField()
+
+
+class BetreuerinnenGeldForm(forms.ModelForm):
+    class Meta:
+        model = BetreuerinnenGeld
+        fields = ['amount', 'what']
+        widgets = {
+            "amount": forms.NumberInput(attrs={'placeholder': 'Wieviel?'}),
+            "what": forms.TextInput(attrs={'placeholder': 'Wofür ist das Geld?'}),
+        }

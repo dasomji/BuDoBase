@@ -15,10 +15,10 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from . import models
-from .models import Kinder, SpezialFamilien, Schwerpunkte, Meal, Profil, Auslagerorte, AuslagerorteImage, SchwerpunktWahl, Schwerpunktzeit
+from .models import Kinder, SpezialFamilien, Schwerpunkte, Meal, Profil, Auslagerorte, AuslagerorteImage, SchwerpunktWahl, Schwerpunktzeit, BetreuerinnenGeld
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, UpdateView, FormView
-from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm, GeldForm, CSVUploadForm
+from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm, GeldForm, CSVUploadForm, BetreuerinnenGeldForm
 from copy import deepcopy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
@@ -1146,3 +1146,54 @@ def upload_spezialfamilien(request):
         form = CSVUploadForm()
 
     return render(request, 'uploadspezialfamilien.html', {'form': form})
+
+
+@login_required
+def teamer_details(request, id):
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    this_profil = get_object_or_404(Profil, id=id)
+    geld = BetreuerinnenGeld.objects.filter(who=this_profil)
+
+    context = {
+        "profil": this_profil,
+        "geld": geld,
+    }
+
+    if request.method == 'POST':
+        geld_form = BetreuerinnenGeldForm(request.POST)
+        context["geld_form"] = geld_form
+
+        if geld_form.is_valid():
+            print("Geld form is valid")
+            amount = geld_form.cleaned_data.get("amount")
+            what = geld_form.cleaned_data.get("what")
+            if amount and what:
+                print(amount)
+                geld = geld_form.save(commit=False)
+                geld.what = what
+                geld.amount = amount
+                geld.who = this_profil
+                geld.save()
+            return redirect('teamer_details', id=this_profil.id)
+        else:
+            # Debugging statement
+            print("Geld form is not valid:", geld_form.errors)
+    else:
+        geld_form = BetreuerinnenGeldForm()
+        context["geld_form"] = geld_form
+
+    return render(request, 'users/teamer.html', context)
+
+
+def betreuerinnen_geld_create(request):
+    if request.method == 'POST':
+        form = BetreuerinnenGeldForm(request.POST)
+        if form.is_valid():
+            form.save()
+            # Replace 'success_url' with your actual success URL
+            return redirect('success_url')
+    else:
+        form = BetreuerinnenGeldForm()
+    return render(request, 'budo_app/betreuerinnen_geld_form.html', {'form': form})

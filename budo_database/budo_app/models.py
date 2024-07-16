@@ -74,6 +74,9 @@ class Profil(models.Model):
     def get_rolle(self):
         return dict(self.ROLLEN).get(self.rolle)
 
+    def get_geld_sum(self):
+        return sum(t.amount for t in self.betreuerinnen_geld.all())
+
 
 class SpezialFamilien(models.Model):
     name = models.CharField(max_length=255)
@@ -395,6 +398,17 @@ class Geld(models.Model):
 
     class Meta:
         verbose_name_plural = "Taschengeld"
+
+
+class BetreuerinnenGeld(models.Model):
+    amount = models.FloatField(null=True, blank=True)
+    what = models.CharField(max_length=500)
+    date_added = models.DateTimeField(auto_now_add=True)
+    who = models.ForeignKey(Profil, on_delete=models.CASCADE,
+                            related_name='betreuerinnen_geld')
+
+    def __str__(self):
+        return f"{self.amount} EUR - {self.what} - {self.who}"
 
 
 class Turnus(models.Model):

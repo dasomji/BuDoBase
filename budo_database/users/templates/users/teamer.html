@@ -1,0 +1,58 @@
+{% extends 'master.html' %}
+{% block headertitle %}
+<h1>{{profil.rufname}}</h1>
+{% endblock %}
+
+
+{% block content %}
+<div class="flex-container" id="body-container">
+    <div class="detail-column" id="left-column">
+        <div class="card" id="db-profil">
+            <div class="info-header-container">
+                <h2>{{profil.rufname}}</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <p><span class="label">Rolle</span>: {{profil.get_rolle}} </p>
+                <p><span class="label">Turnus</span>: {{profil.turnus}} </p>
+                <p><span class="label">Essen</span>: {{profil.get_food}} </p>
+                <p><span class="label">Allergien</span>: {{profil.allergien}} </p>
+                <p><span class="label">Kaffee</span>: {{profil.coffee}} </p>
+                <p><span class="label">Email</span>: <a href="mailto:{{profil.user.email}}">{{profil.user.email}}</a>
+                </p>
+                <p><span class="label">Mobil</span>: <a
+                        href="tel: {{profil.telefonnummer}}">{{profil.telefonnummer}}</a></p>
+                <p><span class="label">Meine Schwerpunkte</span>:</p>
+                <ul>
+                    {% for swp in profil.swp.all %}
+                    <li><a href="{% url 'schwerpunkt-detail' pk=swp.id %}"> {{swp}} </a></li>
+                    {% endfor %}
+                </ul>
+                <a class="button" href="/profil">Informationen aktualisieren </a>
+            </div>
+        </div>
+    </div>
+    <div class="detail-column" id="center-column">
+        <div class="card" id="betreuerinnengeld">
+            <div class="info-header-container">
+                <h2>Abrechnung: {{profil.get_geld_sum|floatformat:2}}</h2>
+                {% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <ul>
+                    {% for geld in geld.all %}
+                    <li>{{ geld.who }} am {{ geld.date_added|date:"d.m." }}: {{geld.what}} -
+                        {{ geld.amount|floatformat:2 }}</li>
+                    {% empty %}
+                    <li>Keine Transaktionen bisher...</li>
+                    {% endfor %}
+                </ul>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ geld_form.as_p }}
+                    <button type="submit">Save</button>
+                </form>
+            </div>
+    </div>
+</div>
+
+{% endblock content%}
