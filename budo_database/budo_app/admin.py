@@ -155,8 +155,21 @@ class SchwerpunkteAdmin(admin.ModelAdmin):
     get_kids_count.short_description = 'Kinder'
 
 
+class KinderInlineForSpezialFamilien(admin.TabularInline):
+    model = Kinder
+    extra = 0
+    verbose_name = "Kind"
+    verbose_name_plural = "Kinder"
+    readonly_fields = ('kid_vorname', 'kid_nachname')
+    fields = ('kid_vorname', 'kid_nachname')
+
+    def kid_name(self, obj):
+        return f"{obj.kid_vorname} {obj.kid_nachname}"
+
+
 class SpezialFamilienAdmin(admin.ModelAdmin):
     list_display = ("__str__", "turnus", "get_kids_count")
+    inlines = [KinderInlineForSpezialFamilien]
 
     def get_kids_count(self, obj):
         return obj.kinder.count()

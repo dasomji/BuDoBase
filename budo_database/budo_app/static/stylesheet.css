@@ -405,6 +405,10 @@ button.closebtn {
   overflow: hidden;
 }
 
+.card li a {
+  text-decoration: none;
+}
+
 /* ----------------- Map ----------------- */
 
 /* Modal styles */

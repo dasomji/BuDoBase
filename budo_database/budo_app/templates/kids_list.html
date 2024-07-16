@@ -41,7 +41,8 @@ BuDo Kids Alle Kinder meiner Mama
         <td class="text-cell headcol" id="name"><a href="/kid_details/{{ x.id }}">
             {{ x.kid_vorname }} {{ x.kid_nachname }}{% if not x.anwesend %} ❌{% endif %}</a></td>
         <td class="item-cell budo_family">{{ x.budo_family }}</td>
-        <td class="item-cell spezialfamile">{% if x.spezialfamilie %}{{ x.spezialfamilie }}{% else %} --- {% endif %}
+        <td class="item-cell spezialfamile">{% if x.spezial_familien %}{{ x.spezial_familien }}{% else %} ---
+          {% endif %}
         </td>
         <td class="item-cell sex">{{ x.get_short_sex }}</td>
         <td class="number-cell" id="alter"> {% if x.is_birthday_during_turnus %}🥳 {% endif %} {{ x.get_alter }}</td>

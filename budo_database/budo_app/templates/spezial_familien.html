@@ -1,0 +1,33 @@
+<!-- Auf dieser Seite findet man alle Spezial-Familien. -->
+{% extends "master.html" %}
+
+{% block title %}
+Spezial Familien
+{% endblock %}
+
+{% block headertitle %}
+<h1>Spezial Familien</h1>
+{% endblock %}
+
+{% block content %}
+<div class="flex-container" id="body-container">
+  {% for familie, info in spezial_familien.items %}
+  <div class="detail-column">
+    <div class="card" id="spezial-family-{{familie.id}}">
+      <div class="info-header-container">
+        <h2>{{ info.name }}</h2>
+        {% include "components/openicon.html" %}
+      </div>
+      <div class="card-info-container">
+        <ul>
+          {% for kid in info.kids %}
+          <li><a href="/kid_details/{{ kid.id }}">{{ kid.kid_vorname }} {{kid.kid_nachname}} - {{kid.get_alter}}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -49,6 +49,9 @@ urlpatterns = [
     path('happy-cleaning/', views.happy_cleaning, name='happy_cleaning'),
     path('kindergesamtzahl/', views.kindergesamtzahl, name='kindergesamtzahl'),
     path('budo_familien/', views.budo_families, name='budo_familien'),
+    path('upload_spezialfamilien/', views.upload_spezialfamilien,
+         name='upload_spezialfamilien'),
+    path('spezial_familien/', views.spezial_familien, name='spezial_familien'),
 ]
 
 if settings.DEBUG:

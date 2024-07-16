@@ -1,3 +1,5 @@
+from .updateExcel import update_excel_file
+from .excelProcessor import process_excel
 from .models import Profil
 from django.http import FileResponse, HttpResponse
 from .models import Meal, Schwerpunkte
@@ -13,10 +15,10 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from . import models
-from .models import Kinder, Notizen, Schwerpunkte, Meal, Profil, Auslagerorte, AuslagerorteImage, SchwerpunktWahl, Schwerpunktzeit
+from .models import Kinder, SpezialFamilien, Schwerpunkte, Meal, Profil, Auslagerorte, AuslagerorteImage, SchwerpunktWahl, Schwerpunktzeit
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, UpdateView, FormView
-from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm, GeldForm
+from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm, GeldForm, CSVUploadForm
 from copy import deepcopy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
@@ -25,10 +27,11 @@ import os
 import json
 import toml
 import csv
+import pandas as pd
+import logging
 
+logger = logging.getLogger(__name__)
 
-from .excelProcessor import process_excel
-from .updateExcel import update_excel_file
 
 info_file_path = os.path.join(settings.BASE_DIR, "info.toml")
 info = toml.load(info_file_path)
@@ -133,6 +136,30 @@ def budo_families(request):
         'familien': familien
     }
     return render(request, 'budo_familien.html', context)
+
+
+@login_required
+def spezial_familien(request):
+    spezial_familien = {}
+    current_user = request.user
+    profil = Profil.objects.get(user=current_user)
+    active_turnus = profil.turnus
+    kids = models.Kinder.objects.filter(
+        turnus=active_turnus).order_by('kid_vorname')
+    for kid in kids:
+        family_name = kid.spezial_familien.name if kid.spezial_familien else None
+        if family_name:
+            if family_name not in spezial_familien:
+                spezial_familien[family_name] = {
+                    'name': family_name,
+                    'kids': []
+                }
+            spezial_familien[family_name]['kids'].append(kid)
+
+    context = {
+        'spezial_familien': spezial_familien
+    }
+    return render(request, 'spezial_familien.html', context)
 
 
 @login_required
@@ -1046,3 +1073,84 @@ def kindergesamtzahl(request):
         'total_kids': total_kids,
     }
     return render(request, 'kindergesamtzahl.html', context)
+
+
+@login_required
+def upload_spezialfamilien(request):
+    if request.method == "POST":
+        form = CSVUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            xlsx_file = request.FILES['csv_file']
+            current_user = request.user
+            profil = Profil.objects.get(user=current_user)
+            active_turnus = profil.turnus
+
+            logger.debug(f"Processing XLSX file for turnus: {active_turnus}")
+
+            try:
+                df = pd.read_excel(xlsx_file)
+                logger.debug(f"XLSX file contents:\n{df.head()}")
+
+                # Print the column names for debugging
+                logger.debug(f"XLSX columns: {df.columns.tolist()}")
+
+                # Normalize column names to lower case and strip spaces
+                df.columns = df.columns.str.strip().str.lower()
+                logger.debug(f"Normalized XLSX columns: {df.columns.tolist()}")
+
+                # Check for the 'index' and 'coven' columns
+                if 'index' not in df.columns or 'coven' not in df.columns:
+                    raise ValueError(
+                        "XLSX file must contain 'Index' and 'Coven' columns")
+
+                # Strip whitespace from all string columns
+                for column in df.select_dtypes(include=['object']).columns:
+                    df[column] = df[column].str.strip()
+
+                for _, row in df.iterrows():
+                    kid_index = str(row['index']).strip()
+                    coven_name = str(row['coven']).strip()
+
+                    # Skip rows with no index or summary rows
+                    if pd.isna(kid_index) or kid_index == '' or 'Kiddos' in kid_index:
+                        logger.debug(f"Skipping row: {row}")
+                        continue
+
+                    logger.debug(
+                        f"Processing row: Index={kid_index}, Coven={coven_name}")
+
+                    try:
+                        # Assuming kid_index in the database is stored as "T2-39"
+                        kid = Kinder.objects.get(
+                            kid_index=kid_index, turnus=active_turnus)
+                        logger.debug(f"Found kid: {kid}")
+
+                        spezial_familie, created = SpezialFamilien.objects.get_or_create(
+                            name=coven_name,
+                            turnus=active_turnus
+                        )
+                        logger.debug(
+                            f"SpezialFamilien {'created' if created else 'retrieved'}: {spezial_familie}")
+
+                        kid.spezial_familien = spezial_familie
+                        kid.save()
+                        logger.debug(
+                            f"Updated kid {kid} with spezial_familie {spezial_familie}")
+
+                    except Kinder.DoesNotExist:
+                        logger.warning(
+                            f"Kid with index {kid_index} not found in turnus {active_turnus}")
+                        continue
+
+                messages.success(
+                    request, "Spezialfamilien wurden erfolgreich aktualisiert.")
+                logger.info("Spezialfamilien update completed successfully")
+                return redirect('upload_csv')
+            except Exception as e:
+                logger.error(f"Error processing XLSX: {str(e)}", exc_info=True)
+                messages.error(
+                    request, f"Ein Fehler ist aufgetreten: {str(e)}")
+    else:
+        form = CSVUploadForm()
+
+    return render(request, 'uploadspezialfamilien.html', {'form': form})
