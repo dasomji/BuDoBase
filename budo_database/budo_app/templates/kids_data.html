@@ -115,12 +115,14 @@ BuDo Kid Info
         </div>
         <div class="card" id="taschengeld">
             <div class="info-header-container">
-                <h2>Taschengeld: {{Kinder.get_taschengeld_sum}}</h2> {% include "components/openicon.html" %}
+                <h2>Taschengeld: {{Kinder.get_taschengeld_sum|floatformat:2}}</h2>
+                {% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
                 <ul>
                     {% for geld in Kinder.geld.all %}
-                    <li>{{ geld.added_by.username }} am {{ geld.date_added|date:"d.m." }}: {{ geld.amount }}</li>
+                    <li>{{ geld.added_by.username }} am {{ geld.date_added|date:"d.m." }}:
+                        {{ geld.amount|floatformat:2 }}</li>
                     {% empty %}
                     <li>Dieses Kind ist arm.</li>
                     {% endfor %}
