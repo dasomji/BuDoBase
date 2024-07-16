@@ -229,7 +229,7 @@
                 {% endif %}
                 {% endfor %}
                 {% for trainer in team %}
-                {% if trainer.allergien%}
+                {% if swp in trainer.swp.all and trainer.allergien %}
                 <li>{{ trainer.rufname }}: {{ trainer.allergien }}</li>
                 {% endif %}
                 {% endfor %}
