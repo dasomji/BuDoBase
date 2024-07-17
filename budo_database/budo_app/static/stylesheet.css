@@ -187,7 +187,7 @@ select {
 
 .search-results {
   position: absolute;
-  top: 43.2px;
+  top: 32px;
   background-color: white;
   /* border: 1px solid #ccc; */
   overflow-y: auto;
@@ -831,6 +831,7 @@ table #alter {
   display: flex;
   justify-content: flex-end;
   padding-top: var(--xl-padding);
+  gap: var(--m-padding);
 }
 
 .info-header-container .button-container {
@@ -1313,4 +1314,8 @@ h2.murder_name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.alert {
+  color: #ae2525;
 }

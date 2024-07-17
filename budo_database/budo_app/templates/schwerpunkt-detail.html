@@ -84,7 +84,6 @@
           <th>Ernährung </th>
           <th>Medikamente</th>
           <th>Gesundheitliches</th>
-
         </tr>
         {% for x in schwerpunkt.swp_kinder.all %}
         <tr class="table_row w3-padding-large">
@@ -96,7 +95,6 @@
           <td class="text-cell">{{ x.get_food }}</td>
           <td class="text-cell">{% if x.get_clean_drugs %}{{ x.get_clean_drugs }}{% else %} --- {% endif%} </td>
           <td class="text-cell">{% if x.get_clean_illness %}{{ x.get_clean_illness }}{% else %} --- {% endif%}</td>
-
         </tr>
         {% endfor %}
       </table>

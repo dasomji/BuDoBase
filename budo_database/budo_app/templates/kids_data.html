@@ -115,7 +115,13 @@ BuDo Kid Info
         </div>
         <div class="card" id="taschengeld">
             <div class="info-header-container">
-                <h2>Taschengeld: {{Kinder.get_taschengeld_sum|floatformat:2}}</h2>
+                <h2>
+                    <span>Taschengeld: </span>
+                    <span class="{% if Kinder.get_taschengeld_sum < 5 %}alert{% endif %}">
+                        {{Kinder.get_taschengeld_sum|floatformat:2}}{% if Kinder.get_taschengeld_sum < 5 %}
+                        🚨{% endif %}
+                    </span>
+                </h2>
                 {% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
