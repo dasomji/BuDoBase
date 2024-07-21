@@ -43,7 +43,19 @@
                         href="mailto:{{teamer.user.email}}">{{teamer.user.email}}</a></li>{% endif %}
                 {% if teamer.telefonnummer %}<li><span class="label">Mobil</span>: <a
                         href="tel:{{teamer.telefonnummer}}">{{teamer.telefonnummer}}</a></li>{% endif %}
+                        <p><span class="label">Geld:</span>: {{ teamer.total_betreuerinnen_geld|floatformat:2 }}</p>
                 {% endfor %}
+                
+            </div>
+        </div>
+        <div class="card" id="db-finanzübersicht">
+            <div class="info-header-container">
+                <h2>Finanzen</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <p><span class="label">Taschengeld eingezahlt:</span>: {{ geld_eingezahlt|floatformat:2 }}</p>
+                <p><span class="label">Taschengeld aktuell:</span>: {{ total_taschengeld|floatformat:2 }}</p>
+                <p><span class="label">Betreuerinnen-Geld:</span>: {{ betreuerinnen_geld_gesamt|floatformat:2 }}</p>
             </div>
         </div>
     </div>
@@ -59,7 +71,6 @@
                 <p><span class="label">Kids mit Budo-Erfahrung</span>: {{ kids_mit_budo_erfahrung }}</p>
                 <p><span class="label">Zuganreise</span>: {{ kids_zug_anreise_count }}</p>
                 <p><span class="label">Zugabreise</span>: {{ kids_zug_abreise_count }}</p>
-                <p><span class="label">Taschengeld eingezahlt:</span>: {{ total_taschengeld|floatformat:2 }}</p>
             </div>
         </div>
         <div class="card" id="db-spezial">

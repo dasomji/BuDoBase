@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.template import loader
 from .forms import LoginForm, RegisterForm
 from budo_app.forms import ProfilForm
-from budo_app.models import Kinder, Profil, Notizen, Geld
+from budo_app.models import Kinder, Profil, Notizen, Geld, BetreuerinnenGeld
 from django.views.generic.edit import CreateView, UpdateView
 from django.urls import reverse_lazy
 from django.db.models import Sum
@@ -102,8 +102,9 @@ def dashboard(request):
                       and (kid.get_alter() > 14.8))], key=lambda kid: kid.get_alter())
     geburtstage = len(geburtstagskinder)
     eingecheckte_kids = kids.filter(anwesend=True).count()
-    team = Profil.objects.filter(turnus=active_turnus)
-
+    team = Profil.objects.filter(turnus=active_turnus).annotate(
+        total_betreuerinnen_geld=Sum('betreuerinnen_geld__amount')
+    )
     medikamente = [kid for kid in kids if kid.get_clean_drugs()]
     gesundheit = [kid for kid in kids if kid.get_clean_illness()]
     kids_attention = [kid for kid in kids if (
@@ -115,6 +116,11 @@ def dashboard(request):
         kinder__turnus=active_turnus).aggregate(Sum('amount'))['amount__sum'] or 0
     geld_transactions = Geld.objects.filter(
         kinder__turnus=active_turnus).order_by('-date_added')
+    geld_eingezahlt = Geld.objects.filter(
+        kinder__turnus=active_turnus, amount__gt=0).aggregate(Sum('amount'))['amount__sum'] or 0
+    betreuerinnen_geld_gesamt = BetreuerinnenGeld.objects.aggregate(Sum('amount'))[
+        'amount__sum'] or 0
+    betreuerinnen_geld = BetreuerinnenGeld.objects.all()
     context = {
         "profil": profil,
         "kids": kids,
@@ -138,6 +144,9 @@ def dashboard(request):
         "notizen": notizen,
         "total_taschengeld": total_taschengeld,
         "geld_transactions": geld_transactions,
+        "geld_eingezahlt": geld_eingezahlt,
+        "betreuerinnen_geld_gesamt": betreuerinnen_geld_gesamt,
+        "betreuerinnen_geld": betreuerinnen_geld,
     }
 
     return HttpResponse(template.render(context, request))
