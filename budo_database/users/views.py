@@ -111,6 +111,8 @@ def dashboard(request):
         kid.get_clean_drugs() or kid.get_clean_illness())]
     ersties = kids.filter(budo_erfahrung=False)
     ersties_count = ersties.count()
+    einwöchige = kids.filter(turnus_dauer=1)
+    einwöchige_count = einwöchige.count()
     notizen = Notizen.objects.filter(kinder__turnus=active_turnus)
     total_taschengeld = Geld.objects.filter(
         kinder__turnus=active_turnus).aggregate(Sum('amount'))['amount__sum'] or 0
@@ -147,6 +149,8 @@ def dashboard(request):
         "geld_eingezahlt": geld_eingezahlt,
         "betreuerinnen_geld_gesamt": betreuerinnen_geld_gesamt,
         "betreuerinnen_geld": betreuerinnen_geld,
+        "einwöchige": einwöchige,
+        "einwöchige_count": einwöchige_count,
     }
 
     return HttpResponse(template.render(context, request))

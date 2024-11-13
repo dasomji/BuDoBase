@@ -33,7 +33,7 @@
           <li>Einverständniserklärung</li>
           {% endif %}
           {% if Kinder.get_taschengeld_sum > 0 %}
-          <li>Taschengeld: {{Kinder.get_taschengeld_sum}}€</li>
+          <li>Taschengeld: {{Kinder.get_taschengeld_sum|floatformat:2 }}€</li>
           {% endif %}
         </ul>
         {% block forminput %}

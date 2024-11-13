@@ -1,3 +1,8 @@
+## activate virtual environment
+```
+source venv/bin/activate
+```
+
 BuDoBase is a datamanagement-solution for summercamps.
 It is meant to make the work of trainers easier to open up more ressources to work with the children and teenagers in the camp,
 rather than to have to deal with excel-sheets.

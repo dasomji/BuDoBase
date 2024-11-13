@@ -149,6 +149,27 @@
                 {% endfor %}
             </div>
         </div>
+        <div class="card closed-card" id="db-einwöchig">
+            <div class="info-header-container">
+                <h2>Einwöchige: {{einwöchige_count}}</h2>{% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                {% for kid in einwöchige %}
+                <p><span class="label"><a href="/kid_details/{{ kid.id }}">{{kid.kid_vorname}}
+                            {{kid.kid_nachname}}</a></span>: {{kid.get_alter}}</p>
+                <ul>
+                    {% if kid.get_clean_anmerkung %}<li><span class="label">Anmerkung</span>:
+                        {{ kid.get_clean_anmerkung|safe }}</li>{% endif %}
+                    {% if kid.get_clean_anmerkung_buchung %}<li><span class="label">Anmerkung bei Buchung</span>:
+                        {{ kid.get_clean_anmerkung_buchung|safe }}</li>{% endif %}
+                    {% if kid.get_clean_illness %}<li><span class="label">Krankheiten</span>:
+                        {{ kid.get_clean_illness }}</li>{% endif %}
+                    {% if kid.get_clean_drugs %}<li><span class="label">Medikamente</span>: {{ kid.get_clean_drugs }}
+                    </li>{% endif %}
+                </ul>
+                {% endfor %}
+            </div>
+        </div>
         <div class="card closed-card" id="db-gesundheit">
             <div class="info-header-container">
                 <h2>Gesundheitliches</h2>{% include "components/openicon.html" %}
@@ -194,7 +215,7 @@
         </div>
         <div class="card" id="db-geburtstagskinder">
             <div class="info-header-container">
-                <h2>Geburtstagskinder</h2>{% include "components/openicon.html" %}
+                <h2>Geburtstagskinder: {{geburtstagskinder|length}}</h2>{% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
                 {% for kid in geburtstagskinder %}
@@ -205,7 +226,7 @@
         </div>
         <div class="card" id="db-sechzehner">
             <div class="info-header-container">
-                <h2>Verabschiedungsliste</h2>{% include "components/openicon.html" %}
+                <h2>Verabschiedungsliste: {{goodbyes|length}}</h2>{% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
                 {% for kid in goodbyes %}
