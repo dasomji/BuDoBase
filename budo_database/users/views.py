@@ -15,7 +15,7 @@ def sign_in(request):
 
     if request.method == 'GET':
         if request.user.is_authenticated:
-            return redirect('kids_list')
+            return redirect('/')
 
         form = LoginForm()
         return render(request, 'users/login.html', {'form': form})
@@ -162,6 +162,13 @@ class ProfilUpdate(UpdateView):
               'essen', 'telefonnummer', 'turnus']
     template_name = "users/profil.html"
     success_url = reverse_lazy('dashboard')
+
+    def get_form_class(self):
+        form_class = super().get_form_class()
+        if self.request.user.groups.filter(name='Test-users').exists():
+            if 'turnus' in form_class.base_fields:
+                form_class.base_fields.pop('turnus')
+        return form_class
 
     def get_object(self, queryset=None):
         return self.request.user.profil

@@ -4,12 +4,15 @@ import dj_database_url
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 DEBUG = False
 
+# Get the application URL from environment variable
+APP_URL = os.environ.get('APP_URL')
+
 ALLOWED_HOSTS = [
-    'budobase-production.up.railway.app',
+    APP_URL,
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://budobase-production.up.railway.app',
+    f'https://{APP_URL}',
 ]
 
 # Database
@@ -46,4 +49,4 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
-SECURE_SSL_HOST = 'budobase-production.up.railway.app'
+SECURE_SSL_HOST = APP_URL
