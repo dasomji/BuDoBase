@@ -62,6 +62,8 @@ source venv/bin/activate
 A common error is that you're in the wrong directory, when you try to activate the virtual environment.
 
 ### Get it up and running
+As always: check if your Virtual environment is activated.
+
 Change into the project directory:
 ```bash
 cd budo_database
@@ -73,8 +75,22 @@ python manage.py runserver
 ```
 
 ## Making changes to the project
-If you install new packages, update the requirements.txt:
+As always: check if your Virtual environment is activated (and yes, I repeat myself because I wasted too much time on errors because of this).
+
+Upgrade individual packages:
+```bash
+pip install --upgrade <package_name>
+```
+Upgrade all packages:
+Yes, if you're coming from node.js world, this is a bit of a pain. But hey, it works. 🤷‍♂️
+
+```bash
+pip --disable-pip-version-check list --outdated --format=json | python -c "import json, sys; print('\n'.join([x['name'] for x in json.load(sys.stdin)]))" | xargs -n1 pip install -U
+
+```
+Credits to rbp for the command in this stackoverflow [answer](https://stackoverflow.com/questions/2720014/how-to-upgrade-all-python-packages-with-pip).
+
+If you install or update packages, update the requirements.txt:
 ```bash
 pip freeze > requirements.txt
 ```
-
