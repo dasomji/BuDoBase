@@ -23,7 +23,9 @@ endif
 
 alias pydoc python -m pydoc
 
-# Custom alias for pip freeze without graphviz
-alias pipfreeze='pip freeze | grep -v "^graphviz==" > requirements.txt'
-
+# Custom alias for pip freeze that puts packages in dev_only_packages.toml into requirements/dev.txt and all others into requirements/base.txt
+alias pipfreeze='if [ ! -f "./dev_only_packages.toml" ]; then echo "Error: dev_only_packages.toml not found"; exit 1; fi && \
+mkdir -p ./budo_database/requirements && \
+python3 -m pip freeze | grep -v -f <(sed "/^#/d; /^$/d; s/^/^/" ./dev_only_packages.toml | sed "s/$/==/") > ./budo_database/requirements/base.txt && \
+python3 -m pip freeze | grep -f <(sed "/^#/d; /^$/d; s/^/^/" ./dev_only_packages.toml | sed "s/$/==/") > ./budo_database/requirements/dev.txt'
 rehash
