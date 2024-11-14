@@ -192,13 +192,16 @@ pip --disable-pip-version-check list --outdated --format=json | python -c "impor
 ```
 Credits to rbp for the command in this stackoverflow [answer](https://stackoverflow.com/questions/2720014/how-to-upgrade-all-python-packages-with-pip).
 
+### Updating the requirements
 If you install or update packages, update the requirements. This project has four different requirement-files:
 
 .budo_database/requirements.txt // necessery for auto-builds, links to requirements/base.txt
 ./budo_database/requirements/
   base.txt // this includes all packages which should be installed regardless of the environment
+
   dev.txt // this includes references base.txt and includes additionally all packages which should be installed for development
-  production.txt // this includes references base.txt and includes additionally all packages which should be installed for production
+
+  production.txt // this includes references base.txt and includes additionally all packages which should be installed for production.
 
 You can define which packages should only be installed in development by adding them to ./dev_only_packages.toml
 
