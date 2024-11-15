@@ -116,7 +116,7 @@ Set your Environment variables:
 - DJANGO_ENVIRONMENT=production
 - DATABASE_URL (you get this from your database, see below)
 - APP_URL (your application's domain, e.g. 'myapp.railway.app') // this is for the settings allowed_hosts, csrf_trusted_origins and secure_ssl_host
-
+- REGISTRATION_PASSPHRASE (this is a secret passphrase whithout which sign-up is impossible. This allows teammembers to register and prevents random people, but especially children who might get to the registration page, from registering)
 
 On a service like heroku/vercel/railway, once you have set your environment variables, you can deploy the project simply by connecting the repository and pushing your changes to your remote repository (Github/Gitlab/etc). It will automatically build the project and run it.
 

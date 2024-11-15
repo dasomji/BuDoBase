@@ -9,6 +9,7 @@ from budo_app.models import Kinder, Profil, Notizen, Geld, BetreuerinnenGeld
 from django.views.generic.edit import CreateView, UpdateView
 from django.urls import reverse_lazy
 from django.db.models import Sum
+from django.conf import settings
 
 
 def sign_in(request):
@@ -31,7 +32,7 @@ def sign_in(request):
                 login(request, user)
                 messages.success(
                     request, f'Hi {username.title()}, welcome back!')
-                return redirect('kids_list')
+                return redirect('dashboard')
 
         # either form not valid or user is not authenticated
         messages.error(request, f'Invalid username or password')
@@ -61,7 +62,7 @@ def sign_up(request):
         form = RegisterForm(request.POST)
         passphrase = request.POST.get('passphrase')
 
-        if form.is_valid() and passphrase == "lifeiswonderful":
+        if form.is_valid() and passphrase == settings.REGISTRATION_PASSPHRASE:
             user = form.save(commit=False)
             user.username = user.username.lower()
             user.save()
@@ -69,7 +70,7 @@ def sign_up(request):
             login(request, user)
             return redirect('profil')
         else:
-            if passphrase != "lifeiswonderful":
+            if passphrase != settings.REGISTRATION_PASSPHRASE:
                 messages.error(
                     request, 'Invalid passphrase. Please try again.')
             return render(request, 'users/register.html', {'form': form})
