@@ -119,6 +119,10 @@ def dashboard(request):
         kinder__turnus=active_turnus).aggregate(Sum('amount'))['amount__sum'] or 0
     geld_transactions = Geld.objects.filter(
         kinder__turnus=active_turnus).order_by('-date_added')
+    print("Debugging Geld transactions:")
+    for transaction in geld_transactions:
+        print(f"Transaction type: {type(transaction)}")
+        print(f"Transaction dir: {dir(transaction)}")
     geld_eingezahlt = Geld.objects.filter(
         kinder__turnus=active_turnus, amount__gt=0).aggregate(Sum('amount'))['amount__sum'] or 0
     betreuerinnen_geld_gesamt = BetreuerinnenGeld.objects.aggregate(Sum('amount'))[
