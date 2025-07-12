@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def from_excel_ordinal(ordinal: float, _epoch0=datetime(1899, 12, 31)) -> datetime:
     if ordinal >= 60:
         ordinal -= 1  # Excel leap year bug, 1900 is not a leap year!
-    return (_epoch0 + timedelta(days=ordinal)).replace(microsecond=0).strftime('%Y-%m-%d')
+    return (_epoch0 + timedelta(days=ordinal)).replace(microsecond=0)
 
 
 @transaction.atomic
@@ -53,10 +53,25 @@ def process_excel():
 
         for i in range(0, len(budo)):
             try:
-                # Skip entries with "MANUAL OVERRIDE"
-                if (budo_raw["Submitted"][i] == "MANUAL OVERRIDE" or
-                        budo_raw["Anmelder Email"][i] == "MANUAL OVERRIDE"):
-                    continue
+                # Skip entries with "MANUAL OVERRIDE" - use Index to match correctly if available
+                try:
+                    current_index = budo["Index"][i]
+                    # Check if RawData sheet has Index column
+                    if "Index" in budo_raw.columns:
+                        matching_row = budo_raw[budo_raw["Index"]
+                                                == current_index]
+                        if not matching_row.empty:
+                            if (matching_row["Submitted"].iloc[0] == "MANUAL OVERRIDE" or
+                                    matching_row["Anmelder Email"].iloc[0] == "MANUAL OVERRIDE"):
+                                continue
+                    else:
+                        # Fallback to row-based matching if Index column doesn't exist
+                        if (budo_raw["Submitted"][i] == "MANUAL OVERRIDE" or
+                                budo_raw["Anmelder Email"][i] == "MANUAL OVERRIDE"):
+                            continue
+                except (KeyError, IndexError):
+                    # If Index column doesn't exist or row doesn't exist, skip this check
+                    pass
 
                 # turn Anreise string into boolean, True = Zuganreise
                 if "Betreute Anreise" in str(budo["AnreiseText"][i]):
@@ -93,24 +108,47 @@ def process_excel():
                 else:
                     kid_budo_erfahrung = None
 
-                # cleaning Notfallkontake from RawData
-                cleaned_notfall = str(budo_raw["Notfall Kontakte"][i]).replace(
-                    "<p>", "").replace("</p>", "")
+                # cleaning Notfallkontake from RawData using Index to match correctly
+                # Try to get from budo (DataCleaner) first, then fall back to budo_raw (RawData)
+                try:
+                    cleaned_notfall = str(budo["Notfall_Kontakte"][i])
+                except KeyError:
+                    # If not found in budo, find matching record in budo_raw using Index
+                    try:
+                        current_index = budo["Index"][i]
+                        # Check if RawData sheet has Index column
+                        if "Index" in budo_raw.columns:
+                            # Find the row in budo_raw that has the same Index
+                            matching_row = budo_raw[budo_raw["Index"]
+                                                    == current_index]
+                            if not matching_row.empty:
+                                cleaned_notfall = str(matching_row["Notfall Kontakte"].iloc[0]).replace(
+                                    "<p>", "").replace("</p>", "")
+                            else:
+                                cleaned_notfall = ""
+                        else:
+                            # Fallback to row-based matching if Index column doesn't exist
+                            cleaned_notfall = str(budo_raw["Notfall Kontakte"][i]).replace(
+                                "<p>", "").replace("</p>", "")
+                    except (KeyError, IndexError):
+                        # If neither works, set to empty string
+                        cleaned_notfall = ""
 
                 # Handle birthday parsing
                 birthday_value = budo["Kind_Geburtsdatum"][i]
 
                 if isinstance(birthday_value, pd.Timestamp):
                     birthday_value = birthday_value.toordinal() + 366  # Convert to Excel ordinal
-                    birthday = from_excel_ordinal(float(birthday_value))
+                    birthday = from_excel_ordinal(float(birthday_value)).date()
                 else:
                     try:
                         # Try to parse as a float (Excel ordinal)
-                        birthday = from_excel_ordinal(float(birthday_value))
+                        birthday = from_excel_ordinal(
+                            float(birthday_value)).date()
                     except ValueError:
                         # If parsing as float fails, assume it's a date string in dd.mm.yyyy format
                         birthday = datetime.strptime(
-                            birthday_value, "%d.%m.%Y").strftime('%Y-%m-%d')
+                            birthday_value, "%d.%m.%Y").date()
 
                 # Create Kinder object
                 kid = models.Kinder(
@@ -177,8 +215,7 @@ def process_excel():
         kids_with_age = []
         for kid in processed_kids:
             try:
-                delta = today - \
-                    datetime.strptime(kid.kid_birthday, '%Y-%m-%d').date()
+                delta = today - kid.kid_birthday
                 age = round(delta.days / 365.25,
                             2) if kid.kid_birthday else None
                 kids_with_age.append((kid, age))

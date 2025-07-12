@@ -110,6 +110,7 @@ class ExcelProcessingTransactionTest(TestCase):
 
             # Create raw data sheet
             df_raw = pd.DataFrame({
+                'Index': ['T1-1', 'T1-2'],
                 'Submitted': ['2024-01-01', '2024-01-02'],
                 'Anmelder Email': ['parent@test.com', 'parent2@test.com'],
                 'Notfall Kontakte': ['Emergency Contact 1', 'Emergency Contact 2']
@@ -181,6 +182,7 @@ class ExcelProcessingTransactionTest(TestCase):
             })
 
             df_raw = pd.DataFrame({
+                'Index': ['T1-1'],
                 'Submitted': ['2024-01-01'],
                 'Anmelder Email': ['parent@test.com'],
                 'Notfall Kontakte': ['Emergency Contact 1']
