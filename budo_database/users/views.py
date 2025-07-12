@@ -1,15 +1,20 @@
+"""
+This is the user views.
+"""
+
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
 from django.http import HttpResponse
 from django.template import loader
-from .forms import LoginForm, RegisterForm
 from budo_app.forms import ProfilForm
+
 from budo_app.models import Kinder, Profil, Notizen, Geld, BetreuerinnenGeld
 from django.views.generic.edit import CreateView, UpdateView
 from django.urls import reverse_lazy
 from django.db.models import Sum
 from django.conf import settings
+from .forms import LoginForm, RegisterForm
 
 
 def sign_in(request):
@@ -114,15 +119,12 @@ def dashboard(request):
     ersties_count = ersties.count()
     einwöchige = kids.filter(turnus_dauer=1)
     einwöchige_count = einwöchige.count()
-    notizen = Notizen.objects.filter(kinder__turnus=active_turnus)
+    notizen = Notizen.objects.filter(
+        kinder__turnus=active_turnus).select_related('kinder', 'added_by')
     total_taschengeld = Geld.objects.filter(
         kinder__turnus=active_turnus).aggregate(Sum('amount'))['amount__sum'] or 0
     geld_transactions = Geld.objects.filter(
-        kinder__turnus=active_turnus).order_by('-date_added')
-    print("Debugging Geld transactions:")
-    for transaction in geld_transactions:
-        print(f"Transaction type: {type(transaction)}")
-        print(f"Transaction dir: {dir(transaction)}")
+        kinder__turnus=active_turnus).select_related('kinder', 'added_by').order_by('-date_added')
     geld_eingezahlt = Geld.objects.filter(
         kinder__turnus=active_turnus, amount__gt=0).aggregate(Sum('amount'))['amount__sum'] or 0
     betreuerinnen_geld_gesamt = BetreuerinnenGeld.objects.aggregate(Sum('amount'))[
