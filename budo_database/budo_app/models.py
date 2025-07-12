@@ -367,6 +367,17 @@ class Kinder(models.Model):
 
     class Meta:
         verbose_name_plural = "Kinder"
+        indexes = [
+            models.Index(fields=['turnus'], name='kinder_turnus_idx'),
+            models.Index(fields=['kid_index'], name='kinder_kid_index_idx'),
+            models.Index(fields=['anwesend'], name='kinder_anwesend_idx'),
+            models.Index(fields=['turnus', 'anwesend'],
+                         name='kinder_turnus_anwesend_idx'),
+            models.Index(fields=['budo_family'],
+                         name='kinder_budo_family_idx'),
+            models.Index(
+                fields=['kid_vorname', 'kid_nachname'], name='kinder_name_idx'),
+        ]
 
 
 class Notizen(models.Model):
@@ -456,6 +467,10 @@ class Turnus(models.Model):
 
     class Meta:
         verbose_name_plural = "Turnus"
+        indexes = [
+            models.Index(fields=['turnus_beginn'], name='turnus_beginn_idx'),
+            models.Index(fields=['turnus_nr'], name='turnus_nr_idx'),
+        ]
 
 
 class Schwerpunkte(models.Model):
@@ -531,6 +546,13 @@ class Schwerpunkte(models.Model):
 
     class Meta:
         verbose_name_plural = "Schwerpunkte"
+        indexes = [
+            models.Index(fields=['schwerpunktzeit'],
+                         name='schwerpunkte_zeit_idx'),
+            models.Index(fields=['ort'], name='schwerpunkte_ort_idx'),
+            models.Index(fields=['auslagern'],
+                         name='schwerpunkte_auslagern_idx'),
+        ]
 
 
 class Meal(models.Model):
@@ -717,6 +739,13 @@ def create_user_profil(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profil(sender, instance, **kwargs):
     instance.profil.save()
+
+
+@receiver(post_save, sender=Profil)
+def invalidate_profile_cache(sender, instance, **kwargs):
+    """Invalidate cached profile when it's updated"""
+    from .utils import invalidate_user_profile_cache
+    invalidate_user_profile_cache(instance.user)
 
 
 def extract_coordinates_from_maps_link(url):

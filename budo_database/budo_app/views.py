@@ -23,6 +23,7 @@ from copy import deepcopy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
 from django.views.decorators.http import require_POST
+from .utils import cache_user_profile, get_cached_user_profile, get_turnus_data_optimized, safe_get_object_or_404
 import os
 import json
 import toml
@@ -97,35 +98,35 @@ def upload_excel(request, turnus_id):
 
 
 @login_required
+@cache_user_profile
 def kids_list(request):
-    current_user = request.user
-    profil = Profil.objects.get(user=current_user)
-    active_turnus = profil.turnus
-    kids = models.Kinder.objects.filter(
-        turnus=active_turnus).order_by('kid_vorname')
-    schwerpunkte = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=active_turnus)
-    auslagerorte = Auslagerorte.objects.all()
+    if not request.user_profile:
+        messages.error(
+            request, "Profile not found. Please contact an administrator.")
+        return redirect('dashboard')
+
+    turnus_data = get_turnus_data_optimized(request.active_turnus)
     template = loader.get_template('kids_list.html')
     context = {
-        'kids': kids,
-        'schwerpunkte': schwerpunkte,
-        'auslagerorte': auslagerorte,
+        'kids': turnus_data['kids'],
+        'schwerpunkte': turnus_data['schwerpunkte'],
+        'auslagerorte': turnus_data['auslagerorte'],
     }
     return HttpResponse(template.render(context, request))
 
 
 @login_required
+@cache_user_profile
 def budo_families(request):
+    if not request.user_profile:
+        messages.error(
+            request, "Profile not found. Please contact an administrator.")
+        return redirect('dashboard')
+
+    turnus_data = get_turnus_data_optimized(request.active_turnus)
+    kids = turnus_data['kids']
+
     familien = {}
-    current_user = request.user
-    profil = Profil.objects.get(user=current_user)
-    active_turnus = profil.turnus
-    kids = models.Kinder.objects.filter(
-        turnus=active_turnus).order_by('kid_vorname')
-    schwerpunkte = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=active_turnus)
-    auslagerorte = Auslagerorte.objects.all()
     for kid in kids:
         family_name = kid.budo_family
         if family_name not in familien:
@@ -137,8 +138,8 @@ def budo_families(request):
 
     context = {
         'familien': familien,
-        'schwerpunkte': schwerpunkte,
-        'auslagerorte': auslagerorte,
+        'schwerpunkte': turnus_data['schwerpunkte'],
+        'auslagerorte': turnus_data['auslagerorte'],
         'kids': kids,
     }
     return render(request, 'budo_familien.html', context)
@@ -265,15 +266,19 @@ def update_notiz_abreise(request):
 
 
 @login_required
+@cache_user_profile
 def kid_details(request, id):
-    current_user = request.user
-    profil = Profil.objects.get(user=current_user)
-    active_turnus = profil.turnus
-    this_kid = models.Kinder.objects.get(id=id)
-    kids = models.Kinder.objects.filter(turnus=active_turnus).values()
-    schwerpunkte = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=active_turnus)
-    auslagerorte = Auslagerorte.objects.all()
+    if not request.user_profile:
+        messages.error(
+            request, "Profile not found. Please contact an administrator.")
+        return redirect('dashboard')
+
+    this_kid = safe_get_object_or_404(
+        models.Kinder, id=id, turnus=request.active_turnus)
+    turnus_data = get_turnus_data_optimized(request.active_turnus)
+    kids = turnus_data['kids']
+    schwerpunkte = turnus_data['schwerpunkte']
+    auslagerorte = turnus_data['auslagerorte']
     template = loader.get_template('kids_data.html')
     today = datetime.today().strftime('%Y-%m-%d')
     notizen = this_kid.notizen.all()
@@ -326,14 +331,15 @@ def kid_details(request, id):
 
 
 @login_required
+@cache_user_profile
 def check_in(request, id):
-    current_user = request.user
-    if not current_user.is_authenticated:
-        # Redirect to the login page if not authenticated
-        return redirect('login')
-    profil = Profil.objects.get(user=current_user)
-    active_turnus = profil.turnus
-    this_kid = models.Kinder.objects.get(id=id)
+    if not request.user_profile:
+        messages.error(
+            request, "Profile not found. Please contact an administrator.")
+        return redirect('dashboard')
+
+    this_kid = safe_get_object_or_404(
+        models.Kinder, id=id, turnus=request.active_turnus)
     original_kid = deepcopy(this_kid)
     kids = models.Kinder.objects.all().values()
     schwerpunkte = Schwerpunkte.objects.filter(
@@ -794,23 +800,22 @@ class MealUpdate(LoginRequiredMixin, UpdateView):
 
 
 @login_required
+@cache_user_profile
 def swp_dashboard(request):
     template = loader.get_template('swp-dashboard.html')
 
-    current_user = request.user
-    if not current_user.is_authenticated:
-        # Redirect to the login page if not authenticated
-        return redirect('login')
-    profil = Profil.objects.get(user=current_user)
-    active_turnus = profil.turnus
+    if not request.user_profile:
+        messages.error(
+            request, "Profile not found. Please contact an administrator.")
+        return redirect('dashboard')
 
-    kids = Kinder.objects.filter(turnus=active_turnus)
-
-    schwerpunkte = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=active_turnus)
+    turnus_data = get_turnus_data_optimized(request.active_turnus)
+    kids = turnus_data['kids']
+    schwerpunkte = turnus_data['schwerpunkte']
 
     schwerpunkte_u = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=active_turnus, schwerpunktzeit__woche='u')
+        schwerpunktzeit__turnus=request.active_turnus, schwerpunktzeit__woche='u'
+    ).select_related('ort', 'schwerpunktzeit').prefetch_related('betreuende')
 
     schwerpunkte_data = []
     for swp in schwerpunkte:
@@ -821,10 +826,10 @@ def swp_dashboard(request):
                 'koordinaten': swp.ort.koordinaten,
                 'kind': 'schwerpunkt',
             })
-    auslagerorte = Auslagerorte.objects.all()
+    auslagerorte = turnus_data['auslagerorte']
 
     context = {
-        "profil": profil,
+        "profil": request.user_profile,
         "kids": kids,
         "schwerpunkte": schwerpunkte,
         'orte_json': json.dumps({
@@ -997,8 +1002,8 @@ def update_schwerpunkt_wahl(request):
     choice_rank = data.get('choice_rank')
 
     try:
-        kid = Kinder.objects.get(id=kid_id)
-        schwerpunkt = Schwerpunkte.objects.get(id=swp_id)
+        kid = safe_get_object_or_404(Kinder, id=kid_id)
+        schwerpunkt = safe_get_object_or_404(Schwerpunkte, id=swp_id)
         schwerpunktzeit = schwerpunkt.schwerpunktzeit
 
         schwerpunkt_wahl, created = SchwerpunktWahl.objects.get_or_create(
@@ -1039,7 +1044,7 @@ def update_freunde(request):
     freunde = data.get('freunde')
 
     try:
-        kid = Kinder.objects.get(id=kid_id)
+        kid = safe_get_object_or_404(Kinder, id=kid_id)
         schwerpunkt_wahl = SchwerpunktWahl.objects.get(
             kind=kid, schwerpunktzeit__woche="w1")
         schwerpunkt_wahl.freunde = freunde

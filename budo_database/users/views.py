@@ -15,6 +15,7 @@ from django.urls import reverse_lazy
 from django.db.models import Sum
 from django.conf import settings
 from .forms import LoginForm, RegisterForm
+from budo_app.utils import cache_user_profile, get_cached_user_profile
 
 
 def sign_in(request):
@@ -81,16 +82,19 @@ def sign_up(request):
             return render(request, 'users/register.html', {'form': form})
 
 
+@cache_user_profile
 def dashboard(request):
     template = loader.get_template('users/dashboard.html')
-    current_user = request.user
-    if not current_user.is_authenticated:
-        # Redirect to the login page if not authenticated
+    if not request.user.is_authenticated:
         return redirect('login')
-    profil = Profil.objects.get(user=current_user)
-    active_turnus = profil.turnus
 
-    kids = Kinder.objects.filter(turnus=active_turnus)
+    if not request.user_profile:
+        messages.error(
+            request, "Profile not found. Please contact an administrator.")
+        return redirect('login')
+
+    kids = Kinder.objects.filter(turnus=request.active_turnus).select_related(
+        'turnus', 'spezial_familien')
     anzahl_kids = kids.count()
     kids_zug_anreise_count = kids.filter(zug_anreise=True).count()
     kids_zug_abreise_count = kids.filter(zug_abreise=True).count()
@@ -108,9 +112,9 @@ def dashboard(request):
                       and (kid.get_alter() > 14.8))], key=lambda kid: kid.get_alter())
     geburtstage = len(geburtstagskinder)
     eingecheckte_kids = kids.filter(anwesend=True).count()
-    team = Profil.objects.filter(turnus=active_turnus).annotate(
+    team = Profil.objects.filter(turnus=request.active_turnus).annotate(
         total_betreuerinnen_geld=Sum('betreuerinnen_geld__amount')
-    )
+    ).select_related('user')
     medikamente = [kid for kid in kids if kid.get_clean_drugs()]
     gesundheit = [kid for kid in kids if kid.get_clean_illness()]
     kids_attention = [kid for kid in kids if (
@@ -120,18 +124,18 @@ def dashboard(request):
     einwöchige = kids.filter(turnus_dauer=1)
     einwöchige_count = einwöchige.count()
     notizen = Notizen.objects.filter(
-        kinder__turnus=active_turnus).select_related('kinder', 'added_by')
+        kinder__turnus=request.active_turnus).select_related('kinder', 'added_by')
     total_taschengeld = Geld.objects.filter(
-        kinder__turnus=active_turnus).aggregate(Sum('amount'))['amount__sum'] or 0
+        kinder__turnus=request.active_turnus).aggregate(Sum('amount'))['amount__sum'] or 0
     geld_transactions = Geld.objects.filter(
-        kinder__turnus=active_turnus).select_related('kinder', 'added_by').order_by('-date_added')
+        kinder__turnus=request.active_turnus).select_related('kinder', 'added_by').order_by('-date_added')
     geld_eingezahlt = Geld.objects.filter(
-        kinder__turnus=active_turnus, amount__gt=0).aggregate(Sum('amount'))['amount__sum'] or 0
+        kinder__turnus=request.active_turnus, amount__gt=0).aggregate(Sum('amount'))['amount__sum'] or 0
     betreuerinnen_geld_gesamt = BetreuerinnenGeld.objects.aggregate(Sum('amount'))[
         'amount__sum'] or 0
     betreuerinnen_geld = BetreuerinnenGeld.objects.all()
     context = {
-        "profil": profil,
+        "profil": request.user_profile,
         "kids": kids,
         "kids_zug_anreise_count": kids_zug_anreise_count,
         "kids_zug_abreise_count": kids_zug_abreise_count,

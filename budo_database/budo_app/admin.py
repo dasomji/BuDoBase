@@ -54,6 +54,10 @@ class KinderAdminForm(forms.ModelForm):
 class KinderAdmin(admin.ModelAdmin):
     list_display = ("__str__", "turnus")
     form = KinderAdminForm
+    list_select_related = ('turnus', 'spezial_familien')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('turnus', 'spezial_familien')
 
 
 class KinderInline(admin.TabularInline):
@@ -141,6 +145,10 @@ class SchwerpunkteAdmin(admin.ModelAdmin):
     list_display = ("__str__", "ort", "display_betreuende",
                     "schwerpunktzeit", "get_turnus", "auslagern", "get_kids_count")
     inlines = [KinderInline, MealInline]
+    list_select_related = ('ort', 'schwerpunktzeit')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('ort', 'schwerpunktzeit').prefetch_related('betreuende', 'swp_kinder')
 
     def display_betreuende(self, obj):
         return ", ".join([str(betreuer) for betreuer in obj.betreuende.all()])
