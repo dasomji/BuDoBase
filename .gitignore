@@ -137,3 +137,8 @@ GitHub.sublime-settings
 !.vscode/extensions.json 
 .history
 .DS_Store
+
+#Static files collected for production
+staticfiles/
+
+budo_database/budobase_datamodel.png
