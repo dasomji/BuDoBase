@@ -122,9 +122,8 @@ class Kinder(models.Model):
     schimmkenntnisse = models.CharField(max_length=255, null=True)
     haftpflichtversicherung = models.CharField(max_length=255, null=True)
     budo_erfahrung = models.BooleanField(null=True)
-    anmerkung_buchung = models.CharField(
-        max_length=1000, null=True, default=None)
-    anmerkung = models.CharField(max_length=1000, null=True)
+    anmerkung_buchung = models.TextField(null=True, blank=True)
+    anmerkung = models.TextField(null=True, blank=True)
     turnus = models.ForeignKey("Turnus", on_delete=models.SET_NULL, null=True)
 
     # familie
@@ -139,8 +138,8 @@ class Kinder(models.Model):
     rechnung_plz = models.IntegerField(null=True, default=None)
     rechnung_ort = models.CharField(max_length=255)
     rechnung_land = models.CharField(max_length=255)
-    notfall_kontakte = models.CharField(
-        max_length=500, null=True)  # import from rawdata
+    notfall_kontakte = models.TextField(
+        null=True, blank=True)  # import from rawdata
 
     # health
 
