@@ -151,10 +151,10 @@ class Kinder(models.Model):
     vegetarisch = models.CharField(max_length=255, null=True, blank=True)
     special_food_description = models.CharField(
         max_length=255, null=True, blank=True)
-    drugs = models.CharField(max_length=255, null=True, blank=True)
-    illness = models.CharField(max_length=255, null=True, blank=True)
-    rezeptfreie_medikamente = models.CharField(
-        max_length=255, null=True, blank=True)
+    drugs = models.TextField(null=True, blank=True)
+    illness = models.TextField(null=True, blank=True)
+    rezeptfreie_medikamente = models.TextField(
+        null=True, blank=True)
     rezept_medikamente = models.CharField(
         max_length=255, null=True, blank=True)
     swimmer = models.CharField(
