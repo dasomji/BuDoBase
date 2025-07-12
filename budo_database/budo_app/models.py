@@ -140,7 +140,7 @@ class Kinder(models.Model):
     rechnung_ort = models.CharField(max_length=255)
     rechnung_land = models.CharField(max_length=255)
     notfall_kontakte = models.CharField(
-        max_length=255, null=True)  # import from rawdata
+        max_length=500, null=True)  # import from rawdata
 
     # health
 
