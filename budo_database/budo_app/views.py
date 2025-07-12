@@ -23,6 +23,7 @@ from copy import deepcopy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
 from django.views.decorators.http import require_POST
+from django.db import transaction
 from .utils import cache_user_profile, get_cached_user_profile, get_turnus_data_optimized, safe_get_object_or_404
 import os
 import json
@@ -74,7 +75,22 @@ def uploadFile(request):
         if upload_form.is_valid():
             turnus = upload_form.save()
             if 'uploadedFile' in request.FILES:
-                process_excel()
+                try:
+                    process_excel()
+                    messages.success(
+                        request, "Excel-Datei wurde erfolgreich verarbeitet.")
+                    logger.info(
+                        f"Excel file processed successfully for turnus {turnus.id}")
+                except Exception as e:
+                    logger.error(
+                        f"Excel processing failed for turnus {turnus.id}: {str(e)}")
+                    messages.error(
+                        request, f"Fehler beim Verarbeiten der Excel-Datei: {str(e)}")
+                    # Delete the uploaded file if processing failed
+                    if turnus.uploadedFile:
+                        turnus.uploadedFile.delete()
+                        turnus.uploadedFile = None
+                        turnus.save()
 
     else:
         upload_form = UploadForm()
@@ -89,9 +105,23 @@ def upload_excel(request, turnus_id):
         form = UploadForm(request.POST, request.FILES, instance=turnus)
         if form.is_valid():
             form.save()
-            process_excel()
-
-            return redirect('uploadFile')
+            try:
+                process_excel()
+                messages.success(
+                    request, "Excel-Datei wurde erfolgreich verarbeitet.")
+                logger.info(
+                    f"Excel file processed successfully for turnus {turnus.id}")
+                return redirect('uploadFile')
+            except Exception as e:
+                logger.error(
+                    f"Excel processing failed for turnus {turnus.id}: {str(e)}")
+                messages.error(
+                    request, f"Fehler beim Verarbeiten der Excel-Datei: {str(e)}")
+                # Delete the uploaded file if processing failed
+                if turnus.uploadedFile:
+                    turnus.uploadedFile.delete()
+                    turnus.uploadedFile = None
+                    turnus.save()
     else:
         form = UploadForm(instance=turnus)
     return render(request, 'upload_excel.html', {'form': form, 'turnus': turnus})
@@ -1103,48 +1133,57 @@ def upload_spezialfamilien(request):
             active_turnus = profil.turnus
 
             try:
-                df = pd.read_excel(xlsx_file)
+                with transaction.atomic():
+                    df = pd.read_excel(xlsx_file)
 
-                # Normalize column names to lower case and strip spaces
-                df.columns = df.columns.str.strip().str.lower()
+                    # Normalize column names to lower case and strip spaces
+                    df.columns = df.columns.str.strip().str.lower()
 
-                # Check for the 'index' and 'coven' columns
-                if 'index' not in df.columns or 'coven' not in df.columns:
-                    raise ValueError(
-                        "XLSX file must contain 'Index' and 'Coven' columns")
+                    # Check for the 'index' and 'coven' columns
+                    if 'index' not in df.columns or 'coven' not in df.columns:
+                        raise ValueError(
+                            "XLSX file must contain 'Index' and 'Coven' columns")
 
-                # Strip whitespace from all string columns
-                for column in df.select_dtypes(include=['object']).columns:
-                    df[column] = df[column].str.strip()
+                    # Strip whitespace from all string columns
+                    for column in df.select_dtypes(include=['object']).columns:
+                        df[column] = df[column].str.strip()
 
-                for _, row in df.iterrows():
-                    kid_index = str(row['index']).strip()
-                    coven_name = str(row['coven']).strip()
+                    updated_count = 0
+                    for _, row in df.iterrows():
+                        kid_index = str(row['index']).strip()
+                        coven_name = str(row['coven']).strip()
 
-                    # Skip rows with no index or summary rows
-                    if pd.isna(kid_index) or kid_index == '' or 'Kiddos' in kid_index:
-                        continue
+                        # Skip rows with no index or summary rows
+                        if pd.isna(kid_index) or kid_index == '' or 'Kiddos' in kid_index:
+                            continue
 
-                    try:
-                        # Assuming kid_index in the database is stored as "T2-39"
-                        kid = Kinder.objects.get(
-                            kid_index=kid_index, turnus=active_turnus)
+                        try:
+                            # Assuming kid_index in the database is stored as "T2-39"
+                            kid = Kinder.objects.get(
+                                kid_index=kid_index, turnus=active_turnus)
 
-                        spezial_familie, created = SpezialFamilien.objects.get_or_create(
-                            name=coven_name,
-                            turnus=active_turnus
-                        )
+                            spezial_familie, created = SpezialFamilien.objects.get_or_create(
+                                name=coven_name,
+                                turnus=active_turnus
+                            )
 
-                        kid.spezial_familien = spezial_familie
-                        kid.save()
+                            kid.spezial_familien = spezial_familie
+                            kid.save()
+                            updated_count += 1
 
-                    except Kinder.DoesNotExist:
-                        continue
+                        except Kinder.DoesNotExist:
+                            logger.warning(
+                                f"Kid with index {kid_index} not found, skipping")
+                            continue
 
-                messages.success(
-                    request, "Spezialfamilien wurden erfolgreich aktualisiert.")
-                return redirect('upload_csv')
+                    messages.success(
+                        request, f"Spezialfamilien wurden erfolgreich aktualisiert. {updated_count} Kinder wurden zugeordnet.")
+                    logger.info(
+                        f"Successfully updated {updated_count} kids with spezialfamilien")
+                    return redirect('upload_spezialfamilien')
             except Exception as e:
+                logger.error(
+                    f"Error processing spezialfamilien file: {str(e)}")
                 messages.error(
                     request, f"Ein Fehler ist aufgetreten: {str(e)}")
     else:
