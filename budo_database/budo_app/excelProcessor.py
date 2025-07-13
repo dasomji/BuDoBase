@@ -138,8 +138,8 @@ def process_excel():
                 birthday_value = budo["Kind_Geburtsdatum"][i]
 
                 if isinstance(birthday_value, pd.Timestamp):
-                    birthday_value = birthday_value.toordinal() + 366  # Convert to Excel ordinal
-                    birthday = from_excel_ordinal(float(birthday_value)).date()
+                    # Pandas already parsed the date correctly, just convert to date
+                    birthday = birthday_value.date()
                 else:
                     try:
                         # Try to parse as a float (Excel ordinal)
