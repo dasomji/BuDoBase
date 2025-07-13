@@ -65,8 +65,8 @@ BuDo Kid Info
             <div class="card-info-container">
                 <p><span class="label">Sozialversicherungsnummer</span>: {{Kinder.sozialversicherungsnr}}</p>
                 <p><span class="label">Krankheiten</span>:
-                    {% if x.get_clean_illness %}{{ x.get_clean_illness }}{% else %} --- {% endif%}</p>
-                <p><span class="label">Medikamente</span>: {% if x.get_clean_drugs %}{{ x.get_clean_drugs }}{% else %}
+                    {% if Kinder.get_clean_illness %}{{ Kinder.get_clean_illness }}{% else %} --- {% endif%}</p>
+                <p><span class="label">Medikamente</span>: {% if Kinder.get_clean_drugs %}{{ Kinder.get_clean_drugs }}{% else %}
                     --- {% endif%}</p>
                 <p><span class="label">Vegetarisch</span>: {{Kinder.vegetarisch}}</p>
                 <p><span class="label">Ernährungsvorgaben</span>: {{Kinder.special_food_description}}</p>
@@ -98,10 +98,10 @@ BuDo Kid Info
             </div>
             <div class="card-info-container">
                 <p><span class="label">Anmerkungen (Buchung)</span>:
-                    {% if x.get_clean_anmerkung_buchung %}{{ x.get_clean_anmerkung_buchung|safe }}{% else %} ---
+                    {% if Kinder.get_clean_anmerkung_buchung %}{{ Kinder.get_clean_anmerkung_buchung|safe }}{% else %} ---
                     {% endif%}</p>
                 <p><span class="label">Anmerkungen</span>:
-                    {% if x.get_clean_anmerkung %}{{ x.get_clean_anmerkung|safe }}{% else %} --- {% endif%}</p>
+                    {% if Kinder.get_clean_anmerkung %}{{ Kinder.get_clean_anmerkung|safe }}{% else %} --- {% endif%}</p>
                 {% comment %} <p><span class="label">Anmerkungen vom Organisator</span>: {{Kinder.anmerkung_team|safe}}
                 </p> {% endcomment %}
                 <ul>
