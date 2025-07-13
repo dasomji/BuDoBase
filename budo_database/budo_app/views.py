@@ -1084,6 +1084,42 @@ def update_freunde(request):
         return JsonResponse({'status': 'error', 'message': 'Kid or SchwerpunktWahl not found'})
 
 
+@csrf_exempt
+@require_POST
+def update_pfand(request):
+    """
+    AJAX endpoint to update pfand value for a kid.
+    Accepts 'increase' or 'decrease' action.
+    """
+    data = json.loads(request.body)
+    kid_id = data.get('id')
+    action = data.get('action')  # 'increase' or 'decrease'
+
+    try:
+        kid = Kinder.objects.get(id=kid_id)
+
+        if action == 'increase':
+            kid.pfand += 1
+        elif action == 'decrease':
+            # Ensure pfand doesn't go below 0
+            if kid.pfand > 0:
+                kid.pfand -= 1
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Invalid action'})
+
+        kid.save()
+
+        return JsonResponse({
+            'status': 'success',
+            'new_pfand': kid.pfand,
+            'remaining_taschengeld': kid.get_remaining_taschengeld()
+        })
+    except Kinder.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Kid not found'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+
 @login_required
 def happy_cleaning(request):
     # Get the current turnus (you might need to adjust this based on how you store the current turnus)

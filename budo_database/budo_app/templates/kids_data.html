@@ -1,7 +1,13 @@
 {% extends "master.html" %}
 
+{% load static %}
+
 {% block title %}
 BuDo Kid Info
+{% endblock %}
+
+{% block extrahead %}
+<script src="{% static 'js/pfand-controls.js' %}"></script>
 {% endblock %}
 
 {% block headertitle %}
@@ -117,8 +123,8 @@ BuDo Kid Info
             <div class="info-header-container">
                 <h2>
                     <span>Taschengeld: </span>
-                    <span class="{% if Kinder.get_taschengeld_sum < 5 %}alert{% endif %}">
-                        {{Kinder.get_taschengeld_sum|floatformat:2}}{% if Kinder.get_taschengeld_sum < 5 %}
+                    <span id="taschengeld-amount" class="{% if Kinder.get_remaining_taschengeld < 5 %}alert{% endif %}">
+                        {{Kinder.get_remaining_taschengeld|floatformat:2}}{% if Kinder.get_remaining_taschengeld < 5 %}
                         🚨{% endif %}
                     </span>
                 </h2>
@@ -133,6 +139,27 @@ BuDo Kid Info
                     <li>Dieses Kind ist arm.</li>
                     {% endfor %}
                 </ul>
+            </div>
+        </div>
+        <div class="card" id="pfand">
+            <div class="info-header-container">
+                <h2>
+                    <span>Pfand: </span>
+                    <span id="pfand-count">
+                        {{Kinder.pfand}}
+                    </span>
+                </h2>
+                {% include "components/openicon.html" %}
+            </div>
+            <div class="card-info-container">
+                <div class="pfand-controls">
+                    <button class="button pfand-btn" id="increase-pfand" data-kid-id="{{Kinder.id}}" data-action="increase">
+                        + Pfand
+                    </button>
+                    <button class="button pfand-btn" id="decrease-pfand" data-kid-id="{{Kinder.id}}" data-action="decrease">
+                        - Pfand
+                    </button>
+                </div>
             </div>
         </div>
     </div>

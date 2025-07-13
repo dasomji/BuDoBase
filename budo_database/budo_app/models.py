@@ -186,6 +186,7 @@ class Kinder(models.Model):
     came_back = models.DateField(null=True, blank=True)
     anmerkung_team = models.CharField(
         max_length=1000, null=True, default="", blank=True)
+    pfand = models.IntegerField(default=0)
 
     # Schwerpunkte & Familien
     schwerpunkte = models.ManyToManyField(
@@ -351,6 +352,10 @@ class Kinder(models.Model):
 
     def get_taschengeld_sum(self):
         return sum(t.amount for t in self.geld.all())
+
+    def get_remaining_taschengeld(self):
+        """Calculate remaining money after pfand deduction (0.25 per pfand)"""
+        return self.get_taschengeld_sum() - (self.pfand * 0.25)
 
     @classmethod
     def get_zugabreise_count(cls, turnus=None):

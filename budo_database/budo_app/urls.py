@@ -46,6 +46,7 @@ urlpatterns = [
     path('update-schwerpunkt-wahl/', views.update_schwerpunkt_wahl,
          name='update_schwerpunkt_wahl'),
     path('update_freunde/', views.update_freunde, name='update_freunde'),
+    path('update_pfand/', views.update_pfand, name='update_pfand'),
     path('happy-cleaning/', views.happy_cleaning, name='happy_cleaning'),
     path('kindergesamtzahl/', views.kindergesamtzahl, name='kindergesamtzahl'),
     path('budo_familien/', views.budo_families, name='budo_familien'),
