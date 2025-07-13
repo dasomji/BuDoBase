@@ -177,6 +177,33 @@ You can now access the admin panel at the url of your deployed application follo
 
 You can exit the Railway shell by typing `exit`.
 
+## HTML Entities Fix
+
+If you encounter HTML entities like `&#039;` (apostrophe) or `&quot;` (quotes) in your data instead of proper characters, this is likely due to Excel import data that wasn't properly decoded.
+
+### For New Data
+The Excel processor automatically decodes HTML entities when importing new data, so this should not be an issue for future imports.
+
+### For Existing Data
+Use the management command to fix existing records in the database:
+
+```bash
+# First, run in dry-run mode to see what would be changed
+python manage.py fix_html_entities --dry-run
+
+# Fix all records
+python manage.py fix_html_entities
+
+# Fix only records for a specific turnus
+python manage.py fix_html_entities --turnus-id 123
+```
+
+**Example:**
+- Before: `Er will unbedignt auf&#039;s BuDo fahren und`
+- After: `Er will unbedignt auf's BuDo fahren und`
+
+The command fixes common HTML entities in all text fields including names, notes, medical information, and contact details.
+
 ## Making changes to the project
 As always: check if your Virtual environment is activated (and yes, I repeat myself because I wasted too much time on errors because of this).
 

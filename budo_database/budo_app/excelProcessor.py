@@ -5,8 +5,22 @@ import os
 from datetime import datetime, timedelta
 from django.db import transaction
 import logging
+import html
 
 logger = logging.getLogger(__name__)
+
+
+def decode_html_entities(text):
+    """
+    Decode HTML entities in text fields.
+    Returns empty string if text is None or NaN.
+    """
+    if text is None or pd.isna(text):
+        return ""
+    text_str = str(text)
+    if text_str.lower().strip() in ("nan", "none", ""):
+        return ""
+    return html.unescape(text_str)
 
 
 def from_excel_ordinal(ordinal: float, _epoch0=datetime(1899, 12, 31)) -> datetime:
@@ -134,6 +148,9 @@ def process_excel():
                         # If neither works, set to empty string
                         cleaned_notfall = ""
 
+                # Decode HTML entities in notfall_kontakte
+                cleaned_notfall = decode_html_entities(cleaned_notfall)
+
                 # Handle birthday parsing
                 birthday_value = budo["Kind_Geburtsdatum"][i]
 
@@ -153,50 +170,71 @@ def process_excel():
                 # Create Kinder object
                 kid = models.Kinder(
                     kid_index=budo["Index"][i],
-                    kid_vorname=budo["Kind_Vorname"][i],
-                    kid_nachname=budo["Kind_Nachname"][i],
+                    kid_vorname=decode_html_entities(budo["Kind_Vorname"][i]),
+                    kid_nachname=decode_html_entities(
+                        budo["Kind_Nachname"][i]),
                     kid_birthday=birthday,
                     zug_anreise=kid_anreise,
                     zug_abreise=kid_abreise,
                     top_jugendticket=kid_jugendticket,
                     turnus_dauer=kid_dauer,
-                    geschwister=budo["Geschwister_am_Camp?"][i],
-                    zeltwunsch=budo["Zeltwunsch_mit_folgenden_anderen_Kindern"][i],
-                    schimmkenntnisse=budo["Schwimmkenntnisse"][i],
-                    haftpflichtversicherung=budo["Haftpflichtversicherung"][i],
+                    geschwister=decode_html_entities(
+                        budo["Geschwister_am_Camp?"][i]),
+                    zeltwunsch=decode_html_entities(
+                        budo["Zeltwunsch_mit_folgenden_anderen_Kindern"][i]),
+                    schimmkenntnisse=decode_html_entities(
+                        budo["Schwimmkenntnisse"][i]),
+                    haftpflichtversicherung=decode_html_entities(
+                        budo["Haftpflichtversicherung"][i]),
                     budo_erfahrung=kid_budo_erfahrung,
-                    anmerkung=budo["Anmerkungen"][i],
-                    anmerkung_buchung=budo["Anmerkungen_Buchung"][i],
+                    anmerkung=decode_html_entities(budo["Anmerkungen"][i]),
+                    anmerkung_buchung=decode_html_entities(
+                        budo["Anmerkungen_Buchung"][i]),
                     turnus=this_turnus,
 
                     # familie
-                    anmelder_vorname=budo["Anmelder_Vorname"][i],
-                    anmelder_nachname=budo["Anmelder_Nachname"][i],
-                    anmelde_organisation=budo["Organisation"][i],
-                    anmelder_email=budo["Anmelder_Email"][i],
-                    anmelder_mobil=budo["Anmelder_mobil"][i],
-                    hauptversichert_bei=budo[
-                        "Hauptversicherten_Person,_bei_der_das_Kind_mitversichert_ist_(Sozialversicherung)"][i],
+                    anmelder_vorname=decode_html_entities(
+                        budo["Anmelder_Vorname"][i]),
+                    anmelder_nachname=decode_html_entities(
+                        budo["Anmelder_Nachname"][i]),
+                    anmelde_organisation=decode_html_entities(
+                        budo["Organisation"][i]),
+                    anmelder_email=decode_html_entities(
+                        budo["Anmelder_Email"][i]),
+                    anmelder_mobil=decode_html_entities(
+                        budo["Anmelder_mobil"][i]),
+                    hauptversichert_bei=decode_html_entities(budo[
+                        "Hauptversicherten_Person,_bei_der_das_Kind_mitversichert_ist_(Sozialversicherung)"][i]),
                     notfall_kontakte=cleaned_notfall,
 
                     # rechnung
-                    rechnungsadresse=budo["Rechnungsadresse"][i],
+                    rechnungsadresse=decode_html_entities(
+                        budo["Rechnungsadresse"][i]),
                     rechnung_plz=int(budo["Rechnung_PLZ"][i]),
-                    rechnung_ort=budo["Rechnung_Ort"][i],
-                    rechnung_land=budo["Rechnung_Land"][i],
+                    rechnung_ort=decode_html_entities(budo["Rechnung_Ort"][i]),
+                    rechnung_land=decode_html_entities(
+                        budo["Rechnung_Land"][i]),
 
                     # health
-                    sex=budo["Kind_Geschlecht"][i],
-                    sozialversicherungsnr=budo["Sozialversicherung_Kind"][i],
-                    tetanusimpfung=budo["Tetanusimpfung"][i],
-                    zeckenimpfung=budo["Zeckenimpfung"][i],
-                    vegetarisch=budo["Vegetarisch"][i],
-                    special_food_description=budo["Ernährungsvorgaben"][i],
-                    drugs=budo["Muss_ihr_Kind_Medikamente_einnehmen?"][i],
-                    illness=budo["Hat_Ihr_Kind_eine_Krankheit,_körperliche_Einschränkungen_oder_besondere_Bedürfnisse?"][i],
-                    rezeptfreie_medikamente=budo["Stimmen_Sie_der_Verabreichung_von_NICHT-rezeptpflichtigen_Medikamenten_zu,_wie_zum_Beispiel_Salbe_bei_Insektenstich?"][i],
-                    rezept_medikamente=budo["Stimmen_Sie_der_Verabreichung_von_rezeptpflichtigen_Medikamenten_zu,_welche_Ihrem_Kind_von_einem_Arzt_verordnet_wurden?"][i],
-                    swimmer=budo["Schwimmkenntnisse"][i],
+                    sex=decode_html_entities(budo["Kind_Geschlecht"][i]),
+                    sozialversicherungsnr=decode_html_entities(
+                        budo["Sozialversicherung_Kind"][i]),
+                    tetanusimpfung=decode_html_entities(
+                        budo["Tetanusimpfung"][i]),
+                    zeckenimpfung=decode_html_entities(
+                        budo["Zeckenimpfung"][i]),
+                    vegetarisch=decode_html_entities(budo["Vegetarisch"][i]),
+                    special_food_description=decode_html_entities(
+                        budo["Ernährungsvorgaben"][i]),
+                    drugs=decode_html_entities(
+                        budo["Muss_ihr_Kind_Medikamente_einnehmen?"][i]),
+                    illness=decode_html_entities(
+                        budo["Hat_Ihr_Kind_eine_Krankheit,_körperliche_Einschränkungen_oder_besondere_Bedürfnisse?"][i]),
+                    rezeptfreie_medikamente=decode_html_entities(
+                        budo["Stimmen_Sie_der_Verabreichung_von_NICHT-rezeptpflichtigen_Medikamenten_zu,_wie_zum_Beispiel_Salbe_bei_Insektenstich?"][i]),
+                    rezept_medikamente=decode_html_entities(
+                        budo["Stimmen_Sie_der_Verabreichung_von_rezeptpflichtigen_Medikamenten_zu,_welche_Ihrem_Kind_von_einem_Arzt_verordnet_wurden?"][i]),
+                    swimmer=decode_html_entities(budo["Schwimmkenntnisse"][i]),
                 )
 
                 kid.save()
