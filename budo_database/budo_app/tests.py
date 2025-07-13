@@ -7,8 +7,6 @@ from django.db import transaction
 from unittest.mock import patch, MagicMock
 from django.contrib.auth.models import User
 import os
-import tempfile
-import pandas as pd
 from datetime import date
 
 
@@ -65,165 +63,12 @@ class ExcelProcessingTransactionTest(TestCase):
         self.real_test_file_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'test_files', 'detail_test.xlsx')
 
-    def test_transaction_rollback_on_error(self):
-        """Test that transaction is rolled back when Excel processing fails"""
-        # Create a mock Excel file that will cause an error during processing
-        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
-            # Create a simple Excel file with invalid data
-            df = pd.DataFrame({
-                'Index': ['T1-1', 'T1-2'],
-                'Kind_Vorname': ['Test', 'Test2'],
-                'Kind_Nachname': ['Kid', 'Kid2'],
-                # Invalid date will cause error
-                'Kind_Geburtsdatum': ['invalid_date', '2010-01-01'],
-                'AnreiseText': ['Normal', 'Normal'],
-                'AbreiseText': ['Normal', 'Normal'],
-                'Turnusdauer': ['ganz', 'ganz'],
-                'War_schon_mal_im_Bunten_Dorf': ['Nein', 'Nein'],
-                'Geschwister_am_Camp?': ['', ''],
-                'Zeltwunsch_mit_folgenden_anderen_Kindern': ['', ''],
-                'Schwimmkenntnisse': ['Ja', 'Ja'],
-                'Haftpflichtversicherung': ['Ja', 'Ja'],
-                'Anmerkungen': ['', ''],
-                'Anmerkungen_Buchung': ['', ''],
-                'Anmelder_Vorname': ['Parent', 'Parent2'],
-                'Anmelder_Nachname': ['One', 'Two'],
-                'Organisation': ['', ''],
-                'Anmelder_Email': ['parent@test.com', 'parent2@test.com'],
-                'Anmelder_mobil': ['123456789', '987654321'],
-                'Hauptversicherten_Person,_bei_der_das_Kind_mitversichert_ist_(Sozialversicherung)': ['Parent One', 'Parent Two'],
-                'Rechnungsadresse': ['Test Address', 'Test Address 2'],
-                'Rechnung_PLZ': [1010, 1020],
-                'Rechnung_Ort': ['Vienna', 'Vienna'],
-                'Rechnung_Land': ['Austria', 'Austria'],
-                'Kind_Geschlecht': ['m', 'f'],
-                'Sozialversicherung_Kind': ['123', '456'],
-                'Tetanusimpfung': ['Ja', 'Ja'],
-                'Zeckenimpfung': ['Ja', 'Ja'],
-                'Vegetarisch': ['Nein', 'Nein'],
-                'Ernährungsvorgaben': ['', ''],
-                'Muss_ihr_Kind_Medikamente_einnehmen?': ['Nein', 'Nein'],
-                'Hat_Ihr_Kind_eine_Krankheit,_körperliche_Einschränkungen_oder_besondere_Bedürfnisse?': ['Nein', 'Nein'],
-                'Stimmen_Sie_der_Verabreichung_von_NICHT-rezeptpflichtigen_Medikamenten_zu,_wie_zum_Beispiel_Salbe_bei_Insektenstich?': ['Ja', 'Ja'],
-                'Stimmen_Sie_der_Verabreichung_von_rezeptpflichtigen_Medikamenten_zu,_welche_Ihrem_Kind_von_einem_Arzt_verordnet_wurden?': ['Ja', 'Ja'],
-            })
-
-            # Create raw data sheet
-            df_raw = pd.DataFrame({
-                'Index': ['T1-1', 'T1-2'],
-                'Submitted': ['2024-01-01', '2024-01-02'],
-                'Anmelder Email': ['parent@test.com', 'parent2@test.com'],
-                'Notfall Kontakte': ['Emergency Contact 1', 'Emergency Contact 2']
-            })
-
-            with pd.ExcelWriter(tmp_file.name, engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name='DataCleaner',
-                            index=False, startrow=1)
-                df_raw.to_excel(writer, sheet_name='RawData', index=False)
-
-            # Set the file path for the turnus
-            self.turnus.uploadedFile.name = tmp_file.name
-            self.turnus.save()
-
-            # Count kids before processing
-            kids_before = Kinder.objects.count()
-
-            # Process Excel and expect it to fail
-            with self.assertRaises(Exception):
-                process_excel()
-
-            # Verify that no kids were created due to transaction rollback
-            kids_after = Kinder.objects.count()
-            self.assertEqual(kids_before, kids_after,
-                             "Transaction rollback failed - kids were created despite error")
-
-            # Clean up
-            os.unlink(tmp_file.name)
-
-    def test_successful_processing_commits_transaction(self):
-        """Test that successful Excel processing commits all data"""
-        # Create a valid Excel file
-        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
-            df = pd.DataFrame({
-                'Index': ['T1-1'],
-                'Kind_Vorname': ['Test'],
-                'Kind_Nachname': ['Kid'],
-                'Kind_Geburtsdatum': ['01.01.2010'],  # Valid date format
-                'AnreiseText': ['Normal'],
-                'AbreiseText': ['Normal'],
-                'Turnusdauer': ['ganz'],
-                'War_schon_mal_im_Bunten_Dorf': ['Nein'],
-                'Geschwister_am_Camp?': [''],
-                'Zeltwunsch_mit_folgenden_anderen_Kindern': [''],
-                'Schwimmkenntnisse': ['Ja'],
-                'Haftpflichtversicherung': ['Ja'],
-                'Anmerkungen': [''],
-                'Anmerkungen_Buchung': [''],
-                'Anmelder_Vorname': ['Parent'],
-                'Anmelder_Nachname': ['One'],
-                'Organisation': [''],
-                'Anmelder_Email': ['parent@test.com'],
-                'Anmelder_mobil': ['123456789'],
-                'Hauptversicherten_Person,_bei_der_das_Kind_mitversichert_ist_(Sozialversicherung)': ['Parent One'],
-                'Rechnungsadresse': ['Test Address'],
-                'Rechnung_PLZ': [1010],
-                'Rechnung_Ort': ['Vienna'],
-                'Rechnung_Land': ['Austria'],
-                'Kind_Geschlecht': ['m'],
-                'Sozialversicherung_Kind': ['123'],
-                'Tetanusimpfung': ['Ja'],
-                'Zeckenimpfung': ['Ja'],
-                'Vegetarisch': ['Nein'],
-                'Ernährungsvorgaben': [''],
-                'Muss_ihr_Kind_Medikamente_einnehmen?': ['Nein'],
-                'Hat_Ihr_Kind_eine_Krankheit,_körperliche_Einschränkungen_oder_besondere_Bedürfnisse?': ['Nein'],
-                'Stimmen_Sie_der_Verabreichung_von_NICHT-rezeptpflichtigen_Medikamenten_zu,_wie_zum_Beispiel_Salbe_bei_Insektenstich?': ['Ja'],
-                'Stimmen_Sie_der_Verabreichung_von_rezeptpflichtigen_Medikamenten_zu,_welche_Ihrem_Kind_von_einem_Arzt_verordnet_wurden?': ['Ja'],
-            })
-
-            df_raw = pd.DataFrame({
-                'Index': ['T1-1'],
-                'Submitted': ['2024-01-01'],
-                'Anmelder Email': ['parent@test.com'],
-                'Notfall Kontakte': ['Emergency Contact 1']
-            })
-
-            with pd.ExcelWriter(tmp_file.name, engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name='DataCleaner',
-                            index=False, startrow=1)
-                df_raw.to_excel(writer, sheet_name='RawData', index=False)
-
-            # Set the file path for the turnus
-            self.turnus.uploadedFile.name = tmp_file.name
-            self.turnus.save()
-
-            # Count kids before processing
-            kids_before = Kinder.objects.count()
-
-            # Process Excel successfully
-            process_excel()
-
-            # Verify that kids were created
-            kids_after = Kinder.objects.count()
-            self.assertEqual(kids_after, kids_before + 1,
-                             "Expected 1 kid to be created")
-
-            # Verify the kid was created with correct data
-            kid = Kinder.objects.last()
-            self.assertEqual(kid.kid_index, 'T1-1')
-            self.assertEqual(kid.kid_vorname, 'Test')
-            self.assertEqual(kid.kid_nachname, 'Kid')
-            self.assertEqual(kid.turnus, self.turnus)
-
-            # Clean up
-            os.unlink(tmp_file.name)
-
-    def test_real_excel_file_processing(self):
-        """Test that the real Excel file processes successfully with transactions"""
-        # Use the real test file
+        # Set the real file path for the turnus
         self.turnus.uploadedFile.name = self.real_test_file_path
         self.turnus.save()
 
+    def test_successful_processing_with_real_file(self):
+        """Test that the real Excel file processes successfully with transactions"""
         # Count kids before processing
         kids_before = Kinder.objects.count()
 
@@ -231,22 +76,153 @@ class ExcelProcessingTransactionTest(TestCase):
         try:
             process_excel()
             processing_successful = True
+            error_message = None
         except Exception as e:
             processing_successful = False
             error_message = str(e)
 
-        # If processing was successful, verify kids were created
-        if processing_successful:
-            kids_after = Kinder.objects.count()
-            self.assertGreater(kids_after, kids_before,
-                               "Expected kids to be created from the real Excel file")
-            print(
-                f"Successfully processed {kids_after - kids_before} kids from the real Excel file")
-        else:
-            # If processing failed, verify no partial data was left
-            kids_after = Kinder.objects.count()
-            self.assertEqual(kids_before, kids_after,
-                             f"Transaction rollback failed - partial data was left after error: {error_message}")
-            print(
-                f"Excel processing failed as expected with error: {error_message}")
-            print("Transaction rollback worked correctly - no partial data left")
+        # Verify processing was successful
+        self.assertTrue(processing_successful,
+                        f"Excel processing failed: {error_message}")
+
+        # Verify kids were created
+        kids_after = Kinder.objects.count()
+        self.assertGreater(kids_after, kids_before,
+                           "Expected kids to be created from the real Excel file")
+
+        # Verify the kids have correct data structure
+        kids = Kinder.objects.filter(turnus=self.turnus)
+        self.assertGreater(len(kids), 0, "No kids were created")
+
+        # Check that at least one kid has the expected fields
+        first_kid = kids.first()
+        self.assertIsNotNone(first_kid.kid_index)
+        self.assertIsNotNone(first_kid.kid_vorname)
+        self.assertIsNotNone(first_kid.kid_nachname)
+        self.assertEqual(first_kid.turnus, self.turnus)
+
+        print(
+            f"Successfully processed {kids_after - kids_before} kids from the real Excel file")
+
+    @patch('budo_app.models.Kinder.save')
+    def test_transaction_rollback_on_save_error(self, mock_save):
+        """Test that transaction is rolled back when kid.save() fails during processing"""
+        # Configure mock to raise an exception on the first save call
+        mock_save.side_effect = Exception("Database error during save")
+
+        # Count kids before processing
+        kids_before = Kinder.objects.count()
+
+        # Process Excel and expect it to fail
+        with self.assertRaises(Exception) as context:
+            process_excel()
+
+        # Verify the exception message contains our expected error
+        self.assertIn("Database error during save", str(context.exception))
+
+        # Verify that no kids were created due to transaction rollback
+        kids_after = Kinder.objects.count()
+        self.assertEqual(kids_before, kids_after,
+                         "Transaction rollback failed - kids were created despite error")
+
+        print("Transaction rollback test passed - no kids were created after save error")
+
+    @patch('pandas.read_excel')
+    def test_transaction_rollback_on_excel_read_error(self, mock_read_excel):
+        """Test that transaction is rolled back when Excel reading fails"""
+        # Configure mock to raise an exception when reading Excel
+        mock_read_excel.side_effect = Exception("Excel file is corrupted")
+
+        # Count kids before processing
+        kids_before = Kinder.objects.count()
+
+        # Process Excel and expect it to fail
+        with self.assertRaises(Exception) as context:
+            process_excel()
+
+        # Verify the exception message contains our expected error
+        self.assertIn("Excel file is corrupted", str(context.exception))
+
+        # Verify that no kids were created due to transaction rollback
+        kids_after = Kinder.objects.count()
+        self.assertEqual(kids_before, kids_after,
+                         "Transaction rollback failed - kids were created despite error")
+
+        print(
+            "Transaction rollback test passed - no kids were created after Excel read error")
+
+    @patch('budo_app.excelProcessor.from_excel_ordinal')
+    def test_transaction_rollback_on_date_parsing_error(self, mock_date_parser):
+        """Test that transaction is rolled back when date parsing fails during processing"""
+        # Configure mock to raise an exception during date parsing
+        mock_date_parser.side_effect = Exception("Invalid date format")
+
+        # Count kids before processing
+        kids_before = Kinder.objects.count()
+
+        # Process Excel and expect it to fail
+        with self.assertRaises(Exception) as context:
+            process_excel()
+
+        # Verify the exception message contains our expected error
+        self.assertIn("Invalid date format", str(context.exception))
+
+        # Verify that no kids were created due to transaction rollback
+        kids_after = Kinder.objects.count()
+        self.assertEqual(kids_before, kids_after,
+                         "Transaction rollback failed - kids were created despite error")
+
+        print("Transaction rollback test passed - no kids were created after date parsing error")
+
+    def test_transaction_rollback_on_missing_file(self):
+        """Test that transaction is rolled back when Excel file is missing"""
+        # Set a non-existent file path
+        self.turnus.uploadedFile.name = 'non_existent_file.xlsx'
+        self.turnus.save()
+
+        # Count kids before processing
+        kids_before = Kinder.objects.count()
+
+        # Process Excel and expect it to fail
+        with self.assertRaises(Exception) as context:
+            process_excel()
+
+        # Verify the exception is about file not found
+        self.assertIn("not found", str(context.exception))
+
+        # Verify that no kids were created due to transaction rollback
+        kids_after = Kinder.objects.count()
+        self.assertEqual(kids_before, kids_after,
+                         "Transaction rollback failed - kids were created despite error")
+
+        print(
+            "Transaction rollback test passed - no kids were created when file is missing")
+
+    @patch('budo_app.excelProcessor.models.Kinder')
+    def test_transaction_rollback_on_family_assignment_error(self, mock_kinder_class):
+        """Test that transaction is rolled back when family assignment fails"""
+        # Create a mock kid instance that will fail during family assignment
+        mock_kid = MagicMock()
+        # First save succeeds, second fails
+        mock_kid.save.side_effect = [
+            None, Exception("Family assignment failed")]
+
+        # Mock the Kinder class to return our mock instance
+        mock_kinder_class.return_value = mock_kid
+
+        # Count kids before processing
+        kids_before = Kinder.objects.count()
+
+        # Process Excel and expect it to fail during family assignment
+        with self.assertRaises(Exception) as context:
+            process_excel()
+
+        # Verify the exception is about family assignment
+        self.assertIn("Family assignment failed", str(context.exception))
+
+        # Verify that no kids were created due to transaction rollback
+        kids_after = Kinder.objects.count()
+        self.assertEqual(kids_before, kids_after,
+                         "Transaction rollback failed - kids were created despite error")
+
+        print("Transaction rollback test passed - no kids were created after family assignment error")
