@@ -373,7 +373,7 @@ def check_in(request, id):
     original_kid = deepcopy(this_kid)
     kids = models.Kinder.objects.all().values()
     schwerpunkte = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=active_turnus)
+        schwerpunktzeit__turnus=request.active_turnus)
     auslagerorte = Auslagerorte.objects.all()
     template = loader.get_template('check_in.html')
     today = datetime.today().strftime('%Y-%m-%d')
