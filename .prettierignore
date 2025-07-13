@@ -1,0 +1,14 @@
+# Ignore Django templates
+*.html
+budo_database/budo_app/templates/
+budo_database/users/templates/
+
+# Ignore Django static files
+staticfiles/
+static/
+
+# Ignore migrations
+*/migrations/
+
+# Ignore virtual environment
+bd_venv/
