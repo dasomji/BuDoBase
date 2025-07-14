@@ -211,6 +211,10 @@ select {
   background-color: var(--bg-blue);
 }
 
+.search-results a.search-result-link.selected div {
+  background-color: var(--bg-blue);
+}
+
 #myInput:focus + .search-results {
   display: block;
 }

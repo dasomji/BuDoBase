@@ -1,23 +1,23 @@
 <input class="w3-input w3-border w3-padding filter-table" type="text" placeholder="Suche..." id="myInput"
-  onclick="searchFunction()" onkeyup="searchFunction()">
+  onclick="searchFunction()" onkeyup="handleKeyUp(event)" onkeydown="handleKeyNavigation(event)">
 <div id="searchresults-container">
   <div id="searchResults" class="search-results">
     {% for x in kids %}
-    <a href="/kid_details/{{ x.id }}">
+    <a href="/kid_details/{{ x.id }}" class="search-result-link" tabindex="-1">
       <div class="search-item" id="name">
         {% if not x.anwesend %}❌ {% endif %}{{ x.kid_vorname }} {{ x.kid_nachname }}
       </div>
     </a>
     {% endfor %}
     {% for s in schwerpunkte %}
-    <a href="/schwerpunkt/{{ s.id }}">
+    <a href="/schwerpunkt/{{ s.id }}" class="search-result-link" tabindex="-1">
       <div class="search-item" id="schwerpunkt">
         🚀{{ s.swp_name }}
       </div>
     </a>
     {% endfor %}
     {% for a in auslagerorte %}
-    <a href="/auslagerorte/{{ a.id }}">
+    <a href="/auslagerorte/{{ a.id }}" class="search-result-link" tabindex="-1">
       <div class="search-item" id="auslagerort">
         🏡 {{ a.name }}
       </div>
@@ -27,18 +27,114 @@
 </div>
 <script>
   var timeoutId;
+  var currentSelectedIndex = -1;
+  var visibleResults = [];
 
   document.getElementById("myInput").addEventListener("focus", function () {
-    if (document.getElementById("searchResults").children.length < 15) {
+    updateVisibleResults();
+    if (visibleResults.length > 0 && visibleResults.length < 15) {
       document.getElementById("searchResults").style.display = "block";
     }
+    currentSelectedIndex = -1;
+    updateSelection();
   });
 
   document.getElementById("myInput").addEventListener("blur", function () {
     timeoutId = setTimeout(function () {
       document.getElementById("searchResults").style.display = "none";
-    }, 100); // delay, otherwise it gets hidden before a link can be clicked
+      currentSelectedIndex = -1;
+      updateSelection();
+    }, 150); // increased delay to allow clicking
   });
+
+  // Prevent blur when clicking on search results
+  document.getElementById("searchResults").addEventListener("mousedown", function (e) {
+    e.preventDefault();
+  });
+
+  // Handle clicks on search results
+  document.getElementById("searchResults").addEventListener("click", function (e) {
+    var link = e.target.closest('a.search-result-link');
+    if (link) {
+      clearTimeout(timeoutId);
+      window.location.href = link.href;
+    }
+  });
+
+  function updateVisibleResults() {
+    var div = document.getElementById("searchResults");
+    var links = div.getElementsByClassName("search-result-link");
+    visibleResults = [];
+    
+    for (var i = 0; i < links.length; i++) {
+      if (links[i].style.display !== "none") {
+        visibleResults.push(links[i]);
+      }
+    }
+  }
+
+  function updateSelection() {
+    var div = document.getElementById("searchResults");
+    var links = div.getElementsByClassName("search-result-link");
+    
+    // Remove previous selection
+    for (var i = 0; i < links.length; i++) {
+      links[i].classList.remove('selected');
+    }
+    
+    // Add selection to current item
+    if (currentSelectedIndex >= 0 && currentSelectedIndex < visibleResults.length) {
+      visibleResults[currentSelectedIndex].classList.add('selected');
+    }
+  }
+
+  function handleKeyUp(event) {
+    // Only trigger search for actual text input, not navigation keys
+    var navigationKeys = ['ArrowDown', 'ArrowUp', 'Enter', 'Escape', 'Tab', 'Shift', 'Control', 'Alt', 'Meta'];
+    
+    if (!navigationKeys.includes(event.key)) {
+      searchFunction();
+    }
+  }
+
+  function handleKeyNavigation(event) {
+    var searchResults = document.getElementById("searchResults");
+    
+    if (searchResults.style.display === "none") {
+      return;
+    }
+    
+    switch(event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        currentSelectedIndex = Math.min(currentSelectedIndex + 1, visibleResults.length - 1);
+        updateSelection();
+        return; // Prevent further event processing
+        
+      case 'ArrowUp':
+        event.preventDefault();
+        currentSelectedIndex = Math.max(currentSelectedIndex - 1, -1);
+        updateSelection();
+        return; // Prevent further event processing
+        
+      case 'Enter':
+        event.preventDefault();
+        if (currentSelectedIndex >= 0 && currentSelectedIndex < visibleResults.length) {
+          clearTimeout(timeoutId);
+          window.location.href = visibleResults[currentSelectedIndex].href;
+        }
+        return; // Prevent further event processing
+        
+      case 'Escape':
+        document.getElementById("searchResults").style.display = "none";
+        document.getElementById("myInput").blur();
+        currentSelectedIndex = -1;
+        updateSelection();
+        return; // Prevent further event processing
+    }
+  }
+
+  var lastSearchValue = "";
 
   function searchFunction() {
     var input, filter, div, a, i, txtValue;
@@ -47,6 +143,11 @@
     filter = input.value.toUpperCase();
     div = document.getElementById("searchResults");
     a = div.getElementsByClassName("search-item");
+    
+    // Only reset selection if the search text actually changed
+    var searchTextChanged = filter !== lastSearchValue;
+    lastSearchValue = filter;
+    
     for (i = 0; i < a.length; i++) {
       txtValue = a[i].textContent || a[i].innerText;
       if (txtValue.toUpperCase().indexOf(filter) > -1) {
@@ -56,12 +157,21 @@
         a[i].parentNode.style.display = "none";
       }
     }
+    
+    updateVisibleResults();
+    
+    // Only reset selection if search text changed or if current selection is out of bounds
+    if (searchTextChanged || currentSelectedIndex >= visibleResults.length) {
+      currentSelectedIndex = -1;
+      updateSelection();
+    }
+    
     displayResults(results);
   }
 
   function displayResults(results) {
     var searchResults = document.getElementById("searchResults");
-    if (results.length < 20) {
+    if (results.length < 20 && results.length > 0) {
       searchResults.style.display = "block";
     } else {
       searchResults.style.display = "none";
