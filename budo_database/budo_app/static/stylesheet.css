@@ -564,6 +564,19 @@ button.closebtn {
   border-radius: var(--corner-rad) var(--corner-rad) 0 0;
   padding: var(--m-padding) var(--xl-padding);
   cursor: pointer;
+  /* Accessibility improvements */
+  outline: none;
+  transition: background-color 0.2s ease;
+}
+
+.info-header-container:hover {
+  background-color: var(--dark-blue);
+  filter: brightness(1.1);
+}
+
+.info-header-container:focus-visible {
+  outline: 2px solid var(--button-color);
+  outline-offset: 2px;
 }
 
 .info-header-container div {
@@ -794,6 +807,29 @@ table #alter {
 
 .item-cell {
   text-align: center;
+}
+
+/* Budo Family styling for clickable elements */
+.budo_family {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-radius: var(--corner-rad);
+  padding: 2px 4px;
+}
+
+.budo_family:hover {
+  background-color: var(--button-color);
+}
+
+/* Filter feedback styling */
+.filter-feedback {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.filter-feedback button.clear-filter-btn:hover {
+  background-color: rgba(0,0,0,0.1) !important;
+  border-radius: 50% !important;
 }
 
 /*-----------Schwerpunkte---------*/
