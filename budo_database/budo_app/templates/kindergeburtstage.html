@@ -1,0 +1,83 @@
+{% extends "master.html" %}
+
+{% block title %}
+BuDo Kids Kindergeburtstage
+{% endblock %}
+
+{% block headertitle %}
+<h1>Kindergeburtstage</h1>
+{% endblock %}
+
+{% block content %}
+{% load static %}
+<script src="{% static 'js/filtertable.js' %}?v=2"></script>
+<div class="w3-container table-only" id="body-container">
+  {% include 'filter-table.html' %}
+  <div class="table-container">
+    <table class="" id="kids-table">
+      <tr class="table-header">
+        <th class="headcol">Name</th>
+        <th>DB-Geburtstag</th>
+        <th>SV-Geburtstag</th>
+        <th>Check</th>
+        <th>Notiz</th>
+      </tr>
+      {% for data in kids_with_birthday_data %}
+      <tr class="table_row w3-padding-large" data-kid-id="{{ data.kid.id }}">
+        <td class="text-cell headcol" id="name">
+          <a href="/kid_details/{{ data.kid.id }}">
+            {{ data.kid.kid_vorname }} {{ data.kid.kid_nachname }}{% if not data.kid.anwesend %} ❌{% endif %}
+          </a>
+        </td>
+        <td class="text-cell" data-sort="{% if data.database_birthday %}{{ data.database_birthday|date:"Y-m-d" }}{% else %}9999-12-31{% endif %}">
+          {% if data.database_birthday %}{{ data.database_birthday|date:"d.m.Y" }}{% else %}---{% endif %}
+        </td>
+        <td class="text-cell sv-birthday-cell" style="cursor: pointer;" 
+            data-sv-birthday="{% if data.sv_birthday %}{{ data.sv_birthday|date:"d.m.Y" }}{% endif %}"
+            data-sort="{% if data.sv_birthday %}{{ data.sv_birthday|date:"Y-m-d" }}{% else %}9999-12-31{% endif %}">
+          {% if data.sv_birthday %}{{ data.sv_birthday|date:"d.m.Y" }}{% else %}---{% endif %}
+        </td>
+        <td class="text-cell">
+          {% if data.database_birthday and data.sv_birthday %}
+            {% if data.birthdays_match %}✅{% else %}❌{% endif %}
+          {% else %}
+            ---
+          {% endif %}
+        </td>
+        <td class="text-cell">
+          <form method="post" style="display: inline-block;">
+            {% csrf_token %}
+            <input type="hidden" name="kid_id" value="{{ data.kid.id }}">
+            <input type="text" name="notiz" placeholder="Notiz..." class="w3-input birthday-notiz-input" 
+                   style="display: inline-block; width: 200px; margin-right: 5px;" id="notiz-{{ data.kid.id }}">
+            <button type="submit" class="button" style="display: inline-block;">Speichern</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add click functionality to SV-birthday cells
+    const svBirthdayCells = document.querySelectorAll('.sv-birthday-cell');
+    
+    svBirthdayCells.forEach(cell => {
+        cell.addEventListener('click', function() {
+            const svBirthday = this.getAttribute('data-sv-birthday');
+            if (svBirthday) {
+                const row = this.closest('tr');
+                const kidId = row.getAttribute('data-kid-id');
+                const notizInput = document.getElementById('notiz-' + kidId);
+                if (notizInput) {
+                    notizInput.value = 'SV-Geburtstag: ' + svBirthday;
+                    notizInput.focus();
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

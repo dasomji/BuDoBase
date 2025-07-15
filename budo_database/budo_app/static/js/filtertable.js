@@ -35,6 +35,11 @@
         
         const cell = row.children[columnIdx];
         
+        // Check for data-sort attribute first (for proper sorting of dates, etc.)
+        if (cell.dataset && cell.dataset.sort) {
+            return cell.dataset.sort;
+        }
+        
         // Handle special toggle switches
         if (cell.classList.contains('zug-toggle')) {
             const switchElement = cell.querySelector('.switch');

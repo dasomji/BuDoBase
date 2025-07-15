@@ -53,6 +53,7 @@ urlpatterns = [
     path('upload_spezialfamilien/', views.upload_spezialfamilien,
          name='upload_spezialfamilien'),
     path('spezial_familien/', views.spezial_familien, name='spezial_familien'),
+    path('kindergeburtstage/', views.kindergeburtstage, name='kindergeburtstage'),
     path('teamer/<int:id>/', views.teamer_details, name='teamer_details'),
 ]
 

@@ -145,6 +145,19 @@ class BetreuerinnenGeldForm(forms.ModelForm):
         model = BetreuerinnenGeld
         fields = ['amount', 'what']
         widgets = {
-            "amount": forms.NumberInput(attrs={'placeholder': 'Wieviel?'}),
-            "what": forms.TextInput(attrs={'placeholder': 'Wofür ist das Geld?'}),
+            'amount': forms.NumberInput(attrs={'class': 'w3-input', 'placeholder': 'Betrag in €', 'step': '0.01'}),
+            'what': forms.TextInput(attrs={'class': 'w3-input', 'placeholder': 'Beschreibung'})
+        }
+
+
+class BirthdayNotizForm(forms.ModelForm):
+    class Meta:
+        model = Notizen
+        fields = ['notiz']
+        widgets = {
+            "notiz": forms.TextInput(attrs={
+                'class': 'w3-input',
+                'placeholder': 'Geburtstagskorrektur...',
+                'id': 'birthday-notiz-input'
+            })
         }

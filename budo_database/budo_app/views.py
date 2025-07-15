@@ -18,7 +18,7 @@ from . import models
 from .models import Kinder, SpezialFamilien, Schwerpunkte, Meal, Profil, Auslagerorte, AuslagerorteImage, SchwerpunktWahl, Schwerpunktzeit, BetreuerinnenGeld
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, UpdateView, FormView
-from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm, GeldForm, CSVUploadForm, BetreuerinnenGeldForm
+from .forms import NotizForm, CheckInForm, UploadForm, CheckOutForm, MealChoiceForm, SchwerpunktForm, AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm, GeldForm, CSVUploadForm, BetreuerinnenGeldForm, BirthdayNotizForm
 from copy import deepcopy
 from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
@@ -1277,3 +1277,87 @@ def betreuerinnen_geld_create(request):
     else:
         form = BetreuerinnenGeldForm()
     return render(request, 'budo_app/betreuerinnen_geld_form.html', {'form': form})
+
+
+@login_required
+@cache_user_profile
+def kindergeburtstage(request):
+    if not request.user_profile:
+        messages.error(
+            request, "Profile not found. Please contact an administrator.")
+        return redirect('dashboard')
+
+    turnus_data = get_turnus_data_optimized(request.active_turnus)
+    kids = turnus_data['kids']
+
+    # Process birthday data for each kid
+    kids_with_birthday_data = []
+    for kid in kids:
+        birthday_data = {
+            'kid': kid,
+            'database_birthday': kid.kid_birthday,
+            'sv_birthday': None,
+            'birthdays_match': False
+        }
+
+        # Calculate birthday from sozialversicherungsnr if available
+        if kid.sozialversicherungsnr:
+            try:
+                # Remove spaces and any non-digit characters for sanitization
+                cleaned_sv = ''.join(
+                    filter(str.isdigit, kid.sozialversicherungsnr))
+
+                # Austrian SV format: XXXX DDMMYY (first 4 digits + 6 digit birthday)
+                if len(cleaned_sv) >= 10:
+                    # Get last 6 digits: DDMMYY
+                    birthday_part = cleaned_sv[-6:]
+                    day = int(birthday_part[:2])
+                    month = int(birthday_part[2:4])
+                    year_short = int(birthday_part[4:6])
+
+                    # Determine full year (assuming 2000s if under 50, 1900s if 50+)
+                    if year_short < 50:
+                        year = 2000 + year_short
+                    else:
+                        year = 1900 + year_short
+
+                    from datetime import date
+                    sv_birthday = date(year, month, day)
+                    birthday_data['sv_birthday'] = sv_birthday
+
+                    # Check if birthdays match
+                    if kid.kid_birthday and sv_birthday == kid.kid_birthday:
+                        birthday_data['birthdays_match'] = True
+
+            except (ValueError, TypeError, IndexError):
+                # Invalid date in sozialversicherungsnr
+                pass
+
+        kids_with_birthday_data.append(birthday_data)
+
+    # Handle note submission
+    if request.method == 'POST':
+        kid_id = request.POST.get('kid_id')
+        birthday_notiz_form = BirthdayNotizForm(request.POST)
+
+        if kid_id and birthday_notiz_form.is_valid():
+            notiz = birthday_notiz_form.cleaned_data.get('notiz')
+            if notiz:
+                kid = safe_get_object_or_404(
+                    Kinder, id=kid_id, turnus=request.active_turnus)
+                new_notiz = birthday_notiz_form.save(commit=False)
+                new_notiz.kinder = kid
+                new_notiz.added_by = request.user
+                new_notiz.save()
+                return redirect('kindergeburtstage')
+
+    birthday_notiz_form = BirthdayNotizForm()
+
+    context = {
+        'kids_with_birthday_data': kids_with_birthday_data,
+        'birthday_notiz_form': birthday_notiz_form,
+        'schwerpunkte': turnus_data['schwerpunkte'],
+        'auslagerorte': turnus_data['auslagerorte'],
+    }
+
+    return render(request, 'kindergeburtstage.html', context)
