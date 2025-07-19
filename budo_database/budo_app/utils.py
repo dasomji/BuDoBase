@@ -2,7 +2,7 @@ from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from functools import wraps
-from .models import Profil, Kinder, Schwerpunkte, Auslagerorte
+from .models import Profil, Kinder, Schwerpunkte, Auslagerorte, Turnus
 
 
 def get_cached_user_profile(user):
@@ -30,6 +30,21 @@ def invalidate_user_profile_cache(user):
     """Invalidate cached user profile when profile is updated."""
     cache_key = f"user_profile_{user.id}"
     cache.delete(cache_key)
+
+
+def invalidate_turnus_cache(turnus):
+    """Invalidate cached turnus data when turnus-related data is updated."""
+    if turnus:
+        cache_key = f"turnus_data_{turnus.id}"
+        cache.delete(cache_key)
+
+
+def invalidate_all_turnus_caches():
+    """Invalidate all turnus caches - use when unsure which turnus was affected."""
+    # This is a more aggressive approach - clears all turnus caches
+    # Use sparingly, only when you can't determine the specific turnus
+    for turnus in Turnus.objects.all():
+        invalidate_turnus_cache(turnus)
 
 
 def cache_user_profile(view_func):
