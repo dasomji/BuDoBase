@@ -24,7 +24,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from itertools import groupby
 from django.views.decorators.http import require_POST
 from django.db import transaction
-from .utils import cache_user_profile, get_cached_user_profile, get_turnus_data_optimized, safe_get_object_or_404
+from .utils import get_user_profile, get_turnus_data_optimized, safe_get_object_or_404
 import os
 import json
 import toml
@@ -128,14 +128,14 @@ def upload_excel(request, turnus_id):
 
 
 @login_required
-@cache_user_profile
 def kids_list(request):
-    if not request.user_profile:
+    user_profile = get_user_profile(request.user)
+    if not user_profile:
         messages.error(
             request, "Profile not found. Please contact an administrator.")
         return redirect('dashboard')
 
-    turnus_data = get_turnus_data_optimized(request.active_turnus)
+    turnus_data = get_turnus_data_optimized(user_profile.turnus)
     template = loader.get_template('kids_list.html')
     context = {
         'kids': turnus_data['kids'],
@@ -146,14 +146,14 @@ def kids_list(request):
 
 
 @login_required
-@cache_user_profile
 def budo_families(request):
-    if not request.user_profile:
+    user_profile = get_user_profile(request.user)
+    if not user_profile:
         messages.error(
             request, "Profile not found. Please contact an administrator.")
         return redirect('dashboard')
 
-    turnus_data = get_turnus_data_optimized(request.active_turnus)
+    turnus_data = get_turnus_data_optimized(user_profile.turnus)
     kids = turnus_data['kids']
 
     familien = {}
@@ -296,9 +296,9 @@ def update_notiz_abreise(request):
 
 
 @login_required
-@cache_user_profile
 def kid_details(request, id):
-    if not request.user_profile:
+    user_profile = get_user_profile(request.user)
+    if not user_profile:
         messages.error(
             request, "Profile not found. Please contact an administrator.")
         return redirect('dashboard')
@@ -361,9 +361,9 @@ def kid_details(request, id):
 
 
 @login_required
-@cache_user_profile
 def check_in(request, id):
-    if not request.user_profile:
+    user_profile = get_user_profile(request.user)
+    if not user_profile:
         messages.error(
             request, "Profile not found. Please contact an administrator.")
         return redirect('dashboard')
@@ -830,21 +830,20 @@ class MealUpdate(LoginRequiredMixin, UpdateView):
 
 
 @login_required
-@cache_user_profile
 def swp_dashboard(request):
     template = loader.get_template('swp-dashboard.html')
-
-    if not request.user_profile:
+    user_profile = get_user_profile(request.user)
+    if not user_profile:
         messages.error(
             request, "Profile not found. Please contact an administrator.")
         return redirect('dashboard')
 
-    turnus_data = get_turnus_data_optimized(request.active_turnus)
+    turnus_data = get_turnus_data_optimized(user_profile.turnus)
     kids = turnus_data['kids']
     schwerpunkte = turnus_data['schwerpunkte']
 
     schwerpunkte_u = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=request.active_turnus, schwerpunktzeit__woche='u'
+        schwerpunktzeit__turnus=user_profile.turnus, schwerpunktzeit__woche='u'
     ).select_related('ort', 'schwerpunktzeit').prefetch_related('betreuende')
 
     schwerpunkte_data = []
@@ -859,7 +858,7 @@ def swp_dashboard(request):
     auslagerorte = turnus_data['auslagerorte']
 
     context = {
-        "profil": request.user_profile,
+        "profil": user_profile,
         "kids": kids,
         "schwerpunkte": schwerpunkte,
         'orte_json': json.dumps({
@@ -1280,9 +1279,9 @@ def betreuerinnen_geld_create(request):
 
 
 @login_required
-@cache_user_profile
 def kindergeburtstage(request):
-    if not request.user_profile:
+    user_profile = get_user_profile(request.user)
+    if not user_profile:
         messages.error(
             request, "Profile not found. Please contact an administrator.")
         return redirect('dashboard')
@@ -1364,12 +1363,12 @@ def kindergeburtstage(request):
 
 
 @login_required
-@cache_user_profile
 @require_POST
 @csrf_protect
 def update_birthdays_from_sv(request):
     """Update all kids' birthdays based on their sozialversicherungsnr"""
-    if not request.user_profile:
+    user_profile = get_user_profile(request.user)
+    if not user_profile:
         messages.error(
             request, "Profile not found. Please contact an administrator.")
         return redirect('dashboard')
