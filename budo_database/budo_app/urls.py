@@ -54,6 +54,8 @@ urlpatterns = [
          name='upload_spezialfamilien'),
     path('spezial_familien/', views.spezial_familien, name='spezial_familien'),
     path('kindergeburtstage/', views.kindergeburtstage, name='kindergeburtstage'),
+    path('update-birthdays-from-sv/', views.update_birthdays_from_sv,
+         name='update_birthdays_from_sv'),
     path('teamer/<int:id>/', views.teamer_details, name='teamer_details'),
 ]
 

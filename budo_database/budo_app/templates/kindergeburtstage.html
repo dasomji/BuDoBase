@@ -8,6 +8,12 @@ BuDo Kids Kindergeburtstage
 <h1>Kindergeburtstage</h1>
 {% endblock %}
 
+{% block headerbutton %}
+<button id="update-birthdays-btn" class="button" style="background-color: #4CAF50;">
+  🔄 Alle Geburtstage von SV-Nummern aktualisieren
+</button>
+{% endblock %}
+
 {% block content %}
 {% load static %}
 <script src="{% static 'js/filtertable.js' %}?v=2"></script>
@@ -78,6 +84,76 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Add click functionality to update birthdays button
+    const updateButton = document.getElementById('update-birthdays-btn');
+    if (updateButton) {
+        updateButton.addEventListener('click', function() {
+            // Count how many birthdays would be updated
+            const rows = document.querySelectorAll('tr.table_row');
+            let updateCount = 0;
+            
+            rows.forEach(row => {
+                const dbBirthdayCell = row.children[1]; // DB-Geburtstag column
+                const svBirthdayCell = row.children[2]; // SV-Geburtstag column
+                const checkCell = row.children[3]; // Check column
+                
+                if (checkCell && checkCell.textContent.trim() === '❌') {
+                    updateCount++;
+                }
+            });
+            
+            if (updateCount === 0) {
+                alert('Keine Geburtstage müssen aktualisiert werden. Alle SV-Geburtstage stimmen bereits mit den DB-Geburtstagen überein.');
+                return;
+            }
+            
+            const confirmMessage = `Sind Sie sicher, dass Sie ${updateCount} Geburtstage mit den berechneten SV-Geburtstagen aktualisieren möchten?\n\nDieser Vorgang kann nicht rückgängig gemacht werden.`;
+            
+            if (confirm(confirmMessage)) {
+                // Create and submit form
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{% url "update_birthdays_from_sv" %}';
+                
+                // Add CSRF token
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (csrfToken) {
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = csrfToken.value;
+                    form.appendChild(csrfInput);
+                } else {
+                    // Get CSRF token from cookies
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = getCookie('csrftoken');
+                    form.appendChild(csrfInput);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+    
+    // Helper function to get cookie value
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 });
 </script>
 {% endblock %} 

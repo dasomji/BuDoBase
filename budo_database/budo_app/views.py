@@ -1361,3 +1361,82 @@ def kindergeburtstage(request):
     }
 
     return render(request, 'kindergeburtstage.html', context)
+
+
+@login_required
+@cache_user_profile
+@require_POST
+@csrf_protect
+def update_birthdays_from_sv(request):
+    """Update all kids' birthdays based on their sozialversicherungsnr"""
+    if not request.user_profile:
+        messages.error(
+            request, "Profile not found. Please contact an administrator.")
+        return redirect('dashboard')
+
+    turnus_data = get_turnus_data_optimized(request.active_turnus)
+    kids = turnus_data['kids']
+
+    updated_count = 0
+    error_count = 0
+    errors = []
+
+    try:
+        with transaction.atomic():
+            for kid in kids:
+                if kid.sozialversicherungsnr:
+                    try:
+                        # Remove spaces and any non-digit characters for sanitization
+                        cleaned_sv = ''.join(
+                            filter(str.isdigit, kid.sozialversicherungsnr))
+
+                        # Austrian SV format: XXXX DDMMYY (first 4 digits + 6 digit birthday)
+                        if len(cleaned_sv) >= 10:
+                            # Get last 6 digits: DDMMYY
+                            birthday_part = cleaned_sv[-6:]
+                            day = int(birthday_part[:2])
+                            month = int(birthday_part[2:4])
+                            year_short = int(birthday_part[4:6])
+
+                            # Determine full year (assuming 2000s if under 50, 1900s if 50+)
+                            if year_short < 50:
+                                year = 2000 + year_short
+                            else:
+                                year = 1900 + year_short
+
+                            from datetime import date
+                            sv_birthday = date(year, month, day)
+
+                            # Only update if the birthday is different or missing
+                            if kid.kid_birthday != sv_birthday:
+                                old_birthday = kid.kid_birthday
+                                kid.kid_birthday = sv_birthday
+                                kid.save()
+                                updated_count += 1
+
+                                # Log the change
+                                logger.info(f"Updated birthday for {kid.kid_vorname} {kid.kid_nachname} "
+                                            f"from {old_birthday} to {sv_birthday}")
+
+                    except (ValueError, TypeError, IndexError) as e:
+                        error_count += 1
+                        error_msg = f"Error processing {kid.kid_vorname} {kid.kid_nachname}: {str(e)}"
+                        errors.append(error_msg)
+                        logger.error(error_msg)
+
+            # Success message
+            if updated_count > 0:
+                messages.success(
+                    request, f"Successfully updated {updated_count} birthdays from SV numbers.")
+            else:
+                messages.info(request, "No birthdays needed updating.")
+
+            if error_count > 0:
+                messages.warning(
+                    request, f"{error_count} errors occurred during update. Check logs for details.")
+
+    except Exception as e:
+        logger.error(f"Transaction failed during birthday update: {str(e)}")
+        messages.error(request, f"Update failed: {str(e)}")
+
+    return redirect('kindergeburtstage')
