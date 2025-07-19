@@ -745,6 +745,59 @@ def save_user_profil(sender, instance, **kwargs):
     instance.profil.save()
 
 
+@receiver(post_save, sender=Profil)
+def invalidate_profile_cache(sender, instance, **kwargs):
+    """Invalidate cached profile when it's updated"""
+    from .utils import invalidate_user_profile_cache
+    invalidate_user_profile_cache(instance.user)
+
+
+# Cache invalidation for turnus data
+@receiver(post_save, sender=Kinder)
+@receiver(post_delete, sender=Kinder)
+def invalidate_kinder_turnus_cache(sender, instance, **kwargs):
+    """Invalidate turnus cache when Kinder data changes"""
+    from .utils import invalidate_turnus_cache
+    if instance.turnus:
+        invalidate_turnus_cache(instance.turnus)
+
+
+@receiver(post_save, sender=Schwerpunkte)
+@receiver(post_delete, sender=Schwerpunkte)
+def invalidate_schwerpunkte_turnus_cache(sender, instance, **kwargs):
+    """Invalidate turnus cache when Schwerpunkte data changes"""
+    from .utils import invalidate_turnus_cache
+    if instance.schwerpunktzeit and instance.schwerpunktzeit.turnus:
+        invalidate_turnus_cache(instance.schwerpunktzeit.turnus)
+
+
+@receiver(post_save, sender=Auslagerorte)
+@receiver(post_delete, sender=Auslagerorte)
+def invalidate_auslagerorte_turnus_cache(sender, instance, **kwargs):
+    """Invalidate turnus cache when Auslagerorte data changes"""
+    from .utils import invalidate_all_turnus_caches
+    # Auslagerorte can affect multiple turnuses, so invalidate all
+    invalidate_all_turnus_caches()
+
+
+@receiver(post_save, sender=Notizen)
+@receiver(post_delete, sender=Notizen)
+def invalidate_notizen_turnus_cache(sender, instance, **kwargs):
+    """Invalidate turnus cache when Notizen data changes"""
+    from .utils import invalidate_turnus_cache
+    if instance.kinder and instance.kinder.turnus:
+        invalidate_turnus_cache(instance.kinder.turnus)
+
+
+@receiver(post_save, sender=Geld)
+@receiver(post_delete, sender=Geld)
+def invalidate_geld_turnus_cache(sender, instance, **kwargs):
+    """Invalidate turnus cache when Geld data changes"""
+    from .utils import invalidate_turnus_cache
+    if instance.kinder and instance.kinder.turnus:
+        invalidate_turnus_cache(instance.kinder.turnus)
+
+
 def extract_coordinates_from_maps_link(url):
     try:
         # Expand the shortened URL

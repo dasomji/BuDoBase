@@ -1,18 +1,68 @@
+from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
+from functools import wraps
 from .models import Profil, Kinder, Schwerpunkte, Auslagerorte, Turnus
 
 
-def get_user_profile(user):
+def get_cached_user_profile(user):
     """
-    Get user profile without caching.
+    Get user profile with caching to avoid repeated database queries.
+    Cache key is based on user ID and profile's last modified time.
     """
-    try:
-        profile = Profil.objects.select_related(
-            'user', 'turnus').get(user=user)
-        return profile
-    except Profil.DoesNotExist:
-        return None
+    cache_key = f"user_profile_{user.id}"
+    cached_profile = cache.get(cache_key)
+
+    if cached_profile is None:
+        try:
+            profile = Profil.objects.select_related(
+                'user', 'turnus').get(user=user)
+            # Cache for 5 minutes
+            cache.set(cache_key, profile, 300)
+            return profile
+        except Profil.DoesNotExist:
+            return None
+
+    return cached_profile
+
+
+def invalidate_user_profile_cache(user):
+    """Invalidate cached user profile when profile is updated."""
+    cache_key = f"user_profile_{user.id}"
+    cache.delete(cache_key)
+
+
+def invalidate_turnus_cache(turnus):
+    """Invalidate cached turnus data when turnus-related data is updated."""
+    if turnus:
+        cache_key = f"turnus_data_{turnus.id}"
+        cache.delete(cache_key)
+
+
+def invalidate_all_turnus_caches():
+    """Invalidate all turnus caches - use when unsure which turnus was affected."""
+    # This is a more aggressive approach - clears all turnus caches
+    # Use sparingly, only when you can't determine the specific turnus
+    for turnus in Turnus.objects.all():
+        invalidate_turnus_cache(turnus)
+
+
+def cache_user_profile(view_func):
+    """
+    Decorator to automatically inject cached user profile into view context.
+    Adds 'user_profile' and 'active_turnus' to the view's context.
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if request.user.is_authenticated:
+            profile = get_cached_user_profile(request.user)
+            request.user_profile = profile
+            request.active_turnus = profile.turnus if profile else None
+        else:
+            request.user_profile = None
+            request.active_turnus = None
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 
 def get_turnus_data_optimized(turnus):
@@ -27,29 +77,39 @@ def get_turnus_data_optimized(turnus):
             'auslagerorte': Auslagerorte.objects.none(),
         }
 
-    kids = Kinder.objects.filter(turnus=turnus).select_related(
-        'turnus', 'spezial_familien'
-    ).prefetch_related(
-        'schwerpunkte', 'notizen', 'geld'
-    ).order_by('kid_vorname')
+    # Cache key based on turnus ID
+    cache_key = f"turnus_data_{turnus.id}"
+    cached_data = cache.get(cache_key)
 
-    schwerpunkte = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=turnus
-    ).select_related(
-        'ort', 'schwerpunktzeit'
-    ).prefetch_related(
-        'betreuende', 'swp_kinder', 'meals'
-    )
+    if cached_data is None:
+        kids = Kinder.objects.filter(turnus=turnus).select_related(
+            'turnus', 'spezial_familien'
+        ).prefetch_related(
+            'schwerpunkte', 'notizen', 'geld'
+        ).order_by('kid_vorname')
 
-    auslagerorte = Auslagerorte.objects.all().prefetch_related(
-        'schwerpunkte_set', 'images', 'auslagernotizen'
-    )
+        schwerpunkte = Schwerpunkte.objects.filter(
+            schwerpunktzeit__turnus=turnus
+        ).select_related(
+            'ort', 'schwerpunktzeit'
+        ).prefetch_related(
+            'betreuende', 'swp_kinder', 'meals'
+        )
 
-    return {
-        'kids': list(kids),
-        'schwerpunkte': list(schwerpunkte),
-        'auslagerorte': list(auslagerorte),
-    }
+        auslagerorte = Auslagerorte.objects.all().prefetch_related(
+            'schwerpunkte_set', 'images', 'auslagernotizen'
+        )
+
+        cached_data = {
+            'kids': list(kids),
+            'schwerpunkte': list(schwerpunkte),
+            'auslagerorte': list(auslagerorte),
+        }
+
+        # Cache for 10 minutes
+        cache.set(cache_key, cached_data, 600)
+
+    return cached_data
 
 
 def safe_get_object(model_class, **kwargs):
