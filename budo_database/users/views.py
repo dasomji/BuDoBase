@@ -5,17 +5,17 @@ This is the user views.
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.template import loader
-from budo_app.forms import ProfilForm
 
-from budo_app.models import Kinder, Profil, Notizen, Geld, BetreuerinnenGeld
-from django.views.generic.edit import CreateView, UpdateView
+from budo_app.models import Kinder, Profil
+from django.views.generic.edit import UpdateView
 from django.urls import reverse_lazy
-from django.db.models import Sum
 from django.conf import settings
 from .forms import LoginForm, RegisterForm
-from budo_app.utils import cache_user_profile, get_cached_user_profile
+from budo_app.utils import cache_user_profile
+from .dashboard_services import build_dashboard_context
 
 
 def sign_in(request):
@@ -82,87 +82,16 @@ def sign_up(request):
             return render(request, 'users/register.html', {'form': form})
 
 
+@login_required
 @cache_user_profile
 def dashboard(request):
     template = loader.get_template('users/dashboard.html')
-    if not request.user.is_authenticated:
-        return redirect('login')
-
     if not request.user_profile:
         messages.error(
             request, "Profile not found. Please contact an administrator.")
         return redirect('login')
 
-    kids = Kinder.objects.filter(turnus=request.active_turnus).select_related(
-        'turnus', 'spezial_familien')
-    anzahl_kids = kids.count()
-    kids_zug_anreise_count = kids.filter(zug_anreise=True).count()
-    kids_zug_abreise_count = kids.filter(zug_abreise=True).count()
-    male_kids_count = kids.filter(sex="männlich").count()
-    female_kids_count = kids.filter(sex="weiblich").count()
-    diverse_kids_count = kids.exclude(
-        sex__in=["männlich", "weiblich"]).count()
-    kids_mit_budo_erfahrung = kids.filter(
-        budo_erfahrung=True).count()
-    geburtstagskinder = sorted(
-        [kid for kid in kids if kid.is_birthday_during_turnus()],
-        key=lambda kid: (kid.kid_birthday.month, kid.kid_birthday.day)
-    )
-    goodbyes = sorted([kid for kid in kids if (kid.get_alter()
-                      and (kid.get_alter() > 14.8))], key=lambda kid: kid.get_alter())
-    geburtstage = len(geburtstagskinder)
-    eingecheckte_kids = kids.filter(anwesend=True).count()
-    team = Profil.objects.filter(turnus=request.active_turnus).annotate(
-        total_betreuerinnen_geld=Sum('betreuerinnen_geld__amount')
-    ).select_related('user')
-    medikamente = [kid for kid in kids if kid.get_clean_drugs()]
-    gesundheit = [kid for kid in kids if kid.get_clean_illness()]
-    kids_attention = [kid for kid in kids if (
-        kid.get_clean_drugs() or kid.get_clean_illness())]
-    ersties = kids.filter(budo_erfahrung=False)
-    ersties_count = ersties.count()
-    einwöchige = kids.filter(turnus_dauer=1)
-    einwöchige_count = einwöchige.count()
-    notizen = Notizen.objects.filter(
-        kinder__turnus=request.active_turnus).select_related('kinder', 'added_by')
-    total_taschengeld = Geld.objects.filter(
-        kinder__turnus=request.active_turnus).aggregate(Sum('amount'))['amount__sum'] or 0
-    geld_transactions = Geld.objects.filter(
-        kinder__turnus=request.active_turnus).select_related('kinder', 'added_by').order_by('-date_added')
-    geld_eingezahlt = Geld.objects.filter(
-        kinder__turnus=request.active_turnus, amount__gt=0).aggregate(Sum('amount'))['amount__sum'] or 0
-    betreuerinnen_geld_gesamt = BetreuerinnenGeld.objects.aggregate(Sum('amount'))[
-        'amount__sum'] or 0
-    betreuerinnen_geld = BetreuerinnenGeld.objects.all()
-    context = {
-        "profil": request.user_profile,
-        "kids": kids,
-        "kids_zug_anreise_count": kids_zug_anreise_count,
-        "kids_zug_abreise_count": kids_zug_abreise_count,
-        "male_kids_count": male_kids_count,
-        "female_kids_count": female_kids_count,
-        "diverse_kids_count": diverse_kids_count,
-        "kids_mit_budo_erfahrung": kids_mit_budo_erfahrung,
-        "geburtstagskinder": geburtstagskinder,
-        "geburtstage": geburtstage,
-        "eingecheckte_kids": eingecheckte_kids,
-        "anzahl_kids": anzahl_kids,
-        "team": team,
-        "medikamente": medikamente,
-        "gesundheit": gesundheit,
-        "kids_attention": kids_attention,
-        "ersties": ersties,
-        "ersties_count": ersties_count,
-        "goodbyes": goodbyes,
-        "notizen": notizen,
-        "total_taschengeld": total_taschengeld,
-        "geld_transactions": geld_transactions,
-        "geld_eingezahlt": geld_eingezahlt,
-        "betreuerinnen_geld_gesamt": betreuerinnen_geld_gesamt,
-        "betreuerinnen_geld": betreuerinnen_geld,
-        "einwöchige": einwöchige,
-        "einwöchige_count": einwöchige_count,
-    }
+    context = build_dashboard_context(request.user_profile, request.active_turnus)
 
     return HttpResponse(template.render(context, request))
 

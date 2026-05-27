@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 var url = this.dataset.url;
                 xhr.open('POST', url, true);
                 xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-                xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+                xhr.setRequestHeader('X-CSRFToken', window.budoCsrfToken());
                 xhr.onload = function () {
                     if (this.status == 200) {
                         var response = JSON.parse(this.responseText);
@@ -31,4 +31,5 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
 });

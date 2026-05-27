@@ -9,6 +9,43 @@ import html
 
 logger = logging.getLogger(__name__)
 
+REQUIRED_DATA_CLEANER_COLUMNS = (
+    "Index",
+    "AnreiseText",
+    "AbreiseText",
+    "Turnusdauer",
+    "War_schon_mal_im_Bunten_Dorf",
+    "Kind_Geburtsdatum",
+    "Kind_Vorname",
+    "Kind_Nachname",
+    "Geschwister_am_Camp?",
+    "Zeltwunsch_mit_folgenden_anderen_Kindern",
+    "Schwimmkenntnisse",
+    "Haftpflichtversicherung",
+    "Anmerkungen",
+    "Anmerkungen_Buchung",
+    "Anmelder_Vorname",
+    "Anmelder_Nachname",
+    "Organisation",
+    "Anmelder_Email",
+    "Anmelder_mobil",
+    "Hauptversicherten_Person,_bei_der_das_Kind_mitversichert_ist_(Sozialversicherung)",
+    "Rechnungsadresse",
+    "Rechnung_PLZ",
+    "Rechnung_Ort",
+    "Rechnung_Land",
+    "Kind_Geschlecht",
+    "Sozialversicherung_Kind",
+    "Tetanusimpfung",
+    "Zeckenimpfung",
+    "Vegetarisch",
+    "Ernährungsvorgaben",
+    "Muss_ihr_Kind_Medikamente_einnehmen?",
+    "Hat_Ihr_Kind_eine_Krankheit,_körperliche_Einschränkungen_oder_besondere_Bedürfnisse?",
+    "Stimmen_Sie_der_Verabreichung_von_NICHT-rezeptpflichtigen_Medikamenten_zu,_wie_zum_Beispiel_Salbe_bei_Insektenstich?",
+    "Stimmen_Sie_der_Verabreichung_von_rezeptpflichtigen_Medikamenten_zu,_welche_Ihrem_Kind_von_einem_Arzt_verordnet_wurden?",
+)
+
 
 def decode_html_entities(text):
     """
@@ -29,8 +66,160 @@ def from_excel_ordinal(ordinal: float, _epoch0=datetime(1899, 12, 31)) -> dateti
     return (_epoch0 + timedelta(days=ordinal)).replace(microsecond=0)
 
 
+def get_turnus_for_import(turnus=None):
+    this_turnus = turnus or models.Turnus.objects.last()
+    if not this_turnus or not this_turnus.uploadedFile:
+        raise ValueError("No turnus found or no uploaded file")
+    return this_turnus
+
+
+def get_uploaded_excel_path(turnus):
+    path = os.path.join(MEDIA_ROOT, str(turnus.uploadedFile))
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Excel file not found at path: {path}")
+    return path
+
+
+def validate_workbook_columns(budo):
+    missing_columns = [
+        column for column in REQUIRED_DATA_CLEANER_COLUMNS
+        if column not in budo.columns
+    ]
+    if missing_columns:
+        raise ValueError(
+            "DataCleaner sheet is missing required columns: "
+            + ", ".join(missing_columns)
+        )
+
+
+def read_workbook(path):
+    try:
+        with open(path, "rb") as excel_file:
+            budo = pd.read_excel(
+                excel_file, sheet_name="DataCleaner", header=1)
+            excel_file.seek(0)
+            budo_raw = pd.read_excel(
+                excel_file, sheet_name="RawData", header=0)
+    except Exception as e:
+        raise ValueError(f"Error reading Excel file: {str(e)}")
+
+    if len(budo) == 0:
+        raise ValueError("No data found in Excel file")
+
+    validate_workbook_columns(budo)
+
+    return budo, budo_raw
+
+
+def should_skip_manual_override(budo, budo_raw, row_index):
+    try:
+        current_index = budo["Index"][row_index]
+        if "Index" in budo_raw.columns:
+            matching_row = budo_raw[budo_raw["Index"] == current_index]
+            if not matching_row.empty:
+                return (
+                    matching_row["Submitted"].iloc[0] == "MANUAL OVERRIDE" or
+                    matching_row["Anmelder Email"].iloc[0] == "MANUAL OVERRIDE"
+                )
+
+        return (
+            budo_raw["Submitted"][row_index] == "MANUAL OVERRIDE" or
+            budo_raw["Anmelder Email"][row_index] == "MANUAL OVERRIDE"
+        )
+    except (KeyError, IndexError):
+        return False
+
+
+def get_notfall_kontakte(budo, budo_raw, row_index):
+    try:
+        return decode_html_entities(str(budo["Notfall_Kontakte"][row_index]))
+    except KeyError:
+        pass
+
+    try:
+        current_index = budo["Index"][row_index]
+        if "Index" in budo_raw.columns:
+            matching_row = budo_raw[budo_raw["Index"] == current_index]
+            if matching_row.empty:
+                return ""
+            raw_notfall = matching_row["Notfall Kontakte"].iloc[0]
+        else:
+            raw_notfall = budo_raw["Notfall Kontakte"][row_index]
+    except (KeyError, IndexError):
+        return ""
+
+    return decode_html_entities(str(raw_notfall).replace("<p>", "").replace("</p>", ""))
+
+
+def parse_birthday(value):
+    if value is None or pd.isna(value):
+        raise ValueError("Missing birthday")
+
+    if isinstance(value, pd.Timestamp):
+        return value.date()
+
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return from_excel_ordinal(float(value)).date()
+
+    value_text = str(value).strip()
+    for date_format in ("%d.%m.%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value_text, date_format).date()
+        except ValueError:
+            pass
+
+    raise ValueError(
+        f"Invalid birthday '{value_text}'. Expected Excel date, ordinal, or DD.MM.YYYY"
+    )
+
+
+def parse_budo_erfahrung(value):
+    value = str(value)
+    if "Ja" in value or "ja" in value:
+        return True
+    if "Nein" in value or "nein" in value:
+        return False
+    return None
+
+
+def assign_budo_families(kids, turnus):
+    kids_with_age = []
+    for kid in kids:
+        try:
+            delta = turnus.turnus_beginn - kid.kid_birthday
+            age = round(delta.days / 365.25, 2) if kid.kid_birthday else None
+            kids_with_age.append((kid, age))
+        except Exception as e:
+            logger.error(
+                f"Error calculating age for kid {kid.kid_index}: {str(e)}")
+            raise ValueError(
+                f"Error calculating age for kid {kid.kid_index}: {str(e)}")
+
+    logger.info(f"Calculated ages for {len(kids_with_age)} kids")
+    kids_with_age.sort(
+        key=lambda x: x[1] if x[1] is not None else float('inf'))
+
+    length = len(kids_with_age)
+    for i, (kid, age) in enumerate(kids_with_age):
+        try:
+            if i < length / 4:
+                kid.budo_family = "S"
+            elif i < length / 2:
+                kid.budo_family = "M"
+            elif i < (length * 3 / 4):
+                kid.budo_family = "L"
+            else:
+                kid.budo_family = "XL"
+            kid.save()
+        except Exception as e:
+            logger.error(
+                f"Error assigning budo family for kid {kid.kid_index}: {str(e)}")
+            raise ValueError(
+                f"Error assigning budo family for kid {kid.kid_index}: {str(e)}")
+
+
 @transaction.atomic
-def process_excel():
+def process_excel(turnus=None):
     """
     Process Excel file and create Kinder records in a transactional manner.
     If any error occurs, all changes will be rolled back.
@@ -38,28 +227,12 @@ def process_excel():
     logger.info("Starting Excel processing")
 
     try:
-        this_turnus = models.Turnus.objects.last()
-        if not this_turnus or not this_turnus.uploadedFile:
-            raise ValueError("No turnus found or no uploaded file")
-
-        path = os.path.join(MEDIA_ROOT, str(this_turnus.uploadedFile))
-
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Excel file not found at path: {path}")
+        this_turnus = get_turnus_for_import(turnus)
+        path = get_uploaded_excel_path(this_turnus)
 
         logger.info(f"Processing Excel file: {path}")
 
-        # Read Excel sheets
-        try:
-            budo = pd.read_excel(
-                open(path, "rb"), sheet_name="DataCleaner", header=1)
-            budo_raw = pd.read_excel(
-                open(path, "rb"), sheet_name="RawData", header=0)
-        except Exception as e:
-            raise ValueError(f"Error reading Excel file: {str(e)}")
-
-        if len(budo) == 0:
-            raise ValueError("No data found in Excel file")
+        budo, budo_raw = read_workbook(path)
 
         logger.info(f"Found {len(budo)} rows to process")
 
@@ -67,25 +240,8 @@ def process_excel():
 
         for i in range(0, len(budo)):
             try:
-                # Skip entries with "MANUAL OVERRIDE" - use Index to match correctly if available
-                try:
-                    current_index = budo["Index"][i]
-                    # Check if RawData sheet has Index column
-                    if "Index" in budo_raw.columns:
-                        matching_row = budo_raw[budo_raw["Index"]
-                                                == current_index]
-                        if not matching_row.empty:
-                            if (matching_row["Submitted"].iloc[0] == "MANUAL OVERRIDE" or
-                                    matching_row["Anmelder Email"].iloc[0] == "MANUAL OVERRIDE"):
-                                continue
-                    else:
-                        # Fallback to row-based matching if Index column doesn't exist
-                        if (budo_raw["Submitted"][i] == "MANUAL OVERRIDE" or
-                                budo_raw["Anmelder Email"][i] == "MANUAL OVERRIDE"):
-                            continue
-                except (KeyError, IndexError):
-                    # If Index column doesn't exist or row doesn't exist, skip this check
-                    pass
+                if should_skip_manual_override(budo, budo_raw, i):
+                    continue
 
                 # turn Anreise string into boolean, True = Zuganreise
                 if "Betreute Anreise" in str(budo["AnreiseText"][i]):
@@ -112,60 +268,10 @@ def process_excel():
                 else:
                     kid_dauer = 1
 
-                # boolify budo_erfahrung
-                budo_erfahrung_str = str(
+                kid_budo_erfahrung = parse_budo_erfahrung(
                     budo["War_schon_mal_im_Bunten_Dorf"][i])
-                if "Ja" in budo_erfahrung_str or "ja" in budo_erfahrung_str:
-                    kid_budo_erfahrung = True
-                elif "Nein" in budo_erfahrung_str or "nein" in budo_erfahrung_str:
-                    kid_budo_erfahrung = False
-                else:
-                    kid_budo_erfahrung = None
-
-                # cleaning Notfallkontake from RawData using Index to match correctly
-                # Try to get from budo (DataCleaner) first, then fall back to budo_raw (RawData)
-                try:
-                    cleaned_notfall = str(budo["Notfall_Kontakte"][i])
-                except KeyError:
-                    # If not found in budo, find matching record in budo_raw using Index
-                    try:
-                        current_index = budo["Index"][i]
-                        # Check if RawData sheet has Index column
-                        if "Index" in budo_raw.columns:
-                            # Find the row in budo_raw that has the same Index
-                            matching_row = budo_raw[budo_raw["Index"]
-                                                    == current_index]
-                            if not matching_row.empty:
-                                cleaned_notfall = str(matching_row["Notfall Kontakte"].iloc[0]).replace(
-                                    "<p>", "").replace("</p>", "")
-                            else:
-                                cleaned_notfall = ""
-                        else:
-                            # Fallback to row-based matching if Index column doesn't exist
-                            cleaned_notfall = str(budo_raw["Notfall Kontakte"][i]).replace(
-                                "<p>", "").replace("</p>", "")
-                    except (KeyError, IndexError):
-                        # If neither works, set to empty string
-                        cleaned_notfall = ""
-
-                # Decode HTML entities in notfall_kontakte
-                cleaned_notfall = decode_html_entities(cleaned_notfall)
-
-                # Handle birthday parsing
-                birthday_value = budo["Kind_Geburtsdatum"][i]
-
-                if isinstance(birthday_value, pd.Timestamp):
-                    # Pandas already parsed the date correctly, just convert to date
-                    birthday = birthday_value.date()
-                else:
-                    try:
-                        # Try to parse as a float (Excel ordinal)
-                        birthday = from_excel_ordinal(
-                            float(birthday_value)).date()
-                    except ValueError:
-                        # If parsing as float fails, assume it's a date string in dd.mm.yyyy format
-                        birthday = datetime.strptime(
-                            birthday_value, "%d.%m.%Y").date()
+                cleaned_notfall = get_notfall_kontakte(budo, budo_raw, i)
+                birthday = parse_birthday(budo["Kind_Geburtsdatum"][i])
 
                 # Create Kinder object
                 kid = models.Kinder(
@@ -246,48 +352,7 @@ def process_excel():
 
         logger.info(f"Successfully processed {len(processed_kids)} kids")
 
-        # Integrate put_kids_into_families logic here
-        today = this_turnus.turnus_beginn
-
-        # Calculate age for each kid and store it in a list of tuples (kid, age)
-        kids_with_age = []
-        for kid in processed_kids:
-            try:
-                delta = today - kid.kid_birthday
-                age = round(delta.days / 365.25,
-                            2) if kid.kid_birthday else None
-                kids_with_age.append((kid, age))
-            except Exception as e:
-                logger.error(
-                    f"Error calculating age for kid {kid.kid_index}: {str(e)}")
-                raise ValueError(
-                    f"Error calculating age for kid {kid.kid_index}: {str(e)}")
-
-        logger.info(f"Calculated ages for {len(kids_with_age)} kids")
-
-        # Sort the list of tuples by age
-        kids_with_age.sort(
-            key=lambda x: x[1] if x[1] is not None else float('inf'))
-
-        length = len(kids_with_age)
-
-        # Assign budo families
-        for i, (kid, age) in enumerate(kids_with_age):
-            try:
-                if i < length / 4:
-                    kid.budo_family = "S"
-                elif i < length / 2:
-                    kid.budo_family = "M"
-                elif i < (length * 3 / 4):
-                    kid.budo_family = "L"
-                else:
-                    kid.budo_family = "XL"
-                kid.save()
-            except Exception as e:
-                logger.error(
-                    f"Error assigning budo family for kid {kid.kid_index}: {str(e)}")
-                raise ValueError(
-                    f"Error assigning budo family for kid {kid.kid_index}: {str(e)}")
+        assign_budo_families(processed_kids, this_turnus)
 
         logger.info("Excel processing completed successfully")
 

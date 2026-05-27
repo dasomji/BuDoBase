@@ -2,6 +2,7 @@ from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from functools import wraps
+import json
 from .models import Profil, Kinder, Schwerpunkte, Auslagerorte, Turnus
 
 
@@ -63,6 +64,24 @@ def cache_user_profile(view_func):
             request.active_turnus = None
         return view_func(request, *args, **kwargs)
     return wrapper
+
+
+def get_active_turnus(request):
+    profile = getattr(request, 'user_profile', None)
+    if profile is None and request.user.is_authenticated:
+        profile = get_cached_user_profile(request.user)
+    return profile.turnus if profile else None
+
+
+def get_active_kid_or_404(request, kid_id):
+    return safe_get_object_or_404(Kinder, id=kid_id, turnus=get_active_turnus(request))
+
+
+def parse_json_body(request):
+    try:
+        return json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return None
 
 
 def get_turnus_data_optimized(turnus):

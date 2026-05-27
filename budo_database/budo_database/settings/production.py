@@ -1,11 +1,17 @@
 from .base import *
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured('DJANGO_SECRET_KEY must be set in production.')
+
 DEBUG = False
 
 # Get the application URL from environment variable
 APP_URL = os.environ.get('APP_URL')
+if not APP_URL:
+    raise ImproperlyConfigured('APP_URL must be set in production.')
 
 ALLOWED_HOSTS = [
     APP_URL,
@@ -23,6 +29,8 @@ if 'DATABASE_URL' in os.environ:
             conn_health_checks=True,
         )
     }
+else:
+    raise ImproperlyConfigured('DATABASE_URL must be set in production.')
 
 # Static files
 STORAGES = {

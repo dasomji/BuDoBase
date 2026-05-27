@@ -16,8 +16,7 @@
         const formDivs = document.querySelectorAll('#interaction-input form > div');
         const cookieName = 'interaction-bar';
 
-        // Function to get cookie value by name
-        function getCookie(name) {
+        function getInteractionCookie(name) {
             let value = "; " + document.cookie;
             let parts = value.split("; " + name + "=");
             if (parts.length === 2) return parts.pop().split(";").shift();
@@ -35,7 +34,7 @@
         }
 
         // Check for existing cookie and set visibility
-        const visibleDivId = getCookie(cookieName);
+        const visibleDivId = getInteractionCookie(cookieName);
         if (visibleDivId) {
             formDivs.forEach(div => {
                 if (div.id === visibleDivId) {

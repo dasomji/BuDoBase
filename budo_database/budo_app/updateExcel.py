@@ -3,11 +3,14 @@ from openpyxl import load_workbook
 from . import models
 
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def update_excel_file(file_path, turnus):
-    print(
-        f"Starting update_excel_file with file_path: {file_path} and turnus: {turnus}")
+    logger.info("Starting update_excel_file with file_path=%s turnus=%s",
+                file_path, turnus)
 
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
@@ -61,4 +64,4 @@ def update_excel_file(file_path, turnus):
         worksheet.column_dimensions[column_letter].width = adjusted_width
 
     workbook.save(file_path)
-    print("update_excel_file completed")
+    logger.info("update_excel_file completed")

@@ -1,15 +1,19 @@
-import re
 import datetime
 from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.dispatch import receiver
-from django.db.models.signals import post_save, pre_save, post_delete
+from django.db.models.signals import post_save, post_delete
 from django.contrib.auth.models import User
 from phonenumber_field.modelfields import PhoneNumberField
 from django_resized import ResizedImageField
-import requests
-from urllib.parse import urlparse, parse_qs
+from .text_cleaning import (
+    clean_optional_text,
+    DEFAULT_EMPTY_VALUES,
+    EXTENDED_EMPTY_VALUES,
+    FOOD_EMPTY_VALUES,
+    REQUEST_EMPTY_VALUES,
+)
 
 # Create your models here.
 
@@ -193,14 +197,14 @@ class Kinder(models.Model):
         'Schwerpunkte', blank=True, related_name="swp_kinder", verbose_name="Schwerpunkt")
 
     def get_alter(self):
-        if self.kid_birthday is None:
+        if self.kid_birthday is None or self.turnus is None or self.turnus.turnus_beginn is None:
             return None
         delta = self.turnus.turnus_beginn - self.kid_birthday
         age = round(delta.days / 365.25, 2)
         return age
 
     def is_birthday_during_turnus(self):
-        if self.turnus and self.turnus.turnus_beginn:
+        if self.kid_birthday and self.turnus and self.turnus.turnus_beginn:
             turnus_beginn = self.turnus.turnus_beginn
             turnus_ende = self.turnus.get_turnus_ende()
 
@@ -227,11 +231,7 @@ class Kinder(models.Model):
             return "d"
 
     def get_clean_special_food(self):
-        if self.special_food_description:
-            if self.special_food_description.lower() in ("nein", "keine", "keinr", "nan", "ja"):
-                return ""
-            else:
-                return self.special_food_description
+        return clean_optional_text(self.special_food_description, FOOD_EMPTY_VALUES)
 
     def get_veggie(self):
         if self.vegetarisch:
@@ -265,60 +265,22 @@ class Kinder(models.Model):
             return veggie
 
     def get_clean_drugs(self):
-        if self.drugs:
-            if self.drugs.lower().strip() in ("nein", "nan", "none", "-"):
-                return ""
-            else:
-                return self.drugs
-        else:
-            return ""
+        return clean_optional_text(self.drugs, DEFAULT_EMPTY_VALUES)
 
     def get_clean_illness(self):
-        if self.illness:
-            if self.illness.lower().strip() in ("nein", "nan", "none", "-"):
-                return ""
-            else:
-                return self.illness
-        else:
-            return ""
+        return clean_optional_text(self.illness, DEFAULT_EMPTY_VALUES)
 
     def get_clean_anmerkung(self):
-        if self.anmerkung:
-            if str(self.anmerkung).lower().strip() in ("nein", "nan", "none", "-", "0", "/"):
-                return ""
-            else:
-                return self.anmerkung
-        else:
-            return ""
+        return clean_optional_text(self.anmerkung, EXTENDED_EMPTY_VALUES)
 
     def get_clean_anmerkung_buchung(self):
-        if self.anmerkung_buchung:
-            if str(self.anmerkung).lower().strip() in ("nein", "nan", "none", "-", "0", "/"):
-                return ""
-            elif self.anmerkung == 0:
-                return ""
-            else:
-                return self.anmerkung_buchung
-        else:
-            return ""
+        return clean_optional_text(self.anmerkung_buchung, EXTENDED_EMPTY_VALUES)
 
     def get_clean_geschwister(self):
-        if self.geschwister:
-            if str(self.geschwister).lower().strip() in ("nein", "nan", "none", "-", "0", "bein"):
-                return ""
-            else:
-                return self.geschwister
-        else:
-            return ""
+        return clean_optional_text(self.geschwister, REQUEST_EMPTY_VALUES)
 
     def get_clean_zeltwunsch(self):
-        if self.zeltwunsch:
-            if str(self.zeltwunsch).lower().strip() in ("nein", "nan", "none", "-", "0", "bein"):
-                return ""
-            else:
-                return self.zeltwunsch
-        else:
-            return ""
+        return clean_optional_text(self.zeltwunsch, REQUEST_EMPTY_VALUES)
 
     def get_zuganreise(self):
         if self.zug_anreise == True:
@@ -797,33 +759,3 @@ def invalidate_geld_turnus_cache(sender, instance, **kwargs):
     if instance.kinder and instance.kinder.turnus:
         invalidate_turnus_cache(instance.kinder.turnus)
 
-
-def extract_coordinates_from_maps_link(url):
-    try:
-        # Expand the shortened URL
-        response = requests.get(url, allow_redirects=True)
-        full_url = response.url
-        print(url)
-        print(full_url)
-
-        match = re.search(r'3d(-?\d+\.\d+)!4d(-?\d+\.\d+)', full_url)
-        if match:
-            lat, lon = map(float, match.groups())
-            return lat, lon
-    except Exception as e:
-        print(f"Error extracting coordinates: {e}")
-    return None, None
-
-
-@receiver(pre_save, sender=Auslagerorte)
-def update_koordinaten(sender, instance, **kwargs):
-    if instance.maps_link:
-        lat, lon = extract_coordinates_from_maps_link(instance.maps_link)
-        if lat and lon:
-            instance.koordinaten = f"{lat},{lon}"
-
-    if instance.maps_link_parkspot:
-        lat_p, lon_p = extract_coordinates_from_maps_link(
-            instance.maps_link_parkspot)
-        if lat_p and lon_p:
-            instance.koordinaten_parkspot = f"{lat_p},{lon_p}"

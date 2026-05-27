@@ -20,6 +20,9 @@ $(document).ready(function() {
             type: 'POST',
             data: JSON.stringify(data),
             contentType: 'application/json',
+            headers: {
+                'X-CSRFToken': window.budoCsrfToken()
+            },
             success: function(response) {
                 if (response.status === 'success') {
                     // Update the pfand count display
@@ -68,4 +71,5 @@ $(document).ready(function() {
     if (currentPfand === 0) {
         $('#decrease-pfand').prop('disabled', true);
     }
-}); 
+
+});

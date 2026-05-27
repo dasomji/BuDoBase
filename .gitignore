@@ -140,6 +140,7 @@ GitHub.sublime-settings
 
 #Static files collected for production
 staticfiles/
+budo_database/staticfiles/
 
 budo_database/budobase_datamodel.png
 test_files/

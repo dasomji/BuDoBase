@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const csrfInput = document.createElement('input');
                     csrfInput.type = 'hidden';
                     csrfInput.name = 'csrfmiddlewaretoken';
-                    csrfInput.value = getCookie('csrftoken');
+                    csrfInput.value = window.budoCsrfToken();
                     form.appendChild(csrfInput);
                 }
                 
@@ -139,21 +139,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Helper function to get cookie value
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
 });
 </script>
 {% endblock %} 
