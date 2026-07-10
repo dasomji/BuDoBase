@@ -1,0 +1,166 @@
+@import "tailwindcss";
+@import "../../budo_app/static/stylesheet.css";
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: local("Roboto");
+}
+
+.react-loading,
+.react-error {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 2rem;
+}
+
+.react-error .card {
+  max-width: 42rem;
+}
+
+.messages {
+  margin: 0;
+  padding: 0.75rem 1.25rem;
+  list-style: none;
+}
+
+.messages .error {
+  color: #9c1c1c;
+}
+
+.card:not(.closed-card) > .card-info-container {
+  display: block;
+}
+
+.info-header-container > button.icon {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.form-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.form-grid label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 500;
+}
+
+.form-grid input:not([type="checkbox"]):not([type="radio"]),
+.form-grid select,
+.form-grid textarea {
+  width: 100%;
+  border: 2px solid white;
+  border-radius: var(--corner-rad);
+  padding: var(--xs-padding);
+  font-weight: 300;
+}
+
+.checkbox-row {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem !important;
+}
+
+.react-map {
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+  padding: var(--l-padding);
+  text-align: center;
+  background: rgba(222, 240, 255, 0.35);
+}
+
+.interactive-map {
+  width: 100%;
+  height: 420px;
+  padding: 0;
+  text-align: initial;
+}
+
+.leaflet-text {
+  width: max-content !important;
+  min-width: 10rem;
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.react-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.react-actions button,
+.react-actions .button {
+  border: 0;
+}
+
+.mobile-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sidebar);
+  display: grid;
+  grid-template-columns: minmax(250px, 82vw) 1fr;
+}
+
+.mobile-drawer nav {
+  background: var(--bg-blue__solid);
+  padding: var(--l-padding);
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+}
+
+.mobile-drawer-backdrop {
+  border: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#legacy-print-root {
+  display: none;
+}
+
+@media print {
+  .react-actions,
+  .search-filter,
+  .mobile-drawer,
+  #interaction-bar {
+    display: none !important;
+  }
+
+  .card-info-container {
+    display: block !important;
+  }
+}
