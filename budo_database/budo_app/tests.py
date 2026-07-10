@@ -2,7 +2,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from .models import Turnus, Kinder
-from .excelProcessor import process_excel, validate_workbook_columns
+from .excelProcessor import parse_birthday, process_excel, validate_workbook_columns
 from unittest.mock import patch
 from django.contrib.auth.models import User
 import os
@@ -373,3 +373,20 @@ class ExcelProcessingTransactionTest(TestCase):
 
         self.assertIn("Invalid birthday", str(context.exception))
         self.assertIn("DD.MM.YYYY", str(context.exception))
+
+    def test_numeric_text_birthday_is_parsed_as_excel_ordinal(self):
+        self.assertEqual(parse_birthday("39893"), date(2009, 3, 21))
+
+    @patch('budo_app.excelProcessor.get_uploaded_excel_path')
+    @patch('budo_app.excelProcessor.read_workbook')
+    def test_postal_code_with_locality_is_imported(self, mock_read_workbook, mock_path):
+        mock_path.return_value = 'detail_test.xlsx'
+        budo, budo_raw = sample_excel_frames()
+        budo["Rechnung_PLZ"] = budo["Rechnung_PLZ"].astype(object)
+        budo.loc[0, "Rechnung_PLZ"] = "3420 Kritzendorf"
+        mock_read_workbook.return_value = (budo, budo_raw)
+
+        process_excel(self.turnus)
+
+        kid = Kinder.objects.get(turnus=self.turnus)
+        self.assertEqual(kid.rechnung_plz, 3420)
