@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Card, GlobalSearch, RestForm, SearchTable } from './components';
 import { parseRoute } from './App';
-import { formatGermanDate, KidDetailPage, KidInteractionForm } from './pages';
+import { formatGermanDate, formatKidBirthday, KidDetailPage, KidInteractionForm } from './pages';
 
 describe('reusable components', () => {
   afterEach(cleanup);
@@ -64,6 +64,8 @@ describe('reusable components', () => {
       full_name: 'Ada Lovelace',
       present,
       weeks: 2,
+      birthday: '2012-07-02',
+      social_security_number: '1234 030712',
       notes: [],
       transactions: [],
       remaining_money: 0,
@@ -72,6 +74,7 @@ describe('reusable components', () => {
     render(<KidDetailPage data={{ kids: [kid], turnus: { label: 'T2' }, csrf_token: 'token' }} id="7" mutate={vi.fn()} />);
 
     expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
+    expect(screen.getByText('Geburtstag').closest('p')).toHaveTextContent('Geburtstag: 02.07.2012 ❗');
     const checkAction = screen.getByRole('link', { name: action });
     expect(checkAction).toHaveAttribute('href', path);
     expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');
@@ -179,6 +182,18 @@ describe('German date formatting', () => {
   it('leaves non-date values unchanged', () => {
     expect(formatGermanDate('---')).toBe('---');
     expect(formatGermanDate(null)).toBeNull();
+  });
+
+  it.each([
+    ['matching birthday', '1234 020712', '02.07.2012'],
+    ['mismatching birthday', '1234 030712', '02.07.2012 ❗'],
+    ['unavailable SV birthday', 'invalid', '02.07.2012'],
+    ['invalid calculated birthday', '1234 310212', '02.07.2012'],
+  ])('marks a %s only when the calculated SV birthday differs', (_case, socialSecurityNumber, expected) => {
+    expect(formatKidBirthday({
+      birthday: '2012-07-02',
+      social_security_number: socialSecurityNumber,
+    })).toBe(expected);
   });
 });
 

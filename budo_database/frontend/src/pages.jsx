@@ -24,6 +24,26 @@ export function formatGermanDate(value) {
   return match ? `${match[3]}.${match[2]}.${match[1]}` : value;
 }
 
+export function calculatedBirthdayFromSv(kid) {
+  const cleaned = (kid.social_security_number || '').replace(/\D/g, '');
+  if (cleaned.length < 10) return null;
+  const part = cleaned.slice(-6);
+  const day = Number(part.slice(0, 2));
+  const month = Number(part.slice(2, 4));
+  const shortYear = Number(part.slice(4));
+  const year = shortYear < 50 ? 2000 + shortYear : 1900 + shortYear;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+export function formatKidBirthday(kid) {
+  const birthday = formatGermanDate(kid.birthday);
+  if (!birthday) return birthday;
+  const calculatedBirthday = calculatedBirthdayFromSv(kid);
+  return `${birthday}${calculatedBirthday && calculatedBirthday !== kid.birthday ? ' ❗' : ''}`;
+}
+
 export function KidInteractionForm({ kid, token }) {
   const [field, setField] = useState('notiz');
   const show = name => () => setField(name);
@@ -105,8 +125,8 @@ export function DashboardPage({ data }) {
         <Card title={`Einwöchige: ${oneWeek.length}`} id="db-einwöchig" initiallyClosed>{kidList(oneWeek)}</Card>
         <Card title="Gesundheitliches" id="db-gesundheit" initiallyClosed>{kidList(health)}</Card>
         <Card title="Essen & Allergien" id="db-essen" initiallyClosed>{food.map(kid => <div className="print-nobreak" key={kid.id}><p>{linkKid(kid)}: {kid.age}</p><p>{kid.food} · {kid.special_food}</p></div>)}</Card>
-        <Card title={`Geburtstagskinder: ${birthdays.length}`} id="db-geburtstagskinder">{birthdays.map(kid => <p key={kid.id}>{linkKid(kid)}: {formatGermanDate(kid.birthday)}</p>)}</Card>
-        <Card title={`Verabschiedungsliste: ${goodbyes.length}`} id="db-sechzehner">{goodbyes.map(kid => <p key={kid.id}>{linkKid(kid)}: {kid.age} – {formatGermanDate(kid.birthday)}</p>)}</Card>
+        <Card title={`Geburtstagskinder: ${birthdays.length}`} id="db-geburtstagskinder">{birthdays.map(kid => <p key={kid.id}>{linkKid(kid)}: {formatKidBirthday(kid)}</p>)}</Card>
+        <Card title={`Verabschiedungsliste: ${goodbyes.length}`} id="db-sechzehner">{goodbyes.map(kid => <p key={kid.id}>{linkKid(kid)}: {kid.age} – {formatKidBirthday(kid)}</p>)}</Card>
       </Column>
     </Columns>
   );
@@ -143,7 +163,7 @@ export function KidDetailPage({ data, id, mutate }) {
     <>
       <Columns>
         <Column id="left-column">
-          <Card title={`${kid.full_name}${kid.present ? '' : ' ❌'}`} id="kinderinfos"><FieldList items={[["Geschlecht", kid.sex], ["Alter", kid.age], ["Geburtstag", formatGermanDate(kid.birthday)], ["Aufenthaltsdauer", `${kid.weeks}-wöchig`], ["Geschwister", kid.siblings], ["Zeltwunsch", kid.tent_request], ["War schon mal im Bunten Dorf", yesNo(kid.budo_experience)]]} /></Card>
+          <Card title={`${kid.full_name}${kid.present ? '' : ' ❌'}`} id="kinderinfos"><FieldList items={[["Geschlecht", kid.sex], ["Alter", kid.age], ["Geburtstag", formatKidBirthday(kid)], ["Aufenthaltsdauer", `${kid.weeks}-wöchig`], ["Geschwister", kid.siblings], ["Zeltwunsch", kid.tent_request], ["War schon mal im Bunten Dorf", yesNo(kid.budo_experience)]]} /></Card>
           <Card title="BuDo" id="budo-container"><FieldList items={[["Turnus", data.turnus?.label], ["Budo Familie", kid.budo_family], ["Haus", kid.special_family], ["SWP 1", kid.focus_w1], ["SWP 2", kid.focus_w2]]} /><div className="react-actions"><a className="button" href={`/${kid.present ? 'check_out' : 'check_in'}/${kid.id}`}>{kid.present ? 'Auschecken' : 'Einchecken'}</a></div></Card>
         </Column>
         <Column id="center-column">
@@ -313,19 +333,11 @@ export function FamiliesPage({ data, special = false }) {
   return <Columns>{Object.entries(groups).map(([name, kids]) => <Column key={name}><Card title={`${name} (${kids.length})`}><ul>{kids.map(kid => <li key={kid.id}>{linkKid(kid)} – {kid.age}</li>)}</ul></Card></Column>)}</Columns>;
 }
 
-function svBirthday(kid) {
-  const cleaned = (kid.social_security_number || '').replace(/\D/g, '');
-  if (cleaned.length < 10) return null;
-  const part = cleaned.slice(-6); const year = Number(part.slice(4)) < 50 ? 2000 + Number(part.slice(4)) : 1900 + Number(part.slice(4));
-  const value = `${year}-${part.slice(2, 4)}-${part.slice(0, 2)}`;
-  return Number.isNaN(Date.parse(value)) ? null : value;
-}
-
 export function BirthdaysPage({ data }) {
-  const rows = data.kids.map(kid => ({ ...kid, sv: svBirthday(kid), filterText: kid.full_name }));
+  const rows = data.kids.map(kid => ({ ...kid, sv: calculatedBirthdayFromSv(kid), filterText: kid.full_name }));
   const columns = [
     { key: 'name', label: 'Name', render: linkKid },
-    { key: 'birthday', label: 'DB-Geburtstag', render: row => displayOrPlaceholder(formatGermanDate(row.birthday)) },
+    { key: 'birthday', label: 'DB-Geburtstag', render: row => displayOrPlaceholder(formatKidBirthday(row)) },
     { key: 'sv', label: 'SV-Geburtstag', render: row => displayOrPlaceholder(formatGermanDate(row.sv)) },
     { key: 'match', label: 'Check', sortValue: row => row.birthday && row.sv ? Number(row.birthday === row.sv) : -1, render: row => row.birthday && row.sv ? row.birthday === row.sv ? '✅' : '❌' : '---' },
     { key: 'note', label: 'Notiz', sortable: false, render: row => <RestForm target="/kindergeburtstage/" token={data.csrf_token}><input type="hidden" name="kid_id" value={row.id} /><input name="notiz" placeholder="Notiz..." /><button className="button" type="submit">Speichern</button></RestForm> },
