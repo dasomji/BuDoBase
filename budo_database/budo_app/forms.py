@@ -17,13 +17,20 @@ class NotizForm(forms.ModelForm):
 
 
 class GeldForm(forms.ModelForm):
+    amount = forms.FloatField(
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'w3-input',
+            'placeholder': 'Taschengeld...',
+            'min': '0',
+            'step': '0.01',
+        }),
+    )
+
     class Meta:
         model = Geld
         fields = ['amount']
-
-        widgets = {
-            "amount": forms.NumberInput(attrs={'class': 'w3-input', 'placeholder': 'Taschengeld...'})
-        }
 
 
 class CheckInForm(forms.ModelForm):

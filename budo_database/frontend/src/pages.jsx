@@ -57,9 +57,11 @@ export function KidInteractionForm({ kid, token }) {
             <p><label htmlFor="id_notiz" onClick={show('amount')}>Notiz</label><input id="id_notiz" name="notiz" placeholder="Notiz..." /></p>
           </div>
           <div id="geld-form" className={field === 'amount' ? '' : 'hidden'}>
-            <p><label htmlFor="id_amount" onClick={show('notiz')}>Taschengeld</label><input id="id_amount" name="amount" type="number" step="0.01" placeholder="Taschengeld..." /></p>
+            <p><label htmlFor="id_amount" onClick={show('notiz')}>Taschengeld</label><input id="id_amount" name="amount" type="number" min="0" step="0.01" placeholder="Taschengeld..." /></p>
           </div>
-          <button type="submit"><img src="/static/img/send-button.svg" alt="Senden" /></button>
+          {field === 'notiz'
+            ? <button type="submit"><img src="/static/img/send-button.svg" alt="Senden" /></button>
+            : <><button className="money-action money-withdraw" type="submit" name="money_action" value="withdraw">Abbuchen</button><button className="money-action money-topup" type="submit" name="money_action" value="topup">Aufladen</button></>}
         </RestForm>
       </div>
     </div>
@@ -186,17 +188,21 @@ export function KidDetailPage({ data, id, mutate }) {
 export function CheckPage({ data, id, checkout = false }) {
   const kid = findById(data.kids, id);
   if (!kid) return <NotFoundPage />;
+  const pocketMoneyBalance = Number(kid.pocket_money || 0);
+  const checkoutMoneyLabel = pocketMoneyBalance >= 0
+    ? `Taschengeld zurückgegeben (aktuell ${money(pocketMoneyBalance)})`
+    : `Taschengeld eingezahlt (schuldet aktuell: ${money(Math.abs(pocketMoneyBalance))})`;
   const fields = checkout ? [
     { name: 'early_abreise_date', label: 'Abreisedatum', type: 'date', value: new Date().toISOString().slice(0, 10), required: true },
     { name: 'notiz', label: 'Notiz' },
-    { name: 'amount', label: 'Taschengeld', type: 'number', step: '0.01', value: -kid.pocket_money },
+    { name: 'amount', label: checkoutMoneyLabel, type: 'number', min: '0', step: '0.01', value: pocketMoneyBalance > 0 ? pocketMoneyBalance : 0 },
   ] : [
     { name: 'check_in_date', label: 'Check-in Datum', type: 'date', value: new Date().toISOString().slice(0, 10), required: true },
     { name: 'ausweis', label: 'Ausweis', type: 'checkbox', value: kid.id_card },
     { name: 'e_card', label: 'E-Card', type: 'checkbox', value: kid.e_card },
     { name: 'einverstaendnis_erklaerung', label: 'Einverständniserklärung', type: 'checkbox', value: kid.consent },
     { name: 'notiz', label: 'Notiz' },
-    { name: 'amount', label: 'Taschengeld', type: 'number', step: '0.01' },
+    { name: 'amount', label: 'Taschengeld', type: 'number', min: '0', step: '0.01' },
   ];
   return <Columns><Column id="single-column"><Card title={`${checkout ? 'Check-Out' : 'Check-In'}: ${kid.full_name}`}><p style={{ color: checkout ? 'green' : 'red' }}>{kid.full_name} ist {checkout ? 'anwesend.' : 'noch nicht eingecheckt!'}</p>{checkout && <><p>Wir hatten vom Kind folgendes:</p><ul>{kid.e_card && <li>E-Card</li>}{kid.id_card && <li>Ausweis</li>}{kid.consent && <li>Einverständniserklärung</li>}{kid.pocket_money > 0 && <li>Taschengeld: {money(kid.pocket_money)}</li>}</ul></>}<NativeForm token={data.csrf_token} action={`/${checkout ? 'check_out' : 'check_in'}/${kid.id}`} fields={fields} submit={checkout ? 'Auschecken' : 'Einchecken'} /></Card></Column></Columns>;
 }

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Card, GlobalSearch, RestForm, SearchTable } from './components';
 import { parseRoute } from './App';
-import { formatGermanDate, formatKidBirthday, KidDetailPage, KidInteractionForm } from './pages';
+import { CheckPage, formatGermanDate, formatKidBirthday, KidDetailPage, KidInteractionForm } from './pages';
 
 describe('reusable components', () => {
   afterEach(cleanup);
@@ -53,6 +53,21 @@ describe('reusable components', () => {
 
     expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
     expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
+    expect(screen.getByPlaceholderText('Taschengeld...')).toHaveAttribute('min', '0');
+    expect(screen.getByRole('button', { name: 'Abbuchen' })).toHaveClass('money-withdraw');
+    expect(screen.getByRole('button', { name: 'Aufladen' })).toHaveClass('money-topup');
+    expect(screen.queryByRole('button', { name: 'Senden' })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { balance: 12.5, label: 'Taschengeld zurückgegeben (aktuell 12.50 €)', preset: 12.5 },
+    { balance: -3, label: 'Taschengeld eingezahlt (schuldet aktuell: 3.00 €)', preset: 0 },
+  ])('uses a positive checkout amount when the current balance is $balance', ({ balance, label, preset }) => {
+    render(<CheckPage data={{ csrf_token: 'token', kids: [{ id: 7, full_name: 'Ada', pocket_money: balance }] }} id="7" checkout />);
+
+    const amount = screen.getByRole('spinbutton', { name: label });
+    expect(amount).toHaveValue(preset);
+    expect(amount).toHaveAttribute('min', '0');
   });
 
   it.each([
@@ -169,16 +184,18 @@ describe('reusable components', () => {
   });
 
   it('keeps form state in React and renders REST validation errors', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       json: async () => ({ ok: false, errors: ['Dieses Feld ist erforderlich.'] }),
-    }));
-    render(<RestForm target="/profil/" token="token"><input name="rufname" defaultValue="Ada" /><button type="submit">Speichern</button></RestForm>);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<RestForm target="/profil/" token="token"><input name="rufname" defaultValue="Ada" /><button type="submit" name="money_action" value="withdraw">Speichern</button></RestForm>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Dieses Feld ist erforderlich.');
     expect(screen.getByDisplayValue('Ada')).toBeInTheDocument();
+    expect(fetchMock.mock.calls[0][1].body.get('money_action')).toBe('withdraw');
     vi.unstubAllGlobals();
   });
 });

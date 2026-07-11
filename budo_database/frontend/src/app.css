@@ -98,6 +98,21 @@
   height: 2rem;
 }
 
+#interaction-bar form .money-action {
+  height: 2rem;
+  padding: 0 var(--s-padding);
+}
+
+#interaction-bar form .money-withdraw,
+#interaction-bar form .money-withdraw:hover {
+  background-color: #4caf50;
+}
+
+#interaction-bar form .money-topup,
+#interaction-bar form .money-topup:hover {
+  background-color: #d9534f;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .card > .card-info-container {
     transition: none;

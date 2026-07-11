@@ -256,6 +256,8 @@ export function RestForm({ target, token, children, className = '', encType }) {
     setSubmitting(true);
     setErrors([]);
     const body = new FormData(event.currentTarget);
+    const submitter = event.nativeEvent.submitter;
+    if (submitter?.name) body.set(submitter.name, submitter.value);
     body.set('_target', target);
     try {
       const response = await fetch('/api/form-submit/', {
@@ -294,7 +296,7 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
         if (field.type === 'checkbox') {
           return <label className="checkbox-row" key={field.name}><input type="checkbox" name={field.name} defaultChecked={Boolean(field.value)} />{field.label}</label>;
         }
-        return <label key={field.name}>{field.label}<input name={field.name} type={field.type || 'text'} defaultValue={field.type === 'file' ? undefined : field.value ?? ''} required={field.required} multiple={field.multiple} step={field.step} /></label>;
+        return <label key={field.name}>{field.label}<input name={field.name} type={field.type || 'text'} defaultValue={field.type === 'file' ? undefined : field.value ?? ''} required={field.required} multiple={field.multiple} min={field.min} step={field.step} /></label>;
       })}
       {children}
       <div className="form-buttons"><input className="button" type="submit" value={submit} /></div>
