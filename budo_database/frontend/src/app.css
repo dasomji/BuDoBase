@@ -31,11 +31,42 @@
   color: #9c1c1c;
 }
 
-.card:not(.closed-card) > .card-info-container {
-  display: block;
+.card > .card-info-container {
+  display: grid;
+  grid-template-rows: 0fr;
+  padding-top: 0;
+  padding-bottom: 0;
+  transition: grid-template-rows 300ms ease-in-out, padding 300ms ease-in-out;
 }
 
-.info-header-container > button.icon {
+.card:not(.closed-card) > .card-info-container {
+  grid-template-rows: 1fr;
+  padding-top: var(--str-padding);
+  padding-bottom: var(--str-padding);
+}
+
+.card-info-content {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.info-header-container.card-toggle {
+  width: 100%;
+  color: var(--text-color);
+  text-align: left;
+  white-space: normal;
+}
+
+.info-header-container.card-toggle:hover {
+  background-color: var(--dark-blue);
+}
+
+.transparent > .info-header-container.card-toggle:hover {
+  background-color: transparent;
+  filter: none;
+}
+
+.info-header-container > .icon {
   display: inline-grid;
   place-items: center;
   min-width: 26px;
@@ -46,6 +77,21 @@
   background: transparent;
   font-size: 1.4rem;
   line-height: 1;
+}
+
+#interaction-bar form > div:not(.hidden) {
+  flex: 1;
+}
+
+#interaction-bar form button img {
+  width: 2rem;
+  height: 2rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card > .card-info-container {
+    transition: none;
+  }
 }
 
 .form-grid {

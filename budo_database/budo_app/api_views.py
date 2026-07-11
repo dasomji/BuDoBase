@@ -232,6 +232,7 @@ def _profile(profile):
                 "id": item.id,
                 "amount": _money(item.amount),
                 "what": item.what,
+                "date": _datetime(item.date_added),
                 "day": item.date_added.strftime("%d.%m.") if item.date_added else "",
             }
             for item in profile.betreuerinnen_geld.all()
@@ -297,6 +298,7 @@ def _place(place):
                 "id": note.id,
                 "text": note.notiz or "",
                 "author": note.added_by.username,
+                "date": _datetime(note.date_added),
                 "day": note.date_added.strftime("%d.%m.") if note.date_added else "",
             }
             for note in place.auslagernotizen.all()

@@ -148,13 +148,28 @@ export function Card({ title, children, id, initiallyClosed = false, className =
   const [closed, setClosed] = useState(initiallyClosed || mobile);
   return (
     <section className={`card ${closed ? 'closed-card' : ''} ${className}`} id={id}>
-      <div className="info-header-container">
+      <div
+        className="info-header-container card-toggle"
+        role="button"
+        tabIndex={0}
+        aria-expanded={!closed}
+        aria-label={`${title} ${closed ? 'öffnen' : 'schließen'}`}
+        onClick={() => setClosed(value => !value)}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setClosed(value => !value);
+          }
+        }}
+      >
         <h2>{title}</h2>
-        <button className="icon" type="button" aria-expanded={!closed} aria-label={`${title} ${closed ? 'öffnen' : 'schließen'}`} onClick={() => setClosed(value => !value)}>
+        <span className="icon" aria-hidden="true">
           <span className="open-icon">{closed ? '+' : '−'}</span>
-        </button>
+        </span>
       </div>
-      <div className="card-info-container">{children}</div>
+      <div className="card-info-container" aria-hidden={closed} inert={closed || undefined}>
+        <div className="card-info-content">{children}</div>
+      </div>
     </section>
   );
 }

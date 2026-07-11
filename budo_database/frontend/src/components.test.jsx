@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Card, GlobalSearch, RestForm, SearchTable } from './components';
 import { parseRoute } from './App';
+import { formatGermanDate, KidInteractionForm } from './pages';
 
 describe('reusable components', () => {
   afterEach(cleanup);
@@ -24,6 +25,34 @@ describe('reusable components', () => {
     fireEvent.click(button);
 
     expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Details').closest('.card-info-container')).toHaveAttribute('inert');
+  });
+
+  it('toggles a card from anywhere in its header', () => {
+    render(<Card title="Gesundheit"><p>Details</p></Card>);
+
+    fireEvent.click(screen.getByRole('heading', { name: 'Gesundheit' }));
+
+    expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('toggles a card header with the keyboard', () => {
+    render(<Card title="Gesundheit"><p>Details</p></Card>);
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Gesundheit schließen' }), { key: ' ' });
+
+    expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('switches between the legacy note and pocket-money fields', () => {
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
+
+    expect(screen.getByPlaceholderText('Notiz...')).toBeVisible();
+    expect(screen.getByPlaceholderText('Taschengeld...').closest('#geld-form')).toHaveClass('hidden');
+    fireEvent.click(screen.getByText('Notiz'));
+
+    expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
+    expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
   });
 
   it('shows selectable results from kids, focuses, and places', () => {
@@ -91,6 +120,18 @@ describe('reusable components', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Dieses Feld ist erforderlich.');
     expect(screen.getByDisplayValue('Ada')).toBeInTheDocument();
     vi.unstubAllGlobals();
+  });
+});
+
+describe('German date formatting', () => {
+  it('formats API dates and datetimes without timezone shifts', () => {
+    expect(formatGermanDate('2026-07-02')).toBe('02.07.2026');
+    expect(formatGermanDate('2026-07-02T23:30:00Z')).toBe('02.07.2026');
+  });
+
+  it('leaves non-date values unchanged', () => {
+    expect(formatGermanDate('---')).toBe('---');
+    expect(formatGermanDate(null)).toBeNull();
   });
 });
 

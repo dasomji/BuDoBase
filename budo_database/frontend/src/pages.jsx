@@ -18,6 +18,32 @@ const money = value => `${Number(value || 0).toFixed(2)} €`;
 const linkKid = kid => <a href={`/kid_details/${kid.id}`}>{kid.full_name}{!kid.present && ' ❌'}</a>;
 const TrustedHtml = ({ value }) => value ? <span dangerouslySetInnerHTML={{ __html: value }} /> : '---';
 
+export function formatGermanDate(value) {
+  if (!value) return value;
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T)/);
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : value;
+}
+
+export function KidInteractionForm({ kid, token }) {
+  const [field, setField] = useState('notiz');
+  const show = name => () => setField(name);
+  return (
+    <div id="interaction-bar">
+      <div id="interaction-input">
+        <RestForm target={`/kid_details/${kid.id}`} token={token}>
+          <div id="notiz-form" className={field === 'notiz' ? '' : 'hidden'}>
+            <p><label htmlFor="id_notiz" onClick={show('amount')}>Notiz</label><input id="id_notiz" name="notiz" placeholder="Notiz..." /></p>
+          </div>
+          <div id="geld-form" className={field === 'amount' ? '' : 'hidden'}>
+            <p><label htmlFor="id_amount" onClick={show('notiz')}>Taschengeld</label><input id="id_amount" name="amount" type="number" step="0.01" placeholder="Taschengeld..." /></p>
+          </div>
+          <button type="submit"><img src="/static/img/send-button.svg" alt="Senden" /></button>
+        </RestForm>
+      </div>
+    </div>
+  );
+}
+
 export function AuthPage({ kind, data }) {
   if (kind === 'registered') {
     return <Columns><Column id="single-column"><Card title="Registrieren"><p>Du bist bereits registriert.</p></Card></Column></Columns>;
@@ -71,16 +97,16 @@ export function DashboardPage({ data }) {
           ['Kids mit Budo-Erfahrung', kids.filter(k => k.budo_experience).length], ['Zuganreise', totals.train_arrival], ['Zugabreise', totals.train_departure],
         ]} /></Card>
         <Card title="Speziallisten" id="db-spezial"><p><a href="/serienbrief">Serienbrief</a></p><p><a href="/murdergame">Mörderspiel Liste</a></p><p><a href="/zugabreise">Zugabreise</a></p><p><a href="/zuganreise">Zuganreise</a></p><p><a href="/upload/">Turnis</a></p><p><a href="/download-updated-excel/">Aufenthalts-Doku</a></p><p><a href="/swp-einteilung-w1">SWP-Einteilung Woche 1</a></p><p><a href="/swp-einteilung-w2">SWP-Einteilung Woche 2</a></p><p><a href="/happy-cleaning/">Happy Cleaning</a></p><p><a href="/budo_familien/">Budo-Familien</a></p><p><a href="/spezial_familien/">Spezialfamilien</a></p><p><a href="/upload_spezialfamilien/">Spezialfamilien hochladen</a></p><p><a href="/kindergeburtstage/">Kindergeburtstage</a></p></Card>
-        <Card title="Notizen" id="db-notizen"><ul>{activity.notes.map(note => <li key={note.id}><p><strong>{note.author}</strong> am {note.day}: <a href={`/kid_details/${note.kid_id}`}>{note.kid}</a></p><p>{note.text}</p></li>)}</ul></Card>
-        <Card title="Taschengeld-Transaktionen" id="db-geld"><ul>{activity.transactions.map(item => <li key={item.id}><p><strong>{item.author}</strong> am {item.day}: <a href={`/kid_details/${item.kid_id}`}>{item.kid}</a></p><p>Betrag: {money(item.amount)}</p></li>)}</ul></Card>
+        <Card title="Notizen" id="db-notizen"><ul>{activity.notes.map(note => <li key={note.id}><p><strong>{note.author}</strong> am {formatGermanDate(note.date)}: <a href={`/kid_details/${note.kid_id}`}>{note.kid}</a></p><p>{note.text}</p></li>)}</ul></Card>
+        <Card title="Taschengeld-Transaktionen" id="db-geld"><ul>{activity.transactions.map(item => <li key={item.id}><p><strong>{item.author}</strong> am {formatGermanDate(item.date)}: <a href={`/kid_details/${item.kid_id}`}>{item.kid}</a></p><p>Betrag: {money(item.amount)}</p></li>)}</ul></Card>
       </Column>
       <Column id="right-column">
         <Card title={`Erstes Mal im BuDO: ${firstTimers.length}/${totals.kids}`} id="db-ersties" initiallyClosed>{kidList(firstTimers)}</Card>
         <Card title={`Einwöchige: ${oneWeek.length}`} id="db-einwöchig" initiallyClosed>{kidList(oneWeek)}</Card>
         <Card title="Gesundheitliches" id="db-gesundheit" initiallyClosed>{kidList(health)}</Card>
         <Card title="Essen & Allergien" id="db-essen" initiallyClosed>{food.map(kid => <div className="print-nobreak" key={kid.id}><p>{linkKid(kid)}: {kid.age}</p><p>{kid.food} · {kid.special_food}</p></div>)}</Card>
-        <Card title={`Geburtstagskinder: ${birthdays.length}`} id="db-geburtstagskinder">{birthdays.map(kid => <p key={kid.id}>{linkKid(kid)}: {kid.birthday}</p>)}</Card>
-        <Card title={`Verabschiedungsliste: ${goodbyes.length}`} id="db-sechzehner">{goodbyes.map(kid => <p key={kid.id}>{linkKid(kid)}: {kid.age} – {kid.birthday}</p>)}</Card>
+        <Card title={`Geburtstagskinder: ${birthdays.length}`} id="db-geburtstagskinder">{birthdays.map(kid => <p key={kid.id}>{linkKid(kid)}: {formatGermanDate(kid.birthday)}</p>)}</Card>
+        <Card title={`Verabschiedungsliste: ${goodbyes.length}`} id="db-sechzehner">{goodbyes.map(kid => <p key={kid.id}>{linkKid(kid)}: {kid.age} – {formatGermanDate(kid.birthday)}</p>)}</Card>
       </Column>
     </Columns>
   );
@@ -117,7 +143,7 @@ export function KidDetailPage({ data, id, mutate }) {
     <>
       <Columns>
         <Column id="left-column">
-          <Card title={kid.full_name} id="kinderinfos"><FieldList items={[["Geschlecht", kid.sex], ["Alter", kid.age], ["Geburtstag", kid.birthday], ["Aufenthaltsdauer", `${kid.weeks}-wöchig`], ["Geschwister", kid.siblings], ["Zeltwunsch", kid.tent_request], ["War schon mal im Bunten Dorf", yesNo(kid.budo_experience)]]} /></Card>
+          <Card title={kid.full_name} id="kinderinfos"><FieldList items={[["Geschlecht", kid.sex], ["Alter", kid.age], ["Geburtstag", formatGermanDate(kid.birthday)], ["Aufenthaltsdauer", `${kid.weeks}-wöchig`], ["Geschwister", kid.siblings], ["Zeltwunsch", kid.tent_request], ["War schon mal im Bunten Dorf", yesNo(kid.budo_experience)]]} /></Card>
           <Card title="BuDo" id="budo-container"><FieldList items={[["Turnus", data.turnus?.label], ["Budo Familie", kid.budo_family], ["Haus", kid.special_family], ["SWP 1", kid.focus_w1], ["SWP 2", kid.focus_w2]]} /></Card>
         </Column>
         <Column id="center-column">
@@ -125,12 +151,12 @@ export function KidDetailPage({ data, id, mutate }) {
           <Card title="Familie" id="family_info"><FieldList items={[["Organisation", kid.organization], ["Anmelder:in", kid.registrant_name], ["Anmelder:in Email", <a href={`mailto:${kid.registrant_email}`}>{kid.registrant_email}</a>], ["Anmelder:in Mobil", <a href={`tel:${kid.registrant_phone}`}>{kid.registrant_phone}</a>], ["Hauptversichert bei", kid.insured_with], ["Notfallkontakte", kid.emergency_contacts]]} /></Card>
         </Column>
         <Column id="right-column">
-          <Card title="Notizen" id="notizen"><FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} /><ul>{kid.notes.length ? kid.notes.map(note => <li key={note.id}>{note.author} am {note.day}: {note.text}</li>) : <li>Noch keine Notizen.</li>}</ul></Card>
-          <Card title={`Taschengeld: ${money(kid.remaining_money)}${kid.remaining_money < 5 ? ' 🚨' : ''}`} id="taschengeld"><ul>{kid.transactions.length ? kid.transactions.map(item => <li key={item.id}>{item.author} am {item.day}: {money(item.amount)}</li>) : <li>Dieses Kind ist arm.</li>}</ul></Card>
+          <Card title="Notizen" id="notizen"><FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} /><ul>{kid.notes.length ? kid.notes.map(note => <li key={note.id}>{note.author} am {formatGermanDate(note.date)}: {note.text}</li>) : <li>Noch keine Notizen.</li>}</ul></Card>
+          <Card title={`Taschengeld: ${money(kid.remaining_money)}${kid.remaining_money < 5 ? ' 🚨' : ''}`} id="taschengeld"><ul>{kid.transactions.length ? kid.transactions.map(item => <li key={item.id}>{item.author} am {formatGermanDate(item.date)}: {money(item.amount)}</li>) : <li>Dieses Kind ist arm.</li>}</ul></Card>
           <Card title={`Pfand: ${kid.deposit}`} id="pfand"><div className="react-actions"><button className="button" type="button" onClick={() => deposit('increase')}>+ Pfand</button><button className="button" type="button" onClick={() => deposit('decrease')}>− Pfand</button></div></Card>
         </Column>
       </Columns>
-      <div id="interaction-bar"><RestForm target={`/kid_details/${kid.id}`} token={data.csrf_token}><input name="notiz" placeholder="Notiz..." /><input name="amount" type="number" step="0.01" placeholder="Taschengeld..." /><button type="submit">➤</button></RestForm></div>
+      <KidInteractionForm kid={kid} token={data.csrf_token} />
     </>
   );
 }
@@ -198,7 +224,7 @@ export function FocusDetailPage({ data, id }) {
   const focus = findById(data.focuses, id);
   if (!focus) return <NotFoundPage />;
   const kids = data.kids.filter(kid => focus.kid_ids.includes(kid.id));
-  return <Columns><Column id="left-column"><Card title={focus.name}><FieldList items={[["Beschreibung", focus.description], ["Kinder", kids.length], ["Ort", focus.place], ["Auslagern", yesNo(focus.off_site)], ["Betreuende", focus.carers], ["Wann", focus.time], ["Beginnt am", focus.start]]} /><MealTable focus={focus} /><div className="react-actions"><a className="button" href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</a><a className="button" href={`/swpmeals/${focus.id}`}>Essen bearbeiten</a></div></Card><MapCard places={focus.place_id ? data.places.filter(place => place.id === focus.place_id) : []} /></Column><Column id="right-column"><SearchTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
+  return <Columns><Column id="left-column"><Card title={focus.name}><FieldList items={[["Beschreibung", focus.description], ["Kinder", kids.length], ["Ort", focus.place], ["Auslagern", yesNo(focus.off_site)], ["Betreuende", focus.carers], ["Wann", focus.time], ["Beginnt am", formatGermanDate(focus.start)]]} /><MealTable focus={focus} /><div className="react-actions"><a className="button" href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</a><a className="button" href={`/swpmeals/${focus.id}`}>Essen bearbeiten</a></div></Card><MapCard places={focus.place_id ? data.places.filter(place => place.id === focus.place_id) : []} /></Column><Column id="right-column"><SearchTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
 }
 
 function MealTable({ focus }) {
@@ -241,7 +267,7 @@ export function PlacesPage({ data }) {
 export function PlaceDetailPage({ data, id }) {
   const place = findById(data.places, id);
   if (!place) return <NotFoundPage />;
-  return <><Columns className="auslagerorte-detail"><Column id="left-column"><Card title={place.name}><FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} /><a className="button" href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</a></Card><Card title="Kommentare"><ul>{place.notes.map(note => <li key={note.id}><strong>{note.author}</strong> am {note.day}: {note.text}</li>)}</ul></Card></Column><Column id="right-column"><Card title="Bilder"><div className="gallery-container">{place.images.map((src, index) => <div className="gallery-item" key={src}><img src={src} alt={`${place.name} ${index + 1}`} /></div>)}</div><a className="button" href={`/auslagerorte/${place.id}/upload-image/`}>Bilder hochladen</a></Card><MapCard places={[place]} /></Column></Columns><div id="interaction-bar"><RestForm target={`/auslagerorte/${place.id}/`} token={data.csrf_token}><input name="notiz" placeholder="Kommentar..." /><button type="submit">➤</button></RestForm></div></>;
+  return <><Columns className="auslagerorte-detail"><Column id="left-column"><Card title={place.name}><FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} /><a className="button" href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</a></Card><Card title="Kommentare"><ul>{place.notes.map(note => <li key={note.id}><strong>{note.author}</strong> am {formatGermanDate(note.date)}: {note.text}</li>)}</ul></Card></Column><Column id="right-column"><Card title="Bilder"><div className="gallery-container">{place.images.map((src, index) => <div className="gallery-item" key={src}><img src={src} alt={`${place.name} ${index + 1}`} /></div>)}</div><a className="button" href={`/auslagerorte/${place.id}/upload-image/`}>Bilder hochladen</a></Card><MapCard places={[place]} /></Column></Columns><div id="interaction-bar"><RestForm target={`/auslagerorte/${place.id}/`} token={data.csrf_token}><input name="notiz" placeholder="Kommentar..." /><button type="submit">➤</button></RestForm></div></>;
 }
 
 export function PlaceFormPage({ data, id }) {
@@ -299,8 +325,8 @@ export function BirthdaysPage({ data }) {
   const rows = data.kids.map(kid => ({ ...kid, sv: svBirthday(kid), filterText: kid.full_name }));
   const columns = [
     { key: 'name', label: 'Name', render: linkKid },
-    { key: 'birthday', label: 'DB-Geburtstag', render: row => displayOrPlaceholder(row.birthday) },
-    { key: 'sv', label: 'SV-Geburtstag', render: row => displayOrPlaceholder(row.sv) },
+    { key: 'birthday', label: 'DB-Geburtstag', render: row => displayOrPlaceholder(formatGermanDate(row.birthday)) },
+    { key: 'sv', label: 'SV-Geburtstag', render: row => displayOrPlaceholder(formatGermanDate(row.sv)) },
     { key: 'match', label: 'Check', render: row => row.birthday && row.sv ? row.birthday === row.sv ? '✅' : '❌' : '---' },
     { key: 'note', label: 'Notiz', render: row => <RestForm target="/kindergeburtstage/" token={data.csrf_token}><input type="hidden" name="kid_id" value={row.id} /><input name="notiz" placeholder="Notiz..." /><button className="button" type="submit">Speichern</button></RestForm> },
   ];
@@ -310,7 +336,7 @@ export function BirthdaysPage({ data }) {
 export function TeamerPage({ data, id }) {
   const profile = findById(data.team, id);
   if (!profile) return <NotFoundPage />;
-  return <Columns><Column id="left-column"><Card title={profile.rufname}><FieldList items={[["Rolle", profile.role_display], ["Turnus", data.turnus?.label], ["Essen", profile.food_display], ["Allergien", profile.allergies], ["Kaffee", profile.coffee], ["Email", <a href={`mailto:${profile.email}`}>{profile.email}</a>], ["Mobil", <a href={`tel:${profile.phone}`}>{profile.phone}</a>]]} /></Card></Column><Column id="center-column"><Card title={`Abrechnung: ${money(profile.money_total)}`}><ul>{profile.money_items.length ? profile.money_items.map(item => <li key={item.id}>{profile.rufname} am {item.day}: {item.what} – {money(item.amount)}</li>) : <li>Keine Transaktionen bisher...</li>}</ul><NativeForm token={data.csrf_token} action={`/teamer/${profile.id}/`} fields={[{ name: 'amount', label: 'Betrag in €', type: 'number', step: '0.01' }, { name: 'what', label: 'Beschreibung' }]} /></Card></Column></Columns>;
+  return <Columns><Column id="left-column"><Card title={profile.rufname}><FieldList items={[["Rolle", profile.role_display], ["Turnus", data.turnus?.label], ["Essen", profile.food_display], ["Allergien", profile.allergies], ["Kaffee", profile.coffee], ["Email", <a href={`mailto:${profile.email}`}>{profile.email}</a>], ["Mobil", <a href={`tel:${profile.phone}`}>{profile.phone}</a>]]} /></Card></Column><Column id="center-column"><Card title={`Abrechnung: ${money(profile.money_total)}`}><ul>{profile.money_items.length ? profile.money_items.map(item => <li key={item.id}>{profile.rufname} am {formatGermanDate(item.date)}: {item.what} – {money(item.amount)}</li>) : <li>Keine Transaktionen bisher...</li>}</ul><NativeForm token={data.csrf_token} action={`/teamer/${profile.id}/`} fields={[{ name: 'amount', label: 'Betrag in €', type: 'number', step: '0.01' }, { name: 'what', label: 'Beschreibung' }]} /></Card></Column></Columns>;
 }
 
 export function ProfilePage({ data }) {
@@ -328,7 +354,7 @@ export function ProfilePage({ data }) {
 
 export function TurnusUploadPage({ data, id }) {
   const turnus = id ? findById(data.turnuses, id) : null;
-  return <Columns><Column id="single-column"><Card title={turnus ? `Excel-Datei hochladen für Turnus ${turnus.number}` : 'Turnis'}><NativeForm token={data.csrf_token} action={turnus ? `/upload_excel/${turnus.id}/` : '/upload/'} encType="multipart/form-data" fields={[{ name: 'turnus_nr', label: 'Turnus Nummer', type: 'number', value: turnus?.number, required: true }, { name: 'turnus_beginn', label: 'Beginn des Turnus', type: 'date', value: turnus?.start, required: true }, { name: 'uploadedFile', label: 'Excel-File', type: 'file' }]} submit={turnus ? 'Hochladen' : 'Turnus hinzufügen'} /></Card>{!turnus && <SearchTable columns={[{ key: 'label', label: 'Turnus' }, { key: 'id', label: 'ID' }, { key: 'start', label: 'Turnusbeginn' }, { key: 'actions', label: 'Aktionen', render: row => <a className="button" href={`/upload_excel/${row.id}/`}>Excel hochladen</a> }]} rows={data.turnuses} />}</Column></Columns>;
+  return <Columns><Column id="single-column"><Card title={turnus ? `Excel-Datei hochladen für Turnus ${turnus.number}` : 'Turnis'}><NativeForm token={data.csrf_token} action={turnus ? `/upload_excel/${turnus.id}/` : '/upload/'} encType="multipart/form-data" fields={[{ name: 'turnus_nr', label: 'Turnus Nummer', type: 'number', value: turnus?.number, required: true }, { name: 'turnus_beginn', label: 'Beginn des Turnus', type: 'date', value: turnus?.start, required: true }, { name: 'uploadedFile', label: 'Excel-File', type: 'file' }]} submit={turnus ? 'Hochladen' : 'Turnus hinzufügen'} /></Card>{!turnus && <SearchTable columns={[{ key: 'label', label: 'Turnus' }, { key: 'id', label: 'ID' }, { key: 'start', label: 'Turnusbeginn', render: row => formatGermanDate(row.start) }, { key: 'actions', label: 'Aktionen', render: row => <a className="button" href={`/upload_excel/${row.id}/`}>Excel hochladen</a> }]} rows={data.turnuses} />}</Column></Columns>;
 }
 
 export function SimpleUploadPage({ data }) {
