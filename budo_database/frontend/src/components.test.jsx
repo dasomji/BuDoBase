@@ -66,6 +66,11 @@ describe('reusable components', () => {
       weeks: 2,
       birthday: '2012-07-02',
       social_security_number: '1234 030712',
+      consent: present ? false : null,
+      over_the_counter_medication: 'Ibuprofen',
+      prescription_medication: '',
+      tetanus: null,
+      tick_vaccine: 'Ja',
       notes: [],
       transactions: [],
       remaining_money: 0,
@@ -75,6 +80,11 @@ describe('reusable components', () => {
 
     expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
     expect(screen.getByText('Geburtstag').closest('p')).toHaveTextContent('Geburtstag: 02.07.2012 ❗');
+    expect(screen.getByText('Einverständnis für ärztliche Behandlung').closest('p')).toHaveTextContent(`Einverständnis für ärztliche Behandlung: ${present ? 'Nein' : '❗'}`);
+    expect(screen.getByText('Rezeptfreie Medikamente').closest('p')).toHaveTextContent('Rezeptfreie Medikamente: Ibuprofen');
+    expect(screen.getByText('Medikamente auf Rezept').closest('p')).toHaveTextContent('Medikamente auf Rezept: ❗');
+    expect(screen.getByText('Tetanusimpfung').closest('p')).toHaveTextContent('Tetanusimpfung: ❗');
+    expect(screen.getByText('Zeckenimpfung').closest('p')).toHaveTextContent('Zeckenimpfung: Ja');
     const checkAction = screen.getByRole('link', { name: action });
     expect(checkAction).toHaveAttribute('href', path);
     expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');
