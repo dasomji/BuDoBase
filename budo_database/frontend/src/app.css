@@ -222,6 +222,23 @@
   font-weight: 300;
 }
 
+#headersearch input,
+.filter-table,
+input[name="notiz"],
+input[name="amount"] {
+  background-color: white;
+  color: var(--text-color);
+  caret-color: var(--text-color);
+}
+
+#headersearch input::placeholder,
+.filter-table::placeholder,
+input[name="notiz"]::placeholder,
+input[name="amount"]::placeholder {
+  color: var(--text-color);
+  opacity: 0.65;
+}
+
 .table-sort-button,
 .table-sort-button:hover {
   display: flex;
