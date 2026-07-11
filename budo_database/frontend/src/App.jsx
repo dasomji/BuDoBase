@@ -72,7 +72,7 @@ export function parseRoute(pathname) {
   return { page: 'not-found', title: 'Seite nicht gefunden' };
 }
 
-function RoutePage({ route, data, mutate }) {
+function RoutePage({ route, data, mutate, refresh }) {
   switch (route.page) {
     case 'login': return <AuthPage kind="login" data={data} />;
     case 'register': return <AuthPage kind={data.authenticated ? 'registered' : 'register'} data={data} />;
@@ -82,7 +82,7 @@ function RoutePage({ route, data, mutate }) {
     case 'kids': return <KidsPage data={data} />;
     case 'train-departure': return <TrainPage data={data} departure mutate={mutate} />;
     case 'train-arrival': return <TrainPage data={data} mutate={mutate} />;
-    case 'kid': return <KidDetailPage data={data} id={route.id} mutate={mutate} />;
+    case 'kid': return <KidDetailPage data={data} id={route.id} mutate={mutate} onSaved={refresh} />;
     case 'check-in': return <CheckPage data={data} id={route.id} />;
     case 'check-out': return <CheckPage data={data} id={route.id} checkout />;
     case 'serial-letter': return <SerialLetterPage data={data} />;
@@ -165,7 +165,7 @@ export default function App() {
     <>
       {!route.standalone && <Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? headerAction(route, data) : null} />}
       <Messages items={data.messages} />
-      <RoutePage route={route} data={data} mutate={mutate} />
+      <RoutePage route={route} data={data} mutate={mutate} refresh={load} />
     </>
   );
 }

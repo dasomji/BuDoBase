@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Card, GlobalSearch, RestForm, SearchTable } from './components';
@@ -9,6 +9,7 @@ describe('reusable components', () => {
   afterEach(cleanup);
 
   beforeEach(() => {
+    document.cookie = 'interaction-bar=; Max-Age=0; Path=/';
     window.matchMedia = vi.fn().mockImplementation(query => ({
       matches: query.includes('max-width') ? false : true,
       media: query,
@@ -44,8 +45,11 @@ describe('reusable components', () => {
     expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('switches between the legacy note and pocket-money fields', () => {
-    render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
+  it('switches modes, stores the cookie, and saves money without navigating', async () => {
+    const onSaved = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
 
     expect(screen.getByPlaceholderText('Notiz...')).toBeVisible();
     expect(screen.getByPlaceholderText('Taschengeld...').closest('#geld-form')).toHaveClass('hidden');
@@ -53,10 +57,27 @@ describe('reusable components', () => {
 
     expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
     expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
+    expect(document.cookie).toContain('interaction-bar=geld-form');
     expect(screen.getByPlaceholderText('Taschengeld...')).toHaveAttribute('min', '0');
     expect(screen.getByRole('button', { name: 'Abbuchen' })).toHaveClass('money-withdraw');
     expect(screen.getByRole('button', { name: 'Aufladen' })).toHaveClass('money-topup');
     expect(screen.queryByRole('button', { name: 'Senden' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Taschengeld...'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Abbuchen' }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+    expect(fetchMock.mock.calls[0][1].body.get('money_action')).toBe('withdraw');
+    expect(screen.getByPlaceholderText('Taschengeld...')).toHaveValue(null);
+    vi.unstubAllGlobals();
+  });
+
+  it('restores the saved Taschengeld mode from its cookie', () => {
+    document.cookie = 'interaction-bar=geld-form; Path=/';
+
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
+
+    expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
+    expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
   });
 
   it.each([

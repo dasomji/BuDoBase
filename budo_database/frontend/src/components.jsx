@@ -248,14 +248,15 @@ export function CsrfInput({ token }) {
   return <input type="hidden" name="csrfmiddlewaretoken" value={token} />;
 }
 
-export function RestForm({ target, token, children, className = '', encType }) {
+export function RestForm({ target, token, children, className = '', encType, onSuccess, resetOnSuccess = false }) {
   const [errors, setErrors] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const submit = async event => {
     event.preventDefault();
+    const form = event.currentTarget;
     setSubmitting(true);
     setErrors([]);
-    const body = new FormData(event.currentTarget);
+    const body = new FormData(form);
     const submitter = event.nativeEvent.submitter;
     if (submitter?.name) body.set(submitter.name, submitter.value);
     body.set('_target', target);
@@ -269,6 +270,11 @@ export function RestForm({ target, token, children, className = '', encType }) {
       const result = await response.json();
       if (!response.ok || !result.ok) {
         setErrors(result.errors || ['Das Formular konnte nicht gespeichert werden.']);
+        return;
+      }
+      if (onSuccess) {
+        await onSuccess(result);
+        if (resetOnSuccess) form.reset();
         return;
       }
       window.location.assign(result.redirect || target);

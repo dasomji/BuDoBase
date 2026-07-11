@@ -46,13 +46,28 @@ export function formatKidBirthday(kid) {
   return `${birthday}${calculatedBirthday && calculatedBirthday !== kid.birthday ? ' ❗' : ''}`;
 }
 
-export function KidInteractionForm({ kid, token }) {
-  const [field, setField] = useState('notiz');
-  const show = name => () => setField(name);
+function interactionModeCookie() {
+  if (typeof document === 'undefined') return null;
+  const cookie = document.cookie.split('; ').find(item => item.startsWith('interaction-bar='));
+  return cookie?.split('=')[1] || null;
+}
+
+function saveInteractionMode(field) {
+  const value = field === 'amount' ? 'geld-form' : 'notiz-form';
+  document.cookie = `interaction-bar=${value}; Max-Age=2592000; Path=/; SameSite=Lax`;
+}
+
+export function KidInteractionForm({ kid, token, onSaved }) {
+  const [field, setField] = useState(() => interactionModeCookie() === 'geld-form' ? 'amount' : 'notiz');
+  const show = name => event => {
+    event.preventDefault();
+    setField(name);
+    saveInteractionMode(name);
+  };
   return (
     <div id="interaction-bar">
       <div id="interaction-input">
-        <RestForm target={`/kid_details/${kid.id}`} token={token}>
+        <RestForm target={`/kid_details/${kid.id}`} token={token} onSuccess={onSaved} resetOnSuccess>
           <div id="notiz-form" className={field === 'notiz' ? '' : 'hidden'}>
             <p><label htmlFor="id_notiz" onClick={show('amount')}>Notiz</label><input id="id_notiz" name="notiz" placeholder="Notiz..." /></p>
           </div>
@@ -159,7 +174,7 @@ export function KidsPage({ data }) {
   return <main className="table-only" id="body-container"><SearchTable columns={kidColumns} rows={rows} showFilter /></main>;
 }
 
-export function KidDetailPage({ data, id, mutate }) {
+export function KidDetailPage({ data, id, mutate, onSaved }) {
   const kid = findById(data.kids, id);
   if (!kid) return <NotFoundPage />;
   const deposit = action => mutate('/update_pfand/', { id: kid.id, action });
@@ -180,7 +195,7 @@ export function KidDetailPage({ data, id, mutate }) {
           <Card title={`Pfand: ${kid.deposit}`} id="pfand"><div className="react-actions"><button className="button" type="button" onClick={() => deposit('increase')}>+ Pfand</button><button className="button" type="button" onClick={() => deposit('decrease')}>− Pfand</button></div></Card>
         </Column>
       </Columns>
-      <KidInteractionForm kid={kid} token={data.csrf_token} />
+      <KidInteractionForm kid={kid} token={data.csrf_token} onSaved={onSaved} />
     </>
   );
 }
