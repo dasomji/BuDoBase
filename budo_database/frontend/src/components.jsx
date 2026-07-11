@@ -186,22 +186,57 @@ export function FieldList({ items }) {
   return <>{items.filter(([, value]) => value !== null && value !== undefined && value !== '').map(([label, value]) => <p key={label}><span className="label">{label}</span>: {value}</p>)}</>;
 }
 
+function tableSortValue(column, row) {
+  if (column.sortValue) return column.sortValue(row);
+  if (row[column.key] !== null && row[column.key] !== undefined) return row[column.key];
+  if (column.key === 'name') return row.full_name ?? row.filterText ?? '';
+  return '';
+}
+
+function compareTableValues(left, right) {
+  if (typeof left === 'boolean' || typeof right === 'boolean') return Number(left) - Number(right);
+  const leftText = String(left ?? '').trim();
+  const rightText = String(right ?? '').trim();
+  const leftNumber = Number(leftText);
+  const rightNumber = Number(rightText);
+  if (leftText && rightText && Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) return leftNumber - rightNumber;
+  return leftText.localeCompare(rightText, 'de', { numeric: true, sensitivity: 'base' });
+}
+
 export function SearchTable({ columns, rows, showFilter = false, id = 'kids-table', empty = 'Keine Einträge' }) {
   const [query, setQuery] = useState('');
-  const filtered = useMemo(() => {
+  const [sort, setSort] = useState(null);
+  const visibleRows = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('de');
-    if (!needle) return rows;
-    return rows.filter(row => String(row.filterText ?? row.full_name ?? row.name ?? '').toLocaleLowerCase('de').includes(needle));
-  }, [query, rows]);
+    const filtered = needle
+      ? rows.filter(row => String(row.filterText ?? row.full_name ?? row.name ?? '').toLocaleLowerCase('de').includes(needle))
+      : rows;
+    if (!sort) return filtered;
+    const column = columns.find(item => item.key === sort.key);
+    if (!column) return filtered;
+    const direction = sort.direction === 'ascending' ? 1 : -1;
+    return filtered
+      .map((row, index) => ({ row, index }))
+      .sort((left, right) => direction * compareTableValues(tableSortValue(column, left.row), tableSortValue(column, right.row)) || left.index - right.index)
+      .map(item => item.row);
+  }, [columns, query, rows, sort]);
+  const sortBy = key => setSort(current => ({
+    key,
+    direction: current?.key === key && current.direction === 'ascending' ? 'descending' : 'ascending',
+  }));
   return (
     <>
       {showFilter && <input className="filter-table" type="search" placeholder="Kinder filtern..." aria-label="Kinder filtern" value={query} onChange={event => setQuery(event.target.value)} />}
       <div className="table-container">
         <table id={id}>
-          <thead><tr className="table-header">{columns.map((column, index) => <th key={column.key} className={index === 0 ? 'headcol' : ''}>{column.label}</th>)}</tr></thead>
+          <thead><tr className="table-header">{columns.map((column, index) => {
+            const direction = sort?.key === column.key ? sort.direction : undefined;
+            const nextDirection = direction === 'ascending' ? 'absteigend' : direction === 'descending' ? 'aufsteigend' : '';
+            return <th key={column.key} className={index === 0 ? 'headcol' : ''} aria-sort={direction}>{column.sortable === false ? column.label : <button className="table-sort-button" type="button" aria-label={`${column.label}${nextDirection ? ` ${nextDirection}` : ''} sortieren`} onClick={() => sortBy(column.key)}><span>{column.label}</span>{direction && <span className="sort-indicator" aria-hidden="true">{direction === 'ascending' ? '▲' : '▼'}</span>}</button>}</th>;
+          })}</tr></thead>
           <tbody>
-            {filtered.map(row => <tr className="table_row" key={row.id}>{columns.map((column, index) => <td className={`${column.className || 'text-cell'} ${index === 0 ? 'headcol' : ''}`} key={column.key}>{column.render ? column.render(row) : row[column.key]}</td>)}</tr>)}
-            {!filtered.length && <tr><td colSpan={columns.length}>{empty}</td></tr>}
+            {visibleRows.map(row => <tr className="table_row" key={row.id}>{columns.map((column, index) => <td className={`${column.className || 'text-cell'} ${index === 0 ? 'headcol' : ''}`} key={column.key}>{column.render ? column.render(row) : row[column.key]}</td>)}</tr>)}
+            {!visibleRows.length && <tr><td colSpan={columns.length}>{empty}</td></tr>}
           </tbody>
         </table>
       </div>

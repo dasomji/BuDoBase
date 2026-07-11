@@ -215,7 +215,7 @@ const focusKidColumns = kidColumns.filter(column => ['name', 'budo_family', 'sex
 
 export function FocusDashboardPage({ data }) {
   const group = week => data.focuses.filter(focus => focus.week === week);
-  const columns = [{ key: 'name', label: 'Name', render: focus => <a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a> }, { key: 'place', label: 'Ort', render: focus => focus.place || '---' }, { key: 'carers', label: 'Betreuende', render: focus => focus.carers || '---' }, { key: 'off_site', label: 'Auslagern', render: focus => yesNo(focus.off_site) }, { key: 'kids', label: 'Kinder', render: focus => focus.kid_ids.length }, { key: 'meals', label: 'Essenseinteilung', render: focus => focus.meal_items.some(meal => meal.choice) ? 'Ja' : 'Nein' }, { key: 'actions', label: 'Aktionen', render: focus => <a href={`/schwerpunkt/${focus.id}/update`}>✏️</a> }];
+  const columns = [{ key: 'name', label: 'Name', render: focus => <a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a> }, { key: 'place', label: 'Ort', render: focus => focus.place || '---' }, { key: 'carers', label: 'Betreuende', render: focus => focus.carers || '---' }, { key: 'off_site', label: 'Auslagern', render: focus => yesNo(focus.off_site) }, { key: 'kids', label: 'Kinder', render: focus => focus.kid_ids.length, sortValue: focus => focus.kid_ids.length }, { key: 'meals', label: 'Essenseinteilung', render: focus => focus.meal_items.some(meal => meal.choice) ? 'Ja' : 'Nein', sortValue: focus => focus.meal_items.some(meal => meal.choice) }, { key: 'actions', label: 'Aktionen', sortable: false, render: focus => <a href={`/schwerpunkt/${focus.id}/update`}>✏️</a> }];
   const tables = [['u', 'Unklar Wann'], ['w1', 'Woche 1'], ['w2', 'Woche 2']].filter(([week]) => group(week).length || week !== 'u');
   return <Columns><Column id="left-column"><MapCard places={data.focuses.filter(focus => focus.coordinates).map(focus => ({ id: focus.id, name: focus.name, coordinates: focus.coordinates, href: `/schwerpunkt/${focus.id}/` }))} /></Column><Column id="right-column" className="normal-column">{tables.map(([week, title]) => <Card title={title} className="transparent" key={week}><SearchTable columns={columns} rows={group(week)} />{week !== 'u' && <div className="react-actions"><a className="button" href={`/swp-einteilung-${week}`}>Kinder einteilen</a></div>}</Card>)}</Column></Columns>;
 }
@@ -259,7 +259,7 @@ export function PlacesPage({ data }) {
     { key: 'name', label: 'Name', render: row => <a href={`/auslagerorte/${row.id}/`}>{row.name}</a> },
     { key: 'maps_link', label: 'Wo', render: row => row.maps_link ? <a href={row.maps_link}>Google Maps</a> : '---' },
     { key: 'parking_link', label: 'Parkspot', render: row => row.parking_link ? <a href={row.parking_link}>Google Maps</a> : '---' },
-    { key: 'actions', label: 'Aktionen', render: row => <><a href={`/auslagerorte/${row.id}/update`}>✏️</a> <a href={`/auslagerorte/${row.id}/`}>👁️</a></> },
+    { key: 'actions', label: 'Aktionen', sortable: false, render: row => <><a href={`/auslagerorte/${row.id}/update`}>✏️</a> <a href={`/auslagerorte/${row.id}/`}>👁️</a></> },
   ];
   return <Columns><Column id="left-column" className="normal-column"><SearchTable columns={columns} rows={rows} /></Column><Column id="right-column"><MapCard places={data.places} /></Column></Columns>;
 }
@@ -299,9 +299,9 @@ export function AllocationPage({ data, week, mutate }) {
   const rows = data.kids.map(kid => ({ ...kid, filterText: kid.full_name }));
   const columns = [
     { key: 'name', label: 'Name', render: linkKid },
-    { key: 'assigned', label: 'Einteilung', render: kid => <select value={kid.focus_ids.find(id => focuses.some(f => f.id === id)) || ''} onChange={event => event.target.value && mutate('/update-schwerpunkt-wahl/', { kid_id: kid.id, swp_id: Number(event.target.value), choice_rank: null })}><option value="">Nicht zugeordnet</option>{focuses.map(focus => <option value={focus.id} key={focus.id}>{focus.name}</option>)}</select> },
+    { key: 'assigned', label: 'Einteilung', sortValue: kid => focuses.find(focus => kid.focus_ids.includes(focus.id))?.name || '', render: kid => <select value={kid.focus_ids.find(id => focuses.some(f => f.id === id)) || ''} onChange={event => event.target.value && mutate('/update-schwerpunkt-wahl/', { kid_id: kid.id, swp_id: Number(event.target.value), choice_rank: null })}><option value="">Nicht zugeordnet</option>{focuses.map(focus => <option value={focus.id} key={focus.id}>{focus.name}</option>)}</select> },
     ...focuses.map(focus => ({ key: `focus-${focus.id}`, label: focus.name, render: kid => { const choice = kid.choices.find(item => item.week === `w${week}`); return <span className="swp-choice">{['1', '2', '3'].map(rank => <button className={Number(choice?.[{ 1: 'first', 2: 'second', 3: 'third' }[rank]]) === focus.id ? 'active' : ''} type="button" key={rank} onClick={() => mutate('/update-schwerpunkt-wahl/', { kid_id: kid.id, swp_id: focus.id, choice_rank: rank })}>{rank}</button>)}</span>; } })),
-    { key: 'friends', label: 'Freunde', render: kid => { const friends = kid.choices.find(c => c.week === `w${week}`)?.friends || ''; return <>{friends || '---'} <button type="button" onClick={() => { const value = window.prompt('Freunde bearbeiten', friends); if (value !== null) mutate('/update_freunde/', { kid_id: kid.id, freunde: value }); }}>✏️</button></>; } },
+    { key: 'friends', label: 'Freunde', sortValue: kid => kid.choices.find(choice => choice.week === `w${week}`)?.friends || '', render: kid => { const friends = kid.choices.find(c => c.week === `w${week}`)?.friends || ''; return <>{friends || '---'} <button type="button" onClick={() => { const value = window.prompt('Freunde bearbeiten', friends); if (value !== null) mutate('/update_freunde/', { kid_id: kid.id, freunde: value }); }}>✏️</button></>; } },
     { key: 'age', label: 'Alter' },
     { key: 'siblings', label: 'Geschwister', render: kid => displayOrPlaceholder(kid.siblings) },
   ];
@@ -327,8 +327,8 @@ export function BirthdaysPage({ data }) {
     { key: 'name', label: 'Name', render: linkKid },
     { key: 'birthday', label: 'DB-Geburtstag', render: row => displayOrPlaceholder(formatGermanDate(row.birthday)) },
     { key: 'sv', label: 'SV-Geburtstag', render: row => displayOrPlaceholder(formatGermanDate(row.sv)) },
-    { key: 'match', label: 'Check', render: row => row.birthday && row.sv ? row.birthday === row.sv ? '✅' : '❌' : '---' },
-    { key: 'note', label: 'Notiz', render: row => <RestForm target="/kindergeburtstage/" token={data.csrf_token}><input type="hidden" name="kid_id" value={row.id} /><input name="notiz" placeholder="Notiz..." /><button className="button" type="submit">Speichern</button></RestForm> },
+    { key: 'match', label: 'Check', sortValue: row => row.birthday && row.sv ? Number(row.birthday === row.sv) : -1, render: row => row.birthday && row.sv ? row.birthday === row.sv ? '✅' : '❌' : '---' },
+    { key: 'note', label: 'Notiz', sortable: false, render: row => <RestForm target="/kindergeburtstage/" token={data.csrf_token}><input type="hidden" name="kid_id" value={row.id} /><input name="notiz" placeholder="Notiz..." /><button className="button" type="submit">Speichern</button></RestForm> },
   ];
   return <main className="table-only" id="body-container"><SearchTable columns={columns} rows={rows} showFilter /></main>;
 }
@@ -354,7 +354,7 @@ export function ProfilePage({ data }) {
 
 export function TurnusUploadPage({ data, id }) {
   const turnus = id ? findById(data.turnuses, id) : null;
-  return <Columns><Column id="single-column"><Card title={turnus ? `Excel-Datei hochladen für Turnus ${turnus.number}` : 'Turnis'}><NativeForm token={data.csrf_token} action={turnus ? `/upload_excel/${turnus.id}/` : '/upload/'} encType="multipart/form-data" fields={[{ name: 'turnus_nr', label: 'Turnus Nummer', type: 'number', value: turnus?.number, required: true }, { name: 'turnus_beginn', label: 'Beginn des Turnus', type: 'date', value: turnus?.start, required: true }, { name: 'uploadedFile', label: 'Excel-File', type: 'file' }]} submit={turnus ? 'Hochladen' : 'Turnus hinzufügen'} /></Card>{!turnus && <SearchTable columns={[{ key: 'label', label: 'Turnus' }, { key: 'id', label: 'ID' }, { key: 'start', label: 'Turnusbeginn', render: row => formatGermanDate(row.start) }, { key: 'actions', label: 'Aktionen', render: row => <a className="button" href={`/upload_excel/${row.id}/`}>Excel hochladen</a> }]} rows={data.turnuses} />}</Column></Columns>;
+  return <Columns><Column id="single-column"><Card title={turnus ? `Excel-Datei hochladen für Turnus ${turnus.number}` : 'Turnis'}><NativeForm token={data.csrf_token} action={turnus ? `/upload_excel/${turnus.id}/` : '/upload/'} encType="multipart/form-data" fields={[{ name: 'turnus_nr', label: 'Turnus Nummer', type: 'number', value: turnus?.number, required: true }, { name: 'turnus_beginn', label: 'Beginn des Turnus', type: 'date', value: turnus?.start, required: true }, { name: 'uploadedFile', label: 'Excel-File', type: 'file' }]} submit={turnus ? 'Hochladen' : 'Turnus hinzufügen'} /></Card>{!turnus && <SearchTable columns={[{ key: 'label', label: 'Turnus' }, { key: 'id', label: 'ID' }, { key: 'start', label: 'Turnusbeginn', render: row => formatGermanDate(row.start) }, { key: 'actions', label: 'Aktionen', sortable: false, render: row => <a className="button" href={`/upload_excel/${row.id}/`}>Excel hochladen</a> }]} rows={data.turnuses} />}</Column></Columns>;
 }
 
 export function SimpleUploadPage({ data }) {

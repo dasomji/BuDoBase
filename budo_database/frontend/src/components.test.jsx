@@ -130,6 +130,31 @@ describe('reusable components', () => {
     expect(screen.queryByPlaceholderText('Kinder filtern...')).not.toBeInTheDocument();
   });
 
+  it('sorts table columns by text, number, and underlying date values', () => {
+    const columns = [
+      { key: 'name', label: 'Name', render: row => row.full_name },
+      { key: 'age', label: 'Alter' },
+      { key: 'birthday_label', label: 'Geburtstag', render: row => row.birthday_label, sortValue: row => row.birthday },
+    ];
+    const rows = [
+      { id: 1, full_name: 'Zora', age: 2, birthday: '2015-12-01', birthday_label: '01.12.2015' },
+      { id: 2, full_name: 'Ada', age: 10, birthday: '2012-01-03', birthday_label: '03.01.2012' },
+    ];
+    const firstColumn = () => screen.getAllByRole('row').slice(1).map(row => row.querySelector('td').textContent);
+
+    render(<SearchTable columns={columns} rows={rows} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Name sortieren' }));
+    expect(firstColumn()).toEqual(['Ada', 'Zora']);
+    expect(screen.getByRole('columnheader', { name: /Name/ })).toHaveAttribute('aria-sort', 'ascending');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Name absteigend sortieren' }));
+    expect(firstColumn()).toEqual(['Zora', 'Ada']);
+    fireEvent.click(screen.getByRole('button', { name: 'Alter sortieren' }));
+    expect(firstColumn()).toEqual(['Zora', 'Ada']);
+    fireEvent.click(screen.getByRole('button', { name: 'Geburtstag sortieren' }));
+    expect(firstColumn()).toEqual(['Ada', 'Zora']);
+  });
+
   it('keeps form state in React and renders REST validation errors', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
