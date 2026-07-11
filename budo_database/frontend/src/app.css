@@ -148,6 +148,19 @@
   border: 0;
 }
 
+.react-search-results {
+  display: block;
+  max-height: min(60vh, 28rem);
+}
+
+.filter-table {
+  width: 100%;
+  border: 2px solid white;
+  border-radius: var(--corner-rad);
+  padding: var(--xs-padding);
+  font-weight: 300;
+}
+
 #legacy-print-root {
   display: none;
 }
@@ -155,6 +168,7 @@
 @media print {
   .react-actions,
   .search-filter,
+  .filter-table,
   .mobile-drawer,
   #interaction-bar {
     display: none !important;

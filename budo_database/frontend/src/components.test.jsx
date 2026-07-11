@@ -1,10 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Card, RestForm, SearchTable } from './components';
+import { Card, GlobalSearch, RestForm, SearchTable } from './components';
 import { parseRoute } from './App';
 
 describe('reusable components', () => {
+  afterEach(cleanup);
+
   beforeEach(() => {
     window.matchMedia = vi.fn().mockImplementation(query => ({
       matches: query.includes('max-width') ? false : true,
@@ -24,17 +26,57 @@ describe('reusable components', () => {
     expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('filters reusable tables using their search text', () => {
+  it('shows selectable results from kids, focuses, and places', () => {
+    render(<GlobalSearch data={{
+      kids: [{ id: 1, full_name: 'Ada Lovelace', present: false }],
+      focuses: [{ id: 2, name: 'Ada im Wald' }],
+      places: [{ id: 3, name: 'Ada Hütte' }],
+    }} />);
+
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: 'ada' } });
+
+    expect(screen.getByRole('option', { name: '❌ Ada Lovelace' })).toHaveAttribute('href', '/kid_details/1');
+    expect(screen.getByRole('option', { name: '🚀Ada im Wald' })).toHaveAttribute('href', '/schwerpunkt/2');
+    expect(screen.getByRole('option', { name: '🏡 Ada Hütte' })).toHaveAttribute('href', '/auslagerorte/3');
+  });
+
+  it('supports keyboard selection in the global search', () => {
+    const onNavigate = vi.fn();
+    render(<GlobalSearch data={{
+      kids: [{ id: 1, full_name: 'Ada Lovelace', present: true }],
+      focuses: [],
+      places: [],
+    }} onNavigate={onNavigate} />);
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: 'ada' } });
+    fireEvent.keyDown(search, { key: 'ArrowDown' });
+    fireEvent.keyDown(search, { key: 'Enter' });
+
+    expect(onNavigate).toHaveBeenCalledWith('/kid_details/1');
+  });
+
+  it('filters table pages by the first-column name only', () => {
     const columns = [{ key: 'name', label: 'Name' }];
     const rows = [
-      { id: 1, name: 'Ada', searchText: 'Ada Lovelace' },
-      { id: 2, name: 'Grace', searchText: 'Grace Hopper' },
+      { id: 1, name: 'Ada', filterText: 'Ada Lovelace', searchText: 'Ada Vienna' },
+      { id: 2, name: 'Grace', filterText: 'Grace Hopper', searchText: 'Grace Ada' },
     ];
 
-    render(<SearchTable columns={columns} rows={rows} query="hopper" />);
+    render(<SearchTable columns={columns} rows={rows} showFilter />);
+    fireEvent.change(screen.getByPlaceholderText('Kinder filtern...'), { target: { value: 'ada' } });
 
-    expect(screen.getByText('Grace')).toBeInTheDocument();
-    expect(screen.queryByText('Ada')).not.toBeInTheDocument();
+    expect(screen.getByText('Ada')).toBeInTheDocument();
+    expect(screen.queryByText('Grace')).not.toBeInTheDocument();
+  });
+
+  it('does not add the child filter to ordinary tables', () => {
+    render(<SearchTable columns={[{ key: 'name', label: 'Name' }]} rows={[]} />);
+
+    expect(screen.queryByPlaceholderText('Kinder filtern...')).not.toBeInTheDocument();
   });
 
   it('keeps form state in React and renders REST validation errors', async () => {

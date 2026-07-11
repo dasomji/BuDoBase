@@ -104,9 +104,9 @@ const kidColumns = [
   { key: 'booking_note', label: 'Anmerkungen (Buchung)', render: row => <TrustedHtml value={row.booking_note} /> },
 ];
 
-export function KidsPage({ data, query }) {
-  const rows = data.kids.map(kid => ({ ...kid, searchText: Object.values(kid).join(' ') }));
-  return <main className="table-only" id="body-container"><SearchTable columns={kidColumns} rows={rows} query={query} /></main>;
+export function KidsPage({ data }) {
+  const rows = data.kids.map(kid => ({ ...kid, filterText: kid.full_name }));
+  return <main className="table-only" id="body-container"><SearchTable columns={kidColumns} rows={rows} showFilter /></main>;
 }
 
 export function KidDetailPage({ data, id, mutate }) {
@@ -153,9 +153,9 @@ export function CheckPage({ data, id, checkout = false }) {
   return <Columns><Column id="single-column"><Card title={`${checkout ? 'Check-Out' : 'Check-In'}: ${kid.full_name}`}><p style={{ color: checkout ? 'green' : 'red' }}>{kid.full_name} ist {checkout ? 'anwesend.' : 'noch nicht eingecheckt!'}</p>{checkout && <><p>Wir hatten vom Kind folgendes:</p><ul>{kid.e_card && <li>E-Card</li>}{kid.id_card && <li>Ausweis</li>}{kid.consent && <li>Einverständniserklärung</li>}{kid.pocket_money > 0 && <li>Taschengeld: {money(kid.pocket_money)}</li>}</ul></>}<NativeForm token={data.csrf_token} action={`/${checkout ? 'check_out' : 'check_in'}/${kid.id}`} fields={fields} submit={checkout ? 'Auschecken' : 'Einchecken'} /></Card></Column></Columns>;
 }
 
-export function TrainPage({ data, query, departure, mutate }) {
+export function TrainPage({ data, departure, mutate }) {
   const source = departure ? [...data.kids].sort((a, b) => Number(b.train_departure) - Number(a.train_departure)) : data.kids.filter(kid => kid.train_arrival);
-  const rows = source.map(kid => ({ ...kid, searchText: `${kid.full_name} ${kid.registrant_name} ${kid.registrant_phone} ${kid.siblings}` }));
+  const rows = source.map(kid => ({ ...kid, filterText: kid.full_name }));
   const columns = departure ? [
     { key: 'name', label: 'Name', render: linkKid },
     { key: 'train_departure', label: `Zugabreise: ${data.totals.train_departure}`, render: row => <button type="button" className="zug-switch" onClick={() => mutate('/toggle_zug_abreise/', { id: row.id }, false)}>{yesNo(row.train_departure)}</button> },
@@ -174,7 +174,7 @@ export function TrainPage({ data, query, departure, mutate }) {
     { key: 'registrant_phone', label: 'Anmelder Tel', render: row => <a href={`tel:${row.registrant_phone}`}>{row.registrant_phone}</a> },
     { key: 'siblings', label: 'Geschwister', render: row => displayOrPlaceholder(row.siblings) },
   ];
-  return <><div className="print_only"><h1>{departure ? 'Zugabreise' : 'Zuganreise'}</h1><p>Kinder: {rows.length}</p></div><main className="table-only" id="body-container"><SearchTable columns={columns} rows={rows} query={query} /></main></>;
+  return <><div className="print_only"><h1>{departure ? 'Zugabreise' : 'Zuganreise'}</h1><p>Kinder: {rows.length}</p></div><main className="table-only" id="body-container"><SearchTable columns={columns} rows={rows} showFilter /></main></>;
 }
 
 export function SerialLetterPage({ data }) {
@@ -191,13 +191,13 @@ export function FocusDashboardPage({ data }) {
   const group = week => data.focuses.filter(focus => focus.week === week);
   const columns = [{ key: 'name', label: 'Name', render: focus => <a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a> }, { key: 'place', label: 'Ort', render: focus => focus.place || '---' }, { key: 'carers', label: 'Betreuende', render: focus => focus.carers || '---' }, { key: 'off_site', label: 'Auslagern', render: focus => yesNo(focus.off_site) }, { key: 'kids', label: 'Kinder', render: focus => focus.kid_ids.length }, { key: 'meals', label: 'Essenseinteilung', render: focus => focus.meal_items.some(meal => meal.choice) ? 'Ja' : 'Nein' }, { key: 'actions', label: 'Aktionen', render: focus => <a href={`/schwerpunkt/${focus.id}/update`}>✏️</a> }];
   const tables = [['u', 'Unklar Wann'], ['w1', 'Woche 1'], ['w2', 'Woche 2']].filter(([week]) => group(week).length || week !== 'u');
-  return <Columns><Column id="left-column"><MapCard places={data.focuses.filter(focus => focus.coordinates).map(focus => ({ id: focus.id, name: focus.name, coordinates: focus.coordinates, href: `/schwerpunkt/${focus.id}/` }))} /></Column><Column id="right-column" className="normal-column">{tables.map(([week, title]) => <Card title={title} className="transparent" key={week}><SearchTable columns={columns} rows={group(week).map(focus => ({ ...focus, searchText: focus.name }))} />{week !== 'u' && <div className="react-actions"><a className="button" href={`/swp-einteilung-${week}`}>Kinder einteilen</a></div>}</Card>)}</Column></Columns>;
+  return <Columns><Column id="left-column"><MapCard places={data.focuses.filter(focus => focus.coordinates).map(focus => ({ id: focus.id, name: focus.name, coordinates: focus.coordinates, href: `/schwerpunkt/${focus.id}/` }))} /></Column><Column id="right-column" className="normal-column">{tables.map(([week, title]) => <Card title={title} className="transparent" key={week}><SearchTable columns={columns} rows={group(week)} />{week !== 'u' && <div className="react-actions"><a className="button" href={`/swp-einteilung-${week}`}>Kinder einteilen</a></div>}</Card>)}</Column></Columns>;
 }
 
 export function FocusDetailPage({ data, id }) {
   const focus = findById(data.focuses, id);
   if (!focus) return <NotFoundPage />;
-  const kids = data.kids.filter(kid => focus.kid_ids.includes(kid.id)).map(kid => ({ ...kid, searchText: kid.full_name }));
+  const kids = data.kids.filter(kid => focus.kid_ids.includes(kid.id));
   return <Columns><Column id="left-column"><Card title={focus.name}><FieldList items={[["Beschreibung", focus.description], ["Kinder", kids.length], ["Ort", focus.place], ["Auslagern", yesNo(focus.off_site)], ["Betreuende", focus.carers], ["Wann", focus.time], ["Beginnt am", focus.start]]} /><MealTable focus={focus} /><div className="react-actions"><a className="button" href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</a><a className="button" href={`/swpmeals/${focus.id}`}>Essen bearbeiten</a></div></Card><MapCard places={focus.place_id ? data.places.filter(place => place.id === focus.place_id) : []} /></Column><Column id="right-column"><SearchTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
 }
 
@@ -227,15 +227,15 @@ export function MealsPage({ data, id }) {
   return <Columns><Column id="single-column"><Card title="Wann esst ihr wo?"><RestForm target={`/swpmeals/${focus.id}`} token={data.csrf_token} className="form-grid"><input type="hidden" name="form-TOTAL_FORMS" value={entries.length} /><input type="hidden" name="form-INITIAL_FORMS" value={entries.length} />{entries.map((meal, index) => <label key={meal.id}>Tag {meal.day} · {{ breakfast: 'Frühstück', lunch: 'Mittagessen', dinner: 'Abendessen' }[meal.type]}<input type="hidden" name={`form-${index}-id`} value={meal.id} /><select name={`form-${index}-meal_choice`} defaultValue={meal.choice}><option value="">---------</option><option value="box">Box</option><option value="budo">Im BuDo</option><option value="warm">Warm geliefert</option></select></label>)}<input className="button" type="submit" value="Speichern" /></RestForm></Card></Column></Columns>;
 }
 
-export function PlacesPage({ data, query }) {
-  const rows = data.places.map(place => ({ ...place, searchText: `${place.name} ${place.city} ${place.state}` }));
+export function PlacesPage({ data }) {
+  const rows = data.places;
   const columns = [
     { key: 'name', label: 'Name', render: row => <a href={`/auslagerorte/${row.id}/`}>{row.name}</a> },
     { key: 'maps_link', label: 'Wo', render: row => row.maps_link ? <a href={row.maps_link}>Google Maps</a> : '---' },
     { key: 'parking_link', label: 'Parkspot', render: row => row.parking_link ? <a href={row.parking_link}>Google Maps</a> : '---' },
     { key: 'actions', label: 'Aktionen', render: row => <><a href={`/auslagerorte/${row.id}/update`}>✏️</a> <a href={`/auslagerorte/${row.id}/`}>👁️</a></> },
   ];
-  return <Columns><Column id="left-column" className="normal-column"><SearchTable columns={columns} rows={rows} query={query} /></Column><Column id="right-column"><MapCard places={data.places} /></Column></Columns>;
+  return <Columns><Column id="left-column" className="normal-column"><SearchTable columns={columns} rows={rows} /></Column><Column id="right-column"><MapCard places={data.places} /></Column></Columns>;
 }
 
 export function PlaceDetailPage({ data, id }) {
@@ -268,9 +268,9 @@ function WeekMealPlan({ focuses }) {
   return <>{Array.from({ length: maxDays }, (_, index) => index + 1).map(day => <div className="print-nobreak" key={day}><h2>Tag {day}</h2><table className="meal-table"><thead><tr><th>Essen</th><th>Box</th><th>BuDo</th><th>Warm</th><th>Kochportionen</th></tr></thead><tbody>{types.map(([type, label]) => { const budo = cell(day, type, 'budo'); const warm = cell(day, type, 'warm'); const portions = focuses.filter(focus => [...budo, ...warm].some(value => value.startsWith(`${focus.name} (`))).reduce((sum, focus) => sum + focus.kid_ids.length, 0); return <tr key={type}><td>{label}</td><td>{cell(day, type, 'box').join(', ') || '---'}</td><td>{budo.join(', ') || '---'}</td><td>{warm.join(', ') || '---'}</td><td>{portions || '---'}</td></tr>; })}</tbody></table></div>)}</>;
 }
 
-export function AllocationPage({ data, week, query, mutate }) {
+export function AllocationPage({ data, week, mutate }) {
   const focuses = data.focuses.filter(focus => focus.week === `w${week}`);
-  const rows = data.kids.map(kid => ({ ...kid, searchText: `${kid.full_name} ${kid.choices.map(c => c.friends).join(' ')}` }));
+  const rows = data.kids.map(kid => ({ ...kid, filterText: kid.full_name }));
   const columns = [
     { key: 'name', label: 'Name', render: linkKid },
     { key: 'assigned', label: 'Einteilung', render: kid => <select value={kid.focus_ids.find(id => focuses.some(f => f.id === id)) || ''} onChange={event => event.target.value && mutate('/update-schwerpunkt-wahl/', { kid_id: kid.id, swp_id: Number(event.target.value), choice_rank: null })}><option value="">Nicht zugeordnet</option>{focuses.map(focus => <option value={focus.id} key={focus.id}>{focus.name}</option>)}</select> },
@@ -279,7 +279,7 @@ export function AllocationPage({ data, week, query, mutate }) {
     { key: 'age', label: 'Alter' },
     { key: 'siblings', label: 'Geschwister', render: kid => displayOrPlaceholder(kid.siblings) },
   ];
-  return <Columns><Column id="left-column">{focuses.map(focus => <Card title={`${focus.name}: ${focus.kid_ids.length}`} key={focus.id}><ul>{data.kids.filter(kid => focus.kid_ids.includes(kid.id)).map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul></Card>)}</Column><Column id="right-column"><SearchTable columns={columns} rows={rows} query={query} /></Column></Columns>;
+  return <Columns><Column id="left-column">{focuses.map(focus => <Card title={`${focus.name}: ${focus.kid_ids.length}`} key={focus.id}><ul>{data.kids.filter(kid => focus.kid_ids.includes(kid.id)).map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul></Card>)}</Column><Column id="right-column"><SearchTable columns={columns} rows={rows} showFilter /></Column></Columns>;
 }
 
 export function FamiliesPage({ data, special = false }) {
@@ -295,8 +295,8 @@ function svBirthday(kid) {
   return Number.isNaN(Date.parse(value)) ? null : value;
 }
 
-export function BirthdaysPage({ data, query }) {
-  const rows = data.kids.map(kid => ({ ...kid, sv: svBirthday(kid), searchText: `${kid.full_name} ${kid.birthday}` }));
+export function BirthdaysPage({ data }) {
+  const rows = data.kids.map(kid => ({ ...kid, sv: svBirthday(kid), filterText: kid.full_name }));
   const columns = [
     { key: 'name', label: 'Name', render: linkKid },
     { key: 'birthday', label: 'DB-Geburtstag', render: row => displayOrPlaceholder(row.birthday) },
@@ -304,7 +304,7 @@ export function BirthdaysPage({ data, query }) {
     { key: 'match', label: 'Check', render: row => row.birthday && row.sv ? row.birthday === row.sv ? '✅' : '❌' : '---' },
     { key: 'note', label: 'Notiz', render: row => <RestForm target="/kindergeburtstage/" token={data.csrf_token}><input type="hidden" name="kid_id" value={row.id} /><input name="notiz" placeholder="Notiz..." /><button className="button" type="submit">Speichern</button></RestForm> },
   ];
-  return <main className="table-only" id="body-container"><SearchTable columns={columns} rows={rows} query={query} /></main>;
+  return <main className="table-only" id="body-container"><SearchTable columns={columns} rows={rows} showFilter /></main>;
 }
 
 export function TeamerPage({ data, id }) {
@@ -328,7 +328,7 @@ export function ProfilePage({ data }) {
 
 export function TurnusUploadPage({ data, id }) {
   const turnus = id ? findById(data.turnuses, id) : null;
-  return <Columns><Column id="single-column"><Card title={turnus ? `Excel-Datei hochladen für Turnus ${turnus.number}` : 'Turnis'}><NativeForm token={data.csrf_token} action={turnus ? `/upload_excel/${turnus.id}/` : '/upload/'} encType="multipart/form-data" fields={[{ name: 'turnus_nr', label: 'Turnus Nummer', type: 'number', value: turnus?.number, required: true }, { name: 'turnus_beginn', label: 'Beginn des Turnus', type: 'date', value: turnus?.start, required: true }, { name: 'uploadedFile', label: 'Excel-File', type: 'file' }]} submit={turnus ? 'Hochladen' : 'Turnus hinzufügen'} /></Card>{!turnus && <SearchTable columns={[{ key: 'label', label: 'Turnus' }, { key: 'id', label: 'ID' }, { key: 'start', label: 'Turnusbeginn' }, { key: 'actions', label: 'Aktionen', render: row => <a className="button" href={`/upload_excel/${row.id}/`}>Excel hochladen</a> }]} rows={data.turnuses.map(item => ({ ...item, searchText: item.label }))} />}</Column></Columns>;
+  return <Columns><Column id="single-column"><Card title={turnus ? `Excel-Datei hochladen für Turnus ${turnus.number}` : 'Turnis'}><NativeForm token={data.csrf_token} action={turnus ? `/upload_excel/${turnus.id}/` : '/upload/'} encType="multipart/form-data" fields={[{ name: 'turnus_nr', label: 'Turnus Nummer', type: 'number', value: turnus?.number, required: true }, { name: 'turnus_beginn', label: 'Beginn des Turnus', type: 'date', value: turnus?.start, required: true }, { name: 'uploadedFile', label: 'Excel-File', type: 'file' }]} submit={turnus ? 'Hochladen' : 'Turnus hinzufügen'} /></Card>{!turnus && <SearchTable columns={[{ key: 'label', label: 'Turnus' }, { key: 'id', label: 'ID' }, { key: 'start', label: 'Turnusbeginn' }, { key: 'actions', label: 'Aktionen', render: row => <a className="button" href={`/upload_excel/${row.id}/`}>Excel hochladen</a> }]} rows={data.turnuses} />}</Column></Columns>;
 }
 
 export function SimpleUploadPage({ data }) {

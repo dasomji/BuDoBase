@@ -72,16 +72,16 @@ export function parseRoute(pathname) {
   return { page: 'not-found', title: 'Seite nicht gefunden' };
 }
 
-function RoutePage({ route, data, query, mutate }) {
+function RoutePage({ route, data, mutate }) {
   switch (route.page) {
     case 'login': return <AuthPage kind="login" data={data} />;
     case 'register': return <AuthPage kind={data.authenticated ? 'registered' : 'register'} data={data} />;
     case 'dashboard': return <DashboardPage data={data} />;
     case 'profile': return <ProfilePage data={data} />;
     case 'turnus-upload': return <TurnusUploadPage data={data} id={route.id} />;
-    case 'kids': return <KidsPage data={data} query={query} />;
-    case 'train-departure': return <TrainPage data={data} query={query} departure mutate={mutate} />;
-    case 'train-arrival': return <TrainPage data={data} query={query} mutate={mutate} />;
+    case 'kids': return <KidsPage data={data} />;
+    case 'train-departure': return <TrainPage data={data} departure mutate={mutate} />;
+    case 'train-arrival': return <TrainPage data={data} mutate={mutate} />;
     case 'kid': return <KidDetailPage data={data} id={route.id} mutate={mutate} />;
     case 'check-in': return <CheckPage data={data} id={route.id} />;
     case 'check-out': return <CheckPage data={data} id={route.id} checkout />;
@@ -92,18 +92,18 @@ function RoutePage({ route, data, query, mutate }) {
     case 'focus-create': return <FocusFormPage data={data} />;
     case 'focus-update': return <FocusFormPage data={data} id={route.id} />;
     case 'focus-meals': return <MealsPage data={data} id={route.id} />;
-    case 'places': return <PlacesPage data={data} query={query} />;
+    case 'places': return <PlacesPage data={data} />;
     case 'place-detail': return <PlaceDetailPage data={data} id={route.id} />;
     case 'place-create': return <PlaceFormPage data={data} />;
     case 'place-update': return <PlaceFormPage data={data} id={route.id} />;
     case 'place-images': return <ImageUploadPage data={data} id={route.id} />;
     case 'kitchen': return <KitchenPage data={data} />;
-    case 'allocation': return <AllocationPage data={data} week={route.week} query={query} mutate={mutate} />;
+    case 'allocation': return <AllocationPage data={data} week={route.week} mutate={mutate} />;
     case 'kid-count': return <KidCountPage data={data} />;
     case 'families': return <FamiliesPage data={data} />;
     case 'special-families': return <FamiliesPage data={data} special />;
     case 'special-upload': return <SimpleUploadPage data={data} />;
-    case 'birthdays': return <BirthdaysPage data={data} query={query} />;
+    case 'birthdays': return <BirthdaysPage data={data} />;
     case 'teamer': return <TeamerPage data={data} id={route.id} />;
     default: return <NotFoundPage />;
   }
@@ -134,7 +134,6 @@ export default function App() {
   const route = useMemo(() => parseRoute(window.location.pathname), []);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-  const [query, setQuery] = useState('');
   const load = async () => {
     try {
       const response = await fetch('/api/app-data/', { credentials: 'same-origin' });
@@ -168,9 +167,9 @@ export default function App() {
   document.title = title;
   return (
     <>
-      {!route.standalone && <Header title={title} authenticated={data.authenticated} query={query} setQuery={setQuery} action={data.authenticated ? headerAction(route, data) : null} />}
+      {!route.standalone && <Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? headerAction(route, data) : null} />}
       <Messages items={data.messages} />
-      <RoutePage route={route} data={data} query={query} mutate={mutate} />
+      <RoutePage route={route} data={data} mutate={mutate} />
     </>
   );
 }

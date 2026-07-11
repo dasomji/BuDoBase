@@ -23,7 +23,88 @@ export function Logo() {
   );
 }
 
-export function Header({ title, authenticated, query, setQuery, action }) {
+export function GlobalSearch({ data, onNavigate = path => window.location.assign(path) }) {
+  const [query, setQuery] = useState('');
+  const [focused, setFocused] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const blurTimer = useRef(null);
+  const results = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase('de');
+    if (!needle) return [];
+    const items = [
+      ...(data.kids || []).map(kid => ({
+        id: `kid-${kid.id}`,
+        href: `/kid_details/${kid.id}`,
+        label: `${kid.present ? '' : '❌ '}${kid.full_name}`,
+      })),
+      ...(data.focuses || []).map(focus => ({ id: `focus-${focus.id}`, href: `/schwerpunkt/${focus.id}`, label: `🚀${focus.name}` })),
+      ...(data.places || []).map(place => ({ id: `place-${place.id}`, href: `/auslagerorte/${place.id}`, label: `🏡 ${place.name}` })),
+    ];
+    return items.filter(item => item.label.toLocaleLowerCase('de').includes(needle));
+  }, [data, query]);
+  const open = focused && results.length > 0 && results.length < 20;
+  const select = path => {
+    if (blurTimer.current) window.clearTimeout(blurTimer.current);
+    onNavigate(path);
+  };
+  const handleKeyDown = event => {
+    if (!open) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setSelectedIndex(index => Math.min(index + 1, results.length - 1));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setSelectedIndex(index => Math.max(index - 1, -1));
+    } else if (event.key === 'Enter' && selectedIndex >= 0) {
+      event.preventDefault();
+      select(results[selectedIndex].href);
+    } else if (event.key === 'Escape') {
+      setFocused(false);
+      setSelectedIndex(-1);
+    }
+  };
+  useEffect(() => () => {
+    if (blurTimer.current) window.clearTimeout(blurTimer.current);
+  }, []);
+  return (
+    <div id="headersearch" className="search-filter">
+      <label className="sr-only" htmlFor="global-search">Suche</label>
+      <input
+        id="global-search"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls="global-search-results"
+        aria-expanded={open}
+        aria-activedescendant={selectedIndex >= 0 ? results[selectedIndex]?.id : undefined}
+        value={query}
+        onChange={event => { setQuery(event.target.value); setSelectedIndex(-1); }}
+        onFocus={() => { setFocused(true); setSelectedIndex(-1); }}
+        onBlur={() => { blurTimer.current = window.setTimeout(() => { setFocused(false); setSelectedIndex(-1); }, 150); }}
+        onKeyDown={handleKeyDown}
+        placeholder="Suche..."
+      />
+      {open && (
+        <div id="global-search-results" className="search-results react-search-results" role="listbox" onMouseDown={event => event.preventDefault()}>
+          {results.map((result, index) => (
+            <a
+              id={result.id}
+              className={`search-result-link ${index === selectedIndex ? 'selected' : ''}`}
+              href={result.href}
+              key={result.id}
+              role="option"
+              aria-selected={index === selectedIndex}
+              onClick={event => { event.preventDefault(); select(result.href); }}
+            >
+              <div className="search-item">{result.label}</div>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function Header({ title, authenticated, searchData, action }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -33,10 +114,7 @@ export function Header({ title, authenticated, query, setQuery, action }) {
           <div id="headertitle"><h1>{title}</h1></div>
           {authenticated && (
             <>
-              <div id="headersearch" className="search-filter">
-                <label className="sr-only" htmlFor="global-search">Suche</label>
-                <input id="global-search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Suche..." />
-              </div>
+              <GlobalSearch data={searchData} />
               <nav id="navmenu-container" className="desktop-navbar">
                 {navItems.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
               </nav>
@@ -93,22 +171,26 @@ export function FieldList({ items }) {
   return <>{items.filter(([, value]) => value !== null && value !== undefined && value !== '').map(([label, value]) => <p key={label}><span className="label">{label}</span>: {value}</p>)}</>;
 }
 
-export function SearchTable({ columns, rows, query = '', id = 'kids-table', empty = 'Keine Einträge' }) {
+export function SearchTable({ columns, rows, showFilter = false, id = 'kids-table', empty = 'Keine Einträge' }) {
+  const [query, setQuery] = useState('');
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('de');
     if (!needle) return rows;
-    return rows.filter(row => row.searchText.toLocaleLowerCase('de').includes(needle));
+    return rows.filter(row => String(row.filterText ?? row.full_name ?? row.name ?? '').toLocaleLowerCase('de').includes(needle));
   }, [query, rows]);
   return (
-    <div className="table-container">
-      <table id={id}>
-        <thead><tr className="table-header">{columns.map((column, index) => <th key={column.key} className={index === 0 ? 'headcol' : ''}>{column.label}</th>)}</tr></thead>
-        <tbody>
-          {filtered.map(row => <tr className="table_row" key={row.id}>{columns.map((column, index) => <td className={`${column.className || 'text-cell'} ${index === 0 ? 'headcol' : ''}`} key={column.key}>{column.render ? column.render(row) : row[column.key]}</td>)}</tr>)}
-          {!filtered.length && <tr><td colSpan={columns.length}>{empty}</td></tr>}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {showFilter && <input className="filter-table" type="search" placeholder="Kinder filtern..." aria-label="Kinder filtern" value={query} onChange={event => setQuery(event.target.value)} />}
+      <div className="table-container">
+        <table id={id}>
+          <thead><tr className="table-header">{columns.map((column, index) => <th key={column.key} className={index === 0 ? 'headcol' : ''}>{column.label}</th>)}</tr></thead>
+          <tbody>
+            {filtered.map(row => <tr className="table_row" key={row.id}>{columns.map((column, index) => <td className={`${column.className || 'text-cell'} ${index === 0 ? 'headcol' : ''}`} key={column.key}>{column.render ? column.render(row) : row[column.key]}</td>)}</tr>)}
+            {!filtered.length && <tr><td colSpan={columns.length}>{empty}</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
