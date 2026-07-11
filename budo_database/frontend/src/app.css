@@ -50,6 +50,16 @@
   overflow: hidden;
 }
 
+.card:not(.closed-card) > .card-info-container > .card-info-content {
+  animation: reveal-card-overflow 300ms step-end forwards;
+}
+
+@keyframes reveal-card-overflow {
+  to {
+    overflow: visible;
+  }
+}
+
 .info-header-container.card-toggle {
   width: 100%;
   color: var(--text-color);
@@ -91,6 +101,11 @@
 @media (prefers-reduced-motion: reduce) {
   .card > .card-info-container {
     transition: none;
+  }
+
+  .card:not(.closed-card) > .card-info-container > .card-info-content {
+    overflow: visible;
+    animation: none;
   }
 }
 

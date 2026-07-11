@@ -122,10 +122,6 @@ function dynamicTitle(route, data) {
 function headerAction(route, data) {
   if (route.page === 'focus-dashboard') return <a className="button" href="/schwerpunkt/create">SWP hinzufügen</a>;
   if (route.page === 'places') return <a className="button" href="/auslagerorte/create">Ort hinzufügen</a>;
-  if (route.page === 'kid') {
-    const kid = findById(data.kids, route.id);
-    return kid && <a className="button" href={`/${kid.present ? 'check_out' : 'check_in'}/${kid.id}`}>{kid.present ? 'Auschecken' : 'Einchecken'}</a>;
-  }
   if (route.page === 'birthdays') return <RestForm target="/update-birthdays-from-sv/" token={data.csrf_token}><button className="button" type="submit">🔄 Geburtstage aktualisieren</button></RestForm>;
   return null;
 }

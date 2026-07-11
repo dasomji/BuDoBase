@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Card, GlobalSearch, RestForm, SearchTable } from './components';
 import { parseRoute } from './App';
-import { formatGermanDate, KidInteractionForm } from './pages';
+import { formatGermanDate, KidDetailPage, KidInteractionForm } from './pages';
 
 describe('reusable components', () => {
   afterEach(cleanup);
@@ -53,6 +53,28 @@ describe('reusable components', () => {
 
     expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
     expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
+  });
+
+  it.each([
+    { present: false, action: 'Einchecken', path: '/check_in/7', title: 'Ada Lovelace ❌' },
+    { present: true, action: 'Auschecken', path: '/check_out/7', title: 'Ada Lovelace' },
+  ])('places $action in the BuDo card and reflects attendance in the name', ({ present, action, path, title }) => {
+    const kid = {
+      id: 7,
+      full_name: 'Ada Lovelace',
+      present,
+      weeks: 2,
+      notes: [],
+      transactions: [],
+      remaining_money: 0,
+      deposit: 0,
+    };
+    render(<KidDetailPage data={{ kids: [kid], turnus: { label: 'T2' }, csrf_token: 'token' }} id="7" mutate={vi.fn()} />);
+
+    expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
+    const checkAction = screen.getByRole('link', { name: action });
+    expect(checkAction).toHaveAttribute('href', path);
+    expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');
   });
 
   it('shows selectable results from kids, focuses, and places', () => {
