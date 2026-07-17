@@ -36,6 +36,12 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "teamer",
 )
 
+IMPLEMENTED_ROUTE_CONTRACT_KEYS = {
+    "allocation",
+    "kid-detail",
+    "kids-directory",
+}
+
 
 class RouteContractDispatchTests(TestCase):
     def setUp(self):
@@ -54,11 +60,12 @@ class RouteContractDispatchTests(TestCase):
 
     def test_every_unimplemented_route_contract_is_known_but_not_exposed_yet(self):
         self.client.force_login(self.user)
-        implemented_keys = {"kid-detail", "kids-directory"}
 
-        for key in KNOWN_ROUTE_CONTRACT_KEYS:
-            if key in implemented_keys:
-                continue
+        for key in (
+            key
+            for key in KNOWN_ROUTE_CONTRACT_KEYS
+            if key not in IMPLEMENTED_ROUTE_CONTRACT_KEYS
+        ):
             with self.subTest(key=key):
                 response = self.client.get(self.contract_url(key))
 

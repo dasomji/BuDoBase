@@ -383,11 +383,20 @@ def update_freunde(request):
 
     kid_id = data.get('kid_id')
     freunde = data.get('freunde')
+    week = str(data.get('week', '1'))
+    if week not in ('1', '2'):
+        return JsonResponse(
+            {'status': 'error', 'message': 'Week must be 1 or 2'},
+            status=400,
+        )
 
     try:
         kid = get_active_kid_or_404(request, kid_id)
         schwerpunkt_wahl = SchwerpunktWahl.objects.get(
-            kind=kid, schwerpunktzeit__turnus=request.active_turnus, schwerpunktzeit__woche="w1")
+            kind=kid,
+            schwerpunktzeit__turnus=request.active_turnus,
+            schwerpunktzeit__woche=f"w{week}",
+        )
         schwerpunkt_wahl.freunde = freunde
         schwerpunkt_wahl.save()
         return JsonResponse({'status': 'success'})

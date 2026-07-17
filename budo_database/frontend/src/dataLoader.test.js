@@ -9,7 +9,7 @@ import {
 import { parseRoute } from './routes';
 
 describe('route data loading', () => {
-  it('selects focused or legacy data according to each parsed route', () => {
+  it('selects focused data with the parsed identifier and week', () => {
     expect(routeDataRequest(parseRoute('/kid_details/21'))).toEqual({
       contractKey: 'kid-detail',
       mode: 'focused',
@@ -18,9 +18,9 @@ describe('route data loading', () => {
     });
     expect(routeDataRequest(parseRoute('/swp-einteilung-w2'))).toEqual({
       contractKey: 'allocation',
-      mode: 'legacy',
+      mode: 'focused',
       params: { week: '2' },
-      url: '/api/app-data/?route=allocation&week=2',
+      url: '/api/route-data/allocation/?week=2',
     });
   });
 
