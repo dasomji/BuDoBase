@@ -38,7 +38,7 @@ FORM_TARGETS = (
 
 def _response_errors(html):
     blocks = re.findall(
-        r'<(?:ul|li)[^>]*class="[^"]*(?:errorlist|error)[^"]*"[^>]*>(.*?)</(?:ul|li)>',
+        r'<(?:ul|li|small)[^>]*class="[^"]*(?:errorlist|error)[^"]*"[^>]*>(.*?)</(?:ul|li|small)>',
         html,
         flags=re.IGNORECASE | re.DOTALL,
     )

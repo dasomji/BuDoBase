@@ -12,10 +12,10 @@ export function PlacesPage({ data }) {
   return <Columns><Column id="left-column" className="normal-column"><SearchTable columns={columns} rows={rows} /></Column><Column id="right-column"><MapCard places={data.places} /></Column></Columns>;
 }
 
-export function PlaceDetailPage({ data, id }) {
+export function PlaceDetailPage({ data, id, onSaved }) {
   const place = findById(data.places, id);
   if (!place) return <NotFoundPage />;
-  return <><Columns className="auslagerorte-detail"><Column id="left-column"><Card title={place.name}><FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} /><a className="button" href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</a></Card><Card title="Kommentare"><ul>{place.notes.map(note => <li key={note.id}><strong>{note.author}</strong> am {formatGermanDate(note.date)}: {note.text}</li>)}</ul></Card></Column><Column id="right-column"><Card title="Bilder"><div className="gallery-container">{place.images.map((src, index) => <div className="gallery-item" key={src}><img src={src} alt={`${place.name} ${index + 1}`} /></div>)}</div><a className="button" href={`/auslagerorte/${place.id}/upload-image/`}>Bilder hochladen</a></Card><MapCard places={[place]} /></Column></Columns><div id="interaction-bar"><RestForm target={`/auslagerorte/${place.id}/`} token={data.csrf_token}><input name="notiz" placeholder="Kommentar..." /><button type="submit">➤</button></RestForm></div></>;
+  return <><Columns className="auslagerorte-detail"><Column id="left-column"><Card title={place.name}><FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} /><a className="button" href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</a></Card><Card title="Kommentare"><ul>{place.notes.map(note => <li key={note.id}><strong>{note.author}</strong> am {formatGermanDate(note.date)}: {note.text}</li>)}</ul></Card></Column><Column id="right-column"><Card title="Bilder"><div className="gallery-container">{place.images.map((src, index) => <div className="gallery-item" key={src}><img src={src} alt={`${place.name} ${index + 1}`} /></div>)}</div><a className="button" href={`/auslagerorte/${place.id}/upload-image/`}>Bilder hochladen</a></Card><MapCard places={[place]} /></Column></Columns><div id="interaction-bar"><RestForm target={`/auslagerorte/${place.id}/`} token={data.csrf_token} onSuccess={onSaved} resetOnSuccess><input name="notiz" placeholder="Kommentar..." /><button type="submit">➤</button></RestForm></div></>;
 }
 
 export function PlaceFormPage({ data, id }) {
@@ -39,6 +39,7 @@ export const placeRoutes = [
     title: 'Auslagerorte',
     domain: 'places',
     readContractKey: 'places-list',
+    focusedReadContract: true,
     headerAction: () => <a className="button" href="/auslagerorte/create">Ort hinzufügen</a>,
     render: ({ data }) => <PlacesPage data={data} />,
   },
@@ -48,6 +49,7 @@ export const placeRoutes = [
     title: 'Neuer Auslagerort',
     domain: 'places',
     readContractKey: 'place-create',
+    focusedReadContract: true,
     render: ({ data }) => <PlaceFormPage data={data} />,
   },
   {
@@ -56,6 +58,7 @@ export const placeRoutes = [
     title: 'Auslagerort bearbeiten',
     domain: 'places',
     readContractKey: 'place-update',
+    focusedReadContract: true,
     params: match => ({ id: match[1] }),
     resolveTitle: selectedPlaceTitle,
     render: ({ route, data }) => <PlaceFormPage data={data} id={route.id} />,
@@ -66,6 +69,7 @@ export const placeRoutes = [
     title: 'Bilder hochladen',
     domain: 'places',
     readContractKey: 'place-images',
+    focusedReadContract: true,
     params: match => ({ id: match[1] }),
     resolveTitle: selectedPlaceTitle,
     render: ({ route, data }) => <ImageUploadPage data={data} id={route.id} />,
@@ -76,8 +80,9 @@ export const placeRoutes = [
     title: 'Auslagerort',
     domain: 'places',
     readContractKey: 'place-detail',
+    focusedReadContract: true,
     params: match => ({ id: match[1] }),
     resolveTitle: selectedPlaceTitle,
-    render: ({ route, data }) => <PlaceDetailPage data={data} id={route.id} />,
+    render: ({ route, data, refresh }) => <PlaceDetailPage data={data} id={route.id} onSaved={refresh} />,
   },
 ];

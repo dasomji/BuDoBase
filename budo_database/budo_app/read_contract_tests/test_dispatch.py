@@ -42,6 +42,11 @@ IMPLEMENTED_ROUTE_CONTRACT_KEYS = {
     "check-out",
     "kid-detail",
     "kids-directory",
+    "place-create",
+    "place-detail",
+    "place-images",
+    "place-update",
+    "places-list",
     "train-arrival",
     "train-departure",
 }
