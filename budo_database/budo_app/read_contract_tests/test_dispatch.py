@@ -60,10 +60,13 @@ IMPLEMENTED_ROUTE_CONTRACT_KEYS = {
     "places-list",
     "profile",
     "serial-letter",
+    "special-upload",
     "special-families",
     "teamer",
     "train-arrival",
     "train-departure",
+    "turnus-list",
+    "turnus-upload",
 }
 
 

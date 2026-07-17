@@ -17,6 +17,7 @@ export const maintenanceRoutes = [
     title: 'Turnis',
     domain: 'maintenance',
     readContractKey: 'turnus-list',
+    focusedReadContract: true,
     render: ({ data }) => <TurnusUploadPage data={data} />,
   },
   {
@@ -25,6 +26,7 @@ export const maintenanceRoutes = [
     title: 'Excel-Datei hochladen',
     domain: 'maintenance',
     readContractKey: 'turnus-upload',
+    focusedReadContract: true,
     params: match => ({ id: match[1] }),
     render: ({ route, data }) => <TurnusUploadPage data={data} id={route.id} />,
   },
@@ -34,6 +36,7 @@ export const maintenanceRoutes = [
     title: 'Upload XLSX',
     domain: 'maintenance',
     readContractKey: 'special-upload',
+    focusedReadContract: true,
     render: ({ data }) => <SimpleUploadPage data={data} />,
   },
 ];

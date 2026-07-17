@@ -252,8 +252,11 @@ export function CsrfInput({ token }) {
 export function RestForm({ target, token, children, className = '', encType, onSuccess, resetOnSuccess = false }) {
   const [errors, setErrors] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const submit = async event => {
     event.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     const form = event.currentTarget;
     setSubmitting(true);
     setErrors([]);
@@ -282,17 +285,16 @@ export function RestForm({ target, token, children, className = '', encType, onS
     } catch (error) {
       setErrors([error.message]);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
-  return <form action={target} method="post" encType={encType} className={className} onSubmit={submit}><CsrfInput token={token} />{errors.length > 0 && <ul className="errorlist" role="alert">{errors.map(error => <li key={error}>{error}</li>)}</ul>}{children}{submitting && <p aria-live="polite">Wird gespeichert…</p>}</form>;
+  return <form action={target} method="post" encType={encType} className={className} onSubmit={submit} aria-busy={submitting}><CsrfInput token={token} />{errors.length > 0 && <ul className="errorlist" role="alert">{errors.map(error => <li key={error}>{error}</li>)}</ul>}{typeof children === 'function' ? children({ submitting }) : children}{submitting && <p aria-live="polite">Wird gespeichert…</p>}</form>;
 }
 
 export function NativeForm({ action = '', method = 'post', token, encType, fields, submit = 'Speichern', children }) {
-  const Form = method.toLowerCase() === 'post' ? RestForm : 'form';
-  const formProps = method.toLowerCase() === 'post' ? { target: action, token, encType, className: 'form-grid' } : { action, method, encType, className: 'form-grid' };
-  return (
-    <Form {...formProps}>
+  const contents = (submitting = false) => (
+    <>
       {fields.map(field => {
         if (field.type === 'select') {
           return <label key={field.name}>{field.label}<select name={field.name} defaultValue={field.value ?? ''} multiple={field.multiple}>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
@@ -306,9 +308,13 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
         return <label key={field.name}>{field.label}<input name={field.name} type={field.type || 'text'} defaultValue={field.type === 'file' ? undefined : field.value ?? ''} required={field.required} multiple={field.multiple} accept={field.accept} min={field.min} step={field.step} /></label>;
       })}
       {children}
-      <div className="form-buttons"><input className="button" type="submit" value={submit} /></div>
-    </Form>
+      <div className="form-buttons"><input className="button" type="submit" value={submit} disabled={submitting} /></div>
+    </>
   );
+  if (method.toLowerCase() === 'post') {
+    return <RestForm target={action} token={token} encType={encType} className="form-grid">{({ submitting }) => contents(submitting)}</RestForm>;
+  }
+  return <form action={action} method={method} encType={encType} className="form-grid">{contents()}</form>;
 }
 
 export function MapCard({ places = [] }) {
