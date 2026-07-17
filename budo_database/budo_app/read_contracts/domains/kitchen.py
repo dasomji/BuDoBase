@@ -1,13 +1,13 @@
 from django.db.models import Prefetch
 
 from budo_app.models import Kinder, Meal, Profil, Schwerpunkte
-from budo_app.read_contracts.common import active_turnus_id
+from budo_app.read_contracts.common import active_turnus_id, kid_full_name
 
 
 def _kid(kid):
     return {
         "id": kid.id,
-        "full_name": str(kid),
+        "full_name": kid_full_name(kid.kid_vorname, kid.kid_nachname),
         "present": kid.anwesend,
         "food": kid.get_food(),
         "special_food": kid.get_clean_special_food(),

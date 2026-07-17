@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
 import { parseRoute } from '../routes';
-import { ProfilePage, TeamerPage } from './people';
+import { ProfilePage, TeamerPage } from './profiles';
 
 const response = (data, { ok = true } = {}) => ({
   ok,
@@ -186,7 +186,7 @@ describe('Profil and Teamer pages', () => {
     ]);
   });
 
-  it('declares both people route contracts and resolves selected titles', () => {
+  it('declares both profile route contracts and resolves selected titles', () => {
     const profileRoute = parseRoute('/profil');
     const teamerRoute = parseRoute('/teamer/5');
 

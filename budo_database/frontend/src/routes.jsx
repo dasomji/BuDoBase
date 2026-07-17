@@ -6,7 +6,7 @@ import { focusRoutes } from './domains/focuses';
 import { kidRoutes } from './domains/kids';
 import { kitchenRoutes } from './domains/kitchen';
 import { maintenanceRoutes } from './domains/maintenance';
-import { peopleRoutes } from './domains/people';
+import { profileRoutes } from './domains/profiles';
 import { placeRoutes } from './domains/places';
 import { reportRoutes } from './domains/reports';
 import { notFoundRoute } from './domains/shared';
@@ -14,7 +14,7 @@ import { notFoundRoute } from './domains/shared';
 export const routeDefinitions = [
   ...dashboardRoutes,
   ...authRoutes,
-  ...peopleRoutes,
+  ...profileRoutes,
   ...maintenanceRoutes,
   ...kidRoutes,
   ...attendanceRoutes,

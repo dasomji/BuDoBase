@@ -11,7 +11,7 @@ describe('route inventory', () => {
     ['/dashboard/', 'dashboard', 'dashboard', 'dashboard'],
     ['/login', 'login', 'auth', null],
     ['/register', 'register', 'auth', null],
-    ['/profil', 'profile', 'people', 'profile'],
+    ['/profil', 'profile', 'profiles', 'profile'],
     ['/upload', 'turnus-upload', 'maintenance', 'turnus-list'],
     ['/upload_excel/9', 'turnus-upload', 'maintenance', 'turnus-upload'],
     ['/all_kids', 'kids', 'kids', 'kids-directory'],
@@ -39,7 +39,7 @@ describe('route inventory', () => {
     ['/upload_spezialfamilien', 'special-upload', 'maintenance', 'special-upload'],
     ['/spezial_familien', 'special-families', 'reports', 'special-families'],
     ['/kindergeburtstage/', 'birthdays', 'reports', 'birthdays'],
-    ['/teamer/5', 'teamer', 'people', 'teamer'],
+    ['/teamer/5', 'teamer', 'profiles', 'teamer'],
   ])('maps %s to the %s page in %s with contract %s', (path, page, domain, readContractKey) => {
     expect(parseRoute(path)).toMatchObject({ page, domain, readContractKey });
   });

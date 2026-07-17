@@ -317,7 +317,7 @@ class Kinder(models.Model):
             return "---"
 
     def get_taschengeld_sum(self):
-        return sum(t.amount for t in self.geld.all())
+        return sum((transaction.amount or 0) for transaction in self.geld.all())
 
     def get_remaining_taschengeld(self):
         """Calculate remaining money after pfand deduction (0.25 per pfand)"""

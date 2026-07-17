@@ -23,7 +23,7 @@ TEST_STORAGES = {
 }
 
 
-class PeopleContractTests(TestCase):
+class ProfileContractTests(TestCase):
     def setUp(self):
         self.turnus = Turnus.objects.create(
             turnus_nr=2,
@@ -34,7 +34,7 @@ class PeopleContractTests(TestCase):
             turnus_beginn=date(2026, 8, 1),
         )
         self.user = User.objects.create_user(
-            username="people-user",
+            username="profile-user",
             email="ada@example.test",
             password="secret",
         )
@@ -70,7 +70,7 @@ class PeopleContractTests(TestCase):
         url = reverse("route-data-api", kwargs={"contract_key": key})
         return f"{url}?id={profile.id}" if profile else url
 
-    def test_profile_returns_only_own_focused_people_data(self):
+    def test_profile_returns_only_own_focused_profile_data(self):
         response = self.client.get(self.contract_url("profile"))
 
         self.assertEqual(response.status_code, 200)
@@ -208,7 +208,7 @@ class PeopleContractTests(TestCase):
         self.assertNotContains(own_profile, "Unscoped Private Focus")
         self.assertNotContains(cross_turnus, "Other Turnus Private", status_code=404)
 
-    def test_people_contracts_require_authentication(self):
+    def test_profile_contracts_require_authentication(self):
         self.client.logout()
 
         profile = self.client.get(self.contract_url("profile"))
@@ -375,13 +375,13 @@ class PeopleContractTests(TestCase):
 
 
 @override_settings(STORAGES=TEST_STORAGES)
-class PeopleContractPerformanceTests(QueryBudgetAssertions, TestCase):
+class ProfileContractPerformanceTests(QueryBudgetAssertions, TestCase):
     def setUp(self):
         self.turnus = Turnus.objects.create(
             turnus_nr=2,
             turnus_beginn=date(2026, 7, 1),
         )
-        self.user = User.objects.create_user(username="people-performance")
+        self.user = User.objects.create_user(username="profile-performance")
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
         self.client.force_login(self.user)

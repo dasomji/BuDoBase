@@ -2,6 +2,7 @@ from django.db.models import Prefetch
 from rest_framework.exceptions import ParseError
 
 from budo_app.models import Kinder, Schwerpunkte, SchwerpunktWahl
+from budo_app.read_contracts.common import kid_full_name
 
 
 def build_allocation_contract(request):
@@ -56,7 +57,9 @@ def build_allocation_contract(request):
         kid_items.append(
             {
                 "id": kid.id,
-                "full_name": str(kid),
+                "full_name": kid_full_name(
+                    kid.kid_vorname, kid.kid_nachname
+                ),
                 "age": kid.get_alter(),
                 "siblings": kid.get_clean_geschwister(),
                 "focus_ids": focus_ids,

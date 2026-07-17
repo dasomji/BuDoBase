@@ -44,12 +44,12 @@ export function ProfilePage({ data }) {
   return <Columns><Column id="left-column"><PersonCard person={profile} focuses={data.focuses} turnus={data.turnus} /></Column><Column id="center-column"><Card title="Profil"><NativeForm token={data.csrf_token} action="/profil/" fields={fields} /></Card></Column><Column id="right-column"><AccountingCard person={profile} /></Column></Columns>;
 }
 
-export const peopleRoutes = [
+export const profileRoutes = [
   {
     pattern: /^\/profil$/,
     page: 'profile',
     title: 'Profil',
-    domain: 'people',
+    domain: 'profiles',
     readContractKey: 'profile',
     resolveTitle: (route, data) => data.profile?.rufname || route.title,
     render: ({ data }) => <ProfilePage data={data} />,
@@ -58,7 +58,7 @@ export const peopleRoutes = [
     pattern: /^\/teamer\/(\d+)$/,
     page: 'teamer',
     title: 'Teamer',
-    domain: 'people',
+    domain: 'profiles',
     readContractKey: 'teamer',
     params: match => ({ id: match[1] }),
     resolveTitle: (route, data) => data.person?.rufname || route.title,

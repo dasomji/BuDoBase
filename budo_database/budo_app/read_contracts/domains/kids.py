@@ -5,10 +5,25 @@ from django.shortcuts import get_object_or_404
 from budo_app.models import Geld, Kinder, Notizen, Schwerpunkte
 from budo_app.read_contracts.common import (
     active_turnus_id,
+    kid_full_name,
     required_query_integer,
     serialize_datetime,
     serialize_money,
+    serialize_note,
+    serialize_transaction,
 )
+
+
+def _focus_queryset(turnus_id):
+    return (
+        Schwerpunkte.objects.filter(schwerpunktzeit__turnus_id=turnus_id)
+        .select_related("schwerpunktzeit")
+        .order_by(
+            "schwerpunktzeit__woche",
+            "swp_name",
+            "id",
+        )
+    )
 
 
 def _focus_names_by_week(kid):
@@ -23,7 +38,7 @@ def _directory_kid(kid):
     focus_names = _focus_names_by_week(kid)
     return {
         "id": kid.id,
-        "full_name": f"{kid.kid_vorname} {kid.kid_nachname}".strip(),
+        "full_name": kid_full_name(kid.kid_vorname, kid.kid_nachname),
         "present": kid.anwesend,
         "budo_family": kid.budo_family,
         "special_family": (
@@ -45,36 +60,12 @@ def _directory_kid(kid):
     }
 
 
-def _note(note):
-    return {
-        "id": note.id,
-        "text": note.notiz or "",
-        "date": serialize_datetime(note.date_added),
-        "day": note.date_added.strftime("%d.%m.") if note.date_added else "",
-        "author": note.added_by.username,
-    }
-
-
-def _transaction(transaction):
-    return {
-        "id": transaction.id,
-        "amount": serialize_money(transaction.amount),
-        "date": serialize_datetime(transaction.date_added),
-        "day": (
-            transaction.date_added.strftime("%d.%m.")
-            if transaction.date_added
-            else ""
-        ),
-        "author": transaction.added_by.username,
-    }
-
-
 def _detail_kid(kid):
     focus_names = _focus_names_by_week(kid)
-    pocket_money = sum(item.amount or 0 for item in kid.route_transactions)
+    transactions = kid.geld.all()
     return {
         "id": kid.id,
-        "full_name": f"{kid.kid_vorname} {kid.kid_nachname}".strip(),
+        "full_name": kid_full_name(kid.kid_vorname, kid.kid_nachname),
         "present": kid.anwesend,
         "sex": kid.sex,
         "age": kid.get_alter(),
@@ -110,13 +101,11 @@ def _detail_kid(kid):
         "emergency_contacts": kid.notfall_kontakte,
         "booking_note": kid.get_clean_anmerkung_buchung(),
         "note": kid.get_clean_anmerkung(),
-        "notes": [_note(note) for note in kid.route_notes],
+        "notes": [serialize_note(note) for note in kid.route_notes],
         "transactions": [
-            _transaction(transaction) for transaction in kid.route_transactions
+            serialize_transaction(transaction) for transaction in transactions
         ],
-        "remaining_money": serialize_money(
-            pocket_money - (kid.pfand * 0.25),
-        ),
+        "remaining_money": serialize_money(kid.get_remaining_taschengeld()),
         "deposit": kid.pfand,
     }
 
@@ -126,15 +115,7 @@ def kids_directory(request):
     if turnus_id is None:
         return {"kids": []}
 
-    focuses = (
-        Schwerpunkte.objects.filter(schwerpunktzeit__turnus_id=turnus_id)
-        .select_related("schwerpunktzeit")
-        .order_by(
-            "schwerpunktzeit__woche",
-            "swp_name",
-            "id",
-        )
-    )
+    focuses = _focus_queryset(turnus_id)
     kids = (
         Kinder.objects.filter(turnus_id=turnus_id)
         .select_related("turnus", "spezial_familien")
@@ -151,15 +132,7 @@ def kid_detail(request):
     if turnus_id is None:
         raise Http404
 
-    focuses = (
-        Schwerpunkte.objects.filter(schwerpunktzeit__turnus_id=turnus_id)
-        .select_related("schwerpunktzeit")
-        .order_by(
-            "schwerpunktzeit__woche",
-            "swp_name",
-            "id",
-        )
-    )
+    focuses = _focus_queryset(turnus_id)
     notes = Notizen.objects.select_related("added_by").order_by(
         "date_added",
         "id",
@@ -174,7 +147,7 @@ def kid_detail(request):
         .prefetch_related(
             Prefetch("schwerpunkte", queryset=focuses, to_attr="route_focuses"),
             Prefetch("notizen", queryset=notes, to_attr="route_notes"),
-            Prefetch("geld", queryset=transactions, to_attr="route_transactions"),
+            Prefetch("geld", queryset=transactions),
         )
     )
     kid = get_object_or_404(queryset, id=required_query_integer(request))

@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   loadRouteData,
-  refreshAfterMutation,
   routeDataRequest,
 } from './dataLoader';
 import { parseRoute } from './routes';
@@ -47,18 +46,27 @@ describe('route data loading', () => {
     expect(notFound).toEqual({ authenticationRequired: false, notFound: true, data: null });
   });
 
-  it('reports route authentication expiry separately', async () => {
-    const forbidden = await loadRouteData(
-      parseRoute('/kid_details/21'),
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 403,
-        json: vi.fn().mockResolvedValue({
-          detail: 'Authentication credentials were not provided.',
+  it.each([401, 403])(
+    'reports route authentication expiry structurally for HTTP %s',
+    async status => {
+      const expired = await loadRouteData(
+        parseRoute('/kid_details/21'),
+        vi.fn().mockResolvedValue({
+          ok: false,
+          status,
         }),
-      }),
-    );
-    const expiredLegacySession = await loadRouteData(
+      );
+
+      expect(expired).toEqual({
+        authenticationRequired: true,
+        notFound: false,
+        data: null,
+      });
+    },
+  );
+
+  it('retains the legacy authenticated-false fallback', async () => {
+    const expired = await loadRouteData(
       parseRoute('/kid_details/21'),
       vi.fn().mockResolvedValue({
         ok: true,
@@ -67,37 +75,10 @@ describe('route data loading', () => {
       }),
     );
 
-    expect(forbidden).toEqual({
+    expect(expired).toEqual({
       authenticationRequired: true,
       notFound: false,
       data: null,
     });
-    expect(expiredLegacySession).toEqual(forbidden);
-  });
-
-  it('does not treat an authorization denial as an expired session', async () => {
-    const request = loadRouteData(
-      parseRoute('/kid_details/21'),
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 403,
-        json: vi.fn().mockResolvedValue({ detail: 'Forbidden.' }),
-      }),
-    );
-
-    await expect(request).rejects.toThrow('Route data request failed (403)');
-  });
-
-  it('refreshes route data by default and bootstrap only for declared shell changes', async () => {
-    const refreshRoute = vi.fn();
-    const refreshBootstrap = vi.fn();
-
-    await refreshAfterMutation({ refreshRoute, refreshBootstrap });
-    expect(refreshRoute).toHaveBeenCalledOnce();
-    expect(refreshBootstrap).not.toHaveBeenCalled();
-
-    await refreshAfterMutation({ refreshRoute, refreshBootstrap, shellAffecting: true });
-    expect(refreshRoute).toHaveBeenCalledTimes(2);
-    expect(refreshBootstrap).toHaveBeenCalledOnce();
   });
 });

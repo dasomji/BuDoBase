@@ -37,15 +37,10 @@ export async function loadRouteData(route, fetchImpl = fetch) {
   if (!request) return { authenticationRequired: false, notFound: false, data: null };
 
   const response = await fetchImpl(request.url, { credentials: 'same-origin' });
-  if (response.status === 401) {
+  // This endpoint has authentication but no separate authorization layer, and
+  // DRF SessionAuthentication reports a missing session as 403 rather than 401.
+  if (response.status === 401 || response.status === 403) {
     return { authenticationRequired: true, notFound: false, data: null };
-  }
-  if (response.status === 403) {
-    const errorData = await response.json();
-    if (errorData.detail === 'Authentication credentials were not provided.') {
-      return { authenticationRequired: true, notFound: false, data: null };
-    }
-    throw new Error(`Route data request failed (${response.status})`);
   }
   if (response.status === 404) {
     return { authenticationRequired: false, notFound: true, data: null };
@@ -59,13 +54,4 @@ export async function loadRouteData(route, fetchImpl = fetch) {
     notFound: false,
     data,
   };
-}
-
-export async function refreshAfterMutation({
-  refreshRoute,
-  refreshBootstrap,
-  shellAffecting = false,
-}) {
-  await refreshRoute();
-  if (shellAffecting) await refreshBootstrap();
 }

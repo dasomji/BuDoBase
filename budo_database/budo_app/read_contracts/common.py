@@ -32,12 +32,40 @@ def required_query_integer(request, name="id", *, digits_only=True):
         raise Http404 from None
 
 
+def kid_full_name(first_name, last_name):
+    return f"{first_name or ''} {last_name or ''}".strip()
+
+
 def serialize_money(value):
     return round(float(value or 0), 2)
 
 
 def serialize_datetime(value):
     return value.isoformat() if value else None
+
+
+def serialize_note(note):
+    return {
+        "id": note.id,
+        "text": note.notiz or "",
+        "date": serialize_datetime(note.date_added),
+        "day": note.date_added.strftime("%d.%m.") if note.date_added else "",
+        "author": note.added_by.username,
+    }
+
+
+def serialize_transaction(transaction):
+    return {
+        "id": transaction.id,
+        "amount": serialize_money(transaction.amount),
+        "date": serialize_datetime(transaction.date_added),
+        "day": (
+            transaction.date_added.strftime("%d.%m.")
+            if transaction.date_added
+            else ""
+        ),
+        "author": transaction.added_by.username,
+    }
 
 
 def serialize_utc_datetime(value):

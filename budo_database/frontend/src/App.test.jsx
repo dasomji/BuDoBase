@@ -110,7 +110,7 @@ describe('application loading', () => {
         search_index: { kids: [], focuses: [], places: [] },
       }))
       .mockResolvedValueOnce(response(
-        { detail: 'Authentication credentials were not provided.' },
+        { detail: 'Anmeldedaten fehlen.' },
         { ok: false, status: 403 },
       ));
     const navigate = vi.fn();

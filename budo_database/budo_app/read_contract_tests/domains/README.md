@@ -13,6 +13,6 @@ contract tests to a shared module or change central dispatch tests.
 | `kids` | `kid-detail`, `kids-directory` |
 | `kitchen` | `kitchen` |
 | `maintenance` | `special-upload`, `turnus-list`, `turnus-upload` |
-| `people` | `profile`, `teamer` |
+| `profiles` | `profile`, `teamer` |
 | `places` | `place-create`, `place-detail`, `place-images`, `place-update`, `places-list` |
 | `reports` | `birthdays`, `families`, `kid-count`, `murder-game`, `serial-letter`, `special-families` |

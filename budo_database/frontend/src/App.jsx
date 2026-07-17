@@ -3,7 +3,6 @@ import { Header, Messages } from './components';
 import {
   loadBootstrap,
   loadRouteData,
-  refreshAfterMutation,
   routeDataRequest,
 } from './dataLoader';
 import { notFoundRoute } from './domains/shared';
@@ -85,7 +84,7 @@ export default function App({
     search_index: bootstrap?.search_index,
     turnus: routeState.data.turnus ?? bootstrap?.turnus,
   } : bootstrap;
-  const mutate = async (url, payload, json = true, { shellAffecting = false } = {}) => {
+  const mutate = async (url, payload, json = true) => {
     const options = { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': data.csrf_token } };
     if (json) {
       options.headers['Content-Type'] = 'application/json';
@@ -97,7 +96,7 @@ export default function App({
     }
     const response = await fetchImpl(url, options);
     if (!response.ok) throw new Error(`Update failed (${response.status})`);
-    await refreshAfterMutation({ refreshRoute, refreshBootstrap, shellAffecting });
+    await refreshRoute();
   };
 
   if (bootstrapError) return <ErrorState title="Sitzung konnte nicht geladen werden" error={bootstrapError} />;

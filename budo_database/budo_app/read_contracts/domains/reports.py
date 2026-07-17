@@ -1,7 +1,7 @@
 from django.db.models import Count, Q
 
 from budo_app.models import Kinder, Profil
-from budo_app.read_contracts.common import active_turnus_id
+from budo_app.read_contracts.common import active_turnus_id, kid_full_name
 from budo_app.utils import parse_sv_birthday
 
 
@@ -32,7 +32,9 @@ def serial_letter(request):
         "kids": [
             {
                 "id": kid.id,
-                "full_name": str(kid),
+                "full_name": kid_full_name(
+                    kid.kid_vorname, kid.kid_nachname
+                ),
                 "id_card": kid.ausweis,
                 "e_card": kid.e_card,
                 "consent": kid.einverstaendnis_erklaerung,
@@ -69,8 +71,8 @@ def murder_game(request):
         "kids": [
             {
                 "id": kid["id"],
-                "full_name": (
-                    f'{kid["kid_vorname"]} {kid["kid_nachname"]}'.strip()
+                "full_name": kid_full_name(
+                    kid["kid_vorname"], kid["kid_nachname"]
                 ),
             }
             for kid in kids
@@ -120,7 +122,9 @@ def _family_contract(request, *, special):
         "kids": [
             {
                 "id": kid.id,
-                "full_name": str(kid),
+                "full_name": kid_full_name(
+                    kid.kid_vorname, kid.kid_nachname
+                ),
                 "present": kid.anwesend,
                 "age": kid.get_alter(),
                 family_key: (
@@ -149,7 +153,7 @@ def _birthday_kid(kid):
         calculated = None
     return {
         "id": kid.id,
-        "full_name": str(kid),
+        "full_name": kid_full_name(kid.kid_vorname, kid.kid_nachname),
         "present": kid.anwesend,
         "birthday": (
             kid.kid_birthday.isoformat() if kid.kid_birthday else None

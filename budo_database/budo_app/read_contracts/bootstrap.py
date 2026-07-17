@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from budo_app.models import Auslagerorte, Kinder, Profil, Schwerpunkte
+from budo_app.read_contracts.common import kid_full_name
 
 
 def _queued_messages(request):
@@ -29,7 +30,9 @@ def _search_index(turnus):
     kids = [
         {
             "id": item["id"],
-            "full_name": f'{item["kid_vorname"]} {item["kid_nachname"]}'.strip(),
+            "full_name": kid_full_name(
+                item["kid_vorname"], item["kid_nachname"]
+            ),
             "present": item["anwesend"],
         }
         for item in Kinder.objects.filter(turnus=turnus)

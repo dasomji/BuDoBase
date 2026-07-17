@@ -4,6 +4,7 @@ from django.http import Http404
 
 from budo_app.models import Geld, Kinder
 from budo_app.read_contracts.common import (
+    kid_full_name,
     require_active_turnus_id,
     required_query_integer,
     serialize_money,
@@ -27,8 +28,8 @@ def _requested_kid(request, *fields):
 def _attendance_kid(kid):
     return {
         "id": kid["id"],
-        "full_name": (
-            f'{kid["kid_vorname"]} {kid["kid_nachname"]}'.strip()
+        "full_name": kid_full_name(
+            kid["kid_vorname"], kid["kid_nachname"]
         ),
         "present": kid["anwesend"],
         "id_card": kid["ausweis"],
@@ -89,7 +90,7 @@ def _transport_kids(request):
 def _transport_kid(kid):
     return {
         "id": kid.id,
-        "full_name": f"{kid.kid_vorname} {kid.kid_nachname}".strip(),
+        "full_name": kid_full_name(kid.kid_vorname, kid.kid_nachname),
         "present": kid.anwesend,
         "youth_ticket": kid.top_jugendticket,
         "age": kid.get_alter(),

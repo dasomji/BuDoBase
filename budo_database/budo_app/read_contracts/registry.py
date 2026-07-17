@@ -9,8 +9,8 @@ from .domains import (
     kids,
     kitchen,
     maintenance,
-    people,
     places,
+    profiles,
     reports,
 )
 
@@ -33,8 +33,8 @@ DOMAIN_CONTRACTS = {
     "kids": kids.CONTRACTS,
     "kitchen": kitchen.CONTRACTS,
     "maintenance": maintenance.CONTRACTS,
-    "people": people.CONTRACTS,
     "places": places.CONTRACTS,
+    "profiles": profiles.CONTRACTS,
     "reports": reports.CONTRACTS,
 }
 

@@ -17,6 +17,7 @@ from budo_app.models import (
     Schwerpunkte,
 )
 from budo_app.read_contracts.common import (
+    kid_full_name,
     serialize_money,
     serialize_utc_datetime,
 )
@@ -101,7 +102,10 @@ def _activity_item(stream, item):
         "date": serialize_utc_datetime(item.date_added),
         "author": item.added_by.username,
         "kid_id": item.kinder_id,
-        "kid": str(item.kinder),
+        "kid": kid_full_name(
+            item.kinder.kid_vorname,
+            item.kinder.kid_nachname,
+        ),
     }
     return {
         **common,
@@ -157,7 +161,7 @@ def _profile_payload(profile, focus_ids):
 def _kid_payload(kid):
     return {
         "id": kid.id,
-        "full_name": str(kid),
+        "full_name": kid_full_name(kid.kid_vorname, kid.kid_nachname),
         "present": kid.anwesend,
         "age": kid.get_alter(),
         "sex": kid.sex,

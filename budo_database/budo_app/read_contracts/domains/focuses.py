@@ -14,6 +14,7 @@ from budo_app.models import (
 )
 from budo_app.read_contracts.common import (
     active_turnus_id,
+    kid_full_name,
     required_query_integer,
     serialize_utc_datetime,
 )
@@ -130,7 +131,7 @@ def _focus_detail(focus):
 def _assigned_kid(kid):
     return {
         "id": kid.id,
-        "full_name": f"{kid.kid_vorname} {kid.kid_nachname}".strip(),
+        "full_name": kid_full_name(kid.kid_vorname, kid.kid_nachname),
         "present": kid.anwesend,
         "budo_family": kid.budo_family,
         "sex_short": kid.get_short_sex(),

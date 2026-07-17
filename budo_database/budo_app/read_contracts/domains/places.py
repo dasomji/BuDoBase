@@ -10,7 +10,7 @@ from budo_app.models import (
 )
 from budo_app.read_contracts.common import (
     required_query_integer,
-    serialize_datetime,
+    serialize_note,
 )
 
 
@@ -67,20 +67,7 @@ def _detail_place(place):
         "images": [
             image.image.url for image in place.route_images if image.image
         ],
-        "notes": [
-            {
-                "id": note.id,
-                "text": note.notiz or "",
-                "author": note.added_by.username,
-                "date": serialize_datetime(note.date_added),
-                "day": (
-                    note.date_added.strftime("%d.%m.")
-                    if note.date_added
-                    else ""
-                ),
-            }
-            for note in place.route_notes
-        ],
+        "notes": [serialize_note(note) for note in place.route_notes],
     }
 
 
