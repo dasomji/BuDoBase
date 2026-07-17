@@ -40,7 +40,14 @@ class FormSubmitApiTests(TestCase):
 
         self.assertEqual(response.status_code, 422)
         self.assertFalse(response.json()["ok"])
-        self.assertTrue(response.json()["errors"])
+        self.assertIn(
+            "Invalid username or password",
+            response.json()["errors"],
+        )
+        self.assertEqual(
+            self.client.get(reverse("bootstrap-api")).json()["messages"],
+            [],
+        )
 
     def test_login_success_returns_redirect_contract(self):
         User.objects.create_user("api-login", password="secret")

@@ -1,7 +1,6 @@
 from html import unescape
 import re
 
-from django.contrib import messages
 from django.urls import resolve
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -70,14 +69,6 @@ def submit_form(request):
 
     html = response.content.decode(response.charset)
     errors = _response_errors(html)
-    message_storage = messages.get_messages(raw_request)
-    handler_messages = list(message_storage)
-    message_storage.used = False
-    errors.extend(
-        str(message)
-        for message in handler_messages
-        if "error" in message.tags
-    )
     if errors:
         return Response({"ok": False, "errors": errors}, status=422)
     return Response({"ok": True, "redirect": target})

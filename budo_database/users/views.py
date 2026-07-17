@@ -41,7 +41,7 @@ def sign_in(request):
                 return redirect('dashboard')
 
         # either form not valid or user is not authenticated
-        messages.error(request, f'Invalid username or password')
+        form.add_error(None, 'Invalid username or password')
         return render(request, 'users/login.html', {'form': form})
 
 

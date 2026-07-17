@@ -1,5 +1,6 @@
 import os
 from datetime import date
+from io import BytesIO
 from unittest.mock import patch
 
 import pandas as pd
@@ -154,6 +155,51 @@ class MaintenanceMultipartWorkflowTests(TestCase):
                 "spreadsheetml.sheet"
             ),
         )
+
+    def test_bootstrap_is_the_sole_consumer_of_queued_error_messages(self):
+        workbook = BytesIO()
+        pd.DataFrame([{"Unexpected": "column"}]).to_excel(
+            workbook,
+            index=False,
+        )
+        queued_text = (
+            "Ein Fehler ist aufgetreten: XLSX file must contain "
+            "'Index' and 'Coven' columns"
+        )
+
+        native_response = self.client.post(
+            reverse("upload_spezialfamilien"),
+            {
+                "csv_file": self.workbook(
+                    "invalid-families.xlsx",
+                    workbook.getvalue(),
+                ),
+            },
+            HTTP_X_CSRFTOKEN=self.csrf_token,
+        )
+        invalid_form = self.client.post(
+            reverse("form-submit-api"),
+            {
+                "_target": "/upload/",
+                "turnus_nr": "4",
+                "turnus_beginn": "not-a-date",
+            },
+            HTTP_X_CSRFTOKEN=self.csrf_token,
+        )
+        first_bootstrap = self.client.get(reverse("bootstrap-api")).json()
+        second_bootstrap = self.client.get(reverse("bootstrap-api")).json()
+
+        self.assertEqual(native_response.status_code, 200)
+        self.assertEqual(invalid_form.status_code, 422)
+        self.assertFalse(invalid_form.json()["ok"])
+        self.assertEqual(invalid_form.json()["errors"], [
+            "Enter a valid date.",
+        ])
+        self.assertEqual(first_bootstrap["messages"], [{
+            "text": queued_text,
+            "tags": "error",
+        }])
+        self.assertEqual(second_bootstrap["messages"], [])
 
     @patch("budo_app.excel_views.process_excel")
     def test_turnus_creation_preserves_multipart_file_csrf_message_and_redirect(
