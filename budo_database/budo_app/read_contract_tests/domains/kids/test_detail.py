@@ -168,6 +168,22 @@ class KidDetailContractTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    def test_ignores_a_cross_turnus_focus_linked_to_the_kind(self):
+        foreign_focus = Schwerpunkte.objects.create(
+            swp_name="ZZZ Fremder Schwerpunkt",
+            schwerpunktzeit=self.other_turnus.schwerpunktzeit_set.get(
+                woche="w1",
+            ),
+        )
+        self.kid.schwerpunkte.add(foreign_focus)
+
+        response = self.client.get(self.contract_url(self.kid))
+
+        self.assertEqual(response.status_code, 200)
+        kid = response.json()["kids"][0]
+        self.assertEqual(kid["focus_w1"], "Theater")
+        self.assertNotContains(response, "ZZZ Fremder Schwerpunkt")
+
 
 class KidDetailMutationContractTests(TestCase):
     def setUp(self):

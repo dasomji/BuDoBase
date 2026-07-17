@@ -138,10 +138,14 @@ def kids_directory(request):
     if turnus_id is None:
         return {"kids": []}
 
-    focuses = Schwerpunkte.objects.select_related("schwerpunktzeit").order_by(
-        "schwerpunktzeit__woche",
-        "swp_name",
-        "id",
+    focuses = (
+        Schwerpunkte.objects.filter(schwerpunktzeit__turnus_id=turnus_id)
+        .select_related("schwerpunktzeit")
+        .order_by(
+            "schwerpunktzeit__woche",
+            "swp_name",
+            "id",
+        )
     )
     kids = (
         Kinder.objects.filter(turnus_id=turnus_id)
@@ -160,10 +164,14 @@ def kid_detail(request):
     if turnus_id is None or not kid_id or not str(kid_id).isdigit():
         raise Http404
 
-    focuses = Schwerpunkte.objects.select_related("schwerpunktzeit").order_by(
-        "schwerpunktzeit__woche",
-        "swp_name",
-        "id",
+    focuses = (
+        Schwerpunkte.objects.filter(schwerpunktzeit__turnus_id=turnus_id)
+        .select_related("schwerpunktzeit")
+        .order_by(
+            "schwerpunktzeit__woche",
+            "swp_name",
+            "id",
+        )
     )
     notes = Notizen.objects.select_related("added_by").order_by(
         "date_added",

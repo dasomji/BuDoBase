@@ -27,7 +27,11 @@ def focus_dashboard(request):
     if turnus_id is None:
         return {"focuses": []}
 
-    carers = Profil.objects.only("id", "rufname").order_by("rufname", "id")
+    carers = (
+        Profil.objects.filter(turnus_id=turnus_id)
+        .only("id", "rufname")
+        .order_by("rufname", "id")
+    )
     focuses = (
         Schwerpunkte.objects.filter(schwerpunktzeit__turnus_id=turnus_id)
         .select_related("ort", "schwerpunktzeit")
@@ -80,7 +84,11 @@ def _datetime(value):
 
 
 def _focus_queryset(turnus_id, *, with_kids=False, with_meals=False):
-    carers = Profil.objects.only("id", "rufname").order_by("rufname", "id")
+    carers = (
+        Profil.objects.filter(turnus_id=turnus_id)
+        .only("id", "rufname")
+        .order_by("rufname", "id")
+    )
     queryset = (
         Schwerpunkte.objects.filter(schwerpunktzeit__turnus_id=turnus_id)
         .select_related("ort", "schwerpunktzeit", "schwerpunktzeit__turnus")

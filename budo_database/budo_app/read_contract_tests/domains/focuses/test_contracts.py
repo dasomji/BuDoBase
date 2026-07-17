@@ -124,6 +124,15 @@ class FocusContractTests(TestCase):
         self.assertNotContains(response, "Private Krankheit")
         self.assertNotContains(response, "Privater Notfallkontakt")
 
+    def test_dashboard_ignores_a_cross_turnus_carer_linked_to_a_focus(self):
+        self.focus.betreuende.add(self.other_carer)
+
+        response = self.client.get(self.contract_url("focus-dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["focuses"][0]["carers"], "Grace")
+        self.assertNotContains(response, "Other")
+
     def test_detail_returns_one_focus_assignments_timing_place_and_meals(self):
         response = self.client.get(self.contract_url("focus-detail", self.focus))
 
@@ -167,6 +176,18 @@ class FocusContractTests(TestCase):
         }])
         self.assertNotContains(response, "Privater Notfallkontakt")
         self.assertNotContains(response, "Other Kind")
+
+    def test_detail_ignores_a_cross_turnus_carer_linked_to_the_focus(self):
+        self.focus.betreuende.add(self.other_carer)
+
+        response = self.client.get(
+            self.contract_url("focus-detail", self.focus),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["focus"]["carers"], "Grace")
+        self.assertEqual(response.json()["focus"]["carer_ids"], [self.carer.id])
+        self.assertNotContains(response, "Other")
 
     def test_create_and_update_contracts_return_scoped_options_and_values(self):
         create = self.client.get(self.contract_url("focus-create"))
@@ -215,6 +236,17 @@ class FocusContractTests(TestCase):
             "carer_ids": [self.carer.id],
         })
         self.assertNotContains(update, "Other")
+
+    def test_update_ignores_a_cross_turnus_carer_linked_to_the_focus(self):
+        self.focus.betreuende.add(self.other_carer)
+
+        response = self.client.get(
+            self.contract_url("focus-update", self.focus),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["focus"]["carer_ids"], [self.carer.id])
+        self.assertNotContains(response, "Other")
 
     def test_meals_contract_returns_only_the_focus_and_editable_choices(self):
         response = self.client.get(self.contract_url("focus-meals", self.focus))
