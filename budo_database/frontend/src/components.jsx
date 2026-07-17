@@ -31,14 +31,15 @@ export function GlobalSearch({ data, onNavigate = path => window.location.assign
   const results = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('de');
     if (!needle) return [];
+    const searchIndex = data.search_index || { kids: [], focuses: [], places: [] };
     const items = [
-      ...(data.kids || []).map(kid => ({
+      ...searchIndex.kids.map(kid => ({
         id: `kid-${kid.id}`,
         href: `/kid_details/${kid.id}`,
         label: `${kid.present ? '' : '❌ '}${kid.full_name}`,
       })),
-      ...(data.focuses || []).map(focus => ({ id: `focus-${focus.id}`, href: `/schwerpunkt/${focus.id}`, label: `🚀${focus.name}` })),
-      ...(data.places || []).map(place => ({ id: `place-${place.id}`, href: `/auslagerorte/${place.id}`, label: `🏡 ${place.name}` })),
+      ...searchIndex.focuses.map(focus => ({ id: `focus-${focus.id}`, href: `/schwerpunkt/${focus.id}`, label: `🚀${focus.name}` })),
+      ...searchIndex.places.map(place => ({ id: `place-${place.id}`, href: `/auslagerorte/${place.id}`, label: `🏡 ${place.name}` })),
     ];
     return items.filter(item => item.label.toLocaleLowerCase('de').includes(needle));
   }, [data, query]);

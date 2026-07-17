@@ -311,10 +311,9 @@ def _place(place):
 def app_data(request):
     """Return the normalized data graph used by all React routes."""
     csrf_token = get_token(request)
-    queued_messages = [
-        {"text": str(message), "tags": message.tags}
-        for message in messages.get_messages(request._request)
-    ]
+    # Bootstrap is the sole message-store consumer. Keeping the empty key here
+    # preserves the legacy view-model shape during route migration.
+    queued_messages = []
     if not request.user.is_authenticated:
         return Response(
             {

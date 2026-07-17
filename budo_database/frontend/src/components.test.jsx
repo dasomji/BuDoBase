@@ -1,10 +1,13 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Card, GlobalSearch, RestForm, SearchTable } from './components';
 
 describe('reusable components', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
 
   beforeEach(() => {
     window.matchMedia = vi.fn().mockImplementation(query => ({
@@ -44,9 +47,11 @@ describe('reusable components', () => {
 
   it('shows selectable results from kids, focuses, and places', () => {
     render(<GlobalSearch data={{
-      kids: [{ id: 1, full_name: 'Ada Lovelace', present: false }],
-      focuses: [{ id: 2, name: 'Ada im Wald' }],
-      places: [{ id: 3, name: 'Ada Hütte' }],
+      search_index: {
+        kids: [{ id: 1, full_name: 'Ada Lovelace', present: false }],
+        focuses: [{ id: 2, name: 'Ada im Wald' }],
+        places: [{ id: 3, name: 'Ada Hütte' }],
+      },
     }} />);
 
     const search = screen.getByRole('combobox', { name: 'Suche' });
@@ -61,9 +66,11 @@ describe('reusable components', () => {
   it('supports keyboard selection in the global search', () => {
     const onNavigate = vi.fn();
     render(<GlobalSearch data={{
-      kids: [{ id: 1, full_name: 'Ada Lovelace', present: true }],
-      focuses: [],
-      places: [],
+      search_index: {
+        kids: [{ id: 1, full_name: 'Ada Lovelace', present: true }],
+        focuses: [],
+        places: [],
+      },
     }} onNavigate={onNavigate} />);
     const search = screen.getByRole('combobox', { name: 'Suche' });
 
@@ -73,6 +80,89 @@ describe('reusable components', () => {
     fireEvent.keyDown(search, { key: 'Enter' });
 
     expect(onNavigate).toHaveBeenCalledWith('/kid_details/1');
+  });
+
+  it('matches German names case-insensitively and supports mouse selection', () => {
+    const onNavigate = vi.fn();
+    render(<GlobalSearch data={{
+      search_index: {
+        kids: [],
+        focuses: [{ id: 2, name: 'Überleben' }],
+        places: [{ id: 3, name: 'Ötscher Hütte' }],
+      },
+    }} onNavigate={onNavigate} />);
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: 'ÜBERLEBEN' } });
+    expect(screen.getByRole('option', { name: '🚀Überleben' })).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: 'ötscher' } });
+    fireEvent.click(screen.getByRole('option', { name: '🏡 Ötscher Hütte' }));
+    expect(onNavigate).toHaveBeenCalledWith('/auslagerorte/3');
+  });
+
+  it('supports ArrowUp and Escape while preserving focus behavior', () => {
+    const onNavigate = vi.fn();
+    render(<GlobalSearch data={{
+      search_index: {
+        kids: [{ id: 1, full_name: 'Ada Kind', present: true }],
+        focuses: [{ id: 2, name: 'Ada Fokus' }],
+        places: [],
+      },
+    }} onNavigate={onNavigate} />);
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: 'ada' } });
+    fireEvent.keyDown(search, { key: 'ArrowDown' });
+    fireEvent.keyDown(search, { key: 'ArrowDown' });
+    fireEvent.keyDown(search, { key: 'ArrowUp' });
+    fireEvent.keyDown(search, { key: 'Enter' });
+    expect(onNavigate).toHaveBeenCalledWith('/kid_details/1');
+
+    fireEvent.keyDown(search, { key: 'Escape' });
+    expect(search).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('hides the result list at the existing twenty-result threshold', () => {
+    render(<GlobalSearch data={{
+      search_index: {
+        kids: Array.from({ length: 20 }, (_, index) => ({
+          id: index + 1,
+          full_name: `Ada Kind ${index + 1}`,
+          present: true,
+        })),
+        focuses: [],
+        places: [],
+      },
+    }} />);
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: 'ada' } });
+
+    expect(search).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+  });
+
+  it('closes results after the search field loses focus', () => {
+    vi.useFakeTimers();
+    render(<GlobalSearch data={{
+      search_index: {
+        kids: [{ id: 1, full_name: 'Ada Kind', present: true }],
+        focuses: [],
+        places: [],
+      },
+    }} />);
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: 'ada' } });
+    fireEvent.blur(search);
+    act(() => vi.advanceTimersByTime(150));
+
+    expect(search).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('filters table pages by the first-column name only', () => {

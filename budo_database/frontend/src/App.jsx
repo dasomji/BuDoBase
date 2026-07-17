@@ -1,24 +1,83 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Header, Messages } from './components';
+import {
+  composeRouteData,
+  loadBootstrap,
+  loadRouteData,
+  refreshAfterMutation,
+  routeDataRequest,
+} from './dataLoader';
+import { notFoundRoute } from './domains/shared';
 import { isPublicRoute, parseRoute, renderRoute, resolveRouteTitle, routeHeaderAction } from './routes';
 
 export { parseRoute } from './routes';
 
-export default function App() {
+function ErrorState({ title, error }) {
+  return <div className="react-error"><div className="card"><h1>{title}</h1><p>{error.message}</p></div></div>;
+}
+
+const browserNavigate = path => window.location.assign(path);
+
+export default function App({
+  fetchImpl = fetch,
+  navigate = browserNavigate,
+}) {
   const route = useMemo(() => parseRoute(window.location.pathname), []);
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
-  const load = async () => {
+  const [bootstrap, setBootstrap] = useState(null);
+  const [bootstrapError, setBootstrapError] = useState(null);
+  const [routeState, setRouteState] = useState({
+    loading: false,
+    data: null,
+    error: null,
+    notFound: false,
+    authenticationRequired: false,
+  });
+  const request = useMemo(() => routeDataRequest(route), [route]);
+
+  const refreshBootstrap = useCallback(async () => {
     try {
-      const response = await fetch('/api/app-data/', { credentials: 'same-origin' });
-      if (!response.ok) throw new Error(`API request failed (${response.status})`);
-      setData(await response.json());
+      setBootstrapError(null);
+      setBootstrap(await loadBootstrap(fetchImpl));
     } catch (caught) {
-      setError(caught);
+      setBootstrapError(caught);
     }
-  };
-  useEffect(() => { load(); }, []);
-  const mutate = async (url, payload, json = true) => {
+  }, [fetchImpl]);
+
+  const refreshRoute = useCallback(async () => {
+    if (!request) {
+      setRouteState({ loading: false, data: null, error: null, notFound: false, authenticationRequired: false });
+      return;
+    }
+    setRouteState(current => ({ ...current, loading: true, error: null, notFound: false, authenticationRequired: false }));
+    try {
+      const result = await loadRouteData(route, fetchImpl);
+      setRouteState({
+        loading: false,
+        data: result.data,
+        error: null,
+        notFound: result.notFound,
+        authenticationRequired: result.authenticationRequired,
+      });
+    } catch (caught) {
+      setRouteState({ loading: false, data: null, error: caught, notFound: false, authenticationRequired: false });
+    }
+  }, [fetchImpl, request, route]);
+
+  useEffect(() => { refreshBootstrap(); }, [refreshBootstrap]);
+  useEffect(() => {
+    if (bootstrap?.authenticated && request) refreshRoute();
+  }, [bootstrap?.authenticated, refreshRoute, request]);
+  useEffect(() => {
+    if (
+      (bootstrap && !bootstrap.authenticated && !isPublicRoute(route))
+      || routeState.authenticationRequired
+    ) {
+      navigate(`/login/?next=${encodeURIComponent(window.location.pathname)}`);
+    }
+  }, [bootstrap, navigate, route, routeState.authenticationRequired]);
+
+  const data = composeRouteData(bootstrap, routeState.data);
+  const mutate = async (url, payload, json = true, { shellAffecting = false } = {}) => {
     const options = { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': data.csrf_token } };
     if (json) {
       options.headers['Content-Type'] = 'application/json';
@@ -28,21 +87,28 @@ export default function App() {
       Object.entries(payload).forEach(([key, value]) => body.append(key, value));
       options.body = body;
     }
-    const response = await fetch(url, options);
+    const response = await fetchImpl(url, options);
     if (!response.ok) throw new Error(`Update failed (${response.status})`);
-    await load();
+    await refreshAfterMutation({ refreshRoute, refreshBootstrap, shellAffecting });
   };
 
-  if (error) return <div className="react-error"><div className="card"><h1>BuDoBase konnte nicht geladen werden</h1><p>{error.message}</p></div></div>;
-  if (!data) return <div className="react-loading">BuDoBase lädt…</div>;
-  if (!data.authenticated && !isPublicRoute(route)) window.location.assign(`/login/?next=${encodeURIComponent(window.location.pathname)}`);
+  if (bootstrapError) return <ErrorState title="Sitzung konnte nicht geladen werden" error={bootstrapError} />;
+  if (!bootstrap) return <div className="react-loading">Sitzung wird geladen…</div>;
+  if ((!bootstrap.authenticated && !isPublicRoute(route)) || routeState.authenticationRequired) {
+    return <div className="react-loading">Weiterleitung zum Login…</div>;
+  }
+  if (routeState.error) return <ErrorState title="Seitendaten konnten nicht geladen werden" error={routeState.error} />;
+  if (routeState.notFound) return renderRoute(notFoundRoute, { data: bootstrap });
+  if (bootstrap.authenticated && request && (routeState.loading || !routeState.data)) {
+    return <div className="react-loading">Seitendaten werden geladen…</div>;
+  }
   const title = resolveRouteTitle(route, data);
   document.title = title;
   return (
     <>
       {!route.standalone && <Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data) : null} />}
       <Messages items={data.messages} />
-      {renderRoute(route, { data, mutate, refresh: load })}
+      {renderRoute(route, { data, mutate, refresh: refreshRoute })}
     </>
   );
 }
