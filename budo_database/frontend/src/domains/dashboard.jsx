@@ -1,7 +1,66 @@
+import { useEffect, useState } from 'react';
+
 import { Card, Column, Columns, FieldList } from '../components';
 import { formatGermanDate, formatKidBirthday, linkKid, money } from './shared';
 
-export function DashboardPage({ data }) {
+function appendUnique(current, incoming) {
+  const existing = new Set(current.map(item => item.id));
+  return [...current, ...incoming.filter(item => !existing.has(item.id))];
+}
+
+function ActivityList({ kind, initialPage, fetchImpl }) {
+  const [page, setPage] = useState(initialPage);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const notes = kind === 'notes';
+  const label = notes ? 'Notizen' : 'Transaktionen';
+
+  useEffect(() => {
+    setPage(initialPage);
+    setLoading(false);
+    setError(false);
+  }, [initialPage]);
+
+  const loadMore = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const query = new URLSearchParams({ activity: kind, cursor: page.next_cursor });
+      const response = await fetchImpl(`/api/route-data/dashboard/?${query}`, {
+        credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error(`Dashboard activity request failed (${response.status})`);
+      const nextPage = (await response.json()).activity[kind];
+      setPage(current => ({
+        ...nextPage,
+        items: appendUnique(current.items, nextPage.items),
+      }));
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <ul>{page.items.map(item => (
+        <li key={item.id}>
+          <p><strong>{item.author}</strong> am {formatGermanDate(item.date)}: <a href={`/kid_details/${item.kid_id}`}>{item.kid}</a></p>
+          <p>{notes ? item.text : `Betrag: ${money(item.amount)}`}</p>
+        </li>
+      ))}</ul>
+      {error && <p className="activity-error" role="alert">Ältere {label} konnten nicht geladen werden.</p>}
+      {page.has_more && (
+        <button className="button" type="button" disabled={loading} onClick={loadMore}>
+          {loading ? `Ältere ${label} werden geladen…` : `Ältere ${label} laden`}
+        </button>
+      )}
+    </>
+  );
+}
+
+export function DashboardPage({ data, fetchImpl = fetch }) {
   const { profile, team, totals, kids, focuses, activity } = data;
   const firstTimers = kids.filter(kid => kid.budo_experience === false);
   const oneWeek = kids.filter(kid => kid.weeks === 1);
@@ -29,8 +88,8 @@ export function DashboardPage({ data }) {
           ['Kids mit Budo-Erfahrung', kids.filter(k => k.budo_experience).length], ['Zuganreise', totals.train_arrival], ['Zugabreise', totals.train_departure],
         ]} /></Card>
         <Card title="Speziallisten" id="db-spezial"><p><a href="/serienbrief">Serienbrief</a></p><p><a href="/murdergame">Mörderspiel Liste</a></p><p><a href="/zugabreise">Zugabreise</a></p><p><a href="/zuganreise">Zuganreise</a></p><p><a href="/upload/">Turnis</a></p><p><a href="/download-updated-excel/">Aufenthalts-Doku</a></p><p><a href="/swp-einteilung-w1">SWP-Einteilung Woche 1</a></p><p><a href="/swp-einteilung-w2">SWP-Einteilung Woche 2</a></p><p><a href="/happy-cleaning/">Happy Cleaning</a></p><p><a href="/budo_familien/">Budo-Familien</a></p><p><a href="/spezial_familien/">Spezialfamilien</a></p><p><a href="/upload_spezialfamilien/">Spezialfamilien hochladen</a></p><p><a href="/kindergeburtstage/">Kindergeburtstage</a></p></Card>
-        <Card title="Notizen" id="db-notizen"><ul>{activity.notes.map(note => <li key={note.id}><p><strong>{note.author}</strong> am {formatGermanDate(note.date)}: <a href={`/kid_details/${note.kid_id}`}>{note.kid}</a></p><p>{note.text}</p></li>)}</ul></Card>
-        <Card title="Taschengeld-Transaktionen" id="db-geld"><ul>{activity.transactions.map(item => <li key={item.id}><p><strong>{item.author}</strong> am {formatGermanDate(item.date)}: <a href={`/kid_details/${item.kid_id}`}>{item.kid}</a></p><p>Betrag: {money(item.amount)}</p></li>)}</ul></Card>
+        <Card title="Notizen" id="db-notizen"><ActivityList kind="notes" initialPage={activity.notes} fetchImpl={fetchImpl} /></Card>
+        <Card title="Taschengeld-Transaktionen" id="db-geld"><ActivityList kind="transactions" initialPage={activity.transactions} fetchImpl={fetchImpl} /></Card>
       </Column>
       <Column id="right-column">
         <Card title={`Erstes Mal im BuDO: ${firstTimers.length}/${totals.kids}`} id="db-ersties" initiallyClosed>{kidList(firstTimers)}</Card>
@@ -50,5 +109,6 @@ export const dashboardRoutes = [{
   title: 'BuDo Dashboard',
   domain: 'dashboard',
   readContractKey: 'dashboard',
-  render: ({ data }) => <DashboardPage data={data} />,
+  focusedReadContract: true,
+  render: ({ data, fetchImpl }) => <DashboardPage data={data} fetchImpl={fetchImpl} />,
 }];

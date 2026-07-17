@@ -42,6 +42,7 @@ IMPLEMENTED_ROUTE_CONTRACT_KEYS = {
     "check-in",
     "check-out",
     "families",
+    "dashboard",
     "focus-create",
     "focus-dashboard",
     "focus-detail",

@@ -108,7 +108,7 @@ export default function App({
     <>
       {!route.standalone && <Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data) : null} />}
       <Messages items={data.messages} />
-      {renderRoute(route, { data, mutate, refresh: refreshRoute })}
+      {renderRoute(route, { data, mutate, refresh: refreshRoute, fetchImpl })}
     </>
   );
 }
