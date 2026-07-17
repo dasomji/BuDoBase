@@ -16,9 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from budo_app.api_views import app_data, submit_form
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/app-data/', app_data, name='app-data-api'),
+    path('api/form-submit/', submit_form, name='form-submit-api'),
     path('', include('budo_app.urls')),
     path('', include('users.urls'))
 ]

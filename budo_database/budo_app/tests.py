@@ -1,13 +1,17 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
-from .models import Turnus, Kinder
-from .excelProcessor import process_excel, validate_workbook_columns
+from .forms import AuslagerorteImageForm
+from .models import Auslagerorte, AuslagerorteImage, Document, Turnus, Kinder
+from .excelProcessor import parse_birthday, process_excel, validate_workbook_columns
 from unittest.mock import patch
 from django.contrib.auth.models import User
+from io import BytesIO
+from tempfile import TemporaryDirectory
 import os
 import json
 import pandas as pd
+from PIL import Image
 from datetime import date
 
 
@@ -23,6 +27,16 @@ def make_kid(turnus, kid_index="T1-1", first_name="Test", last_name="Kind"):
         rechnungsadresse="Example Street 1",
         rechnung_ort="Wien",
         rechnung_land="AT",
+    )
+
+
+def make_image_upload(name="location.png", size=(1200, 600), color="red"):
+    source = BytesIO()
+    Image.new("RGB", size, color).save(source, format="PNG")
+    return SimpleUploadedFile(
+        name,
+        source.getvalue(),
+        content_type="image/png",
     )
 
 
@@ -71,6 +85,207 @@ def sample_excel_frames():
         "Notfall Kontakte": "Mama",
     }])
     return budo, budo_raw
+
+
+class AuslagerorteImageTest(TestCase):
+    def test_uploaded_image_is_resized_and_converted_to_jpeg(self):
+        upload = make_image_upload()
+
+        with (
+            TemporaryDirectory() as media_root,
+            override_settings(MEDIA_ROOT=media_root),
+        ):
+            location = Auslagerorte.objects.create(name="Test location")
+            stored_image = AuslagerorteImage.objects.create(
+                auslagerort=location,
+                image=upload,
+            )
+
+            self.assertTrue(stored_image.image.name.endswith(".jpeg"))
+            self.assertTrue(
+                AuslagerorteImage._meta.get_field("image").keep_meta
+            )
+            with stored_image.image.open("rb") as stored_file:
+                with Image.open(stored_file) as resized_image:
+                    self.assertEqual(resized_image.format, "JPEG")
+                    self.assertEqual(resized_image.size, (1080, 540))
+
+
+    def test_uploaded_image_keeps_gps_metadata(self):
+        source = BytesIO()
+        image = Image.new("RGB", (100, 100), "red")
+        exif = Image.Exif()
+        exif[0x8825] = {
+            1: "N",
+            2: (48.0, 12.0, 0.0),
+            3: "E",
+            4: (16.0, 22.0, 0.0),
+        }
+        image.save(source, format="JPEG", exif=exif)
+        upload = SimpleUploadedFile(
+            "gps.jpeg",
+            source.getvalue(),
+            content_type="image/jpeg",
+        )
+
+        with (
+            TemporaryDirectory() as media_root,
+            override_settings(MEDIA_ROOT=media_root),
+        ):
+            location = Auslagerorte.objects.create(name="GPS location")
+            stored_image = AuslagerorteImage.objects.create(
+                auslagerort=location,
+                image=upload,
+            )
+
+            with stored_image.image.open("rb") as stored_file:
+                with Image.open(stored_file) as resized_image:
+                    gps = resized_image.getexif().get_ifd(0x8825)
+
+        self.assertEqual(gps[1], "N")
+        self.assertEqual(gps[3], "E")
+
+
+class AuslagerorteImageFormTest(TestCase):
+    def test_images_are_required_and_must_be_decodable(self):
+        empty_form = AuslagerorteImageForm(data={}, files={})
+        invalid_form = AuslagerorteImageForm(
+            data={},
+            files={
+                "images": SimpleUploadedFile(
+                    "not-an-image.txt",
+                    b"not an image",
+                    content_type="text/plain",
+                )
+            },
+        )
+
+        self.assertFalse(empty_form.is_valid())
+        self.assertFalse(invalid_form.is_valid())
+
+    @override_settings(LOCATION_IMAGE_MAX_FILES=1)
+    def test_image_count_limit_is_enforced(self):
+        form = AuslagerorteImageForm(
+            data={},
+            files={"images": [make_image_upload(), make_image_upload()]},
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual(form.errors.as_data()["images"][0].code, "too_many_images")
+
+    @override_settings(
+        LOCATION_IMAGE_MAX_FILE_SIZE=100_000,
+        LOCATION_IMAGE_MAX_TOTAL_SIZE=100,
+    )
+    def test_aggregate_size_limit_is_enforced(self):
+        form = AuslagerorteImageForm(
+            data={},
+            files={
+                "images": [
+                    make_image_upload(name="one.png", size=(20, 20)),
+                    make_image_upload(name="two.png", size=(20, 20)),
+                ]
+            },
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual(form.errors.as_data()["images"][0].code, "images_too_large")
+
+    def test_per_file_size_limit_is_enforced(self):
+        upload = make_image_upload(size=(20, 20))
+        with override_settings(
+            LOCATION_IMAGE_MAX_FILE_SIZE=upload.size - 1,
+            LOCATION_IMAGE_MAX_TOTAL_SIZE=upload.size * 2,
+        ):
+            form = AuslagerorteImageForm(
+                data={},
+                files={"images": upload},
+            )
+            is_valid = form.is_valid()
+
+        self.assertFalse(is_valid)
+        self.assertEqual(form.errors.as_data()["images"][0].code, "image_too_large")
+
+    @override_settings(LOCATION_IMAGE_MAX_PIXELS=100)
+    def test_decoded_pixel_limit_is_enforced(self):
+        form = AuslagerorteImageForm(
+            data={},
+            files={"images": make_image_upload(size=(11, 10))},
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual(form.errors.as_data()["images"][0].code, "too_many_pixels")
+
+
+class AuslagerorteImageUploadTest(TestCase):
+    def setUp(self):
+        self.media_directory = TemporaryDirectory()
+        self.addCleanup(self.media_directory.cleanup)
+        self.media_override = override_settings(
+            MEDIA_ROOT=self.media_directory.name,
+        )
+        self.media_override.enable()
+        self.addCleanup(self.media_override.disable)
+
+        self.user = User.objects.create_user(
+            username="image-uploader",
+            password="testpass123",
+        )
+        self.client.login(username="image-uploader", password="testpass123")
+        self.location = Auslagerorte.objects.create(name="Test location")
+        self.url = reverse(
+            "auslagerorte-image-upload",
+            kwargs={"pk": self.location.pk},
+        )
+
+    def stored_file_names(self):
+        return [
+            filename
+            for _, _, filenames in os.walk(self.media_directory.name)
+            for filename in filenames
+        ]
+
+    def test_two_valid_images_create_two_records_and_objects(self):
+        response = self.client.post(
+            self.url,
+            {
+                "images": [
+                    make_image_upload(name="one.png"),
+                    make_image_upload(name="two.png", color="blue"),
+                ]
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.location.images.count(), 2)
+        self.assertEqual(len(self.stored_file_names()), 2)
+
+    def test_failed_batch_removes_records_and_already_written_objects(self):
+        original_save = AuslagerorteImage.save
+        save_calls = 0
+
+        def fail_second_save(instance, *args, **kwargs):
+            nonlocal save_calls
+            save_calls += 1
+            if save_calls == 2:
+                raise RuntimeError("simulated storage failure")
+            return original_save(instance, *args, **kwargs)
+
+        with patch.object(AuslagerorteImage, "save", new=fail_second_save):
+            response = self.client.post(
+                self.url,
+                {
+                    "images": [
+                        make_image_upload(name="one.png"),
+                        make_image_upload(name="two.png", color="blue"),
+                    ]
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "konnten nicht gespeichert werden")
+        self.assertEqual(self.location.images.count(), 0)
+        self.assertEqual(self.stored_file_names(), [])
 
 
 class MutationSecurityTest(TestCase):
@@ -169,6 +384,14 @@ class KinderModelTest(TestCase):
 
 class TurnusUploadTest(TestCase):
     def setUp(self):
+        self.media_directory = TemporaryDirectory()
+        self.addCleanup(self.media_directory.cleanup)
+        self.media_override = override_settings(
+            MEDIA_ROOT=self.media_directory.name,
+        )
+        self.media_override.enable()
+        self.addCleanup(self.media_override.disable)
+
         self.client = Client()
         self.url = reverse('uploadFile')
 
@@ -197,24 +420,204 @@ class TurnusUploadTest(TestCase):
         self.assertTrue(Turnus.objects.exists())
         turnus = Turnus.objects.last()
         self.assertIsNotNone(turnus.uploadedFile)
-        self.assertTrue(os.path.exists(turnus.uploadedFile.path))
+        self.assertTrue(
+            turnus.uploadedFile.storage.exists(turnus.uploadedFile.name)
+        )
         process_excel_mock.assert_called_once_with(turnus)
+
+
+class StorageLifecycleTest(TestCase):
+    def setUp(self):
+        self.media_directory = TemporaryDirectory()
+        self.addCleanup(self.media_directory.cleanup)
+        self.media_override = override_settings(
+            MEDIA_ROOT=self.media_directory.name,
+        )
+        self.media_override.enable()
+        self.addCleanup(self.media_override.disable)
+
+    def test_deleting_an_image_record_deletes_its_stored_object(self):
+        location = Auslagerorte.objects.create(name="Test location")
+        stored_image = AuslagerorteImage.objects.create(
+            auslagerort=location,
+            image=make_image_upload(),
+        )
+        storage = stored_image.image.storage
+        name = stored_image.image.name
+
+        with self.captureOnCommitCallbacks(execute=True):
+            stored_image.delete()
+
+        self.assertFalse(storage.exists(name))
+
+    def test_deleting_a_turnus_deletes_its_stored_workbook(self):
+        turnus = Turnus.objects.create(
+            turnus_nr=1,
+            turnus_beginn=date(2024, 7, 1),
+            uploadedFile=SimpleUploadedFile("workbook.xlsx", b"workbook"),
+        )
+        storage = turnus.uploadedFile.storage
+        name = turnus.uploadedFile.name
+
+        with self.captureOnCommitCallbacks(execute=True):
+            turnus.delete()
+
+        self.assertFalse(storage.exists(name))
+
+    def test_replacing_a_document_deletes_its_previous_object(self):
+        document = Document.objects.create(
+            title="Test document",
+            uploadedFile=SimpleUploadedFile("old.txt", b"old"),
+        )
+        storage = document.uploadedFile.storage
+        old_name = document.uploadedFile.name
+        document.uploadedFile = SimpleUploadedFile("new.txt", b"new")
+
+        with self.captureOnCommitCallbacks(execute=True):
+            document.save()
+
+        self.assertFalse(storage.exists(old_name))
+        self.assertTrue(storage.exists(document.uploadedFile.name))
+
+
+class TurnusWorkbookReplacementTest(TestCase):
+    def setUp(self):
+        self.media_directory = TemporaryDirectory()
+        self.addCleanup(self.media_directory.cleanup)
+        self.media_override = override_settings(
+            MEDIA_ROOT=self.media_directory.name,
+        )
+        self.media_override.enable()
+        self.addCleanup(self.media_override.disable)
+
+        self.user = User.objects.create_user(
+            username="workbook-uploader",
+            password="testpass123",
+        )
+        self.client.login(
+            username="workbook-uploader",
+            password="testpass123",
+        )
+        self.turnus = Turnus.objects.create(
+            turnus_nr=1,
+            turnus_beginn=date(2024, 7, 1),
+            uploadedFile=SimpleUploadedFile("old.xlsx", b"old workbook"),
+        )
+        self.old_name = self.turnus.uploadedFile.name
+        self.storage = self.turnus.uploadedFile.storage
+        self.url = reverse(
+            "upload_excel",
+            kwargs={"turnus_id": self.turnus.pk},
+        )
+
+    def replacement_data(self):
+        return {
+            "turnus_nr": 1,
+            "turnus_beginn": "2024-07-01",
+            "uploadedFile": SimpleUploadedFile(
+                "new.xlsx",
+                b"new workbook",
+                content_type=(
+                    "application/vnd.openxmlformats-officedocument."
+                    "spreadsheetml.sheet"
+                ),
+            ),
+        }
+
+    @patch("budo_app.excel_views.process_excel")
+    def test_successful_replacement_deletes_old_workbook(self, process_excel_mock):
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(self.url, self.replacement_data())
+
+        self.assertEqual(response.status_code, 302)
+        self.turnus.refresh_from_db()
+        self.assertNotEqual(self.turnus.uploadedFile.name, self.old_name)
+        self.assertFalse(self.storage.exists(self.old_name))
+        self.assertTrue(self.storage.exists(self.turnus.uploadedFile.name))
+        process_excel_mock.assert_called_once()
+
+    @patch(
+        "budo_app.excel_views.process_excel",
+        side_effect=ValueError("invalid workbook"),
+    )
+    def test_failed_replacement_keeps_old_and_deletes_new_workbook(
+        self,
+        process_excel_mock,
+    ):
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(self.url, self.replacement_data())
+
+        self.assertEqual(response.status_code, 200)
+        self.turnus.refresh_from_db()
+        self.assertEqual(self.turnus.uploadedFile.name, self.old_name)
+        self.assertTrue(self.storage.exists(self.old_name))
+        stored_names = [
+            os.path.relpath(os.path.join(root, filename), self.media_directory.name)
+            for root, _, filenames in os.walk(self.media_directory.name)
+            for filename in filenames
+        ]
+        self.assertEqual(stored_names, [self.old_name])
+        process_excel_mock.assert_called_once()
+
+
+class DownloadUpdatedExcelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="download-user",
+            password="testpass123",
+        )
+        self.turnus = Turnus.objects.create(
+            turnus_nr=1,
+            turnus_beginn=date(2024, 7, 1),
+        )
+        self.user.profil.turnus = self.turnus
+        self.user.profil.save()
+        self.client.login(username="download-user", password="testpass123")
+
+    def test_generated_download_uses_a_cleaned_up_temporary_file(self):
+        generated_path = None
+
+        def generate_file(path, turnus):
+            nonlocal generated_path
+            generated_path = path
+            with open(path, "wb") as generated_file:
+                generated_file.write(b"generated workbook")
+
+        with patch(
+            "budo_app.excel_views.update_excel_file",
+            side_effect=generate_file,
+        ):
+            response = self.client.get(reverse("download_updated_excel"))
+            content = b"".join(response.streaming_content)
+            response.close()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(content, b"generated workbook")
+        self.assertIsNotNone(generated_path)
+        self.assertFalse(os.path.exists(os.path.dirname(generated_path)))
 
 
 class ExcelProcessingTransactionTest(TestCase):
     def setUp(self):
+        self.media_directory = TemporaryDirectory()
+        self.addCleanup(self.media_directory.cleanup)
+        self.media_override = override_settings(
+            MEDIA_ROOT=self.media_directory.name,
+        )
+        self.media_override.enable()
+        self.addCleanup(self.media_override.disable)
+
         self.turnus = Turnus.objects.create(
             turnus_nr=1,
-            turnus_beginn=date(2024, 7, 1)
+            turnus_beginn=date(2024, 7, 1),
+            uploadedFile=SimpleUploadedFile(
+                "detail_test.xlsx",
+                b"test workbook placeholder",
+            ),
         )
 
-        self.turnus.uploadedFile.name = 'detail_test.xlsx'
-        self.turnus.save()
-
-    @patch('budo_app.excelProcessor.get_uploaded_excel_path')
     @patch('budo_app.excelProcessor.read_workbook')
-    def test_successful_processing_with_selected_turnus(self, mock_read_workbook, mock_path):
-        mock_path.return_value = 'detail_test.xlsx'
+    def test_successful_processing_with_selected_turnus(self, mock_read_workbook):
         mock_read_workbook.return_value = sample_excel_frames()
         kids_before = Kinder.objects.count()
 
@@ -232,11 +635,9 @@ class ExcelProcessingTransactionTest(TestCase):
         self.assertIsNotNone(first_kid.kid_nachname)
         self.assertEqual(first_kid.turnus, self.turnus)
 
-    @patch('budo_app.excelProcessor.get_uploaded_excel_path')
     @patch('budo_app.excelProcessor.read_workbook')
     @patch('budo_app.models.Kinder.save')
-    def test_transaction_rollback_on_save_error(self, mock_save, mock_read_workbook, mock_path):
-        mock_path.return_value = 'detail_test.xlsx'
+    def test_transaction_rollback_on_save_error(self, mock_save, mock_read_workbook):
         mock_read_workbook.return_value = sample_excel_frames()
         """Test that transaction is rolled back when kid.save() fails during processing"""
         # Configure mock to raise an exception on the first save call
@@ -257,10 +658,8 @@ class ExcelProcessingTransactionTest(TestCase):
         self.assertEqual(kids_before, kids_after,
                          "Transaction rollback failed - kids were created despite error")
 
-    @patch('budo_app.excelProcessor.get_uploaded_excel_path')
     @patch('budo_app.excelProcessor.read_workbook')
-    def test_transaction_rollback_on_excel_read_error(self, mock_read_workbook, mock_path):
-        mock_path.return_value = 'detail_test.xlsx'
+    def test_transaction_rollback_on_excel_read_error(self, mock_read_workbook):
         """Test that transaction is rolled back when Excel reading fails"""
         # Configure mock to raise an exception when reading Excel
         mock_read_workbook.side_effect = Exception("Excel file is corrupted")
@@ -280,11 +679,9 @@ class ExcelProcessingTransactionTest(TestCase):
         self.assertEqual(kids_before, kids_after,
                          "Transaction rollback failed - kids were created despite error")
 
-    @patch('budo_app.excelProcessor.get_uploaded_excel_path')
     @patch('budo_app.excelProcessor.read_workbook')
     @patch('budo_app.excelProcessor.from_excel_ordinal')
-    def test_transaction_rollback_on_date_parsing_error(self, mock_date_parser, mock_read_workbook, mock_path):
-        mock_path.return_value = 'detail_test.xlsx'
+    def test_transaction_rollback_on_date_parsing_error(self, mock_date_parser, mock_read_workbook):
         budo, budo_raw = sample_excel_frames()
         budo.loc[0, "Kind_Geburtsdatum"] = 12345
         mock_read_workbook.return_value = (budo, budo_raw)
@@ -328,11 +725,9 @@ class ExcelProcessingTransactionTest(TestCase):
         self.assertEqual(kids_before, kids_after,
                          "Transaction rollback failed - kids were created despite error")
 
-    @patch('budo_app.excelProcessor.get_uploaded_excel_path')
     @patch('budo_app.excelProcessor.read_workbook')
     @patch('budo_app.excelProcessor.assign_budo_families')
-    def test_transaction_rollback_on_family_assignment_error(self, mock_assign, mock_read_workbook, mock_path):
-        mock_path.return_value = 'detail_test.xlsx'
+    def test_transaction_rollback_on_family_assignment_error(self, mock_assign, mock_read_workbook):
         mock_read_workbook.return_value = sample_excel_frames()
         mock_assign.side_effect = Exception("Family assignment failed")
 
@@ -360,10 +755,8 @@ class ExcelProcessingTransactionTest(TestCase):
 
         self.assertIn("Kind_Vorname", str(context.exception))
 
-    @patch('budo_app.excelProcessor.get_uploaded_excel_path')
     @patch('budo_app.excelProcessor.read_workbook')
-    def test_invalid_birthday_reports_expected_formats(self, mock_read_workbook, mock_path):
-        mock_path.return_value = 'detail_test.xlsx'
+    def test_invalid_birthday_reports_expected_formats(self, mock_read_workbook):
         budo, budo_raw = sample_excel_frames()
         budo.loc[0, "Kind_Geburtsdatum"] = "not-a-date"
         mock_read_workbook.return_value = (budo, budo_raw)
@@ -373,3 +766,18 @@ class ExcelProcessingTransactionTest(TestCase):
 
         self.assertIn("Invalid birthday", str(context.exception))
         self.assertIn("DD.MM.YYYY", str(context.exception))
+
+    def test_numeric_text_birthday_is_parsed_as_excel_ordinal(self):
+        self.assertEqual(parse_birthday("39893"), date(2009, 3, 21))
+
+    @patch('budo_app.excelProcessor.read_workbook')
+    def test_postal_code_with_locality_is_imported(self, mock_read_workbook):
+        budo, budo_raw = sample_excel_frames()
+        budo["Rechnung_PLZ"] = budo["Rechnung_PLZ"].astype(object)
+        budo.loc[0, "Rechnung_PLZ"] = "3420 Kritzendorf"
+        mock_read_workbook.return_value = (budo, budo_raw)
+
+        process_excel(self.turnus)
+
+        kid = Kinder.objects.get(turnus=self.turnus)
+        self.assertEqual(kid.rechnung_plz, 3420)

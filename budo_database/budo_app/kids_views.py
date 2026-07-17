@@ -239,6 +239,10 @@ def kid_details(request, id):
             geld = geld_form.cleaned_data.get("amount")
             if geld:
                 geld = geld_form.save(commit=False)
+                if request.POST.get("money_action") == "withdraw":
+                    geld.amount = -abs(geld.amount)
+                else:
+                    geld.amount = abs(geld.amount)
                 geld.kinder = this_kid
                 geld.added_by = request.user
                 geld.save()
@@ -300,7 +304,7 @@ def check_in(request, id):
                 geld.kinder = this_kid
                 geld.added_by = request.user
                 geld.save()
-        if check_in_form.is_valid():
+        if check_in_form.is_valid() and notiz_form.is_valid() and geld_form.is_valid():
             this_kid = check_in_form.save(commit=False)
             this_kid.anwesend = True
             if this_kid.check_in_date.strftime("%Y-%m-%d") != this_kid.turnus.turnus_beginn.strftime("%Y-%m-%d"):
@@ -343,6 +347,7 @@ def check_out(request, id):
         'schwerpunkte': schwerpunkte,
         'auslagerorte': auslagerorte,
     }
+    pocket_money_balance = this_kid.get_taschengeld_sum()
 
     if request.method == 'POST':
         check_out_form = CheckOutForm(request.POST, instance=this_kid)
@@ -362,10 +367,11 @@ def check_out(request, id):
             geld = geld_form.cleaned_data.get("amount")
             if geld:
                 geld = geld_form.save(commit=False)
+                geld.amount = -abs(geld.amount) if pocket_money_balance >= 0 else abs(geld.amount)
                 geld.kinder = this_kid
                 geld.added_by = request.user
                 geld.save()
-        if check_out_form.is_valid():
+        if check_out_form.is_valid() and notiz_form.is_valid() and geld_form.is_valid():
             this_kid = check_out_form.save(commit=False)
             this_kid.anwesend = False
             this_kid.e_card = False
@@ -378,8 +384,13 @@ def check_out(request, id):
     else:
         check_out_form = CheckOutForm()
         notiz_form = NotizForm()
-        geld_form = GeldForm(
-            initial={'amount': -this_kid.get_taschengeld_sum()})
+        geld_form = GeldForm(initial={
+            'amount': pocket_money_balance if pocket_money_balance > 0 else 0,
+        })
+        if pocket_money_balance >= 0:
+            geld_form.fields['amount'].label = f"Taschengeld zurückgegeben (aktuell {pocket_money_balance:.2f} €)"
+        else:
+            geld_form.fields['amount'].label = f"Taschengeld eingezahlt (schuldet aktuell: {abs(pocket_money_balance):.2f} €)"
         context["check_out_form"] = check_out_form
         context["notiz_form"] = notiz_form
         context["geld_form"] = geld_form

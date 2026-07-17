@@ -1,8 +1,10 @@
 import json
+import logging
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template import loader
@@ -19,6 +21,8 @@ from .models import (
     Profil,
     Schwerpunkte,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AuslagerorteUpdate(LoginRequiredMixin, UpdateView):
@@ -137,10 +141,35 @@ class AuslagerorteImageUpload(LoginRequiredMixin, FormView):
 
     def form_valid(self, form):
         auslagerort = get_object_or_404(Auslagerorte, pk=self.kwargs['pk'])
-        images = form.cleaned_data['images']
-        for image in images:
-            AuslagerorteImage.objects.create(
-                auslagerort=auslagerort, image=image)
+        attempted_images = []
+
+        try:
+            with transaction.atomic():
+                for uploaded_image in form.cleaned_data['images']:
+                    stored_image = AuslagerorteImage(
+                        auslagerort=auslagerort,
+                        image=uploaded_image,
+                    )
+                    attempted_images.append(stored_image)
+                    stored_image.save()
+        except Exception:
+            for stored_image in attempted_images:
+                name = stored_image.image.name
+                if not name or not stored_image.image._committed:
+                    continue
+                try:
+                    stored_image.image.storage.delete(name)
+                except Exception:
+                    logger.exception(
+                        "Failed to clean up image object after batch upload failure"
+                    )
+            logger.exception("Location image batch upload failed")
+            form.add_error(
+                None,
+                "Die Bilder konnten nicht gespeichert werden. Bitte erneut versuchen.",
+            )
+            return self.form_invalid(form)
+
         messages.success(self.request, "Bilder hochgeladen!")
         return redirect('auslagerorte-detail', pk=auslagerort.pk)
 

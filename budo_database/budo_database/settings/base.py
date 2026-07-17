@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'rest_framework',
     'budo_app',
     'users.apps.UsersConfig',
     "phonenumber_field",
@@ -35,7 +36,17 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'budo_app.middleware.ReactFrontendMiddleware',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
 
 ROOT_URLCONF = 'budo_database.urls'
 
@@ -79,6 +90,9 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# Adopt Django 6.0's URLField default during the 5.2 transition.
+FORMS_URLFIELD_ASSUME_HTTPS = True
+
 # Static files
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATIC_URL = '/static/'
@@ -86,6 +100,10 @@ STATIC_URL = '/static/'
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+LOCATION_IMAGE_MAX_FILES = 20
+LOCATION_IMAGE_MAX_FILE_SIZE = 20 * 1024 * 1024
+LOCATION_IMAGE_MAX_TOTAL_SIZE = 100 * 1024 * 1024
+LOCATION_IMAGE_MAX_PIXELS = 40_000_000
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

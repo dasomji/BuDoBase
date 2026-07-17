@@ -1,0 +1,325 @@
+@import "tailwindcss";
+@import "../../budo_app/static/stylesheet.css";
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: local("Roboto");
+}
+
+.react-loading,
+.react-error {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 2rem;
+}
+
+.react-error .card {
+  max-width: 42rem;
+}
+
+.messages {
+  margin: 0;
+  padding: 0.75rem 1.25rem;
+  list-style: none;
+}
+
+.messages .error {
+  color: #9c1c1c;
+}
+
+.card > .card-info-container {
+  display: grid;
+  grid-template-rows: 0fr;
+  padding-top: 0;
+  padding-bottom: 0;
+  transition: grid-template-rows 300ms ease-in-out, padding 300ms ease-in-out;
+}
+
+.card:not(.closed-card) > .card-info-container {
+  grid-template-rows: 1fr;
+  padding-top: var(--str-padding);
+  padding-bottom: var(--str-padding);
+}
+
+.card-info-content {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.card:not(.closed-card) > .card-info-container > .card-info-content {
+  animation: reveal-card-overflow 300ms step-end forwards;
+}
+
+@keyframes reveal-card-overflow {
+  to {
+    overflow: visible;
+  }
+}
+
+.info-header-container.card-toggle {
+  width: 100%;
+  color: var(--text-color);
+  text-align: left;
+  white-space: normal;
+}
+
+.info-header-container.card-toggle:hover {
+  background-color: var(--dark-blue);
+}
+
+.transparent > .info-header-container.card-toggle:hover {
+  background-color: transparent;
+  filter: none;
+}
+
+.info-header-container > .icon {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+#interaction-bar #interaction-input {
+  justify-content: center;
+  padding: var(--xs-padding) var(--s-padding);
+}
+
+#interaction-bar form {
+  width: 100%;
+  flex: 0 1 1000px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--m-padding);
+}
+
+#interaction-bar form > div:not(.hidden) {
+  max-width: 720px;
+  flex: 1 1 320px;
+}
+
+#interaction-bar form p {
+  width: 100%;
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: var(--m-padding);
+}
+
+#interaction-bar form input {
+  min-width: 0;
+}
+
+#interaction-bar form button img {
+  width: 2rem;
+  height: 2rem;
+}
+
+#interaction-bar form .money-action {
+  height: 2rem;
+  padding: 0 var(--s-padding);
+}
+
+#interaction-bar form .money-withdraw,
+#interaction-bar form .money-withdraw:hover {
+  background-color: #4caf50;
+}
+
+#interaction-bar form .money-topup,
+#interaction-bar form .money-topup:hover {
+  background-color: #d9534f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card > .card-info-container {
+    transition: none;
+  }
+
+  .card:not(.closed-card) > .card-info-container > .card-info-content {
+    overflow: visible;
+    animation: none;
+  }
+}
+
+.form-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.form-grid label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 500;
+}
+
+.form-grid input:not([type="checkbox"]):not([type="radio"]),
+.form-grid select,
+.form-grid textarea {
+  width: 100%;
+  border: 2px solid white;
+  border-radius: var(--corner-rad);
+  padding: var(--xs-padding);
+  font-weight: 300;
+}
+
+.checkbox-row {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem !important;
+}
+
+.react-map {
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+  padding: var(--l-padding);
+  text-align: center;
+  background: rgba(222, 240, 255, 0.35);
+}
+
+.interactive-map {
+  width: 100%;
+  height: 420px;
+  padding: 0;
+  text-align: initial;
+}
+
+.leaflet-text {
+  width: max-content !important;
+  min-width: 10rem;
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.react-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.react-actions button,
+.react-actions .button {
+  border: 0;
+}
+
+.mobile-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sidebar);
+  display: grid;
+  grid-template-columns: minmax(250px, 82vw) 1fr;
+}
+
+.mobile-drawer nav {
+  background: var(--bg-blue__solid);
+  padding: var(--l-padding);
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+}
+
+.mobile-drawer-backdrop {
+  border: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.react-search-results {
+  display: block;
+  max-height: min(60vh, 28rem);
+}
+
+.filter-table {
+  width: 100%;
+  border: 2px solid white;
+  border-radius: var(--corner-rad);
+  padding: var(--xs-padding);
+  font-weight: 300;
+}
+
+#headersearch input,
+.filter-table,
+input[name="notiz"],
+input[name="amount"] {
+  background-color: white;
+  color: var(--text-color);
+  caret-color: var(--text-color);
+}
+
+#headersearch input::placeholder,
+.filter-table::placeholder,
+input[name="notiz"]::placeholder,
+input[name="amount"]::placeholder {
+  color: var(--text-color);
+  opacity: 0.65;
+}
+
+.table-sort-button,
+.table-sort-button:hover {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.table-sort-button:focus-visible {
+  outline: 2px solid var(--button-color);
+  outline-offset: 2px;
+}
+
+.sort-indicator {
+  font-size: 0.7em;
+}
+
+#legacy-print-root {
+  display: none;
+}
+
+@media print {
+  .react-actions,
+  .search-filter,
+  .filter-table,
+  .mobile-drawer,
+  #interaction-bar {
+    display: none !important;
+  }
+
+  .card-info-container {
+    display: block !important;
+  }
+}
