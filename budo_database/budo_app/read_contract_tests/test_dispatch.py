@@ -37,6 +37,11 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "special-families",
     "birthdays",
     "teamer",
+    "happy-cleaning-overview",
+    "happy-cleaning-assignment",
+    "happy-cleaning-stations",
+    "happy-cleaning-station-detail",
+    "happy-cleaning-print",
 )
 
 class RouteContractDispatchTests(TestCase):
