@@ -17,6 +17,11 @@ env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PYTHONDONTWRITEBYTECODE: "1"
 
+defaults:
+  run:
+    shell: bash
+    working-directory: budo_database
+
 jobs:
   backend-tests:
     name: Backend tests (Python ${{ matrix.python-version }})
@@ -38,8 +43,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: |
-            requirements/base.txt
-            requirements/production.txt
+            budo_database/requirements/base.txt
+            budo_database/requirements/production.txt
       - name: Install backend dependencies
         run: python -m pip install -r requirements/production.txt
       - name: Run backend tests with deprecation warnings
@@ -59,8 +64,8 @@ jobs:
           python-version: "3.12.13"
           cache: pip
           cache-dependency-path: |
-            requirements/base.txt
-            requirements/production.txt
+            budo_database/requirements/base.txt
+            budo_database/requirements/production.txt
       - name: Install backend dependencies
         run: python -m pip install -r requirements/production.txt
       - name: Check dependency compatibility
@@ -81,15 +86,15 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: budo_database/frontend/package-lock.json
       - name: Install frontend dependencies
-        working-directory: frontend
+        working-directory: budo_database/frontend
         run: npm ci
       - name: Run frontend tests
-        working-directory: frontend
+        working-directory: budo_database/frontend
         run: npm test
       - name: Build frontend
-        working-directory: frontend
+        working-directory: budo_database/frontend
         run: npm run build
       - name: Verify generated frontend assets are committed
         run: git diff --exit-code -- budo_app/static/frontend
@@ -118,8 +123,8 @@ jobs:
           python-version: "3.12.13"
           cache: pip
           cache-dependency-path: |
-            requirements/base.txt
-            requirements/production.txt
+            budo_database/requirements/base.txt
+            budo_database/requirements/production.txt
       - name: Install production dependencies
         run: python -m pip install -r requirements/production.txt
       - name: Run production deployment checks
