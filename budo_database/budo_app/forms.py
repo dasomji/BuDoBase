@@ -1,4 +1,5 @@
 from datetime import datetime
+from django.conf import settings
 from django.forms import ModelForm, Form
 from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, AuslagerorteNotizen, AuslagerorteImage, Schwerpunktzeit, Geld, BetreuerinnenGeld
 from django import forms
@@ -113,24 +114,69 @@ class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
 
 
-class MultipleFileField(forms.FileField):
+class MultipleImageField(forms.ImageField):
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault("widget", MultipleFileInput())
+        kwargs.setdefault(
+            "widget",
+            MultipleFileInput(attrs={"accept": "image/*"}),
+        )
         super().__init__(*args, **kwargs)
 
     def clean(self, data, initial=None):
-        single_file_clean = super().clean
-        if isinstance(data, (list, tuple)):
-            result = [single_file_clean(d, initial) for d in data]
-        else:
-            result = single_file_clean(data, initial)
-        return result
+        files = list(data) if isinstance(data, (list, tuple)) else [data]
+        files = [uploaded_file for uploaded_file in files if uploaded_file]
+
+        if not files:
+            super().clean(None, initial)
+            return []
+
+        if len(files) > settings.LOCATION_IMAGE_MAX_FILES:
+            raise forms.ValidationError(
+                "Es können höchstens %(limit)s Bilder gleichzeitig hochgeladen werden.",
+                code="too_many_images",
+                params={"limit": settings.LOCATION_IMAGE_MAX_FILES},
+            )
+
+        total_size = sum(uploaded_file.size for uploaded_file in files)
+        if total_size > settings.LOCATION_IMAGE_MAX_TOTAL_SIZE:
+            raise forms.ValidationError(
+                "Die Bilder dürfen zusammen höchstens %(limit)s MB groß sein.",
+                code="images_too_large",
+                params={
+                    "limit": settings.LOCATION_IMAGE_MAX_TOTAL_SIZE // (1024 * 1024),
+                },
+            )
+
+        cleaned_files = []
+        for uploaded_file in files:
+            if uploaded_file.size > settings.LOCATION_IMAGE_MAX_FILE_SIZE:
+                raise forms.ValidationError(
+                    "Ein Bild darf höchstens %(limit)s MB groß sein.",
+                    code="image_too_large",
+                    params={
+                        "limit": settings.LOCATION_IMAGE_MAX_FILE_SIZE // (1024 * 1024),
+                    },
+                )
+
+            cleaned_file = super().clean(uploaded_file, initial)
+            width, height = cleaned_file.image.size
+            if width * height > settings.LOCATION_IMAGE_MAX_PIXELS:
+                raise forms.ValidationError(
+                    "Ein Bild darf höchstens %(limit)s Megapixel haben.",
+                    code="too_many_pixels",
+                    params={
+                        "limit": settings.LOCATION_IMAGE_MAX_PIXELS // 1_000_000,
+                    },
+                )
+            cleaned_files.append(cleaned_file)
+
+        return cleaned_files
 
 
 class AuslagerorteImageForm(forms.Form):
-    images = MultipleFileField(
-        label="Select multiple images",
-        required=False
+    images = MultipleImageField(
+        label="Bilder auswählen",
+        required=True,
     )
 
 

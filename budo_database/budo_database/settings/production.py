@@ -32,12 +32,46 @@ if 'DATABASE_URL' in os.environ:
 else:
     raise ImproperlyConfigured('DATABASE_URL must be set in production.')
 
-# Static files
+S3_REQUIRED_ENVIRONMENT_VARIABLES = (
+    "S3_BUCKET_NAME",
+    "S3_ACCESS_KEY_ID",
+    "S3_SECRET_ACCESS_KEY",
+    "S3_REGION_NAME",
+    "S3_ENDPOINT_URL",
+)
+missing_s3_variables = [
+    name for name in S3_REQUIRED_ENVIRONMENT_VARIABLES
+    if not os.environ.get(name)
+]
+if missing_s3_variables:
+    raise ImproperlyConfigured(
+        "Missing required S3 environment variables: "
+        + ", ".join(missing_s3_variables)
+    )
+
+S3_ADDRESSING_STYLE = os.environ.get("S3_ADDRESSING_STYLE", "virtual")
+if S3_ADDRESSING_STYLE not in {"virtual", "path"}:
+    raise ImproperlyConfigured(
+        "S3_ADDRESSING_STYLE must be either 'virtual' or 'path'."
+    )
+
+# Private user media lives in Railway's S3-compatible bucket. Static assets
+# remain local to the deployment and are served by WhiteNoise.
 STORAGES = {
     "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
-            "location": MEDIA_ROOT,
+            "bucket_name": os.environ["S3_BUCKET_NAME"],
+            "access_key": os.environ["S3_ACCESS_KEY_ID"],
+            "secret_key": os.environ["S3_SECRET_ACCESS_KEY"],
+            "endpoint_url": os.environ["S3_ENDPOINT_URL"],
+            "region_name": os.environ["S3_REGION_NAME"],
+            "addressing_style": S3_ADDRESSING_STYLE,
+            "signature_version": "s3v4",
+            "default_acl": None,
+            "querystring_auth": True,
+            "querystring_expire": 6 * 60 * 60,
+            "file_overwrite": False,
         },
     },
     "staticfiles": {

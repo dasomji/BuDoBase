@@ -322,7 +322,7 @@ export function PlaceFormPage({ data, id }) {
 
 export function ImageUploadPage({ data, id }) {
   const place = findById(data.places, id);
-  return <Columns><Column id="single-column"><Card title={`Upload Images for ${place?.name || ''}`}><NativeForm token={data.csrf_token} action={`/auslagerorte/${id}/upload-image/`} encType="multipart/form-data" fields={[{ name: 'images', label: 'Select multiple images', type: 'file', multiple: true }]} submit="Upload" /></Card></Column></Columns>;
+  return <Columns><Column id="single-column"><Card title={`Upload Images for ${place?.name || ''}`}><NativeForm token={data.csrf_token} action={`/auslagerorte/${id}/upload-image/`} encType="multipart/form-data" fields={[{ name: 'images', label: 'Select multiple images', type: 'file', multiple: true, required: true, accept: 'image/*' }]} submit="Upload" /></Card></Column></Columns>;
 }
 
 export function KitchenPage({ data }) {

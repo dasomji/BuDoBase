@@ -3,10 +3,14 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.dispatch import receiver
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete, pre_save
 from django.contrib.auth.models import User
 from phonenumber_field.modelfields import PhoneNumberField
 from django_resized import ResizedImageField
+from .storage_lifecycle import (
+    delete_field_file_on_commit,
+    delete_storage_object_on_commit,
+)
 from .text_cleaning import (
     clean_optional_text,
     DEFAULT_EMPTY_VALUES,
@@ -662,8 +666,9 @@ class AuslagerorteImage(models.Model):
         Auslagerorte, related_name='images', on_delete=models.CASCADE)
     image = ResizedImageField(
         size=[1080, 1080],
-        force_format="jpeg",
+        force_format="JPEG",
         quality=75,
+        keep_meta=True,
         upload_to='auslagerorte_images/'
     )
 
@@ -695,6 +700,59 @@ class Document(models.Model):
 
 
 # These functions automatically create a Profil when a new user is created.
+def remember_replaced_file(sender, instance, field_name):
+    if not instance.pk:
+        return
+
+    try:
+        previous = sender.objects.only(field_name).get(pk=instance.pk)
+    except sender.DoesNotExist:
+        return
+
+    previous_file = getattr(previous, field_name)
+    current_file = getattr(instance, field_name)
+    if previous_file.name and previous_file.name != current_file.name:
+        instance._replaced_storage_file = (
+            previous_file.storage,
+            previous_file.name,
+        )
+
+
+@receiver(pre_save, sender=Turnus)
+def remember_replaced_turnus_workbook(sender, instance, **kwargs):
+    remember_replaced_file(sender, instance, "uploadedFile")
+
+
+@receiver(pre_save, sender=Document)
+def remember_replaced_document(sender, instance, **kwargs):
+    remember_replaced_file(sender, instance, "uploadedFile")
+
+
+@receiver(post_save, sender=Turnus)
+@receiver(post_save, sender=Document)
+def delete_replaced_file(sender, instance, **kwargs):
+    replaced_file = getattr(instance, "_replaced_storage_file", None)
+    if not replaced_file or getattr(
+        instance, "_defer_replaced_file_cleanup", False
+    ):
+        return
+
+    storage, name = replaced_file
+    delete_storage_object_on_commit(storage, name)
+    del instance._replaced_storage_file
+
+
+@receiver(post_delete, sender=Turnus)
+@receiver(post_delete, sender=Document)
+def delete_uploaded_file(sender, instance, **kwargs):
+    delete_field_file_on_commit(instance.uploadedFile)
+
+
+@receiver(post_delete, sender=AuslagerorteImage)
+def delete_location_image(sender, instance, **kwargs):
+    delete_field_file_on_commit(instance.image)
+
+
 @receiver(post_save, sender=User)
 def create_user_profil(sender, instance, created, **kwargs):
     if created:

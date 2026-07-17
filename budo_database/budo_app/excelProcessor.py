@@ -1,7 +1,5 @@
-from budo_database.settings import MEDIA_ROOT
 from . import models
 import pandas as pd
-import os
 from datetime import datetime, timedelta
 from django.db import transaction
 import logging
@@ -74,13 +72,6 @@ def get_turnus_for_import(turnus=None):
     return this_turnus
 
 
-def get_uploaded_excel_path(turnus):
-    path = os.path.join(MEDIA_ROOT, str(turnus.uploadedFile))
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Excel file not found at path: {path}")
-    return path
-
-
 def validate_workbook_columns(budo):
     missing_columns = [
         column for column in REQUIRED_DATA_CLEANER_COLUMNS
@@ -93,14 +84,13 @@ def validate_workbook_columns(budo):
         )
 
 
-def read_workbook(path):
+def read_workbook(excel_file):
     try:
-        with open(path, "rb") as excel_file:
-            budo = pd.read_excel(
-                excel_file, sheet_name="DataCleaner", header=1)
-            excel_file.seek(0)
-            budo_raw = pd.read_excel(
-                excel_file, sheet_name="RawData", header=0)
+        budo = pd.read_excel(
+            excel_file, sheet_name="DataCleaner", header=1)
+        excel_file.seek(0)
+        budo_raw = pd.read_excel(
+            excel_file, sheet_name="RawData", header=0)
     except Exception as e:
         raise ValueError(f"Error reading Excel file: {str(e)}")
 
@@ -254,11 +244,17 @@ def process_excel(turnus=None):
 
     try:
         this_turnus = get_turnus_for_import(turnus)
-        path = get_uploaded_excel_path(this_turnus)
+        file_name = this_turnus.uploadedFile.name
 
-        logger.info(f"Processing Excel file: {path}")
+        logger.info("Processing Excel file: %s", file_name)
 
-        budo, budo_raw = read_workbook(path)
+        try:
+            with this_turnus.uploadedFile.open("rb") as excel_file:
+                budo, budo_raw = read_workbook(excel_file)
+        except FileNotFoundError as error:
+            raise FileNotFoundError(
+                f"Excel file not found in storage: {file_name}"
+            ) from error
 
         logger.info(f"Found {len(budo)} rows to process")
 

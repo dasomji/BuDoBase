@@ -10,6 +10,16 @@ Keep the bucket private and let `FieldFile.url` generate short-lived presigned G
 
 Before changing the backend, refactor the Excel importer so it opens `Turnus.uploadedFile` through Django's storage API rather than constructing a local filesystem path. Existing files must then be copied to the bucket under their existing field names; changing `STORAGES` does not migrate bytes.
 
+## Implementation decisions
+
+The production owner confirmed there are no production images, workbooks, documents, or other media to preserve, so no legacy-media migration or fallback storage is required.
+
+- Image batches: at most 20 files, 20 MiB per image, 100 MiB total, and 40 megapixels per decoded image.
+- Batch semantics: validate the complete batch first and clean up all newly written objects if any write fails.
+- Metadata: retain EXIF/GPS metadata.
+- Signed URL lifetime: six hours.
+- Lifecycle: delete stored objects after database records are deleted and delete replaced files after a successful replacement.
+
 The location-image UI already selects and submits multiple files correctly, but its server-side form is not production-ready: it accepts empty submissions and arbitrary non-image files, has no count/size limits, can leave partial uploads, and has no multi-upload tests.
 
 ## Primary-source facts
@@ -44,7 +54,7 @@ Both the legacy template and React data path already call the storage abstractio
 - `budo_app/templates/auslagerorte-detail.html:75-77`
 - `budo_app/api_views.py:280-295`
 
-After the backend switch, these calls will generate presigned Railway URLs. The default django-storages expiration is one hour. That is a reasonable initial value for this authenticated app, but an image left open longer than the URL lifetime can stop loading until app data is refreshed.
+After the backend switch, these calls will generate presigned Railway URLs. The selected expiration is six hours; an image left open longer than the URL lifetime can stop loading until app data is refreshed.
 
 ### Storage-incompatible code
 
@@ -90,7 +100,7 @@ STORAGES = {
             "signature_version": "s3v4",
             "default_acl": None,
             "querystring_auth": True,
-            "querystring_expire": 3600,
+            "querystring_expire": 21600,
             "file_overwrite": False,
         },
     },
@@ -151,7 +161,7 @@ Presigned URLs are bearer URLs: anyone who receives one can use it until expiry.
 3. **Inconsistent clean return type.** The non-list branch returns a single file rather than the list required by the official Django pattern. Normal multipart use of this widget returns a list even for one file, but the field contract should still always be a list.
 4. **No limits.** Add a configurable maximum file count, per-file byte limit, aggregate request limit, and decoded pixel/dimension limit. Validate every file before writing any object. Exact limits are a product/operations decision.
 5. **Partial failure.** If image 3 fails after images 1 and 2 were written, the current loop can leave a partial batch and return a server error. Validate the full batch first, then either define partial success explicitly or clean up records/objects created by a failed batch. A database transaction alone cannot roll back S3 writes.
-6. **Metadata privacy.** `ResizedImageField` forces JPEG but currently keeps metadata by default. Set `keep_meta=False` if GPS/EXIF metadata should not be retained.
+6. **Metadata privacy.** `ResizedImageField` forces JPEG and retains metadata. The production owner explicitly chose to keep EXIF/GPS metadata.
 7. **Input UX.** Add `accept="image/*"` as a picker hint, while retaining server validation.
 8. **No regression coverage.** Add tests for two valid images creating two rows/objects, one valid image, empty upload rejection, invalid image rejection, configured count/size limits, batch cleanup, and the React `multiple` input.
 
@@ -189,12 +199,6 @@ If the old bytes exist only inside the currently running Railway service, migrat
 
 The project pins Django 5.1.3. Django's own documentation now marks the 5.1 line unsupported/insecure. Plan an upgrade to a supported release (preferably the 5.2 LTS line) separately or as a prerequisite security commit; it is not technically required for `django-storages`.
 
-## Decisions needed before implementation
+## Remaining optional follow-up
 
-1. Maximum image count, bytes per image, aggregate upload bytes, and decoded dimensions/pixels.
-2. Whether image EXIF/GPS metadata must be stripped (recommended: yes).
-3. Whether a failed multi-image batch is all-or-nothing (recommended) or may partially succeed.
-4. Presigned URL lifetime (one hour is the django-storages default).
-5. Whether the admin `Document` model also needs a user-facing bulk upload flow.
-6. Retention policy for replaced/unreferenced workbook and media objects.
-7. Location of the authoritative existing production media bytes.
+The core implementation decisions are recorded above. A user-facing bulk upload flow for the admin-only `Document` model remains out of scope and can be added later if needed.

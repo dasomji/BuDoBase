@@ -302,7 +302,7 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
         if (field.type === 'checkbox') {
           return <label className="checkbox-row" key={field.name}><input type="checkbox" name={field.name} defaultChecked={Boolean(field.value)} />{field.label}</label>;
         }
-        return <label key={field.name}>{field.label}<input name={field.name} type={field.type || 'text'} defaultValue={field.type === 'file' ? undefined : field.value ?? ''} required={field.required} multiple={field.multiple} min={field.min} step={field.step} /></label>;
+        return <label key={field.name}>{field.label}<input name={field.name} type={field.type || 'text'} defaultValue={field.type === 'file' ? undefined : field.value ?? ''} required={field.required} multiple={field.multiple} accept={field.accept} min={field.min} step={field.step} /></label>;
       })}
       {children}
       <div className="form-buttons"><input className="button" type="submit" value={submit} /></div>

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Card, GlobalSearch, RestForm, SearchTable } from './components';
 import { parseRoute } from './App';
-import { CheckPage, formatGermanDate, formatKidBirthday, KidDetailPage, KidInteractionForm } from './pages';
+import { CheckPage, formatGermanDate, formatKidBirthday, ImageUploadPage, KidDetailPage, KidInteractionForm } from './pages';
 
 describe('reusable components', () => {
   afterEach(cleanup);
@@ -242,6 +242,21 @@ describe('German date formatting', () => {
       birthday: '2012-07-02',
       social_security_number: socialSecurityNumber,
     })).toBe(expected);
+  });
+});
+
+describe('image uploads', () => {
+  it('requires multiple images and hints accepted file types', () => {
+    render(<ImageUploadPage data={{
+      csrf_token: 'token',
+      places: [{ id: 4, name: 'Test place' }],
+    }} id="4" />);
+
+    const input = screen.getByLabelText('Select multiple images');
+    expect(input).toHaveAttribute('type', 'file');
+    expect(input).toBeRequired();
+    expect(input).toHaveAttribute('multiple');
+    expect(input).toHaveAttribute('accept', 'image/*');
   });
 });
 

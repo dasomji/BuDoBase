@@ -12,6 +12,8 @@
           <form method="post" enctype="multipart/form-data"
             action="{% url 'auslagerorte-image-upload' pk=auslagerort.pk %}">
             {% csrf_token %}
+            {{ form.non_field_errors }}
+            {{ form.images.errors }}
             {{ form.images.label_tag }}
             {{ form.images }}
             <input type="submit" value="Bilder hochladen" class="button" />
