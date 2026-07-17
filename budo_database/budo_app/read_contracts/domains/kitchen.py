@@ -1,0 +1,3 @@
+CONTRACTS = {
+    "kitchen": None,
+}
