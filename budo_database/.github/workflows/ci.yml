@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  backend-tests:
+    name: Backend tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.12.13"
+    env:
+      DATABASE_URL: "sqlite:///:memory:"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements/base.txt
+            requirements/production.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements/production.txt
+      - name: Run backend tests with deprecation warnings
+        run: python -Wd manage.py test
+
+  backend-integrity:
+    name: Backend integrity
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "sqlite:///:memory:"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements/base.txt
+            requirements/production.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements/production.txt
+      - name: Check dependency compatibility
+        run: python -m pip check
+      - name: Run Django system checks
+        run: python manage.py check
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run
+
+  frontend:
+    name: Frontend tests and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Verify generated frontend assets are committed
+        run: git diff --exit-code -- budo_app/static/frontend
+
+  production-validation:
+    name: Production settings and static assets
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: budo_database.settings
+      DJANGO_ENVIRONMENT: production
+      DJANGO_SECRET_KEY: ci-only-not-a-production-secret-0123456789abcdefghijklmnopqrstuvwxyz
+      APP_URL: example.test
+      DATABASE_URL: "sqlite:///:memory:"
+      S3_BUCKET_NAME: ci-test-bucket
+      S3_ACCESS_KEY_ID: ci-test-access-key
+      S3_SECRET_ACCESS_KEY: ci-test-secret-key
+      S3_REGION_NAME: auto
+      S3_ENDPOINT_URL: https://storage.railway.app
+      S3_ADDRESSING_STYLE: virtual
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements/base.txt
+            requirements/production.txt
+      - name: Install production dependencies
+        run: python -m pip install -r requirements/production.txt
+      - name: Run production deployment checks
+        run: python manage.py check --deploy
+      - name: Collect production static assets
+        run: python manage.py collectstatic --noinput --clear
+      - name: Validate private S3 URL configuration
+        run: |
+          python - <<'PY'
+          import django
+
+          django.setup()
+
+          from django.core.files.storage import default_storage
+          from storages.backends.s3 import S3Storage
+
+          assert isinstance(default_storage, S3Storage)
+          assert default_storage.bucket_name == "ci-test-bucket"
+          assert default_storage.querystring_auth is True
+          assert default_storage.querystring_expire == 6 * 60 * 60
+          assert default_storage.file_overwrite is False
+
+          url = default_storage.url("auslagerorte_images/ci-example.jpeg")
+          assert "X-Amz-Expires=21600" in url
+          assert "X-Amz-Signature=" in url
+          PY
