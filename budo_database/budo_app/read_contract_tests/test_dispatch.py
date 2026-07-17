@@ -58,8 +58,10 @@ IMPLEMENTED_ROUTE_CONTRACT_KEYS = {
     "place-images",
     "place-update",
     "places-list",
+    "profile",
     "serial-letter",
     "special-families",
+    "teamer",
     "train-arrival",
     "train-departure",
 }

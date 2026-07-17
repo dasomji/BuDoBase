@@ -69,6 +69,7 @@ describe('route inventory', () => {
       focuses: [{ id: 3, name: 'Wald SWP' }],
       places: [{ id: 4, name: 'Berghütte' }],
       profile: { rufname: 'Mein Profil' },
+      person: { id: 5, rufname: 'Grace Teamer' },
       team: [{ id: 5, rufname: 'Grace Teamer' }],
     };
 
