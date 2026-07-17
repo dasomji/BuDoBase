@@ -45,6 +45,11 @@ class SchwerpunkteUpdate(LoginRequiredMixin, UpdateView):
             schwerpunktzeit__turnus=get_active_turnus(self.request)
         )
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['turnus'] = get_active_turnus(self.request)
+        return kwargs
+
     def get_context_data(self, **kwargs):
         profil = Profil.objects.get(user=self.request.user)
         active_turnus = profil.turnus
@@ -126,6 +131,11 @@ class SchwerpunkteCreate(LoginRequiredMixin, CreateView):
     model = Schwerpunkte
     form_class = SchwerpunktForm
     template_name = 'schwerpunkt-form.html'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['turnus'] = get_active_turnus(self.request)
+        return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
