@@ -1,8 +1,8 @@
-import { Card, Column, Columns, findById, NativeForm, SearchTable } from '../components';
+import { Card, Column, Columns, NativeForm, SearchTable } from '../components';
 import { displayOrPlaceholder, linkKid, money, NotFoundPage, yesNo } from './shared';
 
-export function CheckPage({ data, id, checkout = false }) {
-  const kid = findById(data.kids, id);
+export function CheckPage({ data, checkout = false }) {
+  const kid = data.kid;
   if (!kid) return <NotFoundPage />;
   const pocketMoneyBalance = Number(kid.pocket_money || 0);
   const checkoutMoneyLabel = pocketMoneyBalance >= 0
@@ -44,10 +44,17 @@ export function TrainPage({ data, departure, mutate }) {
     { key: 'registrant_phone', label: 'Anmelder Tel', render: row => <a href={`tel:${row.registrant_phone}`}>{row.registrant_phone}</a> },
     { key: 'siblings', label: 'Geschwister', render: row => displayOrPlaceholder(row.siblings) },
   ];
-  return <><div className="print_only"><h1>{departure ? 'Zugabreise' : 'Zuganreise'}</h1><p>Kinder: {rows.length}</p></div><main className="table-only" id="body-container"><SearchTable columns={columns} rows={rows} showFilter /></main></>;
+  const printSummary = departure
+    ? <p>Kinder: {rows.length}</p>
+    : <>
+      <p>Kinder, die ihr abholt: {data.totals.train_arrival}</p>
+      <p>Kinder mit Top-Jugendticket: {data.totals.with_youth_ticket}</p>
+      <p>Kinder ohne Top-Jugendticket: {data.totals.without_youth_ticket}</p>
+    </>;
+  return <><div className="print_only"><h1>{departure ? 'Zugabreise' : 'Zuganreise'}</h1>{printSummary}</div><main className="table-only" id="body-container"><SearchTable columns={columns} rows={rows} showFilter /></main></>;
 }
 
-const selectedKidTitle = (route, data) => findById(data.kids, route.id)?.full_name || route.title;
+const selectedKidTitle = (route, data) => data.kid?.full_name || route.title;
 
 export const attendanceRoutes = [
   {
@@ -56,6 +63,7 @@ export const attendanceRoutes = [
     title: 'Alle Kinder',
     domain: 'attendance',
     readContractKey: 'train-departure',
+    focusedReadContract: true,
     render: ({ data, mutate }) => <TrainPage data={data} departure mutate={mutate} />,
   },
   {
@@ -64,6 +72,7 @@ export const attendanceRoutes = [
     title: 'Zuganreise',
     domain: 'attendance',
     readContractKey: 'train-arrival',
+    focusedReadContract: true,
     render: ({ data, mutate }) => <TrainPage data={data} mutate={mutate} />,
   },
   {
@@ -72,9 +81,10 @@ export const attendanceRoutes = [
     title: 'Check-In',
     domain: 'attendance',
     readContractKey: 'check-in',
+    focusedReadContract: true,
     params: match => ({ id: match[1] }),
     resolveTitle: selectedKidTitle,
-    render: ({ route, data }) => <CheckPage data={data} id={route.id} />,
+    render: ({ data }) => <CheckPage data={data} />,
   },
   {
     pattern: /^\/check_out\/(\d+)$/,
@@ -82,8 +92,9 @@ export const attendanceRoutes = [
     title: 'Check-Out',
     domain: 'attendance',
     readContractKey: 'check-out',
+    focusedReadContract: true,
     params: match => ({ id: match[1] }),
     resolveTitle: selectedKidTitle,
-    render: ({ route, data }) => <CheckPage data={data} id={route.id} checkout />,
+    render: ({ data }) => <CheckPage data={data} checkout />,
   },
 ];

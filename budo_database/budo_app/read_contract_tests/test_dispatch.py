@@ -38,8 +38,12 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
 
 IMPLEMENTED_ROUTE_CONTRACT_KEYS = {
     "allocation",
+    "check-in",
+    "check-out",
     "kid-detail",
     "kids-directory",
+    "train-arrival",
+    "train-departure",
 }
 
 
@@ -58,14 +62,15 @@ class RouteContractDispatchTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
-    def test_every_unimplemented_route_contract_is_known_but_not_exposed_yet(self):
+    def test_every_pending_route_contract_is_known_but_not_exposed_yet(self):
         self.client.force_login(self.user)
 
-        for key in (
+        pending_keys = (
             key
             for key in KNOWN_ROUTE_CONTRACT_KEYS
             if key not in IMPLEMENTED_ROUTE_CONTRACT_KEYS
-        ):
+        )
+        for key in pending_keys:
             with self.subTest(key=key):
                 response = self.client.get(self.contract_url(key))
 
