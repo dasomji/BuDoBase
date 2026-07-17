@@ -6,6 +6,7 @@ from budo_app.read_contracts.registry import ROUTE_CONTRACTS
 
 
 KNOWN_ROUTE_CONTRACT_KEYS = (
+    "audit-events",
     "dashboard",
     "profile",
     "turnus-list",

@@ -443,6 +443,81 @@ class Turnus(models.Model):
         ]
 
 
+class ImmutableAuditEventQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise ValidationError("Audit events are immutable.")
+
+    def delete(self):
+        raise ValidationError(
+            "Audit events may only be deleted by Turnus retention."
+        )
+
+
+class AuditEventManager(models.Manager.from_queryset(ImmutableAuditEventQuerySet)):
+    def _create_validated_event(self, **fields):
+        event = self.model(**fields)
+        event._audit_insert = True
+        event.save(force_insert=True, using=self._db)
+        return event
+
+
+class AuditEvent(models.Model):
+    """Immutable, Turnus-retained record written only by the audit service."""
+
+    turnus = models.ForeignKey(
+        Turnus,
+        on_delete=models.CASCADE,
+        related_name="audit_events",
+    )
+    actor_id = models.BigIntegerField(null=True, blank=True)
+    actor_label = models.CharField(max_length=255)
+    action = models.CharField(max_length=100)
+    outcome = models.CharField(max_length=40)
+    resource_type = models.CharField(max_length=100)
+    resource_id = models.CharField(max_length=100)
+    resource_label = models.CharField(max_length=255)
+    request_id = models.CharField(max_length=255)
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    client_ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=1000, blank=True)
+    details = models.JSONField(default=dict)
+
+    objects = AuditEventManager()
+
+    def save(self, *args, **kwargs):
+        if not getattr(self, "_audit_insert", False) or self.pk is not None:
+            raise ValidationError("Audit events are immutable.")
+        try:
+            return super().save(*args, **kwargs)
+        finally:
+            self._audit_insert = False
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError(
+            "Audit events may only be deleted by Turnus retention."
+        )
+
+    class Meta:
+        ordering = ("-occurred_at", "-id")
+        permissions = (
+            ("export_auditevent", "Can export audit events"),
+        )
+        indexes = [
+            models.Index(
+                fields=("turnus", "-occurred_at", "-id"),
+                name="audit_turnus_time_idx",
+            ),
+            models.Index(
+                fields=("turnus", "action"),
+                name="audit_turnus_action_idx",
+            ),
+            models.Index(
+                fields=("turnus", "resource_type", "resource_id"),
+                name="audit_resource_idx",
+            ),
+        ]
+
+
 class Schwerpunkte(models.Model):
     swp_name = models.CharField(
         max_length=255, help_text="Was ist der Name des Schwerpunkts?", verbose_name="Schwerpunktname")
@@ -816,4 +891,3 @@ def invalidate_geld_turnus_cache(sender, instance, **kwargs):
     from .utils import invalidate_turnus_cache
     if instance.kinder and instance.kinder.turnus:
         invalidate_turnus_cache(instance.kinder.turnus)
-

@@ -9,6 +9,7 @@ describe('route inventory', () => {
   it.each([
     ['/', 'dashboard', 'dashboard', 'dashboard'],
     ['/dashboard/', 'dashboard', 'dashboard', 'dashboard'],
+    ['/audit/', 'audit', 'audit', 'audit-events'],
     ['/login', 'login', 'auth', null],
     ['/register', 'register', 'auth', null],
     ['/profil', 'profile', 'profiles', 'profile'],

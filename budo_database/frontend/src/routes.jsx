@@ -1,4 +1,5 @@
 import { allocationRoutes } from './domains/allocation';
+import { auditRoutes } from './domains/audit';
 import { attendanceRoutes } from './domains/attendance';
 import { authRoutes } from './domains/auth';
 import { dashboardRoutes } from './domains/dashboard';
@@ -13,6 +14,7 @@ import { notFoundRoute } from './domains/shared';
 
 export const routeDefinitions = [
   ...dashboardRoutes,
+  ...auditRoutes,
   ...authRoutes,
   ...profileRoutes,
   ...maintenanceRoutes,

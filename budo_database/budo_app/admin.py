@@ -2,7 +2,7 @@ from django import forms
 from django.utils.html import format_html
 from django.contrib import admin
 from django.template.defaultfilters import filesizeformat
-from .models import Kinder, Turnus, Schwerpunkte, Auslagerorte, AuslagerorteImage, AuslagerorteNotizen, Notizen, Document, Profil, Meal, Schwerpunktzeit, SchwerpunktWahl, SpezialFamilien
+from .models import AuditEvent, Kinder, Turnus, Schwerpunkte, Auslagerorte, AuslagerorteImage, AuslagerorteNotizen, Notizen, Document, Profil, Meal, Schwerpunktzeit, SchwerpunktWahl, SpezialFamilien
 
 
 class KinderAdminForm(forms.ModelForm):
@@ -192,6 +192,30 @@ class SchwerpunktzeitAdmin(admin.ModelAdmin):
     display_swps.short_description = 'Schwerpunkte'
 
 
+class AuditEventAdmin(admin.ModelAdmin):
+    list_display = (
+        "occurred_at", "turnus", "actor_label", "action", "outcome",
+        "resource_type", "resource_label",
+    )
+    list_filter = ("turnus", "action", "outcome", "resource_type")
+    search_fields = (
+        "actor_label", "resource_id", "resource_label", "request_id",
+    )
+    readonly_fields = tuple(
+        field.name for field in AuditEvent._meta.concrete_fields
+    )
+    ordering = ("-occurred_at", "-id")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
 admin.site.register(Kinder, KinderAdmin)
 admin.site.register(Turnus, TurnusAdmin)
 admin.site.register(Auslagerorte, AuslagerorteAdmin)
@@ -205,3 +229,4 @@ admin.site.register(Meal)
 admin.site.register(Schwerpunktzeit, SchwerpunktzeitAdmin)
 admin.site.register(SchwerpunktWahl)
 admin.site.register(SpezialFamilien, SpezialFamilienAdmin)
+admin.site.register(AuditEvent, AuditEventAdmin)

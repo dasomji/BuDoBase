@@ -216,6 +216,43 @@
   border: 0;
 }
 
+.audit-page {
+  display: block;
+  padding: var(--m-padding);
+}
+
+.audit-controls {
+  padding: var(--m-padding);
+}
+
+.audit-filters {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+}
+
+.audit-export {
+  margin-top: var(--m-padding);
+  padding-top: var(--m-padding);
+  border-top: 1px solid currentColor;
+}
+
+.audit-export .checkbox-row {
+  margin-bottom: var(--s-padding);
+}
+
+.audit-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--m-padding);
+  padding: var(--m-padding);
+}
+
+#audit-table code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .mobile-drawer {
   position: fixed;
   inset: 0;
