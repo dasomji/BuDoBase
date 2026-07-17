@@ -47,6 +47,7 @@ IMPLEMENTED_ROUTE_CONTRACT_KEYS = {
     "focus-update",
     "kid-detail",
     "kids-directory",
+    "kitchen",
     "place-create",
     "place-detail",
     "place-images",
