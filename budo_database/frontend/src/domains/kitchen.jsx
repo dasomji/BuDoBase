@@ -117,6 +117,5 @@ export const kitchenRoutes = [{
   title: 'Küche',
   domain: 'kitchen',
   readContractKey: 'kitchen',
-  focusedReadContract: true,
   render: ({ data }) => <KitchenPage data={data} />,
 }];

@@ -21,7 +21,6 @@ export const allocationRoutes = [{
   title: 'SWP-Einteilung',
   domain: 'allocation',
   readContractKey: 'allocation',
-  focusedReadContract: true,
   params: match => ({ week: match[1], title: `SWP-Einteilung Woche ${match[1]}` }),
   render: ({ route, data, mutate }) => <AllocationPage data={data} week={route.week} mutate={mutate} />,
 }];

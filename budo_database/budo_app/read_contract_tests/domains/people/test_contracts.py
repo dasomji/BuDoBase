@@ -7,6 +7,7 @@ from django.urls import reverse
 from budo_app.models import BetreuerinnenGeld, Kinder, Schwerpunkte, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
+    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
     QueryBudgetAssertions,
     measure_http_get,
 )
@@ -416,7 +417,6 @@ class PeopleContractPerformanceTests(QueryBudgetAssertions, TestCase):
             "profile": self.measure_contract("profile"),
             "teamer": self.measure_contract("teamer", selected),
         }
-        legacy = measure_http_get(self.client, reverse("app-data-api"))
 
         for key in small:
             with self.subTest(contract=key):
@@ -425,5 +425,5 @@ class PeopleContractPerformanceTests(QueryBudgetAssertions, TestCase):
                 self.assertQueryGrowthAtMost(small[key], realistic[key], 1)
                 self.assertLess(
                     realistic[key].response_bytes,
-                    legacy.response_bytes,
+                    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
                 )

@@ -7,6 +7,7 @@ from django.urls import reverse
 from budo_app.models import Geld, Kinder, Notizen, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
+    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
     QueryBudgetAssertions,
     measure_http_get,
 )
@@ -47,7 +48,6 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
 
         self.fixtures.grow_to(kids=48, focuses=8, team=10, places=6)
         realistic = measure_http_get(self.client, self.contract_url())
-        legacy = measure_http_get(self.client, reverse("app-data-api"))
 
         self.assertEqual(small.status_code, 200)
         self.assertEqual(realistic.status_code, 200)
@@ -62,7 +62,10 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
         )
         self.assertQueryCountAtMost(realistic, 12)
         self.assertQueryGrowthAtMost(small, realistic, 1)
-        self.assertLess(realistic.response_bytes, legacy.response_bytes)
+        self.assertLess(
+            realistic.response_bytes,
+            RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
+        )
 
     def test_initial_activity_payload_stays_bounded_as_history_grows(self):
         self.fixtures.grow_to(kids=3, focuses=2, team=2, places=1)

@@ -13,7 +13,11 @@ from budo_app.models import (
     Turnus,
 )
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
-from budo_app.read_contracts.measurement import QueryBudgetAssertions, measure_http_get
+from budo_app.read_contracts.measurement import (
+    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
+    QueryBudgetAssertions,
+    measure_http_get,
+)
 
 
 TEST_STORAGES = {
@@ -332,12 +336,14 @@ class AllocationContractPerformanceTests(QueryBudgetAssertions, TestCase):
 
         self.fixtures.grow_to(kids=48, focuses=8, team=10, places=6)
         realistic = measure_http_get(self.client, self.contract_url)
-        legacy = measure_http_get(self.client, reverse("app-data-api"))
 
         self.assertEqual(small.status_code, 200)
         self.assertEqual(realistic.status_code, 200)
         self.assertEqual(len(realistic.response.json()["kids"]), 48)
         self.assertQueryCountAtMost(realistic, 10)
         self.assertQueryGrowthAtMost(small, realistic, 2)
-        self.assertLess(realistic.response_bytes, legacy.response_bytes)
+        self.assertLess(
+            realistic.response_bytes,
+            RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
+        )
         self.assertGreaterEqual(realistic.sql_time_ms, 0)

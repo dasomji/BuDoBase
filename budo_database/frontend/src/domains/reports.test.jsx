@@ -13,14 +13,14 @@ import {
 describe('operational report pages', () => {
   afterEach(cleanup);
 
-  it('opts every report route into its focused read contract', () => {
-    expect(reportRoutes.map(route => [route.readContractKey, route.focusedReadContract])).toEqual([
-      ['serial-letter', true],
-      ['murder-game', true],
-      ['kid-count', true],
-      ['families', true],
-      ['special-families', true],
-      ['birthdays', true],
+  it('declares every report route contract', () => {
+    expect(reportRoutes.map(route => route.readContractKey)).toEqual([
+      'serial-letter',
+      'murder-game',
+      'kid-count',
+      'families',
+      'special-families',
+      'birthdays',
     ]);
   });
 

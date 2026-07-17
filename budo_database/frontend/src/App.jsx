@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Header, Messages } from './components';
 import {
-  composeRouteData,
   loadBootstrap,
   loadRouteData,
   refreshAfterMutation,
@@ -76,7 +75,16 @@ export default function App({
     }
   }, [bootstrap, navigate, route, routeState.authenticationRequired]);
 
-  const data = composeRouteData(bootstrap, routeState.data);
+  const data = routeState.data ? {
+    ...bootstrap,
+    ...routeState.data,
+    authenticated: bootstrap?.authenticated,
+    csrf_token: bootstrap?.csrf_token,
+    messages: bootstrap?.messages || [],
+    permissions: bootstrap?.permissions,
+    search_index: bootstrap?.search_index,
+    turnus: routeState.data.turnus ?? bootstrap?.turnus,
+  } : bootstrap;
   const mutate = async (url, payload, json = true, { shellAffecting = false } = {}) => {
     const options = { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': data.csrf_token } };
     if (json) {

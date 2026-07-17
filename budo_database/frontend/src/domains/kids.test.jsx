@@ -154,14 +154,12 @@ describe('Kinder pages', () => {
     expect(screen.getByText('Keine Einträge')).toBeInTheDocument();
   });
 
-  it('declares only Kinder directory and detail as focused reads', () => {
+  it('declares the Kinder directory and detail contracts', () => {
     expect(parseRoute('/all_kids')).toMatchObject({
       readContractKey: 'kids-directory',
-      focusedReadContract: true,
     });
     expect(parseRoute('/kid_details/21')).toMatchObject({
       readContractKey: 'kid-detail',
-      focusedReadContract: true,
       id: '21',
     });
   });

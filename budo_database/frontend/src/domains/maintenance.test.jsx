@@ -14,19 +14,16 @@ describe('maintenance upload pages', () => {
   it('loads only the three focused maintenance contracts', () => {
     expect(routeDataRequest(parseRoute('/upload'))).toEqual({
       contractKey: 'turnus-list',
-      mode: 'focused',
       params: {},
       url: '/api/route-data/turnus-list/',
     });
     expect(routeDataRequest(parseRoute('/upload_excel/27'))).toEqual({
       contractKey: 'turnus-upload',
-      mode: 'focused',
       params: { id: '27' },
       url: '/api/route-data/turnus-upload/?id=27',
     });
     expect(routeDataRequest(parseRoute('/upload_spezialfamilien'))).toEqual({
       contractKey: 'special-upload',
-      mode: 'focused',
       params: {},
       url: '/api/route-data/special-upload/',
     });

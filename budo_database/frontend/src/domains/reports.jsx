@@ -39,7 +39,6 @@ export const reportRoutes = [
     standalone: true,
     domain: 'reports',
     readContractKey: 'serial-letter',
-    focusedReadContract: true,
     render: ({ data }) => <SerialLetterPage data={data} />,
   },
   {
@@ -49,7 +48,6 @@ export const reportRoutes = [
     standalone: true,
     domain: 'reports',
     readContractKey: 'murder-game',
-    focusedReadContract: true,
     render: ({ data }) => <MurderPage data={data} />,
   },
   {
@@ -59,7 +57,6 @@ export const reportRoutes = [
     standalone: true,
     domain: 'reports',
     readContractKey: 'kid-count',
-    focusedReadContract: true,
     render: ({ data }) => <KidCountPage data={data} />,
   },
   {
@@ -68,7 +65,6 @@ export const reportRoutes = [
     title: 'BuDo Familien',
     domain: 'reports',
     readContractKey: 'families',
-    focusedReadContract: true,
     render: ({ data }) => <FamiliesPage data={data} />,
   },
   {
@@ -77,7 +73,6 @@ export const reportRoutes = [
     title: 'Spezial Familien',
     domain: 'reports',
     readContractKey: 'special-families',
-    focusedReadContract: true,
     render: ({ data }) => <FamiliesPage data={data} special />,
   },
   {
@@ -86,7 +81,6 @@ export const reportRoutes = [
     title: 'Kindergeburtstage',
     domain: 'reports',
     readContractKey: 'birthdays',
-    focusedReadContract: true,
     headerAction: data => <RestForm target="/update-birthdays-from-sv/" token={data.csrf_token}><button className="button" type="submit">🔄 Geburtstage aktualisieren</button></RestForm>,
     render: ({ data }) => <BirthdaysPage data={data} />,
   },

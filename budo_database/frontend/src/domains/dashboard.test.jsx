@@ -146,10 +146,9 @@ describe('dashboard page', () => {
     expect(screen.getByRole('button', { name: 'Ältere Transaktionen laden' })).toBeEnabled();
   });
 
-  it('opts into the focused contract and renders its loading, success, and error states', async () => {
+  it('uses the dashboard contract and renders its loading, success, and error states', async () => {
     expect(parseRoute('/dashboard')).toMatchObject({
       readContractKey: 'dashboard',
-      focusedReadContract: true,
     });
     window.history.pushState({}, '', '/dashboard');
     let resolveRoute;

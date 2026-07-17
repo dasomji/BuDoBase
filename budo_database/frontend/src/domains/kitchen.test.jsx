@@ -67,10 +67,9 @@ describe('Küche page', () => {
     expect(screen.getByRole('heading', { name: 'Tag 1' })).toBeInTheDocument();
   });
 
-  it('opts only Küche into its focused read contract and renders its response', async () => {
+  it('uses the Küche route contract and renders its response', async () => {
     expect(parseRoute('/kitchen')).toMatchObject({
       readContractKey: 'kitchen',
-      focusedReadContract: true,
     });
     window.history.pushState({}, '', '/kitchen');
     const fetchImpl = vi.fn()

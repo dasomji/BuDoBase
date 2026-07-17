@@ -186,12 +186,12 @@ describe('Profil and Teamer pages', () => {
     ]);
   });
 
-  it('opts both people routes into focused contracts and resolves selected titles', () => {
+  it('declares both people route contracts and resolves selected titles', () => {
     const profileRoute = parseRoute('/profil');
     const teamerRoute = parseRoute('/teamer/5');
 
-    expect(profileRoute.focusedReadContract).toBe(true);
-    expect(teamerRoute.focusedReadContract).toBe(true);
+    expect(profileRoute.readContractKey).toBe('profile');
+    expect(teamerRoute.readContractKey).toBe('teamer');
     expect(teamerRoute.resolveTitle(teamerRoute, { person: profile })).toBe('Ada');
   });
 });

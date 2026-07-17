@@ -7,6 +7,7 @@ from django.urls import reverse
 from budo_app.models import Geld, Kinder, Notizen, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
+    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
     QueryBudgetAssertions,
     measure_http_get,
 )
@@ -57,12 +58,14 @@ class KidsContractPerformanceTests(QueryBudgetAssertions, TestCase):
             self.client,
             self.contract_url("kids-directory"),
         )
-        legacy = measure_http_get(self.client, reverse("app-data-api"))
 
         self.assertEqual(small.status_code, 200)
         self.assertEqual(realistic.status_code, 200)
         self.assertEqual(len(realistic.response.json()["kids"]), 48)
-        self.assertLess(realistic.response_bytes, legacy.response_bytes)
+        self.assertLess(
+            realistic.response_bytes,
+            RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
+        )
         self.assertQueryCountAtMost(realistic, 10)
         self.assertQueryGrowthAtMost(small, realistic, 1)
 
@@ -91,12 +94,14 @@ class KidsContractPerformanceTests(QueryBudgetAssertions, TestCase):
             self.client,
             self.contract_url("kid-detail", id=kid.id),
         )
-        legacy = measure_http_get(self.client, reverse("app-data-api"))
 
         payload = realistic.response.json()["kids"][0]
         self.assertEqual(realistic.status_code, 200)
         self.assertEqual(len(payload["notes"]), 42)
         self.assertEqual(len(payload["transactions"]), 42)
-        self.assertLess(realistic.response_bytes, legacy.response_bytes)
+        self.assertLess(
+            realistic.response_bytes,
+            RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
+        )
         self.assertQueryCountAtMost(realistic, 12)
         self.assertQueryGrowthAtMost(small, realistic, 1)

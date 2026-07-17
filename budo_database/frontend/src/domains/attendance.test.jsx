@@ -47,12 +47,12 @@ describe('attendance pages', () => {
     expect(screen.getByRole('checkbox', { name: 'Einverständniserklärung' })).toBeChecked();
   });
 
-  it('opts only the four attendance routes into focused route reads', () => {
-    expect(attendanceRoutes.map(route => [route.readContractKey, route.focusedReadContract])).toEqual([
-      ['train-departure', true],
-      ['train-arrival', true],
-      ['check-in', true],
-      ['check-out', true],
+  it('declares the four attendance route contracts', () => {
+    expect(attendanceRoutes.map(route => route.readContractKey)).toEqual([
+      'train-departure',
+      'train-arrival',
+      'check-in',
+      'check-out',
     ]);
   });
 

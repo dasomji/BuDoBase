@@ -63,7 +63,6 @@ export const attendanceRoutes = [
     title: 'Alle Kinder',
     domain: 'attendance',
     readContractKey: 'train-departure',
-    focusedReadContract: true,
     render: ({ data, mutate }) => <TrainPage data={data} departure mutate={mutate} />,
   },
   {
@@ -72,7 +71,6 @@ export const attendanceRoutes = [
     title: 'Zuganreise',
     domain: 'attendance',
     readContractKey: 'train-arrival',
-    focusedReadContract: true,
     render: ({ data, mutate }) => <TrainPage data={data} mutate={mutate} />,
   },
   {
@@ -81,7 +79,6 @@ export const attendanceRoutes = [
     title: 'Check-In',
     domain: 'attendance',
     readContractKey: 'check-in',
-    focusedReadContract: true,
     params: match => ({ id: match[1] }),
     resolveTitle: selectedKidTitle,
     render: ({ data }) => <CheckPage data={data} />,
@@ -92,7 +89,6 @@ export const attendanceRoutes = [
     title: 'Check-Out',
     domain: 'attendance',
     readContractKey: 'check-out',
-    focusedReadContract: true,
     params: match => ({ id: match[1] }),
     resolveTitle: selectedKidTitle,
     render: ({ data }) => <CheckPage data={data} checkout />,

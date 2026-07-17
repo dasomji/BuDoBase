@@ -8,6 +8,7 @@ from django.urls import reverse
 from budo_app.models import Geld, Kinder, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
+    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
     QueryBudgetAssertions,
     measure_http_get,
 )
@@ -428,7 +429,6 @@ class AttendanceContractPerformanceTests(QueryBudgetAssertions, TestCase):
             "train-arrival": self.measure_contract("train-arrival"),
             "train-departure": self.measure_contract("train-departure"),
         }
-        legacy = measure_http_get(self.client, reverse("app-data-api"))
 
         for key in small:
             with self.subTest(contract=key):
@@ -442,5 +442,5 @@ class AttendanceContractPerformanceTests(QueryBudgetAssertions, TestCase):
                 )
                 self.assertLess(
                     realistic[key].response_bytes,
-                    legacy.response_bytes,
+                    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
                 )

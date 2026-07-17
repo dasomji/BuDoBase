@@ -144,10 +144,8 @@ describe('Schwerpunkte pages', () => {
     expect(screen.getAllByRole('option', { name: 'Im BuDo' })).toHaveLength(2);
   });
 
-  it('declares every focus route as focused without changing its browser URL', () => {
+  it('declares every focus route contract without changing its browser URL', () => {
     expect(focusRoutes).toHaveLength(5);
-    for (const route of focusRoutes) {
-      expect(route.focusedReadContract).toBe(true);
-    }
+    expect(focusRoutes.every(route => route.readContractKey)).toBe(true);
   });
 });

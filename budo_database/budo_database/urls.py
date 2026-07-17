@@ -16,14 +16,13 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
-from budo_app.api_views import app_data, submit_form
+from budo_app.api_views import submit_form
 from budo_app.read_contracts.bootstrap import bootstrap
 from budo_app.read_contracts.views import route_data
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/bootstrap/', bootstrap, name='bootstrap-api'),
-    path('api/app-data/', app_data, name='app-data-api'),
     path(
         'api/route-data/<slug:contract_key>/',
         route_data,

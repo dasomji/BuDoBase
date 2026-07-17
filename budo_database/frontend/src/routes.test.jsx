@@ -53,6 +53,9 @@ describe('route inventory', () => {
     for (const route of routeDefinitions) {
       expect(route.domain).toBeTruthy();
       expect(route).toHaveProperty('readContractKey');
+      expect(route).not.toHaveProperty('focusedReadContract');
+      if (route.domain === 'auth') expect(route.readContractKey).toBeNull();
+      else expect(route.readContractKey).toBeTypeOf('string');
       expect(route.render).toBeTypeOf('function');
     }
   });

@@ -109,6 +109,5 @@ export const dashboardRoutes = [{
   title: 'BuDo Dashboard',
   domain: 'dashboard',
   readContractKey: 'dashboard',
-  focusedReadContract: true,
   render: ({ data, fetchImpl }) => <DashboardPage data={data} fetchImpl={fetchImpl} />,
 }];

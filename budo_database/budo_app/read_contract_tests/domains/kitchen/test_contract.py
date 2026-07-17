@@ -13,6 +13,7 @@ from budo_app.models import (
 )
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
+    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
     QueryBudgetAssertions,
     measure_http_get,
 )
@@ -309,10 +310,12 @@ class KitchenContractPerformanceTests(QueryBudgetAssertions, TestCase):
 
         self.fixtures.grow_to(kids=48, focuses=8, team=10, places=6)
         realistic = self.measure_contract()
-        legacy = measure_http_get(self.client, reverse("app-data-api"))
 
         self.assertEqual(small.status_code, 200)
         self.assertEqual(realistic.status_code, 200)
         self.assertQueryCountAtMost(realistic, 12)
         self.assertQueryGrowthAtMost(small, realistic, 1)
-        self.assertLess(realistic.response_bytes, legacy.response_bytes)
+        self.assertLess(
+            realistic.response_bytes,
+            RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
+        )

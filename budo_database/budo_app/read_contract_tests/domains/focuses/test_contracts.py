@@ -7,6 +7,7 @@ from django.urls import reverse
 from budo_app.models import Auslagerorte, Kinder, Schwerpunkte, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
+    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
     QueryBudgetAssertions,
     measure_http_get,
 )
@@ -508,14 +509,16 @@ class FocusContractPerformanceTests(QueryBudgetAssertions, TestCase):
             self.client,
             self.contract_url("focus-dashboard"),
         )
-        legacy = measure_http_get(self.client, reverse("app-data-api"))
 
         self.assertEqual(small.status_code, 200)
         self.assertEqual(realistic.status_code, 200)
         self.assertEqual(len(realistic.response.json()["focuses"]), 8)
         self.assertQueryCountAtMost(realistic, 8)
         self.assertQueryGrowthAtMost(small, realistic, 1)
-        self.assertLess(realistic.response_bytes, legacy.response_bytes)
+        self.assertLess(
+            realistic.response_bytes,
+            RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
+        )
 
     def test_detail_query_growth_is_bounded_as_assignments_increase(self):
         self.fixtures.grow_to(kids=3, focuses=2, team=2, places=1)
@@ -532,7 +535,6 @@ class FocusContractPerformanceTests(QueryBudgetAssertions, TestCase):
             self.client,
             self.contract_url("focus-detail", focus),
         )
-        legacy = measure_http_get(self.client, reverse("app-data-api"))
 
         self.assertEqual(realistic.status_code, 200)
         self.assertGreater(
@@ -541,4 +543,7 @@ class FocusContractPerformanceTests(QueryBudgetAssertions, TestCase):
         )
         self.assertQueryCountAtMost(realistic, 10)
         self.assertQueryGrowthAtMost(small, realistic, 1)
-        self.assertLess(realistic.response_bytes, legacy.response_bytes)
+        self.assertLess(
+            realistic.response_bytes,
+            RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
+        )

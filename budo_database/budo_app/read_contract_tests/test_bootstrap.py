@@ -123,11 +123,17 @@ class BootstrapContractTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
 
-        legacy_response = self.client.get(reverse("app-data-api"))
+        route_response = self.client.get(
+            reverse(
+                "route-data-api",
+                kwargs={"contract_key": "kids-directory"},
+            )
+        )
         first_bootstrap = self.client.get(reverse("bootstrap-api"))
         second_bootstrap = self.client.get(reverse("bootstrap-api"))
 
-        self.assertEqual(legacy_response.json()["messages"], [])
+        self.assertEqual(route_response.status_code, 200)
+        self.assertNotIn("messages", route_response.json())
         self.assertEqual(first_bootstrap.json()["messages"], [
             {"text": "Profil upgedatet!", "tags": "success"},
         ])

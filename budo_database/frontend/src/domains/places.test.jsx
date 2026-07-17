@@ -31,7 +31,7 @@ describe('Auslagerorte workflows', () => {
     expect(input).toHaveAttribute('accept', 'image/*');
   });
 
-  it('opts only Auslagerorte pages into their focused read contracts', () => {
+  it('declares the Auslagerorte page contracts', () => {
     expect([
       '/auslagerorte-list',
       '/auslagerorte/create',
@@ -40,13 +40,13 @@ describe('Auslagerorte workflows', () => {
       '/auslagerorte/4',
     ].map(path => {
       const route = parseRoute(path);
-      return [route.readContractKey, route.focusedReadContract];
+      return route.readContractKey;
     })).toEqual([
-      ['places-list', true],
-      ['place-create', true],
-      ['place-update', true],
-      ['place-images', true],
-      ['place-detail', true],
+      'places-list',
+      'place-create',
+      'place-update',
+      'place-images',
+      'place-detail',
     ]);
   });
 

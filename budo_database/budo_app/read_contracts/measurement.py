@@ -5,6 +5,11 @@ from django.db import DEFAULT_DB_ALIAS, connections
 from django.test.utils import CaptureQueriesContext
 
 
+# Frozen characterization captured before /api/app-data/ was removed. See
+# docs/performance/2026-07-17-legacy-app-data-baseline.md.
+RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES = 125_495
+
+
 @dataclass(frozen=True)
 class HttpMeasurement:
     response: object

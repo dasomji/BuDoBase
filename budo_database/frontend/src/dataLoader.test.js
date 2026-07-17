@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  composeRouteData,
   loadRouteData,
   refreshAfterMutation,
   routeDataRequest,
@@ -12,13 +11,11 @@ describe('route data loading', () => {
   it('selects focused data with the parsed identifier and week', () => {
     expect(routeDataRequest(parseRoute('/kid_details/21'))).toEqual({
       contractKey: 'kid-detail',
-      mode: 'focused',
       params: { id: '21' },
       url: '/api/route-data/kid-detail/?id=21',
     });
     expect(routeDataRequest(parseRoute('/swp-einteilung-w2'))).toEqual({
       contractKey: 'allocation',
-      mode: 'focused',
       params: { week: '2' },
       url: '/api/route-data/allocation/?week=2',
     });
@@ -30,13 +27,12 @@ describe('route data loading', () => {
     expect(routeDataRequest(parseRoute('/does-not-exist'))).toBeNull();
   });
 
-  it('can select a focused contract without changing route parsing', () => {
+  it('has no legacy fallback when a route declares a read contract', () => {
     expect(routeDataRequest({
-      ...parseRoute('/kid_details/21'),
-      focusedReadContract: true,
+      readContractKey: 'kid-detail',
+      id: 21,
     })).toEqual({
       contractKey: 'kid-detail',
-      mode: 'focused',
       params: { id: '21' },
       url: '/api/route-data/kid-detail/?id=21',
     });
@@ -90,34 +86,6 @@ describe('route data loading', () => {
     );
 
     await expect(request).rejects.toThrow('Route data request failed (403)');
-  });
-
-  it('composes bootstrap shell/search state with the legacy page view model', () => {
-    const bootstrap = {
-      authenticated: true,
-      csrf_token: 'bootstrap-token',
-      messages: [{ text: 'Einmal', tags: 'success' }],
-      profile: { id: 1, rufname: 'Shell name' },
-      turnus: { id: 2, label: 'T2' },
-      permissions: { change_kids: true },
-      search_index: { kids: [{ id: 7, full_name: 'Ada Kind', present: true }], focuses: [], places: [] },
-    };
-    const legacy = {
-      csrf_token: 'legacy-token',
-      messages: [],
-      profile: { id: 1, phone: '+43' },
-      turnus: { id: 2, start: '2026-07-01' },
-      kids: [{ id: 7, full_name: 'Ada Kind', illness: 'only legacy route data' }],
-    };
-
-    expect(composeRouteData(bootstrap, legacy)).toMatchObject({
-      csrf_token: 'bootstrap-token',
-      messages: [{ text: 'Einmal', tags: 'success' }],
-      profile: { id: 1, rufname: 'Shell name', phone: '+43' },
-      turnus: { id: 2, label: 'T2', start: '2026-07-01' },
-      kids: legacy.kids,
-      search_index: bootstrap.search_index,
-    });
   });
 
   it('refreshes route data by default and bootstrap only for declared shell changes', async () => {

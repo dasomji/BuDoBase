@@ -15,6 +15,7 @@ from budo_app.read_contract_tests.fixtures import (
     image_upload,
 )
 from budo_app.read_contracts.measurement import (
+    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
     QueryBudgetAssertions,
     measure_http_get,
 )
@@ -80,7 +81,6 @@ class PlacesContractPerformanceTests(QueryBudgetAssertions, TestCase):
                 image=image_upload(f"scaled-place-{index}.png"),
             )
         realistic = self.measurements(place)
-        legacy = measure_http_get(self.client, reverse("app-data-api"))
 
         for key in small:
             with self.subTest(contract=key):
@@ -90,5 +90,5 @@ class PlacesContractPerformanceTests(QueryBudgetAssertions, TestCase):
                 self.assertQueryGrowthAtMost(small[key], realistic[key], 1)
                 self.assertLess(
                     realistic[key].response_bytes,
-                    legacy.response_bytes,
+                    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
                 )

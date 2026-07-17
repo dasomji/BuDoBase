@@ -15,20 +15,10 @@ export function routeDataRequest(route) {
   if (!route.readContractKey) return null;
 
   const params = routeParams(route);
-  if (route.focusedReadContract) {
-    return {
-      contractKey: route.readContractKey,
-      mode: 'focused',
-      params,
-      url: withQuery(`/api/route-data/${route.readContractKey}/`, params),
-    };
-  }
-
   return {
     contractKey: route.readContractKey,
-    mode: 'legacy',
     params,
-    url: withQuery('/api/app-data/', { route: route.readContractKey, ...params }),
+    url: withQuery(`/api/route-data/${route.readContractKey}/`, params),
   };
 }
 
@@ -68,22 +58,6 @@ export async function loadRouteData(route, fetchImpl = fetch) {
     authenticationRequired: false,
     notFound: false,
     data,
-  };
-}
-
-export function composeRouteData(bootstrap, routeData) {
-  if (!routeData) return bootstrap;
-  return {
-    ...routeData,
-    ...bootstrap,
-    profile: bootstrap.profile === null
-      ? null
-      : { ...(routeData.profile || {}), ...(bootstrap.profile || {}) },
-    turnus: bootstrap.turnus === null
-      ? null
-      : { ...(routeData.turnus || {}), ...(bootstrap.turnus || {}) },
-    messages: bootstrap.messages || [],
-    search_index: bootstrap.search_index,
   };
 }
 
