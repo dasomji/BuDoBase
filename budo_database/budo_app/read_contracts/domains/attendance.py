@@ -5,19 +5,15 @@ from django.http import Http404
 from budo_app.models import Geld, Kinder
 from budo_app.read_contracts.common import (
     require_active_turnus_id,
+    required_query_integer,
     serialize_money,
 )
 
 
 def _requested_kid(request, *fields):
-    try:
-        kid_id = int(request.query_params.get("id", ""))
-    except (TypeError, ValueError):
-        raise Http404 from None
-
     kid = (
         Kinder.objects.filter(
-            id=kid_id,
+            id=required_query_integer(request, digits_only=False),
             turnus_id=require_active_turnus_id(request),
         )
         .values("id", "kid_vorname", "kid_nachname", *fields)

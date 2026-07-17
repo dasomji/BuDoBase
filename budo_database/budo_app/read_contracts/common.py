@@ -19,12 +19,17 @@ def require_active_turnus_id(request):
     return turnus_id
 
 
-def required_query_integer(request, name="id"):
-    """Read a required non-negative integer query parameter or respond 404."""
+def required_query_integer(request, name="id", *, digits_only=True):
+    """Read a required integer query parameter or respond 404."""
     value = request.query_params.get(name)
-    if not value or not str(value).isdigit():
-        raise Http404
-    return int(value)
+    if digits_only:
+        if not value or not str(value).isdigit():
+            raise Http404
+        return int(value)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise Http404 from None
 
 
 def serialize_money(value):
