@@ -1,9 +1,24 @@
+import json
+from datetime import date
+from functools import wraps
+
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
-from django.contrib.auth.models import User
-from functools import wraps
-import json
+
 from .models import Profil, Kinder, Schwerpunkte, Auslagerorte, Turnus
+
+
+def parse_sv_birthday(value):
+    """Return the birthday encoded in an Austrian social-security number."""
+    cleaned = "".join(filter(str.isdigit, value or ""))
+    if len(cleaned) < 10:
+        return None
+    birthday = cleaned[-6:]
+    day = int(birthday[:2])
+    month = int(birthday[2:4])
+    short_year = int(birthday[4:])
+    year = 2000 + short_year if short_year < 50 else 1900 + short_year
+    return date(year, month, day)
 
 
 def get_cached_user_profile(user):
