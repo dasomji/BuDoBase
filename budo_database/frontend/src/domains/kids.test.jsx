@@ -1,0 +1,237 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import App from '../App';
+import { parseRoute } from '../routes';
+import { KidDetailPage, KidInteractionForm, KidsPage } from './kids';
+import { formatGermanDate, formatKidBirthday } from './shared';
+
+const response = (data, { ok = true, status = 200 } = {}) => ({
+  ok,
+  status,
+  json: vi.fn().mockResolvedValue(data),
+});
+
+describe('Kinder pages', () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    window.history.pushState({}, '', '/');
+  });
+
+  beforeEach(() => {
+    document.cookie = 'interaction-bar=; Max-Age=0; Path=/';
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query.includes('max-width') ? false : true,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+  });
+
+  it('switches modes, stores the cookie, and saves money without navigating', async () => {
+    const onSaved = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
+
+    expect(screen.getByPlaceholderText('Notiz...')).toBeVisible();
+    expect(screen.getByPlaceholderText('Taschengeld...').closest('#geld-form')).toHaveClass('hidden');
+    fireEvent.click(screen.getByText('Notiz'));
+
+    expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
+    expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
+    expect(document.cookie).toContain('interaction-bar=geld-form');
+    expect(screen.getByPlaceholderText('Taschengeld...')).toHaveAttribute('min', '0');
+    expect(screen.getByRole('button', { name: 'Abbuchen' })).toHaveClass('money-withdraw');
+    expect(screen.getByRole('button', { name: 'Aufladen' })).toHaveClass('money-topup');
+    expect(screen.queryByRole('button', { name: 'Senden' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Taschengeld...'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Abbuchen' }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+    expect(fetchMock.mock.calls[0][1].body.get('money_action')).toBe('withdraw');
+    expect(screen.getByPlaceholderText('Taschengeld...')).toHaveValue(null);
+  });
+
+  it('restores the saved Taschengeld mode from its cookie', () => {
+    document.cookie = 'interaction-bar=geld-form; Path=/';
+
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
+
+    expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
+    expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
+  });
+
+  it.each([
+    { present: false, action: 'Einchecken', path: '/check_in/7', title: 'Ada Lovelace ❌' },
+    { present: true, action: 'Auschecken', path: '/check_out/7', title: 'Ada Lovelace' },
+  ])('places $action in the BuDo card and reflects attendance in the name', ({ present, action, path, title }) => {
+    const kid = {
+      id: 7,
+      full_name: 'Ada Lovelace',
+      present,
+      weeks: 2,
+      birthday: '2012-07-02',
+      social_security_number: '1234 030712',
+      consent: present ? false : null,
+      over_the_counter_medication: 'Ibuprofen',
+      prescription_medication: '',
+      tetanus: null,
+      tick_vaccine: 'Ja',
+      notes: [],
+      transactions: [],
+      remaining_money: 0,
+      deposit: 0,
+    };
+    render(<KidDetailPage data={{ kids: [kid], turnus: { label: 'T2' }, csrf_token: 'token' }} id="7" mutate={vi.fn()} />);
+
+    expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
+    expect(screen.getByText('Geburtstag').closest('p')).toHaveTextContent('Geburtstag: 02.07.2012 ❗');
+    expect(screen.getByText('Einverständnis für ärztliche Behandlung').closest('p')).toHaveTextContent(`Einverständnis für ärztliche Behandlung: ${present ? 'Nein' : '❗'}`);
+    expect(screen.getByText('Rezeptfreie Medikamente').closest('p')).toHaveTextContent('Rezeptfreie Medikamente: Ibuprofen');
+    expect(screen.getByText('Medikamente auf Rezept').closest('p')).toHaveTextContent('Medikamente auf Rezept: ❗');
+    expect(screen.getByText('Tetanusimpfung').closest('p')).toHaveTextContent('Tetanusimpfung: ❗');
+    expect(screen.getByText('Zeckenimpfung').closest('p')).toHaveTextContent('Zeckenimpfung: Ja');
+    const checkAction = screen.getByRole('link', { name: action });
+    expect(checkAction).toHaveAttribute('href', path);
+    expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');
+  });
+
+  it('keeps the directory columns, filtering, sorting, links, and empty state on focused rows', () => {
+    const { rerender } = render(<KidsPage data={{ kids: [
+      {
+        id: 8,
+        full_name: 'Grace Hopper',
+        present: true,
+        budo_family: 'L',
+        special_family: 'Falkenhaus',
+        sex_short: '♀',
+        age: 14,
+        weeks: 2,
+        focus_w1: 'Wald',
+        focus_w2: 'Theater',
+        siblings: '---',
+        tent_request: 'Ada',
+        food: '🥦',
+        drugs: '',
+        illness: '',
+        note: '',
+        booking_note: '',
+      },
+      {
+        id: 7,
+        full_name: 'Ada Lovelace',
+        present: false,
+        budo_family: 'M',
+        special_family: 'Biberhaus',
+        sex_short: '♀',
+        age: 13,
+        weeks: 1,
+        focus_w1: 'Theater',
+        focus_w2: 'Wald',
+        siblings: 'Charles',
+        tent_request: 'Grace',
+        food: '🥩',
+        drugs: 'Asthmaspray',
+        illness: 'Allergie',
+        note: 'Teamnotiz',
+        booking_note: 'Buchungsnotiz',
+      },
+    ] }} />);
+
+    expect(screen.getByRole('link', { name: 'Ada Lovelace ❌' })).toHaveAttribute('href', '/kid_details/7');
+    expect(screen.getByRole('columnheader', { name: /Anmerkungen \(Buchung\)/ })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Kinder filtern' }), { target: { value: 'grace' } });
+    expect(screen.getByRole('link', { name: 'Grace Hopper' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Ada Lovelace ❌' })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Kinder filtern' }), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Alter sortieren' }));
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('Ada Lovelace');
+
+    rerender(<KidsPage data={{ kids: [] }} />);
+    expect(screen.getByText('Keine Einträge')).toBeInTheDocument();
+  });
+
+  it('declares the Kinder directory and detail contracts', () => {
+    expect(parseRoute('/all_kids')).toMatchObject({
+      readContractKey: 'kids-directory',
+    });
+    expect(parseRoute('/kid_details/21')).toMatchObject({
+      readContractKey: 'kid-detail',
+      id: '21',
+    });
+  });
+
+  it('refreshes only the selected Kind contract after a Pfand update', async () => {
+    window.history.pushState({}, '', '/kid_details/7');
+    let detailReads = 0;
+    const fetchImpl = vi.fn(async (url) => {
+      if (url === '/api/bootstrap/') {
+        return response({
+          authenticated: true,
+          csrf_token: 'token',
+          messages: [],
+          profile: { id: 1, rufname: 'Ada' },
+          turnus: { id: 2, label: 'T2' },
+          permissions: {},
+          search_index: { kids: [{ id: 7, full_name: 'Ada Lovelace', present: true }], focuses: [], places: [] },
+        });
+      }
+      if (url === '/api/route-data/kid-detail/?id=7') {
+        detailReads += 1;
+        const deposit = detailReads;
+        return response({
+          kids: [{
+            id: 7,
+            full_name: 'Ada Lovelace',
+            present: true,
+            weeks: 2,
+            birthday: '2012-07-02',
+            notes: [],
+            transactions: [],
+            remaining_money: 10 - deposit * 0.25,
+            deposit,
+          }],
+        });
+      }
+      if (url === '/update_pfand/') return response({ status: 'success' });
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByRole('heading', { name: 'Pfand: 1' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '+ Pfand' }));
+    expect(await screen.findByRole('heading', { name: 'Pfand: 2' })).toBeInTheDocument();
+
+    expect(detailReads).toBe(2);
+    expect(fetchImpl.mock.calls.filter(([url]) => url === '/api/bootstrap/')).toHaveLength(1);
+    expect(fetchImpl.mock.calls.some(([url]) => url.startsWith('/api/app-data/'))).toBe(false);
+  });
+});
+
+describe('Kinder date formatting', () => {
+  it('formats API dates and datetimes without timezone shifts', () => {
+    expect(formatGermanDate('2026-07-02')).toBe('02.07.2026');
+    expect(formatGermanDate('2026-07-02T23:30:00Z')).toBe('02.07.2026');
+  });
+
+  it('leaves non-date values unchanged', () => {
+    expect(formatGermanDate('---')).toBe('---');
+    expect(formatGermanDate(null)).toBeNull();
+  });
+
+  it.each([
+    ['matching birthday', '1234 020712', '02.07.2012'],
+    ['mismatching birthday', '1234 030712', '02.07.2012 ❗'],
+    ['unavailable SV birthday', 'invalid', '02.07.2012'],
+    ['invalid calculated birthday', '1234 310212', '02.07.2012'],
+  ])('marks a %s only when the calculated SV birthday differs', (_case, socialSecurityNumber, expected) => {
+    expect(formatKidBirthday({
+      birthday: '2012-07-02',
+      social_security_number: socialSecurityNumber,
+    })).toBe(expected);
+  });
+});

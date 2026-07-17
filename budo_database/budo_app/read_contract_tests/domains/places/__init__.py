@@ -1,0 +1,1 @@
+"""Auslagerorte contract tests."""

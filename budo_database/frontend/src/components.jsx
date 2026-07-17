@@ -31,14 +31,15 @@ export function GlobalSearch({ data, onNavigate = path => window.location.assign
   const results = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('de');
     if (!needle) return [];
+    const searchIndex = data.search_index || { kids: [], focuses: [], places: [] };
     const items = [
-      ...(data.kids || []).map(kid => ({
+      ...searchIndex.kids.map(kid => ({
         id: `kid-${kid.id}`,
         href: `/kid_details/${kid.id}`,
         label: `${kid.present ? '' : '❌ '}${kid.full_name}`,
       })),
-      ...(data.focuses || []).map(focus => ({ id: `focus-${focus.id}`, href: `/schwerpunkt/${focus.id}`, label: `🚀${focus.name}` })),
-      ...(data.places || []).map(place => ({ id: `place-${place.id}`, href: `/auslagerorte/${place.id}`, label: `🏡 ${place.name}` })),
+      ...searchIndex.focuses.map(focus => ({ id: `focus-${focus.id}`, href: `/schwerpunkt/${focus.id}`, label: `🚀${focus.name}` })),
+      ...searchIndex.places.map(place => ({ id: `place-${place.id}`, href: `/auslagerorte/${place.id}`, label: `🏡 ${place.name}` })),
     ];
     return items.filter(item => item.label.toLocaleLowerCase('de').includes(needle));
   }, [data, query]);
@@ -251,8 +252,11 @@ export function CsrfInput({ token }) {
 export function RestForm({ target, token, children, className = '', encType, onSuccess, resetOnSuccess = false }) {
   const [errors, setErrors] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const submit = async event => {
     event.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     const form = event.currentTarget;
     setSubmitting(true);
     setErrors([]);
@@ -281,17 +285,16 @@ export function RestForm({ target, token, children, className = '', encType, onS
     } catch (error) {
       setErrors([error.message]);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
-  return <form action={target} method="post" encType={encType} className={className} onSubmit={submit}><CsrfInput token={token} />{errors.length > 0 && <ul className="errorlist" role="alert">{errors.map(error => <li key={error}>{error}</li>)}</ul>}{children}{submitting && <p aria-live="polite">Wird gespeichert…</p>}</form>;
+  return <form action={target} method="post" encType={encType} className={className} onSubmit={submit} aria-busy={submitting}><CsrfInput token={token} />{errors.length > 0 && <ul className="errorlist" role="alert">{errors.map(error => <li key={error}>{error}</li>)}</ul>}{typeof children === 'function' ? children({ submitting }) : children}{submitting && <p aria-live="polite">Wird gespeichert…</p>}</form>;
 }
 
 export function NativeForm({ action = '', method = 'post', token, encType, fields, submit = 'Speichern', children }) {
-  const Form = method.toLowerCase() === 'post' ? RestForm : 'form';
-  const formProps = method.toLowerCase() === 'post' ? { target: action, token, encType, className: 'form-grid' } : { action, method, encType, className: 'form-grid' };
-  return (
-    <Form {...formProps}>
+  const contents = (submitting = false) => (
+    <>
       {fields.map(field => {
         if (field.type === 'select') {
           return <label key={field.name}>{field.label}<select name={field.name} defaultValue={field.value ?? ''} multiple={field.multiple}>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
@@ -305,9 +308,13 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
         return <label key={field.name}>{field.label}<input name={field.name} type={field.type || 'text'} defaultValue={field.type === 'file' ? undefined : field.value ?? ''} required={field.required} multiple={field.multiple} accept={field.accept} min={field.min} step={field.step} /></label>;
       })}
       {children}
-      <div className="form-buttons"><input className="button" type="submit" value={submit} /></div>
-    </Form>
+      <div className="form-buttons"><input className="button" type="submit" value={submit} disabled={submitting} /></div>
+    </>
   );
+  if (method.toLowerCase() === 'post') {
+    return <RestForm target={action} token={token} encType={encType} className="form-grid">{({ submitting }) => contents(submitting)}</RestForm>;
+  }
+  return <form action={action} method={method} encType={encType} className="form-grid">{contents()}</form>;
 }
 
 export function MapCard({ places = [] }) {

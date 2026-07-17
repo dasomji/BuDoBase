@@ -45,6 +45,11 @@ class SchwerpunkteUpdate(LoginRequiredMixin, UpdateView):
             schwerpunktzeit__turnus=get_active_turnus(self.request)
         )
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['turnus'] = get_active_turnus(self.request)
+        return kwargs
+
     def get_context_data(self, **kwargs):
         profil = Profil.objects.get(user=self.request.user)
         active_turnus = profil.turnus
@@ -126,6 +131,11 @@ class SchwerpunkteCreate(LoginRequiredMixin, CreateView):
     model = Schwerpunkte
     form_class = SchwerpunktForm
     template_name = 'schwerpunkt-form.html'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['turnus'] = get_active_turnus(self.request)
+        return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -383,11 +393,20 @@ def update_freunde(request):
 
     kid_id = data.get('kid_id')
     freunde = data.get('freunde')
+    week = str(data.get('week', '1'))
+    if week not in ('1', '2'):
+        return JsonResponse(
+            {'status': 'error', 'message': 'Week must be 1 or 2'},
+            status=400,
+        )
 
     try:
         kid = get_active_kid_or_404(request, kid_id)
         schwerpunkt_wahl = SchwerpunktWahl.objects.get(
-            kind=kid, schwerpunktzeit__turnus=request.active_turnus, schwerpunktzeit__woche="w1")
+            kind=kid,
+            schwerpunktzeit__turnus=request.active_turnus,
+            schwerpunktzeit__woche=f"w{week}",
+        )
         schwerpunkt_wahl.freunde = freunde
         schwerpunkt_wahl.save()
         return JsonResponse({'status': 'success'})

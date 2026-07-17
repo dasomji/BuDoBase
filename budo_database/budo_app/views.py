@@ -7,7 +7,14 @@ from .models import Kinder, SpezialFamilien, Profil, BetreuerinnenGeld
 from .forms import CSVUploadForm, BetreuerinnenGeldForm, BirthdayNotizForm
 from django.views.decorators.http import require_POST
 from django.db import transaction
-from .utils import cache_user_profile, get_active_kid_or_404, get_turnus_data_optimized, parse_json_body, safe_get_object_or_404
+from .utils import (
+    cache_user_profile,
+    get_active_kid_or_404,
+    get_turnus_data_optimized,
+    parse_json_body,
+    parse_sv_birthday,
+    safe_get_object_or_404,
+)
 import csv
 import pandas as pd
 import logging
@@ -259,26 +266,8 @@ def kindergeburtstage(request):
         # Calculate birthday from sozialversicherungsnr if available
         if kid.sozialversicherungsnr:
             try:
-                # Remove spaces and any non-digit characters for sanitization
-                cleaned_sv = ''.join(
-                    filter(str.isdigit, kid.sozialversicherungsnr))
-
-                # Austrian SV format: XXXX DDMMYY (first 4 digits + 6 digit birthday)
-                if len(cleaned_sv) >= 10:
-                    # Get last 6 digits: DDMMYY
-                    birthday_part = cleaned_sv[-6:]
-                    day = int(birthday_part[:2])
-                    month = int(birthday_part[2:4])
-                    year_short = int(birthday_part[4:6])
-
-                    # Determine full year (assuming 2000s if under 50, 1900s if 50+)
-                    if year_short < 50:
-                        year = 2000 + year_short
-                    else:
-                        year = 1900 + year_short
-
-                    from datetime import date
-                    sv_birthday = date(year, month, day)
+                sv_birthday = parse_sv_birthday(kid.sozialversicherungsnr)
+                if sv_birthday:
                     birthday_data['sv_birthday'] = sv_birthday
 
                     # Check if birthdays match
@@ -342,37 +331,20 @@ def update_birthdays_from_sv(request):
             for kid in kids:
                 if kid.sozialversicherungsnr:
                     try:
-                        # Remove spaces and any non-digit characters for sanitization
-                        cleaned_sv = ''.join(
-                            filter(str.isdigit, kid.sozialversicherungsnr))
+                        sv_birthday = parse_sv_birthday(
+                            kid.sozialversicherungsnr,
+                        )
 
-                        # Austrian SV format: XXXX DDMMYY (first 4 digits + 6 digit birthday)
-                        if len(cleaned_sv) >= 10:
-                            # Get last 6 digits: DDMMYY
-                            birthday_part = cleaned_sv[-6:]
-                            day = int(birthday_part[:2])
-                            month = int(birthday_part[2:4])
-                            year_short = int(birthday_part[4:6])
+                        # Only update if the birthday is different or missing
+                        if sv_birthday and kid.kid_birthday != sv_birthday:
+                            old_birthday = kid.kid_birthday
+                            kid.kid_birthday = sv_birthday
+                            kid.save()
+                            updated_count += 1
 
-                            # Determine full year (assuming 2000s if under 50, 1900s if 50+)
-                            if year_short < 50:
-                                year = 2000 + year_short
-                            else:
-                                year = 1900 + year_short
-
-                            from datetime import date
-                            sv_birthday = date(year, month, day)
-
-                            # Only update if the birthday is different or missing
-                            if kid.kid_birthday != sv_birthday:
-                                old_birthday = kid.kid_birthday
-                                kid.kid_birthday = sv_birthday
-                                kid.save()
-                                updated_count += 1
-
-                                # Log the change
-                                logger.info(f"Updated birthday for {kid.kid_vorname} {kid.kid_nachname} "
-                                            f"from {old_birthday} to {sv_birthday}")
+                            # Log the change
+                            logger.info(f"Updated birthday for {kid.kid_vorname} {kid.kid_nachname} "
+                                        f"from {old_birthday} to {sv_birthday}")
 
                     except (ValueError, TypeError, IndexError) as e:
                         error_count += 1

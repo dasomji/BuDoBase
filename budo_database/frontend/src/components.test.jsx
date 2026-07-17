@@ -1,15 +1,15 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Card, GlobalSearch, RestForm, SearchTable } from './components';
-import { parseRoute } from './App';
-import { CheckPage, formatGermanDate, formatKidBirthday, ImageUploadPage, KidDetailPage, KidInteractionForm } from './pages';
 
 describe('reusable components', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
 
   beforeEach(() => {
-    document.cookie = 'interaction-bar=; Max-Age=0; Path=/';
     window.matchMedia = vi.fn().mockImplementation(query => ({
       matches: query.includes('max-width') ? false : true,
       media: query,
@@ -45,92 +45,13 @@ describe('reusable components', () => {
     expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('switches modes, stores the cookie, and saves money without navigating', async () => {
-    const onSaved = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
-    vi.stubGlobal('fetch', fetchMock);
-    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
-
-    expect(screen.getByPlaceholderText('Notiz...')).toBeVisible();
-    expect(screen.getByPlaceholderText('Taschengeld...').closest('#geld-form')).toHaveClass('hidden');
-    fireEvent.click(screen.getByText('Notiz'));
-
-    expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
-    expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
-    expect(document.cookie).toContain('interaction-bar=geld-form');
-    expect(screen.getByPlaceholderText('Taschengeld...')).toHaveAttribute('min', '0');
-    expect(screen.getByRole('button', { name: 'Abbuchen' })).toHaveClass('money-withdraw');
-    expect(screen.getByRole('button', { name: 'Aufladen' })).toHaveClass('money-topup');
-    expect(screen.queryByRole('button', { name: 'Senden' })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText('Taschengeld...'), { target: { value: '5' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Abbuchen' }));
-
-    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
-    expect(fetchMock.mock.calls[0][1].body.get('money_action')).toBe('withdraw');
-    expect(screen.getByPlaceholderText('Taschengeld...')).toHaveValue(null);
-    vi.unstubAllGlobals();
-  });
-
-  it('restores the saved Taschengeld mode from its cookie', () => {
-    document.cookie = 'interaction-bar=geld-form; Path=/';
-
-    render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
-
-    expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
-    expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
-  });
-
-  it.each([
-    { balance: 12.5, label: 'Taschengeld zurückgegeben (aktuell 12.50 €)', preset: 12.5 },
-    { balance: -3, label: 'Taschengeld eingezahlt (schuldet aktuell: 3.00 €)', preset: 0 },
-  ])('uses a positive checkout amount when the current balance is $balance', ({ balance, label, preset }) => {
-    render(<CheckPage data={{ csrf_token: 'token', kids: [{ id: 7, full_name: 'Ada', pocket_money: balance }] }} id="7" checkout />);
-
-    const amount = screen.getByRole('spinbutton', { name: label });
-    expect(amount).toHaveValue(preset);
-    expect(amount).toHaveAttribute('min', '0');
-  });
-
-  it.each([
-    { present: false, action: 'Einchecken', path: '/check_in/7', title: 'Ada Lovelace ❌' },
-    { present: true, action: 'Auschecken', path: '/check_out/7', title: 'Ada Lovelace' },
-  ])('places $action in the BuDo card and reflects attendance in the name', ({ present, action, path, title }) => {
-    const kid = {
-      id: 7,
-      full_name: 'Ada Lovelace',
-      present,
-      weeks: 2,
-      birthday: '2012-07-02',
-      social_security_number: '1234 030712',
-      consent: present ? false : null,
-      over_the_counter_medication: 'Ibuprofen',
-      prescription_medication: '',
-      tetanus: null,
-      tick_vaccine: 'Ja',
-      notes: [],
-      transactions: [],
-      remaining_money: 0,
-      deposit: 0,
-    };
-    render(<KidDetailPage data={{ kids: [kid], turnus: { label: 'T2' }, csrf_token: 'token' }} id="7" mutate={vi.fn()} />);
-
-    expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
-    expect(screen.getByText('Geburtstag').closest('p')).toHaveTextContent('Geburtstag: 02.07.2012 ❗');
-    expect(screen.getByText('Einverständnis für ärztliche Behandlung').closest('p')).toHaveTextContent(`Einverständnis für ärztliche Behandlung: ${present ? 'Nein' : '❗'}`);
-    expect(screen.getByText('Rezeptfreie Medikamente').closest('p')).toHaveTextContent('Rezeptfreie Medikamente: Ibuprofen');
-    expect(screen.getByText('Medikamente auf Rezept').closest('p')).toHaveTextContent('Medikamente auf Rezept: ❗');
-    expect(screen.getByText('Tetanusimpfung').closest('p')).toHaveTextContent('Tetanusimpfung: ❗');
-    expect(screen.getByText('Zeckenimpfung').closest('p')).toHaveTextContent('Zeckenimpfung: Ja');
-    const checkAction = screen.getByRole('link', { name: action });
-    expect(checkAction).toHaveAttribute('href', path);
-    expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');
-  });
-
   it('shows selectable results from kids, focuses, and places', () => {
     render(<GlobalSearch data={{
-      kids: [{ id: 1, full_name: 'Ada Lovelace', present: false }],
-      focuses: [{ id: 2, name: 'Ada im Wald' }],
-      places: [{ id: 3, name: 'Ada Hütte' }],
+      search_index: {
+        kids: [{ id: 1, full_name: 'Ada Lovelace', present: false }],
+        focuses: [{ id: 2, name: 'Ada im Wald' }],
+        places: [{ id: 3, name: 'Ada Hütte' }],
+      },
     }} />);
 
     const search = screen.getByRole('combobox', { name: 'Suche' });
@@ -145,9 +66,11 @@ describe('reusable components', () => {
   it('supports keyboard selection in the global search', () => {
     const onNavigate = vi.fn();
     render(<GlobalSearch data={{
-      kids: [{ id: 1, full_name: 'Ada Lovelace', present: true }],
-      focuses: [],
-      places: [],
+      search_index: {
+        kids: [{ id: 1, full_name: 'Ada Lovelace', present: true }],
+        focuses: [],
+        places: [],
+      },
     }} onNavigate={onNavigate} />);
     const search = screen.getByRole('combobox', { name: 'Suche' });
 
@@ -157,6 +80,89 @@ describe('reusable components', () => {
     fireEvent.keyDown(search, { key: 'Enter' });
 
     expect(onNavigate).toHaveBeenCalledWith('/kid_details/1');
+  });
+
+  it('matches German names case-insensitively and supports mouse selection', () => {
+    const onNavigate = vi.fn();
+    render(<GlobalSearch data={{
+      search_index: {
+        kids: [],
+        focuses: [{ id: 2, name: 'Überleben' }],
+        places: [{ id: 3, name: 'Ötscher Hütte' }],
+      },
+    }} onNavigate={onNavigate} />);
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: 'ÜBERLEBEN' } });
+    expect(screen.getByRole('option', { name: '🚀Überleben' })).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: 'ötscher' } });
+    fireEvent.click(screen.getByRole('option', { name: '🏡 Ötscher Hütte' }));
+    expect(onNavigate).toHaveBeenCalledWith('/auslagerorte/3');
+  });
+
+  it('supports ArrowUp and Escape while preserving focus behavior', () => {
+    const onNavigate = vi.fn();
+    render(<GlobalSearch data={{
+      search_index: {
+        kids: [{ id: 1, full_name: 'Ada Kind', present: true }],
+        focuses: [{ id: 2, name: 'Ada Fokus' }],
+        places: [],
+      },
+    }} onNavigate={onNavigate} />);
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: 'ada' } });
+    fireEvent.keyDown(search, { key: 'ArrowDown' });
+    fireEvent.keyDown(search, { key: 'ArrowDown' });
+    fireEvent.keyDown(search, { key: 'ArrowUp' });
+    fireEvent.keyDown(search, { key: 'Enter' });
+    expect(onNavigate).toHaveBeenCalledWith('/kid_details/1');
+
+    fireEvent.keyDown(search, { key: 'Escape' });
+    expect(search).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('hides the result list at the existing twenty-result threshold', () => {
+    render(<GlobalSearch data={{
+      search_index: {
+        kids: Array.from({ length: 20 }, (_, index) => ({
+          id: index + 1,
+          full_name: `Ada Kind ${index + 1}`,
+          present: true,
+        })),
+        focuses: [],
+        places: [],
+      },
+    }} />);
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: 'ada' } });
+
+    expect(search).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+  });
+
+  it('closes results after the search field loses focus', () => {
+    vi.useFakeTimers();
+    render(<GlobalSearch data={{
+      search_index: {
+        kids: [{ id: 1, full_name: 'Ada Kind', present: true }],
+        focuses: [],
+        places: [],
+      },
+    }} />);
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+
+    fireEvent.focus(search);
+    fireEvent.change(search, { target: { value: 'ada' } });
+    fireEvent.blur(search);
+    act(() => vi.advanceTimersByTime(150));
+
+    expect(search).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('filters table pages by the first-column name only', () => {
@@ -218,56 +224,5 @@ describe('reusable components', () => {
     expect(screen.getByDisplayValue('Ada')).toBeInTheDocument();
     expect(fetchMock.mock.calls[0][1].body.get('money_action')).toBe('withdraw');
     vi.unstubAllGlobals();
-  });
-});
-
-describe('German date formatting', () => {
-  it('formats API dates and datetimes without timezone shifts', () => {
-    expect(formatGermanDate('2026-07-02')).toBe('02.07.2026');
-    expect(formatGermanDate('2026-07-02T23:30:00Z')).toBe('02.07.2026');
-  });
-
-  it('leaves non-date values unchanged', () => {
-    expect(formatGermanDate('---')).toBe('---');
-    expect(formatGermanDate(null)).toBeNull();
-  });
-
-  it.each([
-    ['matching birthday', '1234 020712', '02.07.2012'],
-    ['mismatching birthday', '1234 030712', '02.07.2012 ❗'],
-    ['unavailable SV birthday', 'invalid', '02.07.2012'],
-    ['invalid calculated birthday', '1234 310212', '02.07.2012'],
-  ])('marks a %s only when the calculated SV birthday differs', (_case, socialSecurityNumber, expected) => {
-    expect(formatKidBirthday({
-      birthday: '2012-07-02',
-      social_security_number: socialSecurityNumber,
-    })).toBe(expected);
-  });
-});
-
-describe('image uploads', () => {
-  it('requires multiple images and hints accepted file types', () => {
-    render(<ImageUploadPage data={{
-      csrf_token: 'token',
-      places: [{ id: 4, name: 'Test place' }],
-    }} id="4" />);
-
-    const input = screen.getByLabelText('Select multiple images');
-    expect(input).toHaveAttribute('type', 'file');
-    expect(input).toBeRequired();
-    expect(input).toHaveAttribute('multiple');
-    expect(input).toHaveAttribute('accept', 'image/*');
-  });
-});
-
-describe('route inventory', () => {
-  it.each([
-    ['/kid_details/21', 'kid'],
-    ['/schwerpunkt/3/update', 'focus-update'],
-    ['/auslagerorte/4/upload-image/', 'place-images'],
-    ['/swp-einteilung-w2', 'allocation'],
-    ['/kindergeburtstage/', 'birthdays'],
-  ])('maps %s to %s', (path, page) => {
-    expect(parseRoute(path).page).toBe(page);
   });
 });

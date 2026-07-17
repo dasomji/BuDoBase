@@ -83,6 +83,20 @@ class ProfilForm(forms.ModelForm):
 
 
 class SchwerpunktForm(forms.ModelForm):
+    def __init__(self, *args, turnus=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if turnus is None:
+            self.fields['betreuende'].queryset = Profil.objects.none()
+            self.fields['schwerpunktzeit'].queryset = Schwerpunktzeit.objects.none()
+            return
+        self.fields['betreuende'].queryset = Profil.objects.filter(
+            turnus=turnus,
+        ).order_by('rufname', 'id')
+        self.fields['schwerpunktzeit'].queryset = (
+            Schwerpunktzeit.objects.filter(turnus=turnus)
+            .order_by('woche', 'id')
+        )
+
     class Meta:
         model = Schwerpunkte
         fields = ['swp_name', 'ort', 'betreuende', 'beschreibung',
