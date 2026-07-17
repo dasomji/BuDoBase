@@ -1,9 +1,11 @@
 import base64
 import binascii
 import json
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Callable
 
-from django.db.models import FloatField, Q, Sum, Value
+from django.db.models import FloatField, Model, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
 
@@ -14,23 +16,42 @@ from budo_app.models import (
     Profil,
     Schwerpunkte,
 )
+from budo_app.read_contracts.common import (
+    serialize_money,
+    serialize_utc_datetime,
+)
 
 
 # Both initial activity streams and every continuation page are capped here.
 DASHBOARD_ACTIVITY_PAGE_SIZE = 20
 
 
-def _money(value):
-    return round(float(value or 0), 2)
+def _note_text(value):
+    return value or ""
 
 
-def _datetime(value):
-    return value.isoformat().replace("+00:00", "Z") if value else None
+@dataclass(frozen=True)
+class ActivityStream:
+    model: type[Model]
+    source_field: str
+    response_field: str
+    serialize_value: Callable[[object], object]
+
+
+ACTIVITY_STREAMS = {
+    "notes": ActivityStream(Notizen, "notiz", "text", _note_text),
+    "transactions": ActivityStream(
+        Geld,
+        "amount",
+        "amount",
+        serialize_money,
+    ),
+}
 
 
 def _encode_cursor(item):
     payload = json.dumps(
-        {"date": _datetime(item.date_added), "id": item.id},
+        {"date": serialize_utc_datetime(item.date_added), "id": item.id},
         separators=(",", ":"),
     ).encode()
     return base64.urlsafe_b64encode(payload).decode().rstrip("=")
@@ -57,10 +78,9 @@ def _decode_cursor(value):
         raise ValidationError({"cursor": "Invalid dashboard activity cursor."})
 
 
-def _activity_queryset(kind, turnus_id):
-    model = Notizen if kind == "notes" else Geld
+def _activity_queryset(stream, turnus_id):
     return (
-        model.objects.filter(kinder__turnus_id=turnus_id)
+        stream.model.objects.filter(kinder__turnus_id=turnus_id)
         .select_related("kinder", "added_by")
         .only(
             "id",
@@ -69,23 +89,26 @@ def _activity_queryset(kind, turnus_id):
             "kinder_id",
             "kinder__kid_vorname",
             "kinder__kid_nachname",
-            *(('notiz',) if kind == "notes" else ('amount',)),
+            stream.source_field,
         )
         .order_by("-date_added", "-id")
     )
 
 
-def _activity_item(kind, item):
+def _activity_item(stream, item):
     common = {
         "id": item.id,
-        "date": _datetime(item.date_added),
+        "date": serialize_utc_datetime(item.date_added),
         "author": item.added_by.username,
         "kid_id": item.kinder_id,
         "kid": str(item.kinder),
     }
-    if kind == "notes":
-        return {**common, "text": item.notiz or ""}
-    return {**common, "amount": _money(item.amount)}
+    return {
+        **common,
+        stream.response_field: stream.serialize_value(
+            getattr(item, stream.source_field),
+        ),
+    }
 
 
 def _activity_page(kind, turnus_id, cursor=None):
@@ -97,7 +120,8 @@ def _activity_page(kind, turnus_id, cursor=None):
             "limit": DASHBOARD_ACTIVITY_PAGE_SIZE,
         }
 
-    queryset = _activity_queryset(kind, turnus_id)
+    stream = ACTIVITY_STREAMS[kind]
+    queryset = _activity_queryset(stream, turnus_id)
     if cursor:
         cursor_date, cursor_id = _decode_cursor(cursor)
         queryset = queryset.filter(
@@ -108,7 +132,7 @@ def _activity_page(kind, turnus_id, cursor=None):
     has_more = len(page_items) > DASHBOARD_ACTIVITY_PAGE_SIZE
     page_items = page_items[:DASHBOARD_ACTIVITY_PAGE_SIZE]
     return {
-        "items": [_activity_item(kind, item) for item in page_items],
+        "items": [_activity_item(stream, item) for item in page_items],
         "next_cursor": (
             _encode_cursor(page_items[-1]) if has_more and page_items else None
         ),
@@ -189,7 +213,7 @@ def build_dashboard_contract(request):
     activity_kind = request.query_params.get("activity")
     cursor = request.query_params.get("cursor")
     if activity_kind is not None:
-        if activity_kind not in ("notes", "transactions"):
+        if activity_kind not in ACTIVITY_STREAMS:
             raise ValidationError(
                 {"activity": "Unknown dashboard activity stream."}
             )
@@ -263,7 +287,9 @@ def build_dashboard_contract(request):
                     "rufname": member.rufname,
                     "food_display": member.get_food(),
                     "allergies": member.allergien,
-                    "money_total": _money(member.dashboard_money_total),
+                    "money_total": serialize_money(
+                        member.dashboard_money_total,
+                    ),
                 }
                 for member in team
             ],
@@ -272,9 +298,9 @@ def build_dashboard_contract(request):
                 "checked_in": sum(kid.anwesend is True for kid in kids),
                 "train_arrival": sum(kid.zug_anreise is True for kid in kids),
                 "train_departure": sum(kid.zug_abreise is True for kid in kids),
-                "pocket_money": _money(money_totals["total"]),
-                "pocket_money_paid": _money(money_totals["paid"]),
-                "team_money": _money(
+                "pocket_money": serialize_money(money_totals["total"]),
+                "pocket_money_paid": serialize_money(money_totals["paid"]),
+                "team_money": serialize_money(
                     sum(member.dashboard_money_total for member in team)
                 ),
             },

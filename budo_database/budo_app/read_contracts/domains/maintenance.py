@@ -1,7 +1,7 @@
-from django.http import Http404
 from django.shortcuts import get_object_or_404
 
 from budo_app.models import Turnus
+from budo_app.read_contracts.common import required_query_integer
 
 
 def _turnus(item):
@@ -22,17 +22,10 @@ def turnus_list(request):
     return {"turnuses": [_turnus(turnus) for turnus in turnuses]}
 
 
-def _turnus_id(request):
-    value = request.query_params.get("id")
-    if not value or not str(value).isdigit():
-        raise Http404
-    return int(value)
-
-
 def turnus_upload(request):
     turnus = get_object_or_404(
         Turnus.objects.only("id", "turnus_nr", "turnus_beginn"),
-        id=_turnus_id(request),
+        id=required_query_integer(request),
     )
     return {"turnuses": [_turnus(turnus)]}
 

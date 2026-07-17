@@ -3,14 +3,12 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 
 from budo_app.models import BetreuerinnenGeld, Profil, Schwerpunkte, Turnus
-
-
-def _money(value):
-    return round(float(value or 0), 2)
-
-
-def _datetime(value):
-    return value.isoformat().replace("+00:00", "Z") if value else None
+from budo_app.read_contracts.common import (
+    active_turnus_id,
+    required_query_integer,
+    serialize_money,
+    serialize_utc_datetime,
+)
 
 
 def _can_change_turnus(user):
@@ -51,9 +49,9 @@ def _profile(profile, *, can_change_turnus):
     money_items = [
         {
             "id": item.id,
-            "amount": _money(item.amount),
+            "amount": serialize_money(item.amount),
             "what": item.what,
-            "date": _datetime(item.date_added),
+            "date": serialize_utc_datetime(item.date_added),
         }
         for item in profile.route_money_items
     ]
@@ -68,7 +66,7 @@ def _profile(profile, *, can_change_turnus):
         "role_display": profile.get_rolle(),
         "food": profile.essen,
         "food_display": profile.get_food(),
-        "money_total": _money(
+        "money_total": serialize_money(
             sum(item.amount or 0 for item in profile.route_money_items),
         ),
         "money_items": money_items,
@@ -95,11 +93,7 @@ def _turnuses(can_change_turnus):
 
 
 def profile(request):
-    turnus_id = (
-        Profil.objects.filter(user_id=request.user.id)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
+    turnus_id = active_turnus_id(request)
     own_profile = get_object_or_404(
         _profile_queryset(turnus_id),
         user_id=request.user.id,
@@ -115,24 +109,13 @@ def profile(request):
     }
 
 
-def _profile_id(request):
-    value = request.query_params.get("id")
-    if not value or not str(value).isdigit():
-        raise Http404
-    return int(value)
-
-
 def teamer(request):
-    turnus_id = (
-        Profil.objects.filter(user_id=request.user.id)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         raise Http404
     selected_profile = get_object_or_404(
         _profile_queryset(turnus_id).filter(turnus_id=turnus_id),
-        id=_profile_id(request),
+        id=required_query_integer(request),
     )
     return {
         "person": _profile(

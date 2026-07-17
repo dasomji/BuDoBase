@@ -1,19 +1,12 @@
 from django.db.models import Count, Q
 
 from budo_app.models import Kinder, Profil
+from budo_app.read_contracts.common import active_turnus_id
 from budo_app.utils import parse_sv_birthday
 
 
-def _active_turnus_id(request):
-    return (
-        Profil.objects.filter(user_id=request.user.id)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
-
-
 def serial_letter(request):
-    turnus_id = _active_turnus_id(request)
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         return {"kids": []}
     kids = (
@@ -59,7 +52,7 @@ def serial_letter(request):
 
 
 def murder_game(request):
-    turnus_id = _active_turnus_id(request)
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         return {"kids": [], "team": []}
     kids = (
@@ -118,7 +111,7 @@ def _family_kids(turnus_id, *, special):
 
 
 def _family_contract(request, *, special):
-    turnus_id = _active_turnus_id(request)
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         return {"kids": []}
     family_key = "special_family" if special else "budo_family"
@@ -166,7 +159,7 @@ def _birthday_kid(kid):
 
 
 def birthdays(request):
-    turnus_id = _active_turnus_id(request)
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         return {"kids": []}
     kids = (
@@ -187,7 +180,7 @@ def birthdays(request):
 
 
 def kid_count(request):
-    turnus_id = _active_turnus_id(request)
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         return {"totals": {"checked_in": 0, "kids": 0}}
     counts = Kinder.objects.filter(turnus_id=turnus_id).aggregate(

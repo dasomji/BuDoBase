@@ -2,18 +2,11 @@ from django.db.models import Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import Http404
 
-from budo_app.models import Geld, Kinder, Profil
-
-
-def _active_turnus_id(request):
-    turnus_id = (
-        Profil.objects.filter(user=request.user)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
-    if turnus_id is None:
-        raise Http404
-    return turnus_id
+from budo_app.models import Geld, Kinder
+from budo_app.read_contracts.common import (
+    require_active_turnus_id,
+    serialize_money,
+)
 
 
 def _requested_kid(request, *fields):
@@ -25,7 +18,7 @@ def _requested_kid(request, *fields):
     kid = (
         Kinder.objects.filter(
             id=kid_id,
-            turnus_id=_active_turnus_id(request),
+            turnus_id=require_active_turnus_id(request),
         )
         .values("id", "kid_vorname", "kid_nachname", *fields)
         .first()
@@ -70,14 +63,14 @@ def check_out(request):
     return {
         "kid": {
             **_attendance_kid(kid),
-            "pocket_money": round(float(pocket_money or 0), 2),
+            "pocket_money": serialize_money(pocket_money),
         },
     }
 
 
 def _transport_kids(request):
     return Kinder.objects.filter(
-        turnus_id=_active_turnus_id(request),
+        turnus_id=require_active_turnus_id(request),
     ).select_related("turnus").only(
         "id",
         "kid_vorname",

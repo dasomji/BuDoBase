@@ -18,13 +18,4 @@ def route_data(request, contract_key):
             },
             status=404,
         )
-    if contract.builder is None:
-        return Response(
-            {
-                "code": "contract_not_implemented",
-                "contract": contract.key,
-                "detail": "Route contract is not available yet.",
-            },
-            status=404,
-        )
     return Response(contract.builder(request))

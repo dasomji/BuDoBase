@@ -22,7 +22,7 @@ ContractBuilder = Callable[[object], dict]
 class RouteContract:
     key: str
     domain: str
-    builder: ContractBuilder | None
+    builder: ContractBuilder
 
 
 DOMAIN_CONTRACTS = {

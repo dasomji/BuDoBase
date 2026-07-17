@@ -8,6 +8,10 @@ from budo_app.models import (
     AuslagerorteNotizen,
     Profil,
 )
+from budo_app.read_contracts.common import (
+    required_query_integer,
+    serialize_datetime,
+)
 
 
 def _has_active_turnus(request):
@@ -45,10 +49,6 @@ def places_list(request):
     return {"places": [_list_place(place) for place in places]}
 
 
-def _datetime(value):
-    return value.isoformat() if value else None
-
-
 def _detail_place(place):
     return {
         "id": place.id,
@@ -72,7 +72,7 @@ def _detail_place(place):
                 "id": note.id,
                 "text": note.notiz or "",
                 "author": note.added_by.username,
-                "date": _datetime(note.date_added),
+                "date": serialize_datetime(note.date_added),
                 "day": (
                     note.date_added.strftime("%d.%m.")
                     if note.date_added
@@ -82,13 +82,6 @@ def _detail_place(place):
             for note in place.route_notes
         ],
     }
-
-
-def _place_id(request):
-    place_id = request.query_params.get("id")
-    if not place_id or not str(place_id).isdigit():
-        raise Http404
-    return int(place_id)
 
 
 def place_detail(request):
@@ -110,7 +103,7 @@ def place_detail(request):
             to_attr="route_notes",
         ),
     )
-    place = get_object_or_404(queryset, id=_place_id(request))
+    place = get_object_or_404(queryset, id=required_query_integer(request))
     return {"places": [_detail_place(place)]}
 
 
@@ -148,7 +141,7 @@ def place_update(request):
             "beschreibung",
             "maps_link_parkspot",
         ),
-        id=_place_id(request),
+        id=required_query_integer(request),
     )
     return {"places": [_form_place(place)]}
 
@@ -157,7 +150,7 @@ def place_images(request):
     _require_active_turnus(request)
     place = get_object_or_404(
         Auslagerorte.objects.values("id", "name"),
-        id=_place_id(request),
+        id=required_query_integer(request),
     )
     return {"places": [place]}
 

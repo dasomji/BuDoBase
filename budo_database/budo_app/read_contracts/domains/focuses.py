@@ -12,18 +12,15 @@ from budo_app.models import (
     Schwerpunkte,
     Schwerpunktzeit,
 )
-
-
-def _active_turnus_id(request):
-    return (
-        Profil.objects.filter(user_id=request.user.id)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
+from budo_app.read_contracts.common import (
+    active_turnus_id,
+    required_query_integer,
+    serialize_utc_datetime,
+)
 
 
 def focus_dashboard(request):
-    turnus_id = _active_turnus_id(request)
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         return {"focuses": []}
 
@@ -70,17 +67,6 @@ def focus_dashboard(request):
             for focus in focuses
         ],
     }
-
-
-def _focus_id(request):
-    value = request.query_params.get("id")
-    if not value or not str(value).isdigit():
-        raise Http404
-    return int(value)
-
-
-def _datetime(value):
-    return value.isoformat().replace("+00:00", "Z") if value else None
 
 
 def _focus_queryset(turnus_id, *, with_kids=False, with_meals=False):
@@ -130,8 +116,8 @@ def _focus_detail(focus):
         "duration": focus.schwerpunktzeit.dauer,
         "start": focus.schwerpunktzeit.swp_beginn.isoformat(),
         "off_site": focus.auslagern,
-        "departure": _datetime(focus.geplante_abreise),
-        "arrival": _datetime(focus.geplante_ankunft),
+        "departure": serialize_utc_datetime(focus.geplante_abreise),
+        "arrival": serialize_utc_datetime(focus.geplante_ankunft),
         "place_id": focus.ort_id,
         "place": focus.ort.name if focus.ort else None,
         "coordinates": focus.ort.koordinaten if focus.ort else "",
@@ -157,12 +143,12 @@ def _assigned_kid(kid):
 
 
 def focus_detail(request):
-    turnus_id = _active_turnus_id(request)
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         raise Http404
     focus = get_object_or_404(
         _focus_queryset(turnus_id, with_kids=True, with_meals=True),
-        id=_focus_id(request),
+        id=required_query_integer(request),
     )
     return {
         "focus": _focus_detail(focus),
@@ -196,7 +182,7 @@ def _form_options(turnus_id):
 
 
 def focus_create(request):
-    turnus_id = _active_turnus_id(request)
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         return {"places": [], "team": [], "focus_times": []}
     return _form_options(turnus_id)
@@ -209,31 +195,31 @@ def _focus_form_value(focus):
         "description": focus.beschreibung,
         "time_id": focus.schwerpunktzeit_id,
         "off_site": focus.auslagern,
-        "departure": _datetime(focus.geplante_abreise),
-        "arrival": _datetime(focus.geplante_ankunft),
+        "departure": serialize_utc_datetime(focus.geplante_abreise),
+        "arrival": serialize_utc_datetime(focus.geplante_ankunft),
         "place_id": focus.ort_id,
         "carer_ids": [carer.id for carer in focus.route_carers],
     }
 
 
 def focus_update(request):
-    turnus_id = _active_turnus_id(request)
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         raise Http404
     focus = get_object_or_404(
         _focus_queryset(turnus_id),
-        id=_focus_id(request),
+        id=required_query_integer(request),
     )
     return {"focus": _focus_form_value(focus), **_form_options(turnus_id)}
 
 
 def focus_meals(request):
-    turnus_id = _active_turnus_id(request)
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         raise Http404
     focus = get_object_or_404(
         _focus_queryset(turnus_id, with_meals=True),
-        id=_focus_id(request),
+        id=required_query_integer(request),
     )
     return {
         "focus": {

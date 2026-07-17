@@ -1,14 +1,7 @@
 from django.db.models import Prefetch
 
 from budo_app.models import Kinder, Meal, Profil, Schwerpunkte
-
-
-def _active_turnus_id(request):
-    return (
-        Profil.objects.filter(user_id=request.user.id)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
+from budo_app.read_contracts.common import active_turnus_id
 
 
 def _kid(kid):
@@ -53,7 +46,7 @@ def _focus(focus):
 
 
 def build_kitchen_contract(request):
-    turnus_id = _active_turnus_id(request)
+    turnus_id = active_turnus_id(request)
     if turnus_id is None:
         return {"kids": [], "team": [], "focuses": []}
 
