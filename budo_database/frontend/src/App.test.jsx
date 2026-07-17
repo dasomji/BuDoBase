@@ -55,7 +55,7 @@ describe('application loading', () => {
 
     expect(await screen.findByText('Seitendaten werden geladen…')).toBeInTheDocument();
     await waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
-    expect(fetchImpl.mock.calls[1][0]).toBe('/api/app-data/?route=kids-directory');
+    expect(fetchImpl.mock.calls[1][0]).toBe('/api/route-data/kids-directory/');
     resolveRoute(response({ authenticated: true, kids: [], messages: [] }));
   });
 

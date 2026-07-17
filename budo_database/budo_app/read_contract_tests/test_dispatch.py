@@ -52,10 +52,13 @@ class RouteContractDispatchTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
-    def test_every_current_route_contract_is_known_but_not_exposed_yet(self):
+    def test_every_unimplemented_route_contract_is_known_but_not_exposed_yet(self):
         self.client.force_login(self.user)
+        implemented_keys = {"kid-detail", "kids-directory"}
 
         for key in KNOWN_ROUTE_CONTRACT_KEYS:
+            if key in implemented_keys:
+                continue
             with self.subTest(key=key):
                 response = self.client.get(self.contract_url(key))
 

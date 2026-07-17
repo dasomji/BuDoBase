@@ -9,12 +9,12 @@ import {
 import { parseRoute } from './routes';
 
 describe('route data loading', () => {
-  it('selects legacy compatibility data with the parsed identifier and week', () => {
+  it('selects focused or legacy data according to each parsed route', () => {
     expect(routeDataRequest(parseRoute('/kid_details/21'))).toEqual({
       contractKey: 'kid-detail',
-      mode: 'legacy',
+      mode: 'focused',
       params: { id: '21' },
-      url: '/api/app-data/?route=kid-detail&id=21',
+      url: '/api/route-data/kid-detail/?id=21',
     });
     expect(routeDataRequest(parseRoute('/swp-einteilung-w2'))).toEqual({
       contractKey: 'allocation',

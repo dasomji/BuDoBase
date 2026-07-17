@@ -1,13 +1,22 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { KidDetailPage, KidInteractionForm } from './kids';
+import App from '../App';
+import { parseRoute } from '../routes';
+import { KidDetailPage, KidInteractionForm, KidsPage } from './kids';
 import { formatGermanDate, formatKidBirthday } from './shared';
+
+const response = (data, { ok = true, status = 200 } = {}) => ({
+  ok,
+  status,
+  json: vi.fn().mockResolvedValue(data),
+});
 
 describe('Kinder pages', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    window.history.pushState({}, '', '/');
   });
 
   beforeEach(() => {
@@ -87,6 +96,121 @@ describe('Kinder pages', () => {
     const checkAction = screen.getByRole('link', { name: action });
     expect(checkAction).toHaveAttribute('href', path);
     expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');
+  });
+
+  it('keeps the directory columns, filtering, sorting, links, and empty state on focused rows', () => {
+    const { rerender } = render(<KidsPage data={{ kids: [
+      {
+        id: 8,
+        full_name: 'Grace Hopper',
+        present: true,
+        budo_family: 'L',
+        special_family: 'Falkenhaus',
+        sex_short: '♀',
+        age: 14,
+        weeks: 2,
+        focus_w1: 'Wald',
+        focus_w2: 'Theater',
+        siblings: '---',
+        tent_request: 'Ada',
+        food: '🥦',
+        drugs: '',
+        illness: '',
+        note: '',
+        booking_note: '',
+      },
+      {
+        id: 7,
+        full_name: 'Ada Lovelace',
+        present: false,
+        budo_family: 'M',
+        special_family: 'Biberhaus',
+        sex_short: '♀',
+        age: 13,
+        weeks: 1,
+        focus_w1: 'Theater',
+        focus_w2: 'Wald',
+        siblings: 'Charles',
+        tent_request: 'Grace',
+        food: '🥩',
+        drugs: 'Asthmaspray',
+        illness: 'Allergie',
+        note: 'Teamnotiz',
+        booking_note: 'Buchungsnotiz',
+      },
+    ] }} />);
+
+    expect(screen.getByRole('link', { name: 'Ada Lovelace ❌' })).toHaveAttribute('href', '/kid_details/7');
+    expect(screen.getByRole('columnheader', { name: /Anmerkungen \(Buchung\)/ })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Kinder filtern' }), { target: { value: 'grace' } });
+    expect(screen.getByRole('link', { name: 'Grace Hopper' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Ada Lovelace ❌' })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Kinder filtern' }), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Alter sortieren' }));
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('Ada Lovelace');
+
+    rerender(<KidsPage data={{ kids: [] }} />);
+    expect(screen.getByText('Keine Einträge')).toBeInTheDocument();
+  });
+
+  it('declares only Kinder directory and detail as focused reads', () => {
+    expect(parseRoute('/all_kids')).toMatchObject({
+      readContractKey: 'kids-directory',
+      focusedReadContract: true,
+    });
+    expect(parseRoute('/kid_details/21')).toMatchObject({
+      readContractKey: 'kid-detail',
+      focusedReadContract: true,
+      id: '21',
+    });
+  });
+
+  it('refreshes only the selected Kind contract after a Pfand update', async () => {
+    window.history.pushState({}, '', '/kid_details/7');
+    let detailReads = 0;
+    const fetchImpl = vi.fn(async (url) => {
+      if (url === '/api/bootstrap/') {
+        return response({
+          authenticated: true,
+          csrf_token: 'token',
+          messages: [],
+          profile: { id: 1, rufname: 'Ada' },
+          turnus: { id: 2, label: 'T2' },
+          permissions: {},
+          search_index: { kids: [{ id: 7, full_name: 'Ada Lovelace', present: true }], focuses: [], places: [] },
+        });
+      }
+      if (url === '/api/route-data/kid-detail/?id=7') {
+        detailReads += 1;
+        const deposit = detailReads;
+        return response({
+          kids: [{
+            id: 7,
+            full_name: 'Ada Lovelace',
+            present: true,
+            weeks: 2,
+            birthday: '2012-07-02',
+            notes: [],
+            transactions: [],
+            remaining_money: 10 - deposit * 0.25,
+            deposit,
+          }],
+        });
+      }
+      if (url === '/update_pfand/') return response({ status: 'success' });
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByRole('heading', { name: 'Pfand: 1' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '+ Pfand' }));
+    expect(await screen.findByRole('heading', { name: 'Pfand: 2' })).toBeInTheDocument();
+
+    expect(detailReads).toBe(2);
+    expect(fetchImpl.mock.calls.filter(([url]) => url === '/api/bootstrap/')).toHaveLength(1);
+    expect(fetchImpl.mock.calls.some(([url]) => url.startsWith('/api/app-data/'))).toBe(false);
   });
 });
 

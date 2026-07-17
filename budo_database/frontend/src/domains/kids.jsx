@@ -106,6 +106,7 @@ export const kidRoutes = [
     title: 'Alle Kinder',
     domain: 'kids',
     readContractKey: 'kids-directory',
+    focusedReadContract: true,
     render: ({ data }) => <KidsPage data={data} />,
   },
   {
@@ -114,6 +115,7 @@ export const kidRoutes = [
     title: 'Kind',
     domain: 'kids',
     readContractKey: 'kid-detail',
+    focusedReadContract: true,
     params: match => ({ id: match[1] }),
     resolveTitle: (route, data) => findById(data.kids, route.id)?.full_name || route.title,
     render: ({ route, data, mutate, refresh }) => <KidDetailPage data={data} id={route.id} mutate={mutate} onSaved={refresh} />,
