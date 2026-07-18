@@ -22,9 +22,55 @@ function Progress({ value }) {
   return <span className="happy-cleaning-progress" aria-label="Todo-Fortschritt">{value === null ? '—' : `${value}%`}</span>;
 }
 
+function DeleteConfirmationDialog({ event, onCancel, onConfirm }) {
+  const [confirmation, setConfirmation] = useState('');
+  const eventName = `Happy Cleaning ${event.display_number}`;
+  const titleId = `happy-cleaning-delete-title-${event.id}`;
+  const confirmationId = `happy-cleaning-delete-confirmation-${event.id}`;
+  const confirmed = confirmation === eventName;
+  return (
+    <div className="happy-cleaning-delete-backdrop">
+      <section
+        className="card happy-cleaning-delete-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onKeyDown={key => { if (key.key === 'Escape') onCancel(); }}
+      >
+        <h2 id={titleId}>{eventName} löschen</h2>
+        <p>Diese Aktion kann nicht rückgängig gemacht werden.</p>
+        <label htmlFor={confirmationId}>
+          „{eventName}“ zur Bestätigung eingeben
+        </label>
+        <input
+          id={confirmationId}
+          autoComplete="off"
+          autoFocus
+          spellCheck="false"
+          value={confirmation}
+          onChange={change => setConfirmation(change.target.value)}
+        />
+        <div className="react-actions">
+          <button className="button" type="button" onClick={onCancel}>Abbrechen</button>
+          <button
+            className="button danger"
+            type="button"
+            disabled={!confirmed}
+            aria-label={`${eventName} endgültig löschen`}
+            onClick={onConfirm}
+          >
+            Endgültig löschen
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function HappyCleaningOverviewPage({ data, mutate }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
   const run = async (url, payload = {}) => {
     setBusy(true);
     setError('');
@@ -37,14 +83,20 @@ export function HappyCleaningOverviewPage({ data, mutate }) {
     }
   };
   const remove = event => {
-    if (window.confirm(`Happy Cleaning ${event.display_number} wirklich löschen?`)) {
-      run(`/api/happy-cleaning/events/${event.id}/delete/`, {
-        expected_revision: event.revision,
-      });
-    }
+    setDeleteCandidate(null);
+    run(`/api/happy-cleaning/events/${event.id}/delete/`, {
+      expected_revision: event.revision,
+    });
   };
   return (
     <main className="happy-cleaning-page" id="body-container">
+      {deleteCandidate && (
+        <DeleteConfirmationDialog
+          event={deleteCandidate}
+          onCancel={() => setDeleteCandidate(null)}
+          onConfirm={() => remove(deleteCandidate)}
+        />
+      )}
       <div className="happy-cleaning-toolbar">
         <button className="button" type="button" disabled={busy} onClick={() => run('/api/happy-cleaning/events/create/')}>
           Happy Cleaning hinzufügen
@@ -67,7 +119,7 @@ export function HappyCleaningOverviewPage({ data, mutate }) {
                 Nummernliste
               </a>
               {event.can_delete && (
-                <button className="button danger" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => remove(event)}>
+                <button className="button danger" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
                   Löschen
                 </button>
               )}
@@ -79,13 +131,32 @@ export function HappyCleaningOverviewPage({ data, mutate }) {
   );
 }
 
-function PrintSection({ id, title, children, empty }) {
+function PrintSection({ id, title, columns, rows }) {
   return (
     <section className="happy-cleaning-print-section" aria-labelledby={id}>
       <h2 id={id}>{title}</h2>
-      {empty
+      {!rows.length
         ? <p className="happy-cleaning-print-empty">Keine Kinder in diesem Abschnitt.</p>
-        : <ul className="happy-cleaning-print-list">{children}</ul>}
+        : (
+          <div className="happy-cleaning-print-table-container">
+            <table className="happy-cleaning-print-table" aria-labelledby={id}>
+              <thead>
+                <tr>{columns.map(column => <th key={column.key} scope="col">{column.label}</th>)}</tr>
+              </thead>
+              <tbody>
+                {rows.map(child => (
+                  <tr key={child.id}>
+                    {columns.map(column => (
+                      <td className={column.className} key={column.key}>
+                        {column.render ? column.render(child) : child[column.key]}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
     </section>
   );
 }
@@ -105,40 +176,37 @@ export function HappyCleaningPrintPage({ data }) {
       <PrintSection
         id="happy-cleaning-present-numbered"
         title="Anwesend mit Nummer"
-        empty={!data.present_numbered.length}
-      >
-        {data.present_numbered.map(child => (
-          <li className="happy-cleaning-print-row" key={child.id}>
-            <span className="happy-cleaning-print-number" aria-label={`Nummer ${child.number}`}>{child.number}</span>
-            <span>{child.full_name}</span>
-          </li>
-        ))}
-      </PrintSection>
+        columns={[
+          { key: 'number', label: 'Nummer', className: 'happy-cleaning-print-number' },
+          { key: 'full_name', label: 'Name' },
+        ]}
+        rows={data.present_numbered}
+      />
       <PrintSection
         id="happy-cleaning-present-numberless"
         title="Anwesend ohne Nummer"
-        empty={!data.present_numberless.length}
-      >
-        {data.present_numberless.map(child => (
-          <li className="happy-cleaning-print-row happy-cleaning-print-row-numberless" key={child.id}>
-            <span>{child.full_name}</span>
-          </li>
-        ))}
-      </PrintSection>
+        columns={[{ key: 'full_name', label: 'Name' }]}
+        rows={data.present_numberless}
+      />
       <PrintSection
         id="happy-cleaning-absent"
         title="Abwesend"
-        empty={!data.absent.length}
-      >
-        {data.absent.map(child => (
-          <li className="happy-cleaning-print-row happy-cleaning-print-row-absent" key={child.id}>
-            <span>{child.full_name}</span>
-            <span className="happy-cleaning-print-meta">
-              Nummer {child.number ?? '—'} · Abwesenheitsort: {child.absence_location || 'Nicht angegeben'}
-            </span>
-          </li>
-        ))}
-      </PrintSection>
+        columns={[
+          {
+            key: 'number',
+            label: 'Nummer',
+            className: 'happy-cleaning-print-number',
+            render: child => child.number ?? '—',
+          },
+          { key: 'full_name', label: 'Name' },
+          {
+            key: 'absence_location',
+            label: 'Abwesenheitsort',
+            render: child => child.absence_location || 'Nicht angegeben',
+          },
+        ]}
+        rows={data.absent}
+      />
     </main>
   );
 }
