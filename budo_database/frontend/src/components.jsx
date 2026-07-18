@@ -2,14 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-export const navItems = [
-  ['/admin/', 'Admin'],
-  ['/all_kids', 'Alle Kinder'],
-  ['/swp-dashboard/', 'SWPs'],
-  ['/auslagerorte-list/', 'Auslagerorte'],
-  ['/kitchen', 'Küche'],
-  ['https://honey-glue-e51.notion.site/Methoden-eaff0abb8b2a42bfb319c50d5357022c', 'Spiele'],
-];
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 export function findById(items, id) {
   return items.find(item => Number(item.id) === Number(id));
@@ -106,41 +99,17 @@ export function GlobalSearch({ data, onNavigate = path => window.location.assign
 }
 
 export function Header({ title, authenticated, searchData, action }) {
-  const [open, setOpen] = useState(false);
   return (
-    <>
-      <header id="headermenu">
-        <div id="header-content">
-          <div id="logo"><a href="/dashboard/"><Logo /></a></div>
-          <div id="headertitle"><h1>{title}</h1></div>
-          {authenticated && (
-            <>
-              <GlobalSearch data={searchData} />
-              <nav id="navmenu-container" className="desktop-navbar">
-                {navItems.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
-              </nav>
-              {action && <div id="headerbutton">{action}</div>}
-              <button id="menu-button" className="button" type="button" aria-label="Menü öffnen" onClick={() => setOpen(true)}>☰</button>
-            </>
-          )}
-        </div>
-      </header>
-      {open && (
-        <div className="mobile-drawer">
-          <nav>
-            <button className="closebtn" type="button" onClick={() => setOpen(false)}>×</button>
-            <a href="/profil/">Profil</a>
-            <a href="/logout/">Ausloggen</a>
-            {navItems.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
-            <a href="/zugabreise">Zugabreise</a>
-            <a href="/zuganreise">Zuganreise</a>
-            <a href="/budo_familien/">BuDo-Familien</a>
-            <a href="/spezial_familien/">Spezialfamilien</a>
-          </nav>
-          <button type="button" className="mobile-drawer-backdrop" aria-label="Menü schließen" onClick={() => setOpen(false)} />
-        </div>
-      )}
-    </>
+    <header id="headermenu">
+      <div id="header-content">
+        {authenticated
+          ? <SidebarTrigger id="menu-button" aria-label="Sidebar ein- oder ausklappen" />
+          : <div id="logo"><a href="/dashboard/"><Logo /></a></div>}
+        <div id="headertitle"><h1>{title}</h1></div>
+        {authenticated && <GlobalSearch data={searchData} />}
+        {authenticated && action && <div id="headerbutton">{action}</div>}
+      </div>
+    </header>
   );
 }
 

@@ -1,6 +1,13 @@
 import { Card, Column, Columns, FieldList, NativeForm, RestForm } from '../components';
 import { formatGermanDate, money, NotFoundPage } from './shared';
 
+const familyLabels = {
+  S: 'Smallie',
+  M: 'Medi',
+  L: 'Largie',
+  XL: 'X-largie',
+};
+
 function AssignedFocuses({ focuses = [] }) {
   return <><p><span className="label">Meine Schwerpunkte</span>:</p><ul>{focuses.length ? focuses.map(focus => <li key={focus.id}><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a></li>) : <li>Keine Schwerpunkte zugeteilt.</li>}</ul></>;
 }
@@ -10,6 +17,7 @@ function PersonCard({ person, focuses, turnus, showUpdateLink = false }) {
     ['Rolle', person.role_display],
     ['Turnus', turnus?.label],
     ['Essen', person.food_display],
+    ['BuDo-Familie', familyLabels[person.budo_family]],
     ['Allergien', person.allergies],
     ['Kaffee', person.coffee],
     ['Email', <a href={`mailto:${person.email}`}>{person.email}</a>],
@@ -36,6 +44,7 @@ export function ProfilePage({ data }) {
     { name: 'coffee', label: 'Kaffee', value: profile.coffee },
     { name: 'rolle', label: 'Rolle', type: 'select', value: profile.role, options: [{ value: 'b', label: 'Betreuer:in' }, { value: 'k', label: 'Küche' }, { value: 'o', label: 'Organisator' }, { value: 'f', label: 'Freiwillige:r' }] },
     { name: 'essen', label: 'Essen', type: 'select', value: profile.food, options: [{ value: 'ft', label: 'Flexitarisch' }, { value: 'vt', label: 'Vegetarisch' }, { value: 'vn', label: 'Vegan' }] },
+    { name: 'budo_family', label: 'BuDo-Familie', type: 'select', value: profile.budo_family, options: [{ value: '', label: 'Nicht zugeordnet' }, { value: 'S', label: 'Smallie' }, { value: 'M', label: 'Medi' }, { value: 'L', label: 'Largie' }, { value: 'XL', label: 'X-largie' }] },
     { name: 'telefonnummer', label: 'Telefonnummer', value: profile.phone },
   ];
   if (profile.can_change_turnus) {

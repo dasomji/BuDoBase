@@ -6,6 +6,11 @@ import { resolve } from 'node:path';
 export default defineConfig({
   base: '/static/frontend/',
   plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, './src'),
+    },
+  },
   build: {
     outDir: resolve(__dirname, '../budo_app/static/frontend'),
     emptyOutDir: true,

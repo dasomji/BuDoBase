@@ -128,7 +128,9 @@ class TurnusAdmin(admin.ModelAdmin):
 
 
 class ProfilAdmin(admin.ModelAdmin):
-    list_display = ("__str__", 'rolle', 'get_food', 'allergien', 'turnus')
+    list_display = (
+        "__str__", 'rolle', 'get_food', 'budo_family', 'allergien', 'turnus',
+    )
 
 
 class MealInline(admin.TabularInline):

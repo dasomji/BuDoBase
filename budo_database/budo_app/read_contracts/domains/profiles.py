@@ -66,6 +66,7 @@ def _profile(profile, *, can_change_turnus):
         "role_display": profile.get_rolle(),
         "food": profile.essen,
         "food_display": profile.get_food(),
+        "budo_family": profile.budo_family,
         "money_total": serialize_money(
             sum(item.amount or 0 for item in profile.route_money_items),
         ),
