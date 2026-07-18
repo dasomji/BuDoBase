@@ -3,7 +3,7 @@ from . import views
 from django.conf import settings
 from django.conf.urls.static import static
 from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail, SchwerpunkteCreate, AuslagerorteCreate, AuslagerorteImageUpload, AuslagerorteDetail, AuslagerorteUpdate
-from .happy_cleaning_page_views import assignment_page
+from .happy_cleaning_page_views import assignment_page, station_detail_page
 
 urlpatterns = [
     path('update_notiz_abreise/', views.update_notiz_abreise,
@@ -52,6 +52,11 @@ urlpatterns = [
         'happy-cleaning/<int:event_id>/assignment/',
         assignment_page,
         name='happy-cleaning-assignment-page',
+    ),
+    path(
+        'happy-cleaning/<int:event_id>/stations/<int:station_id>/',
+        station_detail_page,
+        name='happy-cleaning-station-detail-page',
     ),
     path('happy-cleaning/', views.happy_cleaning, name='happy_cleaning'),
     path('kindergesamtzahl/', views.kindergesamtzahl, name='kindergesamtzahl'),

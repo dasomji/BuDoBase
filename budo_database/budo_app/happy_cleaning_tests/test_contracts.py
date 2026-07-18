@@ -370,6 +370,8 @@ class HappyCleaningContractTests(TestCase):
                 "meeting_point": "Vor dem Speisesaal",
                 "wishes": "Fenster nicht vergessen",
                 "responsible": {"id": self.user.profil.id, "name": "Mira"},
+                "todo_checked_count": 1,
+                "todo_total_count": 2,
                 "todo_progress_percentage": 50,
                 "children": [
                     {

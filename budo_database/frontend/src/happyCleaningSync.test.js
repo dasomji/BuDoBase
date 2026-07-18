@@ -52,6 +52,7 @@ describe('Happy Cleaning realtime coordinator', () => {
 
     FakeSocket.instances[0].message({ version: 1, event_id: 7, projection: 'assignments', revision: 9, invalidation_id: 'a', request_id: 'r1' });
     FakeSocket.instances[0].message({ version: 1, event_id: 7, projection: 'child_numbers', revision: 10, invalidation_id: 'b', request_id: 'r2' });
+    FakeSocket.instances[0].message({ version: 1, event_id: 7, projection: 'todos', revision: 11, invalidation_id: 'todo', request_id: 'r-todo' });
     FakeSocket.instances[0].message({ version: 1, event_id: 8, projection: 'assignments', revision: 99, invalidation_id: 'c', request_id: 'r3' });
     await vi.advanceTimersByTimeAsync(0);
 

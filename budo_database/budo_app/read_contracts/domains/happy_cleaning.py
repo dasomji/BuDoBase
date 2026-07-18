@@ -409,6 +409,7 @@ def station_detail(request):
     responsible = station.responsible_profile
     if responsible and responsible.turnus_id != event.turnus_id:
         responsible = None
+    checked_count = sum(todo.checked for todo in todos)
     return {
         "event": _event_summary(event),
         "station": {
@@ -421,6 +422,8 @@ def station_detail(request):
                 {"id": responsible.id, "name": responsible.rufname}
                 if responsible else None
             ),
+            "todo_checked_count": checked_count,
+            "todo_total_count": len(todos),
             "todo_progress_percentage": _todo_progress(todos),
             "children": [
                 {
