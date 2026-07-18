@@ -73,6 +73,8 @@ class AllocationContractTests(TestCase):
             kid_birthday=date(2012, 7, 2),
             turnus=self.turnus,
             geschwister="Bea",
+            sex="weiblich",
+            budo_family="M",
             illness="Private Krankheit",
             drugs="Private Medikamente",
             notfall_kontakte="Privater Notfallkontakt",
@@ -146,6 +148,11 @@ class AllocationContractTests(TestCase):
                         "name": "See",
                         "week": "w2",
                         "kid_ids": [self.kid.id],
+                        "stats": {
+                            "average_age": self.kid.get_alter(),
+                            "sex": {"male": 0, "female": 1, "diverse": 0},
+                            "families": {"S": 0, "M": 1, "L": 0, "XL": 0},
+                        },
                     }
                 ],
             },
@@ -162,6 +169,11 @@ class AllocationContractTests(TestCase):
                     "name": "Wald",
                     "week": "w1",
                     "kid_ids": [self.kid.id],
+                    "stats": {
+                        "average_age": self.kid.get_alter(),
+                        "sex": {"male": 0, "female": 1, "diverse": 0},
+                        "families": {"S": 0, "M": 1, "L": 0, "XL": 0},
+                    },
                 }
             ],
         )
@@ -177,6 +189,42 @@ class AllocationContractTests(TestCase):
                     "friends": "Woche-eins-Freund",
                 }
             ],
+        )
+
+    def test_focus_stats_summarize_age_gender_and_budo_families(self):
+        male_kid = Kinder.objects.create(
+            kid_index="T2-2",
+            kid_vorname="Max",
+            kid_nachname="Muster",
+            kid_birthday=date(2010, 7, 2),
+            turnus=self.turnus,
+            sex="männlich",
+            budo_family="S",
+        )
+        diverse_kid = Kinder.objects.create(
+            kid_index="T2-3",
+            kid_vorname="Dani",
+            kid_nachname="Divers",
+            kid_birthday=None,
+            turnus=self.turnus,
+            sex="divers",
+            budo_family="XL",
+        )
+        male_kid.schwerpunkte.add(self.lake)
+        diverse_kid.schwerpunkte.add(self.lake)
+
+        focus = self.client.get(self.contract_url(2)).json()["focuses"][0]
+
+        self.assertEqual(
+            focus["stats"],
+            {
+                "average_age": round(
+                    (self.kid.get_alter() + male_kid.get_alter()) / 2,
+                    2,
+                ),
+                "sex": {"male": 1, "female": 1, "diverse": 1},
+                "families": {"S": 1, "M": 1, "L": 0, "XL": 1},
+            },
         )
 
     def test_contract_requires_authentication_and_a_supported_week(self):

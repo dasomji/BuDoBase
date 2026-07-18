@@ -11,8 +11,24 @@ export function MurderPage({ data }) {
 }
 
 export function FamiliesPage({ data, special = false }) {
-  const groups = useMemo(() => data.kids.reduce((result, kid) => { const key = special ? kid.special_family : kid.budo_family; if (key) (result[key] ||= []).push(kid); return result; }, {}), [data.kids, special]);
-  return <Columns>{Object.entries(groups).map(([name, kids]) => <Column key={name}><Card title={`${name} (${kids.length})`}><ul>{kids.map(kid => <li key={kid.id}>{linkKid(kid)} – {kid.age}</li>)}</ul></Card></Column>)}</Columns>;
+  const groups = useMemo(() => data.kids.reduce((result, kid) => {
+    const key = special ? kid.special_family : kid.budo_family;
+    if (key) (result[key] ||= []).push(kid);
+    return result;
+  }, {}), [data.kids, special]);
+  return (
+    <Columns className="families-page">
+      {Object.entries(groups).map(([name, kids]) => (
+        <Column className="family-card-column" key={name}>
+          <Card title={`${name} (${kids.length})`}>
+            <ul className="family-kids">
+              {kids.map(kid => <li key={kid.id}>{linkKid(kid)} – {kid.age}</li>)}
+            </ul>
+          </Card>
+        </Column>
+      ))}
+    </Columns>
+  );
 }
 
 export function BirthdaysPage({ data }) {

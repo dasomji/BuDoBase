@@ -66,8 +66,8 @@ describe('operational report pages', () => {
     expect(screen.getByText('Betreuer:in Boris')).toHaveClass('murder_name');
   });
 
-  it('preserves family grouping, labels, ordering, links, and empty behavior', () => {
-    const { rerender } = render(<FamiliesPage data={{ kids: [
+  it('preserves family grouping, labels, ordering, links, responsive layout hooks, and empty behavior', () => {
+    const { container, rerender } = render(<FamiliesPage data={{ kids: [
       { id: 1, full_name: 'Aaron First', present: false, age: 13, budo_family: 'S' },
       { id: 2, full_name: 'Abel Second', present: true, age: 12, budo_family: 'S' },
       { id: 3, full_name: 'Ada Third', present: true, age: 14, budo_family: 'L' },
@@ -81,6 +81,9 @@ describe('operational report pages', () => {
       'Abel Second – 12',
     ]);
     expect(screen.getByRole('link', { name: 'Aaron First ❌' })).toHaveAttribute('href', '/kid_details/1');
+    expect(container.querySelector('main')).toHaveClass('families-page');
+    expect(container.querySelectorAll('.family-card-column')).toHaveLength(2);
+    expect(within(smallie).getByRole('list')).toHaveClass('family-kids');
 
     rerender(<FamiliesPage special data={{ kids: [] }} />);
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
