@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Header, Messages } from './components';
 import {
   loadBootstrap,
@@ -6,6 +6,7 @@ import {
   routeDataRequest,
 } from './dataLoader';
 import { notFoundRoute } from './domains/shared';
+import { useHappyCleaningSync } from './happyCleaningSync';
 import { isPublicRoute, parseRoute, renderRoute, resolveRouteTitle, routeHeaderAction } from './routes';
 
 export { parseRoute } from './routes';
@@ -30,6 +31,7 @@ export default function App({
     notFound: false,
     authenticationRequired: false,
   });
+  const routeRequestSequence = useRef(0);
   const request = useMemo(() => routeDataRequest(route), [route]);
 
   const refreshBootstrap = useCallback(async () => {
@@ -41,14 +43,21 @@ export default function App({
     }
   }, [fetchImpl]);
 
-  const refreshRoute = useCallback(async () => {
+  const refreshRoute = useCallback(async ({
+    propagateError = false,
+    preserveData = false,
+  } = {}) => {
+    const sequence = ++routeRequestSequence.current;
     if (!request) {
       setRouteState({ loading: false, data: null, error: null, notFound: false, authenticationRequired: false });
       return;
     }
-    setRouteState(current => ({ ...current, loading: true, error: null, notFound: false, authenticationRequired: false }));
+    if (!preserveData) {
+      setRouteState(current => ({ ...current, loading: true, error: null, notFound: false, authenticationRequired: false }));
+    }
     try {
       const result = await loadRouteData(route, fetchImpl);
+      if (sequence !== routeRequestSequence.current) return null;
       setRouteState({
         loading: false,
         data: result.data,
@@ -56,8 +65,16 @@ export default function App({
         notFound: result.notFound,
         authenticationRequired: result.authenticationRequired,
       });
+      return result.data;
     } catch (caught) {
-      setRouteState({ loading: false, data: null, error: caught, notFound: false, authenticationRequired: false });
+      if (sequence !== routeRequestSequence.current) return null;
+      if (preserveData) {
+        setRouteState(current => ({ ...current, loading: false }));
+      } else {
+        setRouteState({ loading: false, data: null, error: caught, notFound: false, authenticationRequired: false });
+      }
+      if (propagateError) throw caught;
+      return null;
     }
   }, [fetchImpl, request, route]);
 
@@ -74,6 +91,18 @@ export default function App({
     }
   }, [bootstrap, navigate, route, routeState.authenticationRequired]);
 
+  const realtimeSync = useHappyCleaningSync({
+    enabled: Boolean(
+      bootstrap?.authenticated
+      && route.domain === 'happy-cleaning'
+      && route.event_id
+      && routeState.data?.event
+    ),
+    eventId: route.event_id,
+    revision: routeState.data?.event?.revision,
+    refresh: () => refreshRoute({ propagateError: true, preserveData: true }),
+  });
+
   const data = routeState.data ? {
     ...bootstrap,
     ...routeState.data,
@@ -85,6 +114,11 @@ export default function App({
     turnus: routeState.data.turnus ?? bootstrap?.turnus,
   } : bootstrap;
   const mutate = async (url, payload, json = true) => {
+    if (realtimeSync.enabled && !realtimeSync.writesEnabled) {
+      const error = new Error('Realtime reconciliation required before writing');
+      error.payload = { code: 'sync_unavailable' };
+      throw error;
+    }
     const options = { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': data.csrf_token } };
     if (json) {
       options.headers['Content-Type'] = 'application/json';
@@ -122,7 +156,16 @@ export default function App({
     <>
       {!route.standalone && <Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data) : null} />}
       <Messages items={data.messages} />
-      {renderRoute(route, { data, mutate, refresh: refreshRoute, fetchImpl })}
+      {realtimeSync.enabled && (
+        realtimeSync.connection !== 'connected' || !realtimeSync.httpAvailable
+      ) && (
+        <p className="warning realtime-warning" role="status">
+          {!realtimeSync.httpAvailable
+            ? 'Happy Cleaning ist derzeit nicht erreichbar. Änderungen sind deaktiviert.'
+            : 'Realtime-Verbindung unterbrochen. Daten werden abgeglichen…'}
+        </p>
+      )}
+      {renderRoute(route, { data, mutate, refresh: refreshRoute, fetchImpl, realtimeSync })}
     </>
   );
 }

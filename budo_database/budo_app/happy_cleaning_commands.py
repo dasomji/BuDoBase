@@ -11,6 +11,9 @@ from budo_app.audit import (
     record_audit_event,
     record_rejected_attempt,
 )
+from budo_app.happy_cleaning_assignment_publisher import (
+    publish_assignment_invalidation_on_commit,
+)
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningCommandRequest,
@@ -194,6 +197,18 @@ def complete_command(context, action, response):
         action=action,
         response=stored,
     )
+    return stored
+
+
+def complete_focused_command(context, action, response):
+    stored = complete_command(context, action, response)
+    event = response["event"]
+    publish_assignment_invalidation_on_commit({
+        "kind": "todo",
+        "happy_cleaning_id": event["id"],
+        "revision": event["revision"],
+        "request_id": context.request_id,
+    })
     return stored
 
 
@@ -554,7 +569,7 @@ def create_station(context, event_id, expected_revision, fields):
                 "station_name": station.name,
             },
         )
-        return complete_command(context, action, {
+        return complete_focused_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "station": station_projection(station),
@@ -621,7 +636,7 @@ def update_station(context, event_id, station_id, expected_version, fields):
                 "changed_fields": changed_fields,
             },
         )
-        return complete_command(context, action, {
+        return complete_focused_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "station": station_projection(station),
@@ -666,7 +681,7 @@ def delete_station(context, event_id, station_id, expected_version):
                 "station_name": name,
             },
         )
-        return complete_command(context, action, {
+        return complete_focused_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "deleted_station_id": station_id,
@@ -700,7 +715,7 @@ def reorder_stations(context, event_id, expected_revision, station_ids):
             resource_label=f"Happy Cleaning {event.display_number}",
             details={"happy_cleaning_id": event.id},
         )
-        return complete_command(context, action, {
+        return complete_focused_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "station_ids": station_ids,
@@ -747,7 +762,7 @@ def create_todo(context, event_id, station_id, expected_version, text):
                 "todo_id": todo.id,
             },
         )
-        return complete_command(context, action, {
+        return complete_focused_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "station_version": station.version,
@@ -790,7 +805,7 @@ def update_todo(context, event_id, station_id, todo_id, expected_version, text):
                 "changed_fields": ["text"],
             },
         )
-        return complete_command(context, action, {
+        return complete_focused_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "station_version": station.version,
@@ -836,7 +851,7 @@ def reorder_todos(context, event_id, station_id, expected_version, todo_ids):
                 "station_id": station.id,
             },
         )
-        return complete_command(context, action, {
+        return complete_focused_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "station_version": station.version,
@@ -883,7 +898,7 @@ def delete_todo(context, event_id, station_id, todo_id, expected_version):
                 "todo_id": todo_id,
             },
         )
-        return complete_command(context, action, {
+        return complete_focused_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "station_version": station.version,
@@ -1016,7 +1031,7 @@ def copy_stations(
                 "copied_station_count": len(copied),
             },
         )
-        return complete_command(context, action, {
+        return complete_focused_command(context, action, {
             "ok": True,
             "event": event_projection(target),
             "copied_stations": [station_projection(item) for item in copied],

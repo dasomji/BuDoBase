@@ -11,6 +11,7 @@ const errorMessage = error => {
   if (code === 'stale') return 'Die Daten wurden inzwischen geändert. Bitte neu laden.';
   if (code === 'capacity_locked') return 'Die Kapazität ist nach der ersten Einteilung dauerhaft gesperrt.';
   if (code === 'station_locked') return 'Diese Station kann nach der ersten Einteilung nicht gelöscht werden.';
+  if (code === 'sync_unavailable') return 'Vor der nächsten Änderung müssen aktuelle Daten geladen werden.';
   return error?.message || 'Die Änderung konnte nicht gespeichert werden.';
 };
 
@@ -278,11 +279,13 @@ function CopyDialog({ data, busy, perform, close }) {
   );
 }
 
-export function HappyCleaningManagementPage({ data, mutate }) {
+export function HappyCleaningManagementPage({ data, mutate, realtimeSync }) {
   const [expanded, setExpanded] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
+  const writeBlocked = realtimeSync?.enabled && !realtimeSync.writesEnabled;
+  const writeBusy = busy || writeBlocked;
   const perform = async (url, payload, expandId = null, preserveError = false) => {
     setBusy(true);
     if (!preserveError) setError('');
@@ -312,8 +315,8 @@ export function HappyCleaningManagementPage({ data, mutate }) {
         <button className="button" type="button" onClick={() => setCopyOpen(true)}>Stationen kopieren</button>
       </div>
       {error && <p className="error" role="alert">{error}</p>}
-      {copyOpen && <CopyDialog data={data} busy={busy} perform={perform} close={() => setCopyOpen(false)} />}
-      <NewStationForm event={data.event} profiles={data.responsible_profiles} busy={busy} perform={(...args) => perform(...args).catch(() => {})} />
+      {copyOpen && <CopyDialog data={data} busy={writeBusy} perform={perform} close={() => setCopyOpen(false)} />}
+      <NewStationForm event={data.event} profiles={data.responsible_profiles} busy={writeBusy} perform={(...args) => perform(...args).catch(() => {})} />
       {!data.stations.length && <p>Noch keine Station angelegt.</p>}
       <div className="happy-cleaning-stations">
         {data.stations.map((station, index) => (
@@ -326,7 +329,7 @@ export function HappyCleaningManagementPage({ data, mutate }) {
             count={data.stations.length}
             expanded={expanded === station.id}
             setExpanded={setExpanded}
-            busy={busy}
+            busy={writeBusy}
             perform={(...args) => perform(...args).catch(() => null)}
             reorderStations={reorderStations}
           />
@@ -353,6 +356,6 @@ export const happyCleaningRoutes = [
     readContractKey: 'happy-cleaning-stations',
     params: match => ({ event_id: match[1] }),
     resolveTitle: (_route, data) => `Stationen · Happy Cleaning ${data.event?.display_number || ''}`.trim(),
-    render: ({ data, mutate }) => <HappyCleaningManagementPage data={data} mutate={mutate} />,
+    render: ({ data, mutate, realtimeSync }) => <HappyCleaningManagementPage data={data} mutate={mutate} realtimeSync={realtimeSync} />,
   },
 ];

@@ -99,6 +99,11 @@ def _increment_turnus_event_revisions(turnus_id):
     HappyCleaning.objects.filter(turnus_id=turnus_id).update(
         revision=F("revision") + 1,
     )
+    return list(
+        HappyCleaning.objects.filter(turnus_id=turnus_id)
+        .values_list("id", "revision")
+        .order_by("id")
+    )
 
 
 def _duplicate_number_projection(turnus_id, requested_number):
@@ -186,6 +191,7 @@ def set_child_number(context, child_id, number, expected_version):
                 },
             )
         previous = child.happy_cleaning_number
+        event_revisions = []
         if previous != number:
             child.happy_cleaning_number = number
             child.happy_cleaning_number_version += 1
@@ -222,7 +228,7 @@ def set_child_number(context, child_id, number, expected_version):
                         "current_version": expected_version,
                     },
                 )
-            _increment_turnus_event_revisions(context.turnus.id)
+            event_revisions = _increment_turnus_event_revisions(context.turnus.id)
         audit_action = (
             "happy_cleaning.child_number.set"
             if previous is None and number is not None
@@ -246,11 +252,13 @@ def set_child_number(context, child_id, number, expected_version):
             "ok": True,
             "child": _child_projection(child),
         })
-        publish_assignment_invalidation_on_commit({
-            "kind": "child_number",
-            "turnus_id": context.turnus.id,
-            "child_id": child.id,
-        })
+        for happy_cleaning_id, revision in event_revisions:
+            publish_assignment_invalidation_on_commit({
+                "kind": "child_number",
+                "happy_cleaning_id": happy_cleaning_id,
+                "revision": revision,
+                "request_id": context.request_id,
+            })
         return response, False
 
 
@@ -356,10 +364,9 @@ def assign_child(context, event_id, child_id, station_id):
         })
         publish_assignment_invalidation_on_commit({
             "kind": "assignment",
-            "turnus_id": context.turnus.id,
             "happy_cleaning_id": event.id,
-            "child_id": child.id,
             "revision": revision,
+            "request_id": context.request_id,
         })
         return response, False
 
@@ -487,13 +494,13 @@ def move_child(context, event_id, child_id, station_id, expected_version):
             "station": _station_projection(target),
             "event_revision": revision,
         })
-        publish_assignment_invalidation_on_commit({
-            "kind": "assignment",
-            "turnus_id": context.turnus.id,
-            "happy_cleaning_id": event.id,
-            "child_id": child.id,
-            "revision": revision,
-        })
+        if previous_station_id != target.id:
+            publish_assignment_invalidation_on_commit({
+                "kind": "assignment",
+                "happy_cleaning_id": event.id,
+                "revision": revision,
+                "request_id": context.request_id,
+            })
         return response, False
 
 
@@ -577,10 +584,9 @@ def remove_child(context, event_id, child_id, expected_version):
         })
         publish_assignment_invalidation_on_commit({
             "kind": "assignment",
-            "turnus_id": context.turnus.id,
             "happy_cleaning_id": event.id,
-            "child_id": child.id,
             "revision": revision,
+            "request_id": context.request_id,
         })
         return response, False
 
