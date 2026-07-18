@@ -397,6 +397,31 @@
   z-index: calc(var(--z-sidebar) + 1);
 }
 
+[data-slot="sidebar"][data-mobile="true"] {
+  width: 100vw;
+  max-width: none;
+}
+
+.sidebar-mobile-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--sidebar-foreground);
+  padding: 0;
+}
+
+.sidebar-mobile-close svg {
+  width: 32px;
+  height: 32px;
+}
+
 #interaction-bar {
   width: 100%;
 }
