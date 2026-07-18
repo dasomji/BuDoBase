@@ -1,9 +1,15 @@
 function routeParams(route) {
-  return Object.fromEntries(
-    ['id', 'week']
+  const params = Object.fromEntries(
+    ['id', 'event_id', 'station_id', 'week']
       .filter(key => route[key] !== undefined)
       .map(key => [key, String(route[key])]),
   );
+  if (route.includeSearch && typeof window !== 'undefined') {
+    for (const [key, value] of new URLSearchParams(window.location.search)) {
+      params[key] = value;
+    }
+  }
+  return params;
 }
 
 function withQuery(path, params) {

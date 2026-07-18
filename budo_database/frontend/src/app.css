@@ -216,6 +216,43 @@
   border: 0;
 }
 
+.audit-page {
+  display: block;
+  padding: var(--m-padding);
+}
+
+.audit-controls {
+  padding: var(--m-padding);
+}
+
+.audit-filters {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+}
+
+.audit-export {
+  margin-top: var(--m-padding);
+  padding-top: var(--m-padding);
+  border-top: 1px solid currentColor;
+}
+
+.audit-export .checkbox-row {
+  margin-bottom: var(--s-padding);
+}
+
+.audit-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--m-padding);
+  padding: var(--m-padding);
+}
+
+#audit-table code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .mobile-drawer {
   position: fixed;
   inset: 0;
@@ -310,13 +347,456 @@ input[name="amount"]::placeholder {
   display: none;
 }
 
+.happy-cleaning-page {
+  display: block;
+  width: min(72rem, 100%);
+  margin: 0 auto;
+  padding: var(--m-padding);
+}
+
+.happy-cleaning-toolbar,
+.happy-cleaning-station-summary,
+.happy-cleaning-order-controls,
+.happy-cleaning-todo,
+.happy-cleaning-add-todo {
+  display: flex;
+  align-items: center;
+  gap: var(--s-padding);
+}
+
+.happy-cleaning-toolbar {
+  justify-content: flex-end;
+  margin-bottom: var(--m-padding);
+}
+
+.happy-cleaning-events,
+.happy-cleaning-todos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.happy-cleaning-event,
+.happy-cleaning-station,
+.happy-cleaning-create,
+.happy-cleaning-copy {
+  margin-bottom: var(--m-padding);
+  padding: var(--m-padding);
+}
+
+.happy-cleaning-event .react-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-padding);
+}
+
+.happy-cleaning-print-page {
+  display: block;
+  width: min(52rem, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: var(--l-padding);
+  background: white;
+  color: black;
+}
+
+.happy-cleaning-print-actions {
+  justify-content: flex-end;
+  margin-bottom: var(--m-padding);
+}
+
+.happy-cleaning-print-title {
+  margin-bottom: var(--l-padding);
+  border-bottom: 4px double currentColor;
+  padding-bottom: var(--s-padding);
+}
+
+.happy-cleaning-print-title h1 {
+  margin: 0;
+  font-size: clamp(1.65rem, 5vw, 2.4rem);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.happy-cleaning-print-section {
+  margin: 0 0 var(--l-padding);
+}
+
+.happy-cleaning-print-section h2 {
+  margin: 0 0 var(--s-padding);
+  border-bottom: 2px solid currentColor;
+  padding-bottom: var(--xs-padding);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.happy-cleaning-print-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.happy-cleaning-print-row {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--s-padding);
+  border-bottom: 1px solid currentColor;
+  padding: 0.55rem 0.4rem;
+}
+
+.happy-cleaning-print-number {
+  font-size: 1.2em;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.happy-cleaning-print-row-numberless,
+.happy-cleaning-print-row-absent {
+  grid-template-columns: minmax(12rem, 1fr) minmax(14rem, 1fr);
+}
+
+.happy-cleaning-print-row-numberless {
+  grid-template-columns: 1fr;
+}
+
+.happy-cleaning-print-meta {
+  font-size: 0.9em;
+}
+
+.happy-cleaning-print-empty {
+  border: 1px dashed currentColor;
+  padding: var(--s-padding);
+}
+
+.happy-cleaning-station-summary {
+  justify-content: space-between;
+}
+
+.happy-cleaning-expand {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.happy-cleaning-progress {
+  min-width: 3rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.happy-cleaning-station-details {
+  margin-top: var(--m-padding);
+  border-top: 1px solid currentColor;
+  padding-top: var(--m-padding);
+}
+
+.happy-cleaning-station-form textarea {
+  min-height: 5rem;
+}
+
+.happy-cleaning-todo {
+  margin-bottom: var(--xs-padding);
+}
+
+.happy-cleaning-todo input,
+.happy-cleaning-add-todo label,
+.happy-cleaning-add-todo input {
+  flex: 1;
+}
+
+.happy-cleaning-assignment {
+  width: min(96rem, 100%);
+}
+
+.happy-cleaning-assignment-searchbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: start;
+  gap: var(--s-padding);
+  margin: 30px 0 var(--m-padding);
+}
+
+.happy-cleaning-child-search {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.happy-cleaning-child-search > input {
+  width: 100%;
+  border: 2px solid white;
+  border-radius: var(--corner-rad);
+  background: white;
+  color: var(--text-color);
+  padding: var(--s-padding);
+}
+
+.happy-cleaning-child-results {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  left: 0;
+  max-height: min(60vh, 28rem);
+  overflow-y: auto;
+  border-radius: var(--corner-rad);
+  background: white;
+  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.25);
+}
+
+.happy-cleaning-child-results [role="option"] {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(10rem, 1fr) minmax(20rem, 2fr);
+  gap: var(--s-padding);
+  border: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 0;
+  background: white;
+  color: var(--text-color);
+  padding: var(--s-padding);
+  text-align: left;
+}
+
+.happy-cleaning-child-results [role="option"] > span {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(7rem, 1fr));
+  gap: var(--s-padding);
+}
+
+.happy-cleaning-child-results [role="option"].selected,
+.happy-cleaning-child-results [role="option"]:hover {
+  background: var(--light-blue);
+}
+
+.happy-cleaning-unassigned {
+  position: relative;
+}
+
+.happy-cleaning-unassigned > ul {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  width: min(22rem, 80vw);
+  margin: 0;
+  padding: var(--s-padding);
+  list-style: none;
+}
+
+.happy-cleaning-unassigned li button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: var(--xs-padding);
+  text-align: left;
+}
+
+.happy-cleaning-selected-child {
+  margin-bottom: var(--m-padding);
+  padding: var(--m-padding);
+}
+
+.happy-cleaning-selected-child dl,
+.happy-cleaning-assignment-card dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--s-padding);
+}
+
+.happy-cleaning-selected-child dl div,
+.happy-cleaning-assignment-card dl div {
+  min-width: 0;
+}
+
+.happy-cleaning-selected-child dt,
+.happy-cleaning-assignment-card dt {
+  font-weight: 600;
+}
+
+.happy-cleaning-selected-child dd,
+.happy-cleaning-assignment-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.happy-cleaning-number-form {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: var(--s-padding);
+}
+
+.happy-cleaning-number-form label {
+  display: grid;
+  flex: 1 1 16rem;
+  gap: var(--xs-padding);
+}
+
+.happy-cleaning-number-form input {
+  width: 100%;
+  border: 2px solid white;
+  border-radius: var(--corner-rad);
+  padding: var(--xs-padding);
+}
+
+.happy-cleaning-number-neighborhood {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(5rem, 1fr));
+  gap: var(--xs-padding);
+  margin: 0 0 var(--m-padding);
+  padding: 0;
+  list-style: none;
+}
+
+.happy-cleaning-number-neighborhood li {
+  border-radius: var(--corner-rad);
+  background: rgba(255, 255, 255, 0.55);
+  padding: var(--xs-padding);
+  text-align: center;
+}
+
+.happy-cleaning-toast {
+  border-radius: var(--corner-rad);
+  background: rgba(76, 175, 80, 0.2);
+  padding: var(--s-padding);
+}
+
+.happy-cleaning-assignment-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.happy-cleaning-assignment-table-wrap table {
+  width: 100%;
+  min-width: 60rem;
+}
+
+.happy-cleaning-assignment-table-wrap th,
+.happy-cleaning-assignment-table-wrap td {
+  padding: var(--s-padding);
+  vertical-align: top;
+}
+
+.happy-cleaning-assignment-table-wrap th button,
+.happy-cleaning-assignment-card h2 button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.happy-cleaning-child-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--xs-padding);
+}
+
+.happy-cleaning-child-pill {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  color: inherit;
+  padding: 0.2rem 0.55rem;
+  white-space: nowrap;
+}
+
+.happy-cleaning-assignment-card {
+  margin-bottom: var(--m-padding);
+  padding: var(--m-padding);
+}
+
+@media (max-width: 759px) {
+  .happy-cleaning-station-summary,
+  .happy-cleaning-todo,
+  .happy-cleaning-add-todo {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .happy-cleaning-todo input,
+  .happy-cleaning-add-todo label {
+    flex-basis: 100%;
+  }
+
+  .happy-cleaning-assignment-searchbar {
+    align-items: stretch;
+  }
+
+  .happy-cleaning-child-results [role="option"] {
+    display: block;
+  }
+
+  .happy-cleaning-number-neighborhood {
+    grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+  }
+
+  .happy-cleaning-print-row-absent {
+    grid-template-columns: 1fr;
+    gap: var(--xs-padding);
+  }
+}
+
 @media print {
+  @page {
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11pt;
+    line-height: 1.35;
+  }
+
+  #headermenu,
+  .messages,
+  .realtime-warning,
+  .happy-cleaning-print-actions,
   .react-actions,
   .search-filter,
   .filter-table,
   .mobile-drawer,
   #interaction-bar {
     display: none !important;
+  }
+
+  .happy-cleaning-print-page#body-container {
+    display: block;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .happy-cleaning-print-title {
+    margin-bottom: 8mm;
+  }
+
+  .happy-cleaning-print-section {
+    margin-bottom: 7mm;
+  }
+
+  .happy-cleaning-print-section h2 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .happy-cleaning-print-row,
+  .happy-cleaning-print-empty {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .card-info-container {

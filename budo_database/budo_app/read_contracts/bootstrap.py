@@ -20,6 +20,8 @@ def _permissions(user):
         "change_kids": user.has_perm("budo_app.change_kinder"),
         "change_focuses": user.has_perm("budo_app.change_schwerpunkte"),
         "change_places": user.has_perm("budo_app.change_auslagerorte"),
+        "view_auditevent": user.has_perm("budo_app.view_auditevent"),
+        "export_auditevent": user.has_perm("budo_app.export_auditevent"),
     }
 
 

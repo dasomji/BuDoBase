@@ -1,6 +1,7 @@
 from .base import *
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
+from urllib.parse import urlparse
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 if not SECRET_KEY:
@@ -31,6 +32,24 @@ if 'DATABASE_URL' in os.environ:
     }
 else:
     raise ImproperlyConfigured('DATABASE_URL must be set in production.')
+
+REDIS_URL = os.environ.get('REDIS_URL')
+if not REDIS_URL:
+    raise ImproperlyConfigured('REDIS_URL must be set in production.')
+parsed_redis_url = urlparse(REDIS_URL)
+if (
+    parsed_redis_url.scheme not in {'redis', 'rediss'}
+    or not parsed_redis_url.hostname
+):
+    raise ImproperlyConfigured(
+        'REDIS_URL must be a valid redis:// or rediss:// URL.'
+    )
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {'hosts': [REDIS_URL]},
+    },
+}
 
 S3_REQUIRED_ENVIRONMENT_VARIABLES = (
     "S3_BUCKET_NAME",

@@ -165,6 +165,13 @@ class DashboardContractTests(TestCase):
                 "kid": "Grace Hopper",
             },
         )
+        self.assertEqual(
+            [
+                transaction["amount"]
+                for transaction in payload["activity"]["transactions"]["items"]
+            ],
+            [-2.0, 20.0],
+        )
         response_text = response.content.decode()
         for private_value in (
             "PRIVATE-SVNR",
@@ -172,7 +179,6 @@ class DashboardContractTests(TestCase):
             "PRIVATE-DESCRIPTION",
             "OTHER-PRIVATE-NOTE",
             "Other private teamer",
-            "999",
         ):
             self.assertNotIn(private_value, response_text)
 

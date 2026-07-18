@@ -1,7 +1,7 @@
 import datetime
 from datetime import timedelta
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.dispatch import receiver
 from django.db.models.signals import post_save, post_delete, pre_save
 from django.contrib.auth.models import User
@@ -195,6 +195,11 @@ class Kinder(models.Model):
     anmerkung_team = models.CharField(
         max_length=1000, null=True, default="", blank=True)
     pfand = models.IntegerField(default=0)
+    happy_cleaning_number = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+    happy_cleaning_number_version = models.PositiveIntegerField(default=1)
 
     # Schwerpunkte & Familien
     schwerpunkte = models.ManyToManyField(
@@ -337,6 +342,24 @@ class Kinder(models.Model):
 
     class Meta:
         verbose_name_plural = "Kinder"
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(happy_cleaning_number__isnull=True)
+                    | models.Q(happy_cleaning_number__gt=0)
+                ),
+                name="kinder_hc_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(happy_cleaning_number_version__gt=0),
+                name="kinder_hc_number_version_positive",
+            ),
+            models.UniqueConstraint(
+                fields=("turnus", "happy_cleaning_number"),
+                condition=models.Q(happy_cleaning_number__isnull=False),
+                name="kinder_turnus_hc_number_uniq",
+            ),
+        ]
         indexes = [
             models.Index(fields=['turnus'], name='kinder_turnus_idx'),
             models.Index(fields=['kid_index'], name='kinder_kid_index_idx'),
@@ -440,6 +463,321 @@ class Turnus(models.Model):
         indexes = [
             models.Index(fields=['turnus_beginn'], name='turnus_beginn_idx'),
             models.Index(fields=['turnus_nr'], name='turnus_nr_idx'),
+        ]
+
+
+class HappyCleaning(models.Model):
+    """One numbered Happy Cleaning event inside a Turnus."""
+
+    turnus = models.ForeignKey(
+        Turnus,
+        on_delete=models.CASCADE,
+        related_name="happy_cleanings",
+    )
+    display_number = models.PositiveIntegerField()
+    revision = models.PositiveIntegerField(default=1)
+    has_operational_activity = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if (
+            self.pk
+            and not self.has_operational_activity
+            and type(self).objects.filter(
+                pk=self.pk,
+                has_operational_activity=True,
+            ).exists()
+        ):
+            raise ValidationError(
+                "Happy Cleaning activity markers cannot be reset."
+            )
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Happy Cleaning {self.display_number} ({self.turnus})"
+
+    class Meta:
+        ordering = ("display_number", "id")
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(display_number__gt=0),
+                name="happy_cleaning_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(revision__gt=0),
+                name="happy_cleaning_revision_positive",
+            ),
+            models.UniqueConstraint(
+                fields=("turnus", "display_number"),
+                name="happy_cleaning_turnus_number_uniq",
+            ),
+        ]
+
+
+class HappyCleaningCommandRequest(models.Model):
+    """A completed Happy Cleaning command, retained for idempotent replay."""
+
+    turnus = models.ForeignKey(
+        Turnus,
+        on_delete=models.CASCADE,
+        related_name="happy_cleaning_command_requests",
+    )
+    actor_id = models.BigIntegerField()
+    request_id = models.CharField(max_length=255)
+    action = models.CharField(max_length=100)
+    response = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("turnus", "actor_id", "request_id"),
+                name="hc_command_actor_request_uniq",
+            ),
+        ]
+
+
+class HappyCleaningStation(models.Model):
+    happy_cleaning = models.ForeignKey(
+        HappyCleaning,
+        on_delete=models.CASCADE,
+        related_name="stations",
+    )
+    name = models.CharField(max_length=255)
+    max_kids = models.PositiveIntegerField()
+    meeting_point = models.CharField(max_length=500)
+    wishes = models.TextField(blank=True, default="")
+    responsible_profile = models.ForeignKey(
+        Profil,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="happy_cleaning_stations",
+    )
+    position = models.PositiveIntegerField()
+    version = models.PositiveIntegerField(default=1)
+    has_ever_had_assignment = models.BooleanField(default=False)
+
+    def clean(self):
+        super().clean()
+        if (
+            self.responsible_profile_id
+            and self.happy_cleaning_id
+            and self.responsible_profile.turnus_id
+            != self.happy_cleaning.turnus_id
+        ):
+            raise ValidationError({
+                "responsible_profile": (
+                    "The responsible profile must belong to the station Turnus."
+                ),
+            })
+
+    def save(self, *args, **kwargs):
+        if (
+            self.pk
+            and not self.has_ever_had_assignment
+            and type(self).objects.filter(
+                pk=self.pk,
+                has_ever_had_assignment=True,
+            ).exists()
+        ):
+            raise ValidationError(
+                "Station assignment markers cannot be reset."
+            )
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ("position", "id")
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(max_kids__gt=0),
+                name="hc_station_capacity_positive",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(version__gt=0),
+                name="hc_station_version_positive",
+            ),
+            models.UniqueConstraint(
+                fields=("happy_cleaning", "position"),
+                name="hc_station_event_position_uniq",
+            ),
+        ]
+
+
+class HappyCleaningTodo(models.Model):
+    station = models.ForeignKey(
+        HappyCleaningStation,
+        on_delete=models.CASCADE,
+        related_name="todos",
+    )
+    text = models.CharField(max_length=500)
+    position = models.PositiveIntegerField()
+    checked = models.BooleanField(default=False)
+    version = models.PositiveIntegerField(default=1)
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            result = super().save(*args, **kwargs)
+            if self.checked:
+                HappyCleaning.objects.filter(
+                    pk=self.station.happy_cleaning_id,
+                ).update(has_operational_activity=True)
+            return result
+
+    class Meta:
+        ordering = ("position", "id")
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(version__gt=0),
+                name="hc_todo_version_positive",
+            ),
+            models.UniqueConstraint(
+                fields=("station", "position"),
+                name="hc_todo_station_position_uniq",
+            ),
+        ]
+
+
+class HappyCleaningAssignment(models.Model):
+    happy_cleaning = models.ForeignKey(
+        HappyCleaning,
+        on_delete=models.CASCADE,
+        related_name="assignments",
+    )
+    station = models.ForeignKey(
+        HappyCleaningStation,
+        on_delete=models.CASCADE,
+        related_name="assignments",
+    )
+    child = models.ForeignKey(
+        Kinder,
+        on_delete=models.CASCADE,
+        related_name="happy_cleaning_assignments",
+    )
+    version = models.PositiveIntegerField(default=1)
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if (
+            self.station_id
+            and self.happy_cleaning_id
+            and self.station.happy_cleaning_id != self.happy_cleaning_id
+        ):
+            errors["station"] = (
+                "The station must belong to the assignment Happy Cleaning."
+            )
+        if (
+            self.child_id
+            and self.happy_cleaning_id
+            and self.child.turnus_id != self.happy_cleaning.turnus_id
+        ):
+            errors["child"] = (
+                "The child must belong to the Happy Cleaning Turnus."
+            )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        with transaction.atomic():
+            result = super().save(*args, **kwargs)
+            HappyCleaningStation.objects.filter(pk=self.station_id).update(
+                has_ever_had_assignment=True,
+            )
+            HappyCleaning.objects.filter(pk=self.happy_cleaning_id).update(
+                has_operational_activity=True,
+            )
+            return result
+
+    class Meta:
+        ordering = ("id",)
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(version__gt=0),
+                name="hc_assignment_version_positive",
+            ),
+            models.UniqueConstraint(
+                fields=("happy_cleaning", "child"),
+                name="hc_assignment_event_child_uniq",
+            ),
+        ]
+
+
+class ImmutableAuditEventQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise ValidationError("Audit events are immutable.")
+
+    def delete(self):
+        raise ValidationError(
+            "Audit events may only be deleted by Turnus retention."
+        )
+
+
+class AuditEventManager(models.Manager.from_queryset(ImmutableAuditEventQuerySet)):
+    def _create_validated_event(self, **fields):
+        event = self.model(**fields)
+        event._audit_insert = True
+        event.save(force_insert=True, using=self._db)
+        return event
+
+
+class AuditEvent(models.Model):
+    """Immutable, Turnus-retained record written only by the audit service."""
+
+    turnus = models.ForeignKey(
+        Turnus,
+        on_delete=models.CASCADE,
+        related_name="audit_events",
+    )
+    actor_id = models.BigIntegerField(null=True, blank=True)
+    actor_label = models.CharField(max_length=255)
+    action = models.CharField(max_length=100)
+    outcome = models.CharField(max_length=40)
+    resource_type = models.CharField(max_length=100)
+    resource_id = models.CharField(max_length=100)
+    resource_label = models.CharField(max_length=255)
+    request_id = models.CharField(max_length=255)
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    client_ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=1000, blank=True)
+    details = models.JSONField(default=dict)
+
+    objects = AuditEventManager()
+
+    def save(self, *args, **kwargs):
+        if not getattr(self, "_audit_insert", False) or self.pk is not None:
+            raise ValidationError("Audit events are immutable.")
+        try:
+            return super().save(*args, **kwargs)
+        finally:
+            self._audit_insert = False
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError(
+            "Audit events may only be deleted by Turnus retention."
+        )
+
+    class Meta:
+        ordering = ("-occurred_at", "-id")
+        permissions = (
+            ("export_auditevent", "Can export audit events"),
+        )
+        indexes = [
+            models.Index(
+                fields=("turnus", "-occurred_at", "-id"),
+                name="audit_turnus_time_idx",
+            ),
+            models.Index(
+                fields=("turnus", "action"),
+                name="audit_turnus_action_idx",
+            ),
+            models.Index(
+                fields=("turnus", "resource_type", "resource_id"),
+                name="audit_resource_idx",
+            ),
         ]
 
 
@@ -816,4 +1154,3 @@ def invalidate_geld_turnus_cache(sender, instance, **kwargs):
     from .utils import invalidate_turnus_cache
     if instance.kinder and instance.kinder.turnus:
         invalidate_turnus_cache(instance.kinder.turnus)
-

@@ -3,9 +3,11 @@ from typing import Callable
 
 from .domains import (
     allocation,
+    audit,
     attendance,
     dashboard,
     focuses,
+    happy_cleaning,
     kids,
     kitchen,
     maintenance,
@@ -27,9 +29,11 @@ class RouteContract:
 
 DOMAIN_CONTRACTS = {
     "allocation": allocation.CONTRACTS,
+    "audit": audit.CONTRACTS,
     "attendance": attendance.CONTRACTS,
     "dashboard": dashboard.CONTRACTS,
     "focuses": focuses.CONTRACTS,
+    "happy-cleaning": happy_cleaning.CONTRACTS,
     "kids": kids.CONTRACTS,
     "kitchen": kitchen.CONTRACTS,
     "maintenance": maintenance.CONTRACTS,

@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from budo_app.api_views import submit_form
+from budo_app.audit_views import export_audit_events
 from budo_app.read_contracts.bootstrap import bootstrap
 from budo_app.read_contracts.views import route_data
 
@@ -29,6 +30,23 @@ urlpatterns = [
         name='route-data-api',
     ),
     path('api/form-submit/', submit_form, name='form-submit-api'),
+    path(
+        'api/happy-cleaning/',
+        include('budo_app.happy_cleaning_command_urls'),
+    ),
+    path(
+        'api/happy-cleaning/',
+        include('budo_app.happy_cleaning_assignment_urls'),
+    ),
+    path(
+        'api/happy-cleaning/',
+        include('budo_app.happy_cleaning_todo_urls'),
+    ),
+    path(
+        'api/audit-events/export/',
+        export_audit_events,
+        name='audit-export-api',
+    ),
     path('', include('budo_app.urls')),
     path('', include('users.urls'))
 ]
