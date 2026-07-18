@@ -59,12 +59,16 @@ def _time_boundary(value, *, end):
     return timezone.make_aware(boundary)
 
 
-def selected_audit_turnus(user, requested_turnus):
-    active_turnus_id = (
+def _active_turnus_id(user):
+    return (
         Profil.objects.filter(user_id=user.id)
         .values_list("turnus_id", flat=True)
         .first()
     )
+
+
+def selected_audit_turnus(user, requested_turnus):
+    active_turnus_id = _active_turnus_id(user)
     if requested_turnus:
         if not requested_turnus.isdigit():
             return None
@@ -81,12 +85,7 @@ def audit_turnus_options(user):
     if user.is_superuser:
         turnuses = Turnus.objects.order_by("turnus_beginn", "id")
     else:
-        active_turnus_id = (
-            Profil.objects.filter(user_id=user.id)
-            .values_list("turnus_id", flat=True)
-            .first()
-        )
-        turnuses = Turnus.objects.filter(id=active_turnus_id)
+        turnuses = Turnus.objects.filter(id=_active_turnus_id(user))
     return [{"id": turnus.id, "label": str(turnus)} for turnus in turnuses]
 
 
