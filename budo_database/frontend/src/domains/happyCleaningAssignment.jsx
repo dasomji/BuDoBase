@@ -181,15 +181,20 @@ function UnassignedCounter({ summary, children, onSelect }) {
 }
 
 function StationName({ eventId, station, selected, busy, onActivate }) {
+  const full = station.free_seats === 0;
   if (!selected) {
-    return <a href={`/happy-cleaning/${eventId}/stations/${station.id}/`}>{station.name}</a>;
+    return (
+      <a href={`/happy-cleaning/${eventId}/stations/${station.id}/`}>
+        {station.name}{full && ' 🚫'}
+      </a>
+    );
   }
-  const full = station.free_seats === 0 && selected.assigned_station?.id !== station.id;
+  const fullTarget = full && selected.assigned_station?.id !== station.id;
   return (
     <button
       type="button"
       aria-label={`${selected.full_name} ${station.name} zuweisen`}
-      disabled={busy || selected.number === null || full || selected.assigned_station?.id === station.id}
+      disabled={busy || selected.number === null || fullTarget || selected.assigned_station?.id === station.id}
       onClick={() => onActivate(station)}
     >
       {station.name}{full && ' 🚫'}

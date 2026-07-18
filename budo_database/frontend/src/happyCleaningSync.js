@@ -62,7 +62,7 @@ export function createHappyCleaningCoordinator({
 
   const connect = () => {
     if (stopped || !WebSocketImpl) return;
-    emit({ connection: 'connecting', fresh: false });
+    emit({ connection: 'connecting' });
     socket = new WebSocketImpl(socketUrl());
     socket.onopen = () => {
       if (stopped) return;
@@ -125,9 +125,7 @@ export function createHappyCleaningCoordinator({
     },
     reconcile,
     canWrite() {
-      return state.connection === 'connected'
-        && state.httpAvailable
-        && state.fresh;
+      return state.httpAvailable && state.fresh;
     },
     state() {
       return { ...state };

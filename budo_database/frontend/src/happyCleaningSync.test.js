@@ -73,7 +73,7 @@ describe('Happy Cleaning realtime coordinator', () => {
       WebSocketImpl: FakeSocket,
       documentImpl,
       pollInterval: 1500,
-      reconnectDelay: 1000,
+      reconnectDelay: 5000,
     });
 
     coordinator.start();
@@ -87,6 +87,12 @@ describe('Happy Cleaning realtime coordinator', () => {
 
     await vi.advanceTimersByTimeAsync(1500);
     expect(refresh).toHaveBeenCalledTimes(2);
+    expect(coordinator.state()).toMatchObject({
+      connection: 'disconnected',
+      httpAvailable: true,
+      fresh: true,
+    });
+    expect(coordinator.canWrite()).toBe(true);
     documentImpl.visibilityState = 'hidden';
     await vi.advanceTimersByTimeAsync(1500);
     expect(refresh).toHaveBeenCalledTimes(2);

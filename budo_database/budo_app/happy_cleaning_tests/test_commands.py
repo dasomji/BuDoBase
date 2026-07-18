@@ -6,6 +6,10 @@ from django.contrib.auth.models import User
 from django.test import Client, TransactionTestCase
 from django.urls import reverse
 
+from budo_app.happy_cleaning_assignment_publisher import (
+    configure_assignment_publisher,
+    reset_assignment_publisher,
+)
 from budo_app.models import (
     AuditEvent,
     HappyCleaning,
@@ -305,6 +309,38 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
             action="happy_cleaning.station.update",
             outcome="forbidden",
         ).exists())
+
+    def test_station_master_data_writes_emit_no_todo_invalidation(self):
+        published = []
+        configure_assignment_publisher(published.append)
+        try:
+            created = self.post_json(
+                "happy-cleaning-station-create-api",
+                [self.event.id],
+                self.station_payload("station-create-without-invalidation"),
+            )
+            self.assertEqual(created.status_code, 201)
+            station = HappyCleaningStation.objects.get(
+                pk=created.json()["station"]["id"],
+            )
+
+            updated = self.post_json(
+                "happy-cleaning-station-update-api",
+                [self.event.id, station.id],
+                {
+                    "request_id": "station-update-without-invalidation",
+                    "expected_version": station.version,
+                    "name": "Großer Speisesaal",
+                    "max_kids": station.max_kids,
+                    "meeting_point": station.meeting_point,
+                    "wishes": station.wishes,
+                    "responsible_profile_id": station.responsible_profile_id,
+                },
+            )
+            self.assertEqual(updated.status_code, 200)
+            self.assertEqual(published, [])
+        finally:
+            reset_assignment_publisher()
 
     def test_capacity_and_delete_lock_survive_assignment_removal(self):
         station = HappyCleaningStation.objects.create(

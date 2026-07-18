@@ -569,7 +569,7 @@ def create_station(context, event_id, expected_revision, fields):
                 "station_name": station.name,
             },
         )
-        return complete_focused_command(context, action, {
+        return complete_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "station": station_projection(station),
@@ -636,7 +636,7 @@ def update_station(context, event_id, station_id, expected_version, fields):
                 "changed_fields": changed_fields,
             },
         )
-        return complete_focused_command(context, action, {
+        return complete_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "station": station_projection(station),
@@ -681,7 +681,7 @@ def delete_station(context, event_id, station_id, expected_version):
                 "station_name": name,
             },
         )
-        return complete_focused_command(context, action, {
+        return complete_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "deleted_station_id": station_id,
@@ -715,7 +715,7 @@ def reorder_stations(context, event_id, expected_revision, station_ids):
             resource_label=f"Happy Cleaning {event.display_number}",
             details={"happy_cleaning_id": event.id},
         )
-        return complete_focused_command(context, action, {
+        return complete_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "station_ids": station_ids,
@@ -1031,7 +1031,7 @@ def copy_stations(
                 "copied_station_count": len(copied),
             },
         )
-        return complete_focused_command(context, action, {
+        return complete_command(context, action, {
             "ok": True,
             "event": event_projection(target),
             "copied_stations": [station_projection(item) for item in copied],

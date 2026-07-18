@@ -328,6 +328,20 @@ describe('Happy Cleaning assignment', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Ada Lovelace wurde nach Bad verschoben.');
   });
 
+  it('marks full stations before a child is selected while keeping their detail links', () => {
+    setViewport(false);
+    render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
+
+    expect(screen.getByRole('link', { name: 'Bad 🚫' })).toHaveAttribute(
+      'href',
+      '/happy-cleaning/7/stations/11/',
+    );
+    expect(screen.getByRole('link', { name: 'Speisesaal' })).toHaveAttribute(
+      'href',
+      '/happy-cleaning/7/stations/10/',
+    );
+  });
+
   it('confirms pill removal with the assignment version', async () => {
     setViewport(false);
     const mutate = vi.fn().mockResolvedValue({ ok: true });
