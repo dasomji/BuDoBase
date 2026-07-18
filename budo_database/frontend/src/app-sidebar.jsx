@@ -9,6 +9,7 @@ import {
   Settings,
   Sparkles,
   UserRound,
+  UsersRound,
 } from 'lucide-react';
 
 import { Logo } from './components';
@@ -34,6 +35,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 const gamesUrl = 'https://honey-glue-e51.notion.site/Methoden-eaff0abb8b2a42bfb319c50d5357022c';
 
 export const sidebarItems = [
+  { label: 'Team', href: '/team/', icon: UsersRound },
   {
     label: 'Listen',
     icon: ClipboardList,

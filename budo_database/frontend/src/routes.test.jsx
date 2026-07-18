@@ -13,6 +13,8 @@ describe('route inventory', () => {
     ['/login', 'login', 'auth', null],
     ['/register', 'register', 'auth', null],
     ['/profil', 'profile', 'profiles', 'profile'],
+    ['/profil/5', 'profile', 'profiles', 'profile'],
+    ['/team', 'team', 'profiles', 'team'],
     ['/upload', 'turnus-upload', 'maintenance', 'turnus-list'],
     ['/upload_excel/9', 'turnus-upload', 'maintenance', 'turnus-upload'],
     ['/all_kids', 'kids', 'kids', 'kids-directory'],
@@ -40,7 +42,6 @@ describe('route inventory', () => {
     ['/upload_spezialfamilien', 'special-upload', 'maintenance', 'special-upload'],
     ['/spezial_familien', 'special-families', 'reports', 'special-families'],
     ['/kindergeburtstage/', 'birthdays', 'reports', 'birthdays'],
-    ['/teamer/5', 'teamer', 'profiles', 'teamer'],
   ])('maps %s to the %s page in %s with contract %s', (path, page, domain, readContractKey) => {
     expect(parseRoute(path)).toMatchObject({ page, domain, readContractKey });
   });
@@ -73,7 +74,6 @@ describe('route inventory', () => {
       focuses: [{ id: 3, name: 'Wald SWP' }],
       places: [{ id: 4, name: 'Berghütte' }],
       profile: { rufname: 'Mein Profil' },
-      person: { id: 5, rufname: 'Grace Teamer' },
       team: [{ id: 5, rufname: 'Grace Teamer' }],
     };
 
@@ -81,7 +81,7 @@ describe('route inventory', () => {
     expect(resolveRouteTitle(parseRoute('/schwerpunkt/3'), data)).toBe('Wald SWP');
     expect(resolveRouteTitle(parseRoute('/auslagerorte/4'), data)).toBe('Berghütte');
     expect(resolveRouteTitle(parseRoute('/profil'), data)).toBe('Mein Profil');
-    expect(resolveRouteTitle(parseRoute('/teamer/5'), data)).toBe('Grace Teamer');
+    expect(resolveRouteTitle(parseRoute('/profil/5'), data)).toBe('Mein Profil');
   });
 
   it.each([

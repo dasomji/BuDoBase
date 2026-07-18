@@ -1,6 +1,6 @@
 from datetime import date
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission, User
 from django.test import TestCase
 from django.urls import reverse
 
@@ -15,6 +15,47 @@ class ReactShellTests(TestCase):
         self.assertContains(response, '<div id="root"></div>', html=True)
         self.assertContains(response, "/static/frontend/app.js")
         self.assertContains(response, 'id="legacy-print-root"')
+
+    def test_team_page_deep_link_uses_the_authenticated_react_shell(self):
+        user = User.objects.create_user("team-page-user", password="secret")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("team"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<div id="root"></div>', html=True)
+        self.assertContains(response, "/static/frontend/app.js")
+
+    def test_team_page_deep_link_requires_authentication(self):
+        response = self.client.get("/team/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/login/?next=/team/")
+
+    def test_selected_profile_edit_deep_link_requires_profile_permission(self):
+        editor = User.objects.create_user("profile-editor", password="secret")
+        selected = User.objects.create_user("selected-profile").profil
+        url = reverse("profil-admin", args=(selected.id,))
+        self.client.force_login(editor)
+
+        denied = self.client.get(url)
+        editor.user_permissions.add(
+            Permission.objects.get(codename="change_profil"),
+        )
+        allowed = self.client.get(url)
+
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(allowed.status_code, 200)
+        self.assertContains(allowed, '<div id="root"></div>', html=True)
+
+    def test_selected_profile_edit_deep_link_requires_authentication(self):
+        selected = User.objects.create_user("selected-profile-login").profil
+        url = reverse("profil-admin", args=(selected.id,))
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, f"/login/?next={url}")
 
     def test_api_response_is_not_replaced(self):
         response = self.client.get(reverse("bootstrap-api"))

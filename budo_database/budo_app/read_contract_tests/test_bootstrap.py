@@ -103,8 +103,8 @@ class BootstrapContractTests(TestCase):
         self.assertEqual(
             set(payload["permissions"]),
             {
-                "change_kids", "change_focuses", "change_places",
-                "view_auditevent", "export_auditevent",
+                "change_kids", "change_profiles", "change_focuses",
+                "change_places", "view_auditevent", "export_auditevent",
             },
         )
         for unrelated in ("team", "focus_times", "totals", "activity", "turnuses"):
