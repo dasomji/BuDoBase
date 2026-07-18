@@ -1,4 +1,4 @@
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.http import Http404
 
 from budo_app.models import (
@@ -294,11 +294,54 @@ def station_management(request):
         "id",
         "rufname",
     ).order_by("rufname", "id")
+    source_stations = HappyCleaningStation.objects.only(
+        "id",
+        "happy_cleaning_id",
+        "name",
+        "position",
+    ).order_by("position", "id")
+    copy_sources = (
+        HappyCleaning.objects.filter(
+            Q(turnus__turnus_beginn__lt=event.turnus.turnus_beginn)
+            | Q(
+                turnus_id=event.turnus_id,
+                display_number__lt=event.display_number,
+            )
+        )
+        .select_related("turnus")
+        .only(
+            "id",
+            "turnus_id",
+            "turnus__turnus_nr",
+            "turnus__turnus_beginn",
+            "display_number",
+        )
+        .prefetch_related(Prefetch(
+            "stations",
+            queryset=source_stations,
+            to_attr="route_copy_stations",
+        ))
+        .order_by("-turnus__turnus_beginn", "-display_number", "-id")
+    )
     return {
         "event": _event_summary(event),
         "responsible_profiles": [
             {"id": profile.id, "name": profile.rufname}
             for profile in profiles
+        ],
+        "copy_sources": [
+            {
+                "id": source.id,
+                "label": (
+                    f"{source.turnus} · Happy Cleaning "
+                    f"{source.display_number}"
+                ),
+                "stations": [
+                    {"id": station.id, "name": station.name}
+                    for station in source.route_copy_stations
+                ],
+            }
+            for source in copy_sources
         ],
         "stations": [
             _management_station(station, event.turnus_id)

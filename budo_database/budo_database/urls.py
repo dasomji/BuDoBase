@@ -31,6 +31,10 @@ urlpatterns = [
     ),
     path('api/form-submit/', submit_form, name='form-submit-api'),
     path(
+        'api/happy-cleaning/',
+        include('budo_app.happy_cleaning_command_urls'),
+    ),
+    path(
         'api/audit-events/export/',
         export_audit_events,
         name='audit-export-api',

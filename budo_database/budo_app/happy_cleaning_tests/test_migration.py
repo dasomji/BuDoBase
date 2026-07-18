@@ -8,6 +8,7 @@ from django.test import TransactionTestCase
 class HappyCleaningMigrationTests(TransactionTestCase):
     migrate_from = ("budo_app", "0070_auditevent")
     migrate_to = ("budo_app", "0071_happy_cleaning_schema")
+    restore_to = ("budo_app", "0072_happycleaningcommandrequest")
 
     def test_existing_children_keep_a_null_happy_cleaning_number(self):
         executor = MigrationExecutor(connection)
@@ -36,5 +37,5 @@ class HappyCleaningMigrationTests(TransactionTestCase):
         )
 
     def tearDown(self):
-        MigrationExecutor(connection).migrate([self.migrate_to])
+        MigrationExecutor(connection).migrate([self.restore_to])
         super().tearDown()

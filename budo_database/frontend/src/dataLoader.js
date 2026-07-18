@@ -1,6 +1,6 @@
 function routeParams(route) {
   const params = Object.fromEntries(
-    ['id', 'week']
+    ['id', 'event_id', 'station_id', 'week']
       .filter(key => route[key] !== undefined)
       .map(key => [key, String(route[key])]),
   );

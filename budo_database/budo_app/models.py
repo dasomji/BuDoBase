@@ -508,6 +508,29 @@ class HappyCleaning(models.Model):
         ]
 
 
+class HappyCleaningCommandRequest(models.Model):
+    """A completed Happy Cleaning command, retained for idempotent replay."""
+
+    turnus = models.ForeignKey(
+        Turnus,
+        on_delete=models.CASCADE,
+        related_name="happy_cleaning_command_requests",
+    )
+    actor_id = models.BigIntegerField()
+    request_id = models.CharField(max_length=255)
+    action = models.CharField(max_length=100)
+    response = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("turnus", "actor_id", "request_id"),
+                name="hc_command_actor_request_uniq",
+            ),
+        ]
+
+
 class HappyCleaningStation(models.Model):
     happy_cleaning = models.ForeignKey(
         HappyCleaning,

@@ -294,6 +294,7 @@ class HappyCleaningContractTests(TestCase):
             "responsible_profiles": [
                 {"id": self.user.profil.id, "name": "Mira"},
             ],
+            "copy_sources": [],
             "stations": [
                 {
                     "id": self.station.id,

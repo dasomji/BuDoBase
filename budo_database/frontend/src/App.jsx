@@ -95,8 +95,15 @@ export default function App({
       options.body = body;
     }
     const response = await fetchImpl(url, options);
-    if (!response.ok) throw new Error(`Update failed (${response.status})`);
+    if (!response.ok) {
+      const error = new Error(`Update failed (${response.status})`);
+      try { error.payload = await response.json(); } catch { error.payload = null; }
+      throw error;
+    }
+    let responsePayload = {};
+    try { responsePayload = await response.json(); } catch { responsePayload = {}; }
     await refreshRoute();
+    return responsePayload;
   };
 
   if (bootstrapError) return <ErrorState title="Sitzung konnte nicht geladen werden" error={bootstrapError} />;

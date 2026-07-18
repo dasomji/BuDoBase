@@ -4,6 +4,7 @@ import { attendanceRoutes } from './domains/attendance';
 import { authRoutes } from './domains/auth';
 import { dashboardRoutes } from './domains/dashboard';
 import { focusRoutes } from './domains/focuses';
+import { happyCleaningRoutes } from './domains/happyCleaning';
 import { kidRoutes } from './domains/kids';
 import { kitchenRoutes } from './domains/kitchen';
 import { maintenanceRoutes } from './domains/maintenance';
@@ -22,6 +23,7 @@ export const routeDefinitions = [
   ...attendanceRoutes,
   ...reportRoutes,
   ...focusRoutes,
+  ...happyCleaningRoutes,
   ...placeRoutes,
   ...kitchenRoutes,
   ...allocationRoutes,
