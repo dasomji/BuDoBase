@@ -86,6 +86,7 @@ def _assignment_child(child):
         "last_name": child.kid_nachname,
         "full_name": kid_full_name(child.kid_vorname, child.kid_nachname),
         "number": child.happy_cleaning_number,
+        "number_version": child.happy_cleaning_number_version,
         "present": child.anwesend,
         "absence_location": child.wo if child.anwesend is False else None,
         "assigned_station": (
@@ -165,6 +166,7 @@ def assignment_snapshot(request):
             "kid_vorname",
             "kid_nachname",
             "happy_cleaning_number",
+            "happy_cleaning_number_version",
             "anwesend",
             "wo",
         )

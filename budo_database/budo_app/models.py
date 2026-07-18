@@ -199,6 +199,7 @@ class Kinder(models.Model):
         null=True,
         blank=True,
     )
+    happy_cleaning_number_version = models.PositiveIntegerField(default=1)
 
     # Schwerpunkte & Familien
     schwerpunkte = models.ManyToManyField(
@@ -348,6 +349,10 @@ class Kinder(models.Model):
                     | models.Q(happy_cleaning_number__gt=0)
                 ),
                 name="kinder_hc_number_positive",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(happy_cleaning_number_version__gt=0),
+                name="kinder_hc_number_version_positive",
             ),
             models.UniqueConstraint(
                 fields=("turnus", "happy_cleaning_number"),

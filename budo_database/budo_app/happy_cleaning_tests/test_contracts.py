@@ -181,6 +181,7 @@ class HappyCleaningContractTests(TestCase):
                     "last_name": "Lovelace",
                     "full_name": "Ada Lovelace",
                     "number": 7,
+                    "number_version": 1,
                     "present": True,
                     "absence_location": None,
                     "assigned_station": {
@@ -195,6 +196,7 @@ class HappyCleaningContractTests(TestCase):
                     "last_name": "Hopper",
                     "full_name": "Grace Hopper",
                     "number": None,
+                    "number_version": 1,
                     "present": True,
                     "absence_location": None,
                     "assigned_station": None,
@@ -206,6 +208,7 @@ class HappyCleaningContractTests(TestCase):
                     "last_name": "Torvalds",
                     "full_name": "Linus Torvalds",
                     "number": 3,
+                    "number_version": 1,
                     "present": False,
                     "absence_location": "Sallingstadt",
                     "assigned_station": {

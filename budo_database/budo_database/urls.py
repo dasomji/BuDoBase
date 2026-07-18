@@ -35,6 +35,10 @@ urlpatterns = [
         include('budo_app.happy_cleaning_command_urls'),
     ),
     path(
+        'api/happy-cleaning/',
+        include('budo_app.happy_cleaning_assignment_urls'),
+    ),
+    path(
         'api/audit-events/export/',
         export_audit_events,
         name='audit-export-api',
