@@ -338,6 +338,66 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
                 },
             )
             self.assertEqual(updated.status_code, 200)
+
+            self.event.refresh_from_db()
+            second = self.post_json(
+                "happy-cleaning-station-create-api",
+                [self.event.id],
+                self.station_payload(
+                    "station-create-second-without-invalidation",
+                    expected_revision=self.event.revision,
+                    name="Bad",
+                ),
+            )
+            self.assertEqual(second.status_code, 201)
+            second_id = second.json()["station"]["id"]
+
+            self.event.refresh_from_db()
+            reordered = self.post_json(
+                "happy-cleaning-station-reorder-api",
+                [self.event.id],
+                {
+                    "request_id": "station-reorder-without-invalidation",
+                    "expected_revision": self.event.revision,
+                    "station_ids": [second_id, station.id],
+                },
+            )
+            self.assertEqual(reordered.status_code, 200)
+
+            station.refresh_from_db()
+            deleted = self.post_json(
+                "happy-cleaning-station-delete-api",
+                [self.event.id, station.id],
+                {
+                    "request_id": "station-delete-without-invalidation",
+                    "expected_version": station.version,
+                },
+            )
+            self.assertEqual(deleted.status_code, 200)
+
+            source = HappyCleaning.objects.create(
+                turnus=self.other_turnus,
+                display_number=1,
+            )
+            HappyCleaningStation.objects.create(
+                happy_cleaning=source,
+                name="Quelle",
+                max_kids=2,
+                meeting_point="Quelltreffpunkt",
+                position=1,
+            )
+            self.event.refresh_from_db()
+            copied = self.post_json(
+                "happy-cleaning-station-copy-api",
+                [self.event.id],
+                {
+                    "request_id": "station-copy-without-invalidation",
+                    "expected_revision": self.event.revision,
+                    "source_event_id": source.id,
+                    "copy_all": True,
+                },
+            )
+            self.assertEqual(copied.status_code, 200)
             self.assertEqual(published, [])
         finally:
             reset_assignment_publisher()
