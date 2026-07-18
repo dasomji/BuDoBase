@@ -21,8 +21,13 @@ const event = {
 const data = {
   authorized: true,
   events: [event],
-  filters: { actor: '', action: '', outcome: '', resource_type: '', resource_id: '', from: '', to: '' },
-  filter_options: { actions: ['happy_cleaning.station.update'], outcomes: ['success'], resource_types: ['station'] },
+  filters: { turnus: '2', actor: '', action: '', outcome: '', resource_type: '', resource_id: '', from: '', to: '' },
+  filter_options: {
+    turnuses: [{ id: 2, label: 'T2-2026' }, { id: 3, label: 'T3-2026' }],
+    actions: ['happy_cleaning.station.update'],
+    outcomes: ['success'],
+    resource_types: ['station'],
+  },
   pagination: { page: 1, page_size: 50, total: 51, pages: 2, has_previous: false, has_next: true },
   export_url: '/api/audit-events/export/',
 };
@@ -44,6 +49,7 @@ describe('audit explorer', () => {
     });
 
     render(<AuditPage data={data} />);
+    expect(screen.getByLabelText('Turnus')).toHaveValue('2');
     expect(screen.getByLabelText('Von')).toBeInTheDocument();
     expect(screen.getByLabelText('Bis')).toBeInTheDocument();
     expect(screen.getByLabelText('Akteur:in')).toBeInTheDocument();
@@ -52,7 +58,10 @@ describe('audit explorer', () => {
     expect(screen.getByLabelText('Ressourcentyp')).toBeInTheDocument();
     expect(screen.getByLabelText('Ressourcen-ID')).toBeInTheDocument();
     expect(screen.getByText(/Ada Teamer/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Nächste Seite' })).toHaveAttribute('href', expect.stringContaining('page=2'));
+    expect(screen.getByRole('link', { name: 'Nächste Seite' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/turnus=2.*page=2/),
+    );
   });
 
   it('gates unauthorized readers and renders empty state', () => {

@@ -27,6 +27,13 @@ function AuditFilters({ data }) {
   const { filters = {}, filter_options: options = {} } = data;
   return (
     <form action="/audit/" method="get" className="form-grid audit-filters">
+      <FilterField label="Turnus" name="turnus">
+        <select name="turnus" defaultValue={filters.turnus || ''}>
+          {(options.turnuses || []).map(turnus => (
+            <option key={turnus.id} value={turnus.id}>{turnus.label}</option>
+          ))}
+        </select>
+      </FilterField>
       <FilterField label="Von" name="from" type="datetime-local" value={filters.from} />
       <FilterField label="Bis" name="to" type="datetime-local" value={filters.to} />
       <FilterField label="Akteur:in" name="actor" value={filters.actor} />

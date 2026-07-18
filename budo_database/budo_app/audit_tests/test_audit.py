@@ -193,6 +193,57 @@ class AuditHttpTests(TestCase):
         })
         self.assertNotIn("Other Reader", response.content.decode())
 
+    def test_ordinary_reader_can_only_filter_their_active_turnus(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="view_auditevent"))
+
+        own_response = self._route(f"?turnus={self.turnus.id}")
+        other_response = self._route(f"?turnus={self.other_turnus.id}")
+
+        self.assertEqual([event["id"] for event in own_response.json()["events"]], [self.own.id])
+        self.assertEqual(own_response.json()["filters"]["turnus"], str(self.turnus.id))
+        self.assertEqual(own_response.json()["filter_options"]["turnuses"], [
+            {"id": self.turnus.id, "label": "T2-2026"},
+        ])
+        self.assertEqual(other_response.json()["events"], [])
+        self.assertIn(
+            f"turnus={self.other_turnus.id}",
+            other_response.json()["export_url"],
+        )
+        self.assertNotIn("Other Reader", other_response.content.decode())
+
+    def test_superuser_can_select_a_turnus_and_defaults_only_to_their_active_turnus(self):
+        self.user.is_superuser = True
+        self.user.save(update_fields=["is_superuser"])
+
+        default_response = self._route()
+        selected_response = self._route(f"?turnus={self.other_turnus.id}")
+
+        self.assertEqual([event["id"] for event in default_response.json()["events"]], [self.own.id])
+        selected_payload = selected_response.json()
+        self.assertEqual(
+            [event["actor"]["label"] for event in selected_payload["events"]],
+            ["Other Reader"],
+        )
+        self.assertEqual(selected_payload["filters"]["turnus"], str(self.other_turnus.id))
+        self.assertEqual(selected_payload["filter_options"]["turnuses"], [
+            {"id": self.turnus.id, "label": "T2-2026"},
+            {"id": self.other_turnus.id, "label": "T3-2026"},
+        ])
+
+    def test_superuser_without_an_active_turnus_has_no_implicit_audit_scope(self):
+        superuser = User.objects.create_superuser(
+            username="unscoped-admin",
+            password="secret",
+        )
+        self.client.force_login(superuser)
+
+        read_response = self._route()
+        export_response = self.client.get(reverse("audit-export-api"))
+
+        self.assertEqual(read_response.status_code, 200)
+        self.assertEqual(read_response.json()["events"], [])
+        self.assertEqual(export_response.status_code, 404)
+
     def test_export_is_versioned_deterministic_and_logs_non_recursively(self):
         self.user.user_permissions.add(Permission.objects.get(codename="export_auditevent"))
 
@@ -208,8 +259,10 @@ class AuditHttpTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.streaming)
         self.assertRegex(response["Content-Disposition"], r'attachment; filename="audit-T2-2026\.log"')
-        lines = [json.loads(line) for line in response.content.decode().splitlines()]
+        exported_text = b"".join(response.streaming_content).decode()
+        lines = [json.loads(line) for line in exported_text.splitlines()]
         self.assertEqual(lines[0], {
             "record_type": "header",
             "schema": "budo.audit",
@@ -221,6 +274,37 @@ class AuditHttpTests(TestCase):
         self.assertNotIn(export_event.id, [line.get("id") for line in lines])
         self.assertEqual(export_event.client_ip, "192.0.2.44")
 
-        exported_text = response.content.decode()
         for sensitive in ("password", "token", "cookie", "health", "contact", "money"):
             self.assertNotIn(sensitive, exported_text.lower())
+
+    def test_export_turnus_selection_matches_read_permissions(self):
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="view_auditevent"),
+            Permission.objects.get(codename="export_auditevent"),
+        )
+
+        forbidden = self.client.get(
+            f'{reverse("audit-export-api")}?turnus={self.other_turnus.id}'
+        )
+        self.assertEqual(forbidden.status_code, 404)
+
+        self.user.is_superuser = True
+        self.user.save(update_fields=["is_superuser"])
+        response = self.client.get(
+            f'{reverse("audit-export-api")}?turnus={self.other_turnus.id}',
+            HTTP_X_REQUEST_ID="other-turnus-export",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        lines = [
+            json.loads(line)
+            for line in b"".join(response.streaming_content).decode().splitlines()
+        ]
+        self.assertEqual(lines[0]["turnus"], {
+            "id": self.other_turnus.id,
+            "label": "T3-2026",
+        })
+        self.assertEqual([line["actor"]["label"] for line in lines[1:]], ["Other Reader"])
+        export_event = AuditEvent.objects.get(request_id="other-turnus-export")
+        self.assertEqual(export_event.turnus, self.other_turnus)
+        self.assertNotIn(export_event.id, [line.get("id") for line in lines])
