@@ -7,6 +7,7 @@ from .happy_cleaning_page_views import (
     assignment_page,
     print_number_page,
     station_detail_page,
+    stations_page,
 )
 
 urlpatterns = [
@@ -56,6 +57,11 @@ urlpatterns = [
         'happy-cleaning/<int:event_id>/assignment/',
         assignment_page,
         name='happy-cleaning-assignment-page',
+    ),
+    path(
+        'happy-cleaning/<int:event_id>/stations/',
+        stations_page,
+        name='happy-cleaning-stations-page',
     ),
     path(
         'happy-cleaning/<int:event_id>/print/',

@@ -85,9 +85,8 @@ describe('Happy Cleaning management', () => {
     );
   });
 
-  it('lists contiguous events, creates, and confirms only eligible deletion', async () => {
+  it('lists contiguous events, creates, and requires the event name for eligible deletion', async () => {
     const mutate = vi.fn().mockResolvedValue({ ok: true });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<HappyCleaningOverviewPage data={{ events: [
       { id: 7, display_number: 1, revision: 2, can_delete: false },
       { id: 9, display_number: 2, revision: 4, can_delete: true },
@@ -106,6 +105,16 @@ describe('Happy Cleaning management', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' }));
     await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole('button', { name: 'Happy Cleaning 2 löschen' }));
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Happy Cleaning 2 löschen' }));
+    const confirmation = dialog.getByLabelText('„Happy Cleaning 2“ zur Bestätigung eingeben');
+    const deleteButton = dialog.getByRole('button', { name: 'Happy Cleaning 2 endgültig löschen' });
+    expect(deleteButton).toBeDisabled();
+    fireEvent.change(confirmation, { target: { value: 'Happy Cleaning 1' } });
+    expect(deleteButton).toBeDisabled();
+    fireEvent.change(confirmation, { target: { value: 'Happy Cleaning 2' } });
+    expect(deleteButton).toBeEnabled();
+    fireEvent.click(deleteButton);
 
     await waitFor(() => expect(mutate).toHaveBeenCalledTimes(2));
     expect(mutate.mock.calls[0][0]).toBe('/api/happy-cleaning/events/create/');
@@ -197,20 +206,35 @@ describe('Happy Cleaning management', () => {
       ],
     }} />);
 
-    const numbered = within(screen.getByRole('region', { name: 'Anwesend mit Nummer' }));
-    const numberless = within(screen.getByRole('region', { name: 'Anwesend ohne Nummer' }));
-    const absent = within(screen.getByRole('region', { name: 'Abwesend' }));
-    expect(numbered.getAllByRole('listitem').map(row => row.textContent)).toEqual([
-      '2Zoe Alpha',
-      '7Ada Lovelace',
+    const numbered = within(screen.getByRole('table', { name: 'Anwesend mit Nummer' }));
+    const numberless = within(screen.getByRole('table', { name: 'Anwesend ohne Nummer' }));
+    const absent = within(screen.getByRole('table', { name: 'Abwesend' }));
+    expect(numbered.getAllByRole('columnheader').map(cell => cell.textContent)).toEqual([
+      'Nummer',
+      'Name',
     ]);
-    expect(numberless.getAllByRole('listitem').map(row => row.textContent)).toEqual([
-      'Aaron Zebra',
-      'Grace Hopper',
+    expect(numbered.getAllByRole('row').slice(1).map(row => (
+      within(row).getAllByRole('cell').map(cell => cell.textContent)
+    ))).toEqual([
+      ['2', 'Zoe Alpha'],
+      ['7', 'Ada Lovelace'],
     ]);
-    expect(absent.getAllByRole('listitem').map(row => row.textContent)).toEqual([
-      'Barbara AbleNummer 9 · Abwesenheitsort: Krankenhaus',
-      'Linus TorvaldsNummer 3 · Abwesenheitsort: Sallingstadt',
+    expect(numberless.getAllByRole('row').slice(1).map(row => (
+      within(row).getAllByRole('cell').map(cell => cell.textContent)
+    ))).toEqual([
+      ['Aaron Zebra'],
+      ['Grace Hopper'],
+    ]);
+    expect(absent.getAllByRole('columnheader').map(cell => cell.textContent)).toEqual([
+      'Nummer',
+      'Name',
+      'Abwesenheitsort',
+    ]);
+    expect(absent.getAllByRole('row').slice(1).map(row => (
+      within(row).getAllByRole('cell').map(cell => cell.textContent)
+    ))).toEqual([
+      ['9', 'Barbara Able', 'Krankenhaus'],
+      ['3', 'Linus Torvalds', 'Sallingstadt'],
     ]);
     expect(screen.queryByText(/Private Krankheit|private@example\.test|Private Notiz/)).not.toBeInTheDocument();
   });

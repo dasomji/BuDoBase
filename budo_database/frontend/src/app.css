@@ -390,7 +390,38 @@ input[name="amount"]::placeholder {
   gap: var(--s-padding);
 }
 
-.happy-cleaning-print-page {
+.happy-cleaning-delete-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  place-items: center;
+  padding: var(--l-padding);
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.happy-cleaning-delete-dialog {
+  width: min(30rem, 100%);
+  padding: var(--l-padding);
+  background: var(--bg-blue__solid);
+}
+
+.happy-cleaning-delete-dialog label {
+  display: block;
+  margin-top: var(--m-padding);
+  font-weight: 500;
+}
+
+.happy-cleaning-delete-dialog input {
+  width: 100%;
+  margin-top: var(--xs-padding);
+}
+
+.happy-cleaning-delete-dialog .react-actions {
+  justify-content: flex-end;
+}
+
+.happy-cleaning-print-page#body-container {
   display: block;
   width: min(52rem, calc(100% - 2rem));
   margin: 0 auto;
@@ -430,41 +461,43 @@ input[name="amount"]::placeholder {
   font-weight: 700;
 }
 
-.happy-cleaning-print-list {
-  display: grid;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.happy-cleaning-print-table-container {
+  overflow-x: auto;
+  border-radius: var(--corner-rad);
 }
 
-.happy-cleaning-print-row {
-  display: grid;
-  grid-template-columns: 4rem minmax(0, 1fr);
-  align-items: baseline;
-  gap: var(--s-padding);
-  border-bottom: 1px solid currentColor;
-  padding: 0.55rem 0.4rem;
+.happy-cleaning-print-table {
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--corner-rad);
+}
+
+.happy-cleaning-print-table th,
+.happy-cleaning-print-table td {
+  padding: var(--s-padding);
+  vertical-align: top;
+}
+
+.happy-cleaning-print-table th {
+  background: var(--dark-blue);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.happy-cleaning-print-table tbody tr {
+  border-bottom: 1px solid #8f8f8f;
+  background: var(--bg-blue__solid);
+}
+
+.happy-cleaning-print-table tbody tr:last-child {
+  border-bottom: 0;
 }
 
 .happy-cleaning-print-number {
-  font-size: 1.2em;
+  width: 6rem;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   text-align: right;
-}
-
-.happy-cleaning-print-row-numberless,
-.happy-cleaning-print-row-absent {
-  grid-template-columns: minmax(12rem, 1fr) minmax(14rem, 1fr);
-}
-
-.happy-cleaning-print-row-numberless {
-  grid-template-columns: 1fr;
-}
-
-.happy-cleaning-print-meta {
-  font-size: 0.9em;
 }
 
 .happy-cleaning-print-empty {
@@ -739,11 +772,6 @@ input[name="amount"]::placeholder {
   .happy-cleaning-number-neighborhood {
     grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
   }
-
-  .happy-cleaning-print-row-absent {
-    grid-template-columns: 1fr;
-    gap: var(--xs-padding);
-  }
 }
 
 @media print {
@@ -793,7 +821,31 @@ input[name="amount"]::placeholder {
     page-break-after: avoid;
   }
 
-  .happy-cleaning-print-row,
+  .happy-cleaning-print-table-container {
+    overflow: visible;
+  }
+
+  .happy-cleaning-print-table {
+    display: table !important;
+    width: 100%;
+    background: white;
+  }
+
+  .happy-cleaning-print-table th,
+  .happy-cleaning-print-table td {
+    padding: 1.5mm 2mm;
+    white-space: nowrap;
+  }
+
+  .happy-cleaning-print-table th {
+    background: #e6e6e6 !important;
+  }
+
+  .happy-cleaning-print-table tbody tr {
+    background: white !important;
+  }
+
+  .happy-cleaning-print-table tbody tr,
   .happy-cleaning-print-empty {
     break-inside: avoid;
     page-break-inside: avoid;
