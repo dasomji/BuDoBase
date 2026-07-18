@@ -7,13 +7,13 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 FORM_TARGETS = (
-    r"/login/?", r"/register/?", r"/profil/?", r"/upload/?",
+    r"/login/?", r"/register/?", r"/profil/?", r"/profil/\d+/?", r"/upload/?",
     r"/upload_excel/\d+/?", r"/kid_details/\d+/?", r"/check_in/\d+/?",
     r"/check_out/\d+/?", r"/schwerpunkt/create/?",
     r"/schwerpunkt/\d+/update/?", r"/swpmeals/\d+/?",
     r"/auslagerorte/create/?", r"/auslagerorte/\d+/update/?",
     r"/auslagerorte/\d+/upload-image/?", r"/auslagerorte/\d+/?",
-    r"/upload_spezialfamilien/?", r"/kindergeburtstage/?", r"/teamer/\d+/?",
+    r"/upload_spezialfamilien/?", r"/kindergeburtstage/?",
     r"/update-birthdays-from-sv/?",
 )
 

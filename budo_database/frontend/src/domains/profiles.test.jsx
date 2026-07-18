@@ -1,14 +1,8 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import App from '../App';
 import { parseRoute } from '../routes';
-import { ProfilePage, TeamerPage } from './profiles';
-
-const response = (data, { ok = true } = {}) => ({
-  ok,
-  json: vi.fn().mockResolvedValue(data),
-});
+import { ProfilePage, TeamPage } from './profiles';
 
 const profile = {
   id: 5,
@@ -22,13 +16,6 @@ const profile = {
   food: 'vt',
   food_display: '🧀 Vegetarisch',
   budo_family: 'M',
-  money_total: 12.5,
-  money_items: [{
-    id: 7,
-    amount: 12.5,
-    what: 'Material',
-    date: '2026-07-17T09:30:00Z',
-  }],
   can_change_turnus: true,
 };
 
@@ -43,14 +30,26 @@ const data = {
   ],
 };
 
-describe('Profil and Teamer pages', () => {
+function setTeamViewport(width) {
+  vi.spyOn(window, 'matchMedia').mockImplementation(query => {
+    const maxWidth = Number(query.match(/max-width:\s*(\d+)px/)?.[1]);
+    return {
+      matches: Number.isFinite(maxWidth) && width <= maxWidth,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+  });
+}
+
+describe('Profil and Team pages', () => {
   afterEach(() => {
     cleanup();
-    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     window.history.pushState({}, '', '/');
   });
 
-  it('renders focused profile, contact, role, focus, and accounting information', () => {
+  it('renders focused profile, contact, role, and focus information without accounting', () => {
     render(<ProfilePage data={data} />);
 
     const details = screen.getByRole('heading', { name: 'Ada' }).closest('section');
@@ -63,11 +62,10 @@ describe('Profil and Teamer pages', () => {
     expect(within(details).getByRole('link', { name: 'ada@example.test' })).toHaveAttribute('href', 'mailto:ada@example.test');
     expect(within(details).getByRole('link', { name: '+4312345' })).toHaveAttribute('href', 'tel:+4312345');
     expect(within(details).getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/3/');
-    expect(screen.getByRole('heading', { name: 'Abrechnung: 12.50 €' })).toBeInTheDocument();
-    expect(screen.getByText(/Ada am 17.07.2026: Material/)).toHaveTextContent('12.50 €');
+    expect(screen.queryByText(/Abrechnung/)).not.toBeInTheDocument();
   });
 
-  it('retains profile form values, choices, CSRF target, and active Turnus', () => {
+  it('retains own profile form values, choices, CSRF target, and active Turnus', () => {
     render(<ProfilePage data={data} />);
 
     expect(screen.getByLabelText('Rufname')).toHaveValue('Ada');
@@ -84,6 +82,12 @@ describe('Profil and Teamer pages', () => {
     expect(screen.getByLabelText('Rufname').form.elements.csrfmiddlewaretoken).toHaveValue('token');
   });
 
+  it('targets the selected profile when an authorized admin edits a teammate', () => {
+    render(<ProfilePage data={data} target="/profil/5/" />);
+
+    expect(screen.getByLabelText('Rufname').form).toHaveAttribute('action', '/profil/5/');
+  });
+
   it('does not render a Turnus control when existing permissions disallow it', () => {
     render(<ProfilePage data={{
       ...data,
@@ -94,108 +98,85 @@ describe('Profil and Teamer pages', () => {
     expect(screen.queryByLabelText('Turnus')).not.toBeInTheDocument();
   });
 
-
-  it('renders only the selected Teamer with links, focuses, and accounting form', () => {
-    render(<TeamerPage data={{
-      csrf_token: 'token',
-      person: profile,
-      focuses: data.focuses,
+  it('shows an update button only on the signed-in user’s Team card', () => {
+    render(<TeamPage data={{
+      profile: { id: 5 },
+      permissions: { change_profiles: false },
       turnus: data.turnus,
-    }} id="5" />);
+      team: [
+        { ...profile, focuses: data.focuses },
+        {
+          ...profile,
+          id: 6,
+          rufname: 'Grace',
+          email: 'grace@example.test',
+          phone: '+436789',
+          focuses: [],
+        },
+      ],
+    }} />);
 
-    expect(screen.getByRole('heading', { name: 'Ada' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/3/');
-    expect(screen.getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil');
-    const accounting = screen.getByRole('heading', { name: 'Abrechnung: 12.50 €' }).closest('section');
-    expect(within(accounting).getByText(/Material/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Betrag in €').form).toHaveAttribute('action', '/teamer/5/');
-    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+    const adaCard = screen.getByRole('heading', { name: 'Ada' }).closest('section');
+    expect(within(adaCard).getByText('Turnus').closest('p')).toHaveTextContent('T2-2026');
+    expect(within(adaCard).getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/3/');
+    expect(within(adaCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/');
+    const graceCard = screen.getByRole('heading', { name: 'Grace' }).closest('section');
+    expect(within(graceCard).getByText('Keine Schwerpunkte zugeteilt.')).toBeInTheDocument();
+    expect(within(graceCard).queryByRole('link', { name: 'Informationen aktualisieren' })).not.toBeInTheDocument();
   });
 
-  it('refreshes a saved Teamer accounting entry through the selected route only', async () => {
-    const onSaved = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue(response({
-      ok: true,
-      redirect: '/teamer/5/',
+  it('lets admins update every profile from its Team card', () => {
+    render(<TeamPage data={{
+      profile: { id: 5 },
+      permissions: { change_profiles: true },
+      turnus: data.turnus,
+      team: [
+        { ...profile, focuses: [] },
+        { ...profile, id: 6, rufname: 'Grace', focuses: [] },
+      ],
+    }} />);
+
+    const adaCard = screen.getByRole('heading', { name: 'Ada' }).closest('section');
+    const graceCard = screen.getByRole('heading', { name: 'Grace' }).closest('section');
+    expect(within(adaCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/');
+    expect(within(graceCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/6/');
+  });
+
+  it.each([
+    [1400, [[5, 8], [6, 9], [7]]],
+    [1000, [[5, 7, 9], [6, 8]]],
+    [700, [[5, 6, 7, 8, 9]]],
+  ])('stacks Team profile cards in fixed responsive flex columns at %ipx', (width, expectedColumns) => {
+    setTeamViewport(width);
+    const team = Array.from({ length: 5 }, (_, index) => ({
+      ...profile,
+      id: index + 5,
+      rufname: `Teamer ${index + 1}`,
+      focuses: [],
     }));
-    vi.stubGlobal('fetch', fetchMock);
-    render(<TeamerPage data={{
-      csrf_token: 'token',
-      person: { ...profile, money_items: [] },
-      focuses: data.focuses,
-      turnus: data.turnus,
-    }} id="5" onSaved={onSaved} />);
 
-    fireEvent.change(screen.getByLabelText('Betrag in €'), { target: { value: '8.50' } });
-    fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Einkauf' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const { container } = render(<TeamPage data={{ team, turnus: data.turnus }} />);
+    const actualColumns = Array.from(container.querySelectorAll('.team-column'), column => (
+      Array.from(column.children, card => Number(card.id.replace('team-profile-', '')))
+    ));
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ ok: true, redirect: '/teamer/5/' }));
-    const submitted = fetchMock.mock.calls[0][1].body;
-    expect(submitted.get('_target')).toBe('/teamer/5/');
-    expect(submitted.get('amount')).toBe('8.50');
-    expect(submitted.get('what')).toBe('Einkauf');
+    expect(actualColumns).toEqual(expectedColumns);
   });
 
-  it('reloads only the selected Teamer contract after an in-place accounting save', async () => {
-    window.history.pushState({}, '', '/teamer/5');
-    let teamerReads = 0;
-    const fetchMock = vi.fn(async url => {
-      if (url === '/api/bootstrap/') {
-        return response({
-          authenticated: true,
-          csrf_token: 'token',
-          messages: [],
-          profile: { id: 1, rufname: 'Current user' },
-          turnus: data.turnus,
-          permissions: {},
-          search_index: { kids: [], focuses: [], places: [] },
-        });
-      }
-      if (url === '/api/route-data/teamer/?id=5') {
-        teamerReads += 1;
-        return response({
-          person: {
-            ...profile,
-            money_total: teamerReads === 1 ? 0 : 8.5,
-            money_items: teamerReads === 1 ? [] : [{
-              id: 9,
-              amount: 8.5,
-              what: 'Einkauf',
-              date: '2026-07-17T10:00:00Z',
-            }],
-          },
-          focuses: data.focuses,
-        });
-      }
-      if (url === '/api/form-submit/') {
-        return response({ ok: true, redirect: '/teamer/5/' });
-      }
-      throw new Error(`Unexpected request: ${url}`);
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    render(<App fetchImpl={fetchMock} />);
+  it('shows an empty state when no active-turnus Team exists', () => {
+    render(<TeamPage data={{ team: [], turnus: null }} />);
 
-    fireEvent.change(await screen.findByLabelText('Betrag in €'), { target: { value: '8.50' } });
-    fireEvent.change(screen.getByLabelText('Beschreibung'), { target: { value: 'Einkauf' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-
-    expect(await screen.findByText(/Ada am 17.07.2026: Einkauf/)).toHaveTextContent('8.50 €');
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
-    expect(fetchMock.mock.calls.map(call => call[0])).toEqual([
-      '/api/bootstrap/',
-      '/api/route-data/teamer/?id=5',
-      '/api/form-submit/',
-      '/api/route-data/teamer/?id=5',
-    ]);
+    expect(screen.getByText('Kein Team für den aktiven Turnus vorhanden.')).toBeInTheDocument();
   });
 
-  it('declares both profile route contracts and resolves selected titles', () => {
-    const profileRoute = parseRoute('/profil');
-    const teamerRoute = parseRoute('/teamer/5');
+  it('declares own and admin profile editing plus Team routes, but no Teamer detail route', () => {
+    const ownProfileRoute = parseRoute('/profil');
+    const selectedProfileRoute = parseRoute('/profil/5');
+    const teamRoute = parseRoute('/team');
 
-    expect(profileRoute.readContractKey).toBe('profile');
-    expect(teamerRoute.readContractKey).toBe('teamer');
-    expect(teamerRoute.resolveTitle(teamerRoute, { person: profile })).toBe('Ada');
+    expect(ownProfileRoute.readContractKey).toBe('profile');
+    expect(selectedProfileRoute).toMatchObject({ page: 'profile', readContractKey: 'profile', id: '5' });
+    expect(teamRoute).toMatchObject({ page: 'team', readContractKey: 'team', title: 'Team' });
+    expect(parseRoute('/teamer/5').page).toBe('not-found');
   });
 });

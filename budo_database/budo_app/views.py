@@ -1,10 +1,10 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.contrib import messages
-from .models import Kinder, SpezialFamilien, Profil, BetreuerinnenGeld
-from .forms import CSVUploadForm, BetreuerinnenGeldForm, BirthdayNotizForm
+from .models import Kinder, SpezialFamilien, Profil
+from .forms import CSVUploadForm, BirthdayNotizForm
 from django.views.decorators.http import require_GET, require_POST
 from django.db import transaction
 from .utils import (
@@ -188,40 +188,8 @@ def upload_spezialfamilien(request):
 
 
 @login_required
-def teamer_details(request, id):
-    current_user = request.user
-    profil = Profil.objects.get(user=current_user)
-    active_turnus = profil.turnus
-    this_profil = get_object_or_404(Profil, id=id, turnus=active_turnus)
-    geld = BetreuerinnenGeld.objects.filter(who=this_profil)
-
-    context = {
-        "profil": this_profil,
-        "geld": geld,
-    }
-
-    if request.method == 'POST':
-        geld_form = BetreuerinnenGeldForm(request.POST)
-        context["geld_form"] = geld_form
-
-        if geld_form.is_valid():
-            amount = geld_form.cleaned_data.get("amount")
-            what = geld_form.cleaned_data.get("what")
-            if amount and what:
-                geld = geld_form.save(commit=False)
-                geld.what = what
-                geld.amount = amount
-                geld.who = this_profil
-                geld.save()
-            return redirect('teamer_details', id=this_profil.id)
-        else:
-            logger.debug("BetreuerinnenGeld form is not valid: %s",
-                         geld_form.errors)
-    else:
-        geld_form = BetreuerinnenGeldForm()
-        context["geld_form"] = geld_form
-
-    return render(request, 'users/teamer.html', context)
+def team(request):
+    return render(request, 'users/team.html')
 
 
 @login_required

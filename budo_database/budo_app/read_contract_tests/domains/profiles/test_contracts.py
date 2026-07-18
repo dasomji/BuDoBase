@@ -1,6 +1,6 @@
 from datetime import date
 
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group, Permission, User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -53,10 +53,10 @@ class ProfileContractTests(TestCase):
             schwerpunktzeit=self.turnus.schwerpunktzeit_set.get(woche="w1"),
         )
         self.focus.betreuende.add(self.profile)
-        self.money = BetreuerinnenGeld.objects.create(
+        BetreuerinnenGeld.objects.create(
             who=self.profile,
             amount=12.5,
-            what="Material",
+            what="Deprecated accounting data",
         )
         Kinder.objects.create(
             kid_index="T2-1",
@@ -71,7 +71,29 @@ class ProfileContractTests(TestCase):
         url = reverse("route-data-api", kwargs={"contract_key": key})
         return f"{url}?id={profile.id}" if profile else url
 
-    def test_profile_returns_only_own_focused_profile_data(self):
+    def create_teammate(self, *, username="selected-team-card", name="Grace"):
+        selected_user = User.objects.create_user(
+            username=username,
+            email="grace@example.test",
+        )
+        selected = selected_user.profil
+        selected.rufname = name
+        selected.telefonnummer = "+4398765"
+        selected.allergien = "Sellerie"
+        selected.coffee = "Hafermilch"
+        selected.rolle = "b"
+        selected.essen = "vn"
+        selected.budo_family = "L"
+        selected.turnus = self.turnus
+        selected.save()
+        return selected
+
+    def grant_profile_change(self):
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="change_profil"),
+        )
+
+    def test_profile_returns_only_own_focused_profile_data_without_accounting(self):
         response = self.client.get(self.contract_url("profile"))
 
         self.assertEqual(response.status_code, 200)
@@ -89,13 +111,6 @@ class ProfileContractTests(TestCase):
             "food": "vt",
             "food_display": "🧀 Vegetarisch",
             "budo_family": "M",
-            "money_total": 12.5,
-            "money_items": [{
-                "id": self.money.id,
-                "amount": 12.5,
-                "what": "Material",
-                "date": self.money.date_added.isoformat().replace("+00:00", "Z"),
-            }],
             "can_change_turnus": True,
         })
         self.assertEqual(payload["focuses"], [{
@@ -112,113 +127,155 @@ class ProfileContractTests(TestCase):
                 "label": str(self.turnus),
             },
         ])
+        self.assertNotContains(response, "Deprecated accounting data")
         self.assertNotContains(response, "Privates Kind")
-        self.assertNotIn("team", payload)
-        self.assertNotIn("kids", payload)
+        self.assertNotIn("money_total", payload["profile"])
+        self.assertNotIn("money_items", payload["profile"])
 
-    def test_teamer_returns_only_selected_active_turnus_person(self):
-        selected_user = User.objects.create_user(
-            username="selected-teamer",
-            email="grace@example.test",
-        )
-        selected = selected_user.profil
-        selected.rufname = "Grace"
-        selected.telefonnummer = "+4398765"
-        selected.allergien = "Sellerie"
-        selected.coffee = "Hafermilch"
-        selected.rolle = "b"
-        selected.essen = "vn"
-        selected.turnus = self.turnus
-        selected.save()
+    def test_team_returns_active_turnus_profile_cards_without_accounting(self):
+        selected = self.create_teammate()
         selected_focus = Schwerpunkte.objects.create(
             swp_name="Theater",
             schwerpunktzeit=self.turnus.schwerpunktzeit_set.get(woche="w2"),
         )
         selected_focus.betreuende.add(selected)
-        transaction = BetreuerinnenGeld.objects.create(
+        BetreuerinnenGeld.objects.create(
             who=selected,
-            amount=-4.25,
-            what="Rückgabe",
+            amount=99.5,
+            what="Private Abrechnung",
         )
-        unrelated = User.objects.create_user(username="unrelated-teamer").profil
-        unrelated.rufname = "Unrelated Private"
-        unrelated.turnus = self.turnus
-        unrelated.save()
-
-        response = self.client.get(self.contract_url("teamer", selected))
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertEqual(set(payload), {"person", "focuses"})
-        self.assertEqual(payload["person"], {
-            "id": selected.id,
-            "email": "grace@example.test",
-            "rufname": "Grace",
-            "phone": "+4398765",
-            "allergies": "Sellerie",
-            "coffee": "Hafermilch",
-            "role": "b",
-            "role_display": "Betreuer:in",
-            "food": "vn",
-            "food_display": "🥦 Vegan",
-            "budo_family": "",
-            "money_total": -4.25,
-            "money_items": [{
-                "id": transaction.id,
-                "amount": -4.25,
-                "what": "Rückgabe",
-                "date": transaction.date_added.isoformat().replace(
-                    "+00:00",
-                    "Z",
-                ),
-            }],
-        })
-        self.assertEqual(payload["focuses"], [{
-            "id": selected_focus.id,
-            "name": "Theater",
-        }])
-        self.assertNotContains(response, "Unrelated Private")
-        self.assertNotContains(response, "Privates Kind")
-        self.assertNotIn("team", payload)
-        self.assertNotIn("kids", payload)
-
-    def test_teamer_rejects_cross_turnus_invalid_and_unscoped_requests(self):
-        other = User.objects.create_user(username="other-turnus-teamer").profil
+        other = User.objects.create_user(
+            username="other-team-card",
+            email="other-private@example.test",
+        ).profil
         other.rufname = "Other Turnus Private"
         other.turnus = self.other_turnus
         other.save()
 
-        cross_turnus = self.client.get(self.contract_url("teamer", other))
-        invalid = self.client.get(
-            reverse("route-data-api", kwargs={"contract_key": "teamer"})
-            + "?id=not-a-number",
-        )
-        unscoped_focus = Schwerpunkte.objects.create(
-            swp_name="Unscoped Private Focus",
-            schwerpunktzeit=None,
-        )
-        unscoped_focus.betreuende.add(self.profile)
+        response = self.client.get(self.contract_url("team"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(set(payload), {"team"})
+        self.assertEqual(payload["team"], [
+            {
+                "id": self.profile.id,
+                "email": "ada@example.test",
+                "rufname": "Ada",
+                "phone": "+4312345",
+                "allergies": "Haselnüsse",
+                "coffee": "Schwarz",
+                "role": "o",
+                "role_display": "Organisator",
+                "food": "vt",
+                "food_display": "🧀 Vegetarisch",
+                "budo_family": "M",
+                "focuses": [{"id": self.focus.id, "name": "Wald"}],
+            },
+            {
+                "id": selected.id,
+                "email": "grace@example.test",
+                "rufname": "Grace",
+                "phone": "+4398765",
+                "allergies": "Sellerie",
+                "coffee": "Hafermilch",
+                "role": "b",
+                "role_display": "Betreuer:in",
+                "food": "vn",
+                "food_display": "🥦 Vegan",
+                "budo_family": "L",
+                "focuses": [{
+                    "id": selected_focus.id,
+                    "name": "Theater",
+                }],
+            },
+        ])
+        self.assertNotContains(response, "Other Turnus Private")
+        self.assertNotContains(response, "other-private@example.test")
+        self.assertNotContains(response, "Private Abrechnung")
+        self.assertNotIn("money_total", payload["team"][0])
+        self.assertNotIn("money_items", payload["team"][0])
+
+    def test_team_without_an_active_turnus_is_empty(self):
         self.profile.turnus = None
         self.profile.save()
-        unscoped = self.client.get(self.contract_url("teamer", other))
-        own_profile = self.client.get(self.contract_url("profile"))
 
-        self.assertEqual(cross_turnus.status_code, 404)
-        self.assertEqual(invalid.status_code, 404)
-        self.assertEqual(unscoped.status_code, 404)
-        self.assertEqual(own_profile.status_code, 200)
-        self.assertEqual(own_profile.json()["focuses"], [])
-        self.assertNotContains(own_profile, "Unscoped Private Focus")
-        self.assertNotContains(cross_turnus, "Other Turnus Private", status_code=404)
+        response = self.client.get(self.contract_url("team"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"team": []})
+
+    def test_only_profile_admins_can_read_a_selected_profile_for_editing(self):
+        selected = self.create_teammate()
+
+        denied = self.client.get(self.contract_url("profile", selected))
+        self.grant_profile_change()
+        allowed = self.client.get(self.contract_url("profile", selected))
+
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(allowed.status_code, 200)
+        payload = allowed.json()
+        self.assertEqual(payload["profile"]["id"], selected.id)
+        self.assertEqual(payload["profile"]["rufname"], "Grace")
+        self.assertTrue(payload["profile"]["can_change_turnus"])
+        self.assertNotIn("money_total", payload["profile"])
+
+    def test_profile_admin_can_update_a_selected_profile_but_ordinary_users_cannot(self):
+        selected = self.create_teammate()
+        target = f"/profil/{selected.id}/"
+        submission = {
+            "_target": target,
+            "rufname": "Grace Neu",
+            "allergien": "Keine",
+            "coffee": "Milch",
+            "rolle": "o",
+            "essen": "vt",
+            "telefonnummer": "+436641234567",
+            "budo_family": "XL",
+            "turnus": self.other_turnus.id,
+        }
+
+        denied = self.client.post(reverse("form-submit-api"), submission)
+        selected.refresh_from_db()
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(selected.rufname, "Grace")
+
+        self.grant_profile_change()
+        saved = self.client.post(reverse("form-submit-api"), submission)
+
+        self.assertEqual(saved.status_code, 200)
+        self.assertEqual(saved.json(), {"ok": True, "redirect": "/team/"})
+        selected.refresh_from_db()
+        self.assertEqual(selected.rufname, "Grace Neu")
+        self.assertEqual(selected.allergien, "Keine")
+        self.assertEqual(selected.budo_family, "XL")
+        self.assertEqual(selected.turnus, self.other_turnus)
+
+    def test_deprecated_teamer_accounting_route_and_form_target_are_unavailable(self):
+        selected = self.create_teammate()
+
+        page = self.client.get(f"/teamer/{selected.id}/")
+        submission = self.client.post(
+            reverse("form-submit-api"),
+            {
+                "_target": f"/teamer/{selected.id}/",
+                "amount": "8.50",
+                "what": "Einkauf",
+            },
+        )
+
+        self.assertEqual(page.status_code, 404)
+        self.assertEqual(submission.status_code, 400)
+        self.assertFalse(selected.betreuerinnen_geld.exists())
 
     def test_profile_contracts_require_authentication(self):
         self.client.logout()
 
         profile = self.client.get(self.contract_url("profile"))
-        teamer = self.client.get(self.contract_url("teamer", self.profile))
+        team = self.client.get(self.contract_url("team"))
 
         self.assertEqual(profile.status_code, 403)
-        self.assertEqual(teamer.status_code, 403)
+        self.assertEqual(team.status_code, 403)
 
     def test_test_users_cannot_select_or_submit_a_different_turnus(self):
         self.user.groups.add(Group.objects.create(name="Test-users"))
@@ -333,54 +390,6 @@ class ProfileContractTests(TestCase):
             "tags": "success",
         }])
 
-    def test_teamer_accounting_preserves_validation_redirect_and_active_turnus(self):
-        selected = User.objects.create_user(username="accounting-teamer").profil
-        selected.rufname = "Accounting"
-        selected.turnus = self.turnus
-        selected.save()
-        other = User.objects.create_user(username="other-accounting").profil
-        other.turnus = self.other_turnus
-        other.save()
-
-        invalid = self.client.post(
-            reverse("form-submit-api"),
-            {
-                "_target": f"/teamer/{selected.id}/",
-                "amount": "8.50",
-                "what": "",
-            },
-        )
-        cross_turnus = self.client.post(
-            reverse("form-submit-api"),
-            {
-                "_target": f"/teamer/{other.id}/",
-                "amount": "8.50",
-                "what": "Nicht erlaubt",
-            },
-        )
-        saved = self.client.post(
-            reverse("form-submit-api"),
-            {
-                "_target": f"/teamer/{selected.id}/",
-                "amount": "8.50",
-                "what": "Einkauf",
-            },
-        )
-
-        self.assertEqual(invalid.status_code, 422)
-        self.assertFalse(invalid.json()["ok"])
-        self.assertEqual(cross_turnus.status_code, 404)
-        self.assertFalse(other.betreuerinnen_geld.exists())
-        self.assertEqual(saved.status_code, 200)
-        self.assertEqual(saved.json(), {
-            "ok": True,
-            "redirect": f"/teamer/{selected.id}/",
-        })
-        self.assertEqual(
-            list(selected.betreuerinnen_geld.values("amount", "what")),
-            [{"amount": 8.5, "what": "Einkauf"}],
-        )
-
 
 @override_settings(STORAGES=TEST_STORAGES)
 class ProfileContractPerformanceTests(QueryBudgetAssertions, TestCase):
@@ -395,18 +404,15 @@ class ProfileContractPerformanceTests(QueryBudgetAssertions, TestCase):
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
 
-    def measure_contract(self, key, profile=None):
+    def measure_contract(self, key):
         url = reverse("route-data-api", kwargs={"contract_key": key})
-        if profile:
-            url = f"{url}?id={profile.id}"
         return measure_http_get(self.client, url)
 
-    def test_profile_and_teamer_queries_stay_bounded_and_payloads_beat_legacy(self):
+    def test_profile_and_team_queries_stay_bounded_and_payloads_beat_legacy(self):
         self.fixtures.grow_to(kids=3, focuses=2, team=2, places=1)
-        selected = self.turnus.teamer.exclude(id=self.user.profil.id).first()
         small = {
             "profile": self.measure_contract("profile"),
-            "teamer": self.measure_contract("teamer", selected),
+            "team": self.measure_contract("team"),
         }
 
         self.fixtures.grow_to(kids=48, focuses=8, team=10, places=6)
@@ -414,16 +420,9 @@ class ProfileContractPerformanceTests(QueryBudgetAssertions, TestCase):
             Schwerpunkte.objects.filter(schwerpunktzeit__turnus=self.turnus),
         )
         self.user.profil.swp.add(*focuses)
-        selected.swp.add(*focuses)
-        for index in range(30):
-            BetreuerinnenGeld.objects.create(
-                who=selected,
-                amount=index + 0.5,
-                what=f"Skalierender Einkauf {index}",
-            )
         realistic = {
             "profile": self.measure_contract("profile"),
-            "teamer": self.measure_contract("teamer", selected),
+            "team": self.measure_contract("team"),
         }
 
         for key in small:

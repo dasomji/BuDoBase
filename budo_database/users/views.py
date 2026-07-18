@@ -2,10 +2,12 @@
 This is the user views.
 """
 
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.template import loader
 
@@ -116,3 +118,17 @@ class ProfilUpdate(UpdateView):
     def form_valid(self, form):
         messages.success(self.request, "Profil upgedatet!")
         return super(ProfilUpdate, self).form_valid(form)
+
+
+class ProfilAdminUpdate(ProfilUpdate):
+    success_url = reverse_lazy('team')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        if not request.user.has_perm('budo_app.change_profil'):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(Profil, pk=self.kwargs['pk'])

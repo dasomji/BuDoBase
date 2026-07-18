@@ -18,6 +18,7 @@ def _queued_messages(request):
 def _permissions(user):
     return {
         "change_kids": user.has_perm("budo_app.change_kinder"),
+        "change_profiles": user.has_perm("budo_app.change_profil"),
         "change_focuses": user.has_perm("budo_app.change_schwerpunkte"),
         "change_places": user.has_perm("budo_app.change_auslagerorte"),
         "view_auditevent": user.has_perm("budo_app.view_auditevent"),

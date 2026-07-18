@@ -401,13 +401,15 @@
   width: 100%;
 }
 
-#body-container.dashboard-page {
+#body-container.dashboard-page,
+#body-container.team-page {
   display: flex;
   align-items: flex-start;
   justify-content: initial;
 }
 
-.dashboard-column {
+.dashboard-column,
+.team-column {
   display: flex;
   width: auto;
   min-width: 0;
@@ -416,9 +418,14 @@
   gap: var(--l-padding);
 }
 
-.dashboard-column > .card {
+.dashboard-column > .card,
+.team-column > .card {
   width: 100%;
   min-width: 0;
+}
+
+#body-container.team-empty {
+  display: block;
 }
 
 .dashboard-focus + .dashboard-focus {

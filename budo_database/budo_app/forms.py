@@ -1,7 +1,7 @@
 from datetime import datetime
 from django.conf import settings
 from django.forms import ModelForm, Form
-from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, AuslagerorteNotizen, AuslagerorteImage, Schwerpunktzeit, Geld, BetreuerinnenGeld
+from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, AuslagerorteNotizen, AuslagerorteImage, Schwerpunktzeit, Geld
 from django import forms
 from django.contrib.auth.models import User
 import datetime
@@ -205,16 +205,6 @@ class MealChoiceForm(forms.ModelForm):
 
 class CSVUploadForm(forms.Form):
     csv_file = forms.FileField()
-
-
-class BetreuerinnenGeldForm(forms.ModelForm):
-    class Meta:
-        model = BetreuerinnenGeld
-        fields = ['amount', 'what']
-        widgets = {
-            'amount': forms.NumberInput(attrs={'class': 'w3-input', 'placeholder': 'Betrag in €', 'step': '0.01'}),
-            'what': forms.TextInput(attrs={'class': 'w3-input', 'placeholder': 'Beschreibung'})
-        }
 
 
 class BirthdayNotizForm(forms.ModelForm):

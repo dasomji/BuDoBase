@@ -1,13 +1,11 @@
+from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
-from django.http import Http404
 from django.shortcuts import get_object_or_404
 
-from budo_app.models import BetreuerinnenGeld, Profil, Schwerpunkte, Turnus
+from budo_app.models import Profil, Schwerpunkte, Turnus
 from budo_app.read_contracts.common import (
     active_turnus_id,
     required_query_integer,
-    serialize_money,
-    serialize_utc_datetime,
 )
 
 
@@ -25,37 +23,13 @@ def _profile_queryset(turnus_id):
             .only("id", "swp_name")
             .order_by("swp_name", "id")
         )
-    money = BetreuerinnenGeld.objects.only(
-        "id",
-        "who_id",
-        "amount",
-        "what",
-        "date_added",
-    ).order_by("date_added", "id")
-    return (
-        Profil.objects.select_related("user")
-        .prefetch_related(
-            Prefetch("swp", queryset=focuses, to_attr="route_focuses"),
-            Prefetch(
-                "betreuerinnen_geld",
-                queryset=money,
-                to_attr="route_money_items",
-            ),
-        )
+    return Profil.objects.select_related("user").prefetch_related(
+        Prefetch("swp", queryset=focuses, to_attr="route_focuses"),
     )
 
 
-def _profile(profile, *, can_change_turnus):
-    money_items = [
-        {
-            "id": item.id,
-            "amount": serialize_money(item.amount),
-            "what": item.what,
-            "date": serialize_utc_datetime(item.date_added),
-        }
-        for item in profile.route_money_items
-    ]
-    payload = {
+def _profile_fields(profile):
+    return {
         "id": profile.id,
         "email": profile.user.email,
         "rufname": profile.rufname,
@@ -67,11 +41,11 @@ def _profile(profile, *, can_change_turnus):
         "food": profile.essen,
         "food_display": profile.get_food(),
         "budo_family": profile.budo_family,
-        "money_total": serialize_money(
-            sum(item.amount or 0 for item in profile.route_money_items),
-        ),
-        "money_items": money_items,
     }
+
+
+def _profile(profile, *, can_change_turnus):
+    payload = _profile_fields(profile)
     if can_change_turnus is not None:
         payload["can_change_turnus"] = can_change_turnus
     return payload
@@ -95,39 +69,48 @@ def _turnuses(can_change_turnus):
 
 def profile(request):
     turnus_id = active_turnus_id(request)
-    own_profile = get_object_or_404(
-        _profile_queryset(turnus_id),
-        user_id=request.user.id,
-    )
+    selected_id = request.query_params.get("id")
+    if selected_id is None:
+        selected_profile = get_object_or_404(
+            _profile_queryset(turnus_id),
+            user_id=request.user.id,
+        )
+    else:
+        if not request.user.has_perm("budo_app.change_profil"):
+            raise PermissionDenied
+        selected_profile = get_object_or_404(
+            _profile_queryset(turnus_id),
+            id=required_query_integer(request),
+        )
     can_change_turnus = _can_change_turnus(request.user)
     return {
         "profile": _profile(
-            own_profile,
+            selected_profile,
             can_change_turnus=can_change_turnus,
         ),
-        "focuses": _focuses(own_profile),
+        "focuses": _focuses(selected_profile),
         "turnuses": _turnuses(can_change_turnus),
     }
 
 
-def teamer(request):
+def team(request):
     turnus_id = active_turnus_id(request)
     if turnus_id is None:
-        raise Http404
-    selected_profile = get_object_or_404(
-        _profile_queryset(turnus_id).filter(turnus_id=turnus_id),
-        id=required_query_integer(request),
+        return {"team": []}
+    profiles = (
+        _profile_queryset(turnus_id)
+        .filter(turnus_id=turnus_id)
+        .order_by("rufname", "id")
     )
     return {
-        "person": _profile(
-            selected_profile,
-            can_change_turnus=None,
-        ),
-        "focuses": _focuses(selected_profile),
+        "team": [
+            {**_profile_fields(item), "focuses": _focuses(item)}
+            for item in profiles
+        ],
     }
 
 
 CONTRACTS = {
     "profile": profile,
-    "teamer": teamer,
+    "team": team,
 }
