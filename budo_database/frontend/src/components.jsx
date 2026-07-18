@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
+import { SearchIcon } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -99,13 +100,26 @@ export function GlobalSearch({ data, onNavigate = path => window.location.assign
 }
 
 export function Header({ title, authenticated, searchData, action }) {
+  const [searchOpen, setSearchOpen] = useState(false);
   return (
     <header id="headermenu">
-      <div id="header-content">
+      <div id="header-content" className={searchOpen ? 'search-open' : ''}>
         {authenticated
           ? <SidebarTrigger id="menu-button" aria-label="Sidebar ein- oder ausklappen" />
           : <div id="logo"><a href="/dashboard/"><Logo /></a></div>}
         <div id="headertitle"><h1>{title}</h1></div>
+        {authenticated && (
+          <button
+            id="search-button"
+            type="button"
+            aria-label={searchOpen ? 'Suche schließen' : 'Suche öffnen'}
+            aria-controls="headersearch"
+            aria-expanded={searchOpen}
+            onClick={() => setSearchOpen(open => !open)}
+          >
+            <SearchIcon aria-hidden="true" />
+          </button>
+        )}
         {authenticated && <GlobalSearch data={searchData} />}
         {authenticated && action && <div id="headerbutton">{action}</div>}
       </div>

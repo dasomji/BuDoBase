@@ -35,7 +35,6 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 const gamesUrl = 'https://honey-glue-e51.notion.site/Methoden-eaff0abb8b2a42bfb319c50d5357022c';
 
 export const sidebarItems = [
-  { label: 'Team', href: '/team/', icon: UsersRound },
   {
     label: 'Listen',
     icon: ClipboardList,
@@ -61,6 +60,7 @@ export const sidebarItems = [
   { label: 'Auslagerorte', href: '/auslagerorte-list/', icon: MapPinned },
   { label: 'Küche', href: '/kitchen', icon: ChefHat },
   { label: 'Spiele', href: gamesUrl, icon: Gamepad2, external: true },
+  { label: 'Team', href: '/team/', icon: UsersRound },
   {
     label: 'Orgi',
     icon: Settings,
@@ -107,19 +107,42 @@ function NavigationLink({ item, sub = false }) {
   );
 }
 
+const SIDEBAR_GROUP_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+
+function sidebarGroupCookieName(label) {
+  return `sidebar_group_${encodeURIComponent(label)}`;
+}
+
+function readSidebarGroupState(label) {
+  const name = `${sidebarGroupCookieName(label)}=`;
+  const cookie = document.cookie.split('; ').find(value => value.startsWith(name));
+  return cookie ? cookie.slice(name.length) === 'true' : true;
+}
+
+function writeSidebarGroupState(label, open) {
+  document.cookie = `${sidebarGroupCookieName(label)}=${open}; path=/; max-age=${SIDEBAR_GROUP_COOKIE_MAX_AGE}`;
+}
+
 function NavigationGroup({ item, index }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => readSidebarGroupState(item.label));
   const { state, setOpen: setSidebarOpen } = useSidebar();
   const Icon = item.icon;
   const id = `sidebar-group-${index}`;
   const active = item.children.some(child => isCurrent(child.href));
+  const setGroupOpen = value => {
+    setOpen(current => {
+      const next = typeof value === 'function' ? value(current) : value;
+      writeSidebarGroupState(item.label, next);
+      return next;
+    });
+  };
   const toggle = () => {
     if (state === 'collapsed') {
       setSidebarOpen(true);
-      setOpen(true);
+      setGroupOpen(true);
       return;
     }
-    setOpen(value => !value);
+    setGroupOpen(value => !value);
   };
   return (
     <SidebarMenuItem>
