@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { HappyCleaningAssignmentPage } from './happyCleaningAssignment';
+
 
 const requestId = () => globalThis.crypto?.randomUUID?.()
   || `happy-cleaning-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -347,6 +349,16 @@ export const happyCleaningRoutes = [
     domain: 'happy-cleaning',
     readContractKey: 'happy-cleaning-overview',
     render: ({ data, mutate }) => <HappyCleaningOverviewPage data={data} mutate={mutate} />,
+  },
+  {
+    pattern: /^\/happy-cleaning\/(\d+)\/assignment$/,
+    page: 'happy-cleaning-assignment',
+    title: 'Happy Cleaning Einteilung',
+    domain: 'happy-cleaning',
+    readContractKey: 'happy-cleaning-assignment',
+    params: match => ({ event_id: match[1] }),
+    resolveTitle: (_route, data) => `Einteilung · Happy Cleaning ${data.event?.display_number || ''}`.trim(),
+    render: ({ data, mutate, refresh, realtimeSync }) => <HappyCleaningAssignmentPage data={data} mutate={mutate} refresh={refresh} realtimeSync={realtimeSync} />,
   },
   {
     pattern: /^\/happy-cleaning\/(\d+)\/stations$/,
