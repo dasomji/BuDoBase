@@ -774,6 +774,98 @@ input[name="amount"]::placeholder {
   }
 }
 
+#body-container.families-page {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.families-page .family-card-column {
+  width: 100%;
+  min-width: 0;
+}
+
+.family-card-column > .card {
+  width: 100%;
+}
+
+.family-kids {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--xs-padding) var(--l-padding);
+  margin: 0;
+  padding-left: var(--l-padding);
+}
+
+.family-kids li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media only screen and (min-width: 761px) and (max-width: 1080px) {
+  #body-container.families-page {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media only screen and (max-width: 760px) {
+  #body-container.families-page,
+  .family-kids {
+    grid-template-columns: 1fr;
+  }
+}
+
+.allocation-stats {
+  margin-bottom: var(--m-padding);
+  padding-bottom: var(--s-padding);
+  border-bottom: 1px solid rgba(55, 55, 55, 0.25);
+}
+
+.allocation-stats p {
+  margin: 0 0 var(--xs-padding);
+}
+
+.allocation-stats p:last-child {
+  margin-bottom: 0;
+}
+
+.allocation-kids {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--xs-padding) var(--l-padding);
+  margin: 0;
+  padding-left: var(--l-padding);
+}
+
+.allocation-kids li {
+  min-width: 0;
+  break-inside: avoid;
+}
+
+.allocation-page .swp-choice button.active {
+  background-color: #4caf50;
+  box-shadow: inset 0 0 0 2px #2f7632;
+}
+
+@media only screen and (min-width: 761px) {
+  .allocation-page .allocation-table-column {
+    min-height: 80vh;
+  }
+
+  .allocation-page .allocation-table-column > .table-container:has(#kids-table) {
+    height: 0;
+    min-height: 0;
+    max-height: none;
+    flex: 1 1 0;
+  }
+}
+
+@media only screen and (max-width: 760px) {
+  .allocation-kids {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media print {
   @page {
     margin: 14mm;

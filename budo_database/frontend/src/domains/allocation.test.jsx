@@ -17,16 +17,36 @@ describe('allocation page', () => {
     window.history.pushState({}, '', '/');
   });
 
-  it('renders the selected week with its current assignments and choices', () => {
+  it('renders assignment stats above a two-column kid list and highlights selected choices', () => {
     render(<AllocationPage week="2" mutate={vi.fn()} data={{
-      focuses: [{ id: 2, name: 'Wald', week: 'w2', kid_ids: [1] }],
-      kids: [{ id: 1, full_name: 'Ada', present: true, focus_ids: [2], choices: [{ week: 'w2', first: 2, friends: 'Bea' }], age: 12, siblings: '' }],
+      focuses: [{
+        id: 2,
+        name: 'Wald',
+        week: 'w2',
+        kid_ids: [1, 2, 3],
+        stats: {
+          average_age: 12.5,
+          sex: { male: 1, female: 1, diverse: 1 },
+          families: { S: 1, M: 1, L: 0, XL: 1 },
+        },
+      }],
+      kids: [
+        { id: 1, full_name: 'Ada', present: true, focus_ids: [2], choices: [{ week: 'w2', first: 2, friends: 'Bea' }], age: 12, siblings: '' },
+        { id: 2, full_name: 'Bea', present: true, focus_ids: [2], choices: [], age: 13, siblings: '' },
+        { id: 3, full_name: 'Chris', present: true, focus_ids: [2], choices: [], age: null, siblings: '' },
+      ],
     }} />);
 
-    expect(screen.getByRole('heading', { name: 'Wald: 1' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Wald' }).selected).toBe(true);
-    expect(screen.getByRole('button', { name: '1' })).toHaveClass('active');
-    expect(screen.getByText('Bea')).toBeInTheDocument();
+    const card = screen.getByRole('heading', { name: 'Wald: 3' }).closest('.card');
+    const stats = within(card).getByLabelText('Statistik Wald');
+    expect(stats).toHaveTextContent('Ø Alter: 12,5');
+    expect(stats).toHaveTextContent('Geschlechter: 1 ♂ · 1 ♀ · 1 ⚧');
+    expect(stats).toHaveTextContent('BuDo-Familien: 1 S · 1 M · 0 L · 1 XL');
+    expect(within(card).getByRole('list')).toHaveClass('allocation-kids');
+    expect(screen.getAllByRole('option', { name: 'Wald' })[0].selected).toBe(true);
+    expect(screen.getAllByRole('button', { name: '1' })[0]).toHaveClass('active');
+    expect(screen.getAllByRole('button', { name: '1' })[0]).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('row', { name: /Ada/ })).toHaveTextContent('Bea');
   });
 
   it('refreshes only allocation data and renders every affected value coherently', async () => {
@@ -48,9 +68,14 @@ describe('allocation page', () => {
       age: 14,
       siblings: '',
     });
+    const stats = {
+      average_age: 14,
+      sex: { male: 0, female: 1, diverse: 0 },
+      families: { S: 0, M: 1, L: 0, XL: 0 },
+    };
     const focuses = (forestKids, lakeKids) => [
-      { id: 2, name: 'Wald', week: 'w2', kid_ids: forestKids },
-      { id: 3, name: 'See', week: 'w2', kid_ids: lakeKids },
+      { id: 2, name: 'Wald', week: 'w2', kid_ids: forestKids, stats },
+      { id: 3, name: 'See', week: 'w2', kid_ids: lakeKids, stats },
     ];
     const initial = { kids: [kid(2, 2, 'Bea')], focuses: focuses([1], []) };
     const assigned = { kids: [kid(3, 2, 'Bea')], focuses: focuses([], [1]) };
