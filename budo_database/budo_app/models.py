@@ -24,6 +24,13 @@ from .text_cleaning import (
 
 class Profil(models.Model):
 
+    BUDO_FAMILIES = [
+        ("S", "Smallie"),
+        ("M", "Medi"),
+        ("L", "Largie"),
+        ("XL", "X-largie"),
+    ]
+
     ROLLEN = (
         ("b", "Betreuer:in"),
         ("k", "Küche"),
@@ -63,6 +70,14 @@ class Profil(models.Model):
 
     turnus = models.ForeignKey(
         "Turnus", on_delete=models.SET_NULL, null=True, blank=True, related_name="teamer"
+    )
+
+    budo_family = models.CharField(
+        max_length=2,
+        choices=BUDO_FAMILIES,
+        blank=True,
+        default="",
+        verbose_name="BuDo-Familie",
     )
 
     class Meta:

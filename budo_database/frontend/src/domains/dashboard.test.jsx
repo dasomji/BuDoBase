@@ -10,12 +10,7 @@ const emptyPage = { items: [], next_cursor: null, has_more: false, limit: 20 };
 const dashboardData = (activity = {}) => ({
   profile: {
     focus_ids: [11],
-    role_display: 'Betreuer:in',
-    food_display: 'Vegetarisch',
-    allergies: '',
-    coffee: '',
-    email: 'ada@example.com',
-    phone: '',
+    budo_family: 'M',
   },
   team: [],
   totals: {
@@ -41,8 +36,14 @@ const dashboardData = (activity = {}) => ({
     special_food: 'glutenfrei',
     drugs: 'Asthmaspray',
     illness: 'Allergie',
+    budo_family: 'M',
+    assigned_focus_weeks: ['w1', 'w2'],
   }],
-  focuses: [{ id: 11, name: 'Wald' }],
+  focuses: [
+    { id: 11, name: 'Wald', week: 'w1', kid_ids: [7] },
+    { id: 12, name: 'See', week: 'w2', kid_ids: [7] },
+  ],
+  focus_assignments_complete: { w1: true, w2: true },
   activity: {
     notes: emptyPage,
     transactions: emptyPage,
@@ -57,6 +58,18 @@ const response = (data, { ok = true, status = 200 } = {}) => ({
   json: vi.fn().mockResolvedValue(data),
 });
 
+function setDashboardViewport(width) {
+  vi.spyOn(window, 'matchMedia').mockImplementation(query => {
+    const maxWidth = Number(query.match(/max-width:\s*(\d+)px/)?.[1]);
+    return {
+      matches: Number.isFinite(maxWidth) && width <= maxWidth,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+  });
+}
+
 describe('dashboard page', () => {
   afterEach(() => {
     cleanup();
@@ -64,28 +77,66 @@ describe('dashboard page', () => {
     window.history.pushState({}, '', '/');
   });
 
-  it('retains every operational summary and list from the focused projection', () => {
+  it('renders exactly the requested operational dashboard cards', () => {
     render(<DashboardPage data={dashboardData()} />);
 
     for (const heading of [
-      'Mein Profil',
-      'Team',
-      'Finanzen',
       'Kinder: 1',
-      'Speziallisten',
       'Notizen',
-      'Taschengeld-Transaktionen',
+      'Meine BuDo-Familie',
+      'Mein SWP 1',
+      'Mein SWP 2',
       'Erstes Mal im BuDO: 1/1',
       'Einwöchige: 1',
       'Gesundheitliches',
       'Essen & Allergien',
       'Geburtstagskinder: 1',
       'Verabschiedungsliste: 0',
+      'Taschengeldtransaktionen',
     ]) {
       expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
     }
-    expect(screen.getByText('Taschengeld aktuell').closest('p')).toHaveTextContent('18.00 €');
+    for (const removed of ['Mein Profil', 'Team', 'Finanzen', 'Speziallisten']) {
+      expect(screen.queryByRole('heading', { name: removed })).not.toBeInTheDocument();
+    }
+    expect(screen.getAllByRole('link', { name: 'Grace Hopper' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/11/');
+    expect(screen.getByRole('link', { name: 'See' })).toHaveAttribute('href', '/schwerpunkt/12/');
+  });
+
+  it.each([
+    [1400, [
+      ['db-kinderübersicht', 'db-swp-1', 'db-einwöchig', 'db-geburtstagskinder'],
+      ['db-notizen', 'db-swp-2', 'db-gesundheit', 'db-sechzehner'],
+      ['db-budo-familie', 'db-ersties', 'db-essen', 'db-geld'],
+    ]],
+    [1000, [
+      ['db-kinderübersicht', 'db-budo-familie', 'db-swp-2', 'db-einwöchig', 'db-essen', 'db-sechzehner'],
+      ['db-notizen', 'db-swp-1', 'db-ersties', 'db-gesundheit', 'db-geburtstagskinder', 'db-geld'],
+    ]],
+    [700, [[
+      'db-kinderübersicht', 'db-notizen', 'db-budo-familie', 'db-swp-1', 'db-swp-2', 'db-ersties',
+      'db-einwöchig', 'db-gesundheit', 'db-essen', 'db-geburtstagskinder', 'db-sechzehner', 'db-geld',
+    ]]],
+  ])('stacks cards without row gaps in fixed flex columns at %ipx', (width, expectedColumns) => {
+    setDashboardViewport(width);
+
+    const { container } = render(<DashboardPage data={dashboardData()} />);
+    const actualColumns = Array.from(container.querySelectorAll('.dashboard-column'), column => (
+      Array.from(column.children, card => card.id)
+    ));
+
+    expect(actualColumns).toEqual(expectedColumns);
+  });
+
+  it('waits to show each personal SWP until all present kids are assigned for that week', () => {
+    const data = dashboardData();
+    data.focus_assignments_complete = { w1: false, w2: true };
+
+    render(<DashboardPage data={data} />);
+
+    expect(screen.queryByRole('heading', { name: 'Mein SWP 1' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Mein SWP 2' })).toBeInTheDocument();
   });
 
   it('loads and appends the selected older activity page without duplicates', async () => {
@@ -167,7 +218,7 @@ describe('dashboard page', () => {
 
     expect(await screen.findByText('Seitendaten werden geladen…')).toBeInTheDocument();
     resolveRoute(response(dashboardData()));
-    expect(await screen.findByRole('heading', { name: 'Mein Profil' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Kinder: 1' })).toBeInTheDocument();
     expect(fetchImpl.mock.calls[1][0]).toBe('/api/route-data/dashboard/');
     expect(fetchImpl.mock.calls.some(([url]) => url.startsWith('/api/app-data/'))).toBe(false);
     unmount();

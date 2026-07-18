@@ -45,6 +45,7 @@ class ProfileContractTests(TestCase):
         self.profile.coffee = "Schwarz"
         self.profile.rolle = "o"
         self.profile.essen = "vt"
+        self.profile.budo_family = "M"
         self.profile.turnus = self.turnus
         self.profile.save()
         self.focus = Schwerpunkte.objects.create(
@@ -87,6 +88,7 @@ class ProfileContractTests(TestCase):
             "role_display": "Organisator",
             "food": "vt",
             "food_display": "🧀 Vegetarisch",
+            "budo_family": "M",
             "money_total": 12.5,
             "money_items": [{
                 "id": self.money.id,
@@ -159,6 +161,7 @@ class ProfileContractTests(TestCase):
             "role_display": "Betreuer:in",
             "food": "vn",
             "food_display": "🥦 Vegan",
+            "budo_family": "",
             "money_total": -4.25,
             "money_items": [{
                 "id": transaction.id,
@@ -231,6 +234,7 @@ class ProfileContractTests(TestCase):
                 "rolle": "o",
                 "essen": "vt",
                 "telefonnummer": "+4312345",
+                "budo_family": "M",
                 "turnus": self.other_turnus.id,
             },
         )
@@ -261,6 +265,7 @@ class ProfileContractTests(TestCase):
                 "rolle": "b",
                 "essen": "ft",
                 "telefonnummer": "",
+                "budo_family": "S",
                 "turnus": self.other_turnus.id,
             },
         )
@@ -280,6 +285,7 @@ class ProfileContractTests(TestCase):
                 "rolle": "b",
                 "essen": "vn",
                 "telefonnummer": "not-a-phone",
+                "budo_family": "L",
                 "turnus": self.turnus.id,
             },
         )
@@ -300,6 +306,7 @@ class ProfileContractTests(TestCase):
                 "rolle": "b",
                 "essen": "vn",
                 "telefonnummer": "+436641234567",
+                "budo_family": "XL",
                 "turnus": self.other_turnus.id,
             },
         )
@@ -315,6 +322,7 @@ class ProfileContractTests(TestCase):
         self.assertEqual(self.profile.coffee, "Milch")
         self.assertEqual(self.profile.rolle, "b")
         self.assertEqual(self.profile.essen, "vn")
+        self.assertEqual(self.profile.budo_family, "XL")
         self.assertEqual(str(self.profile.telefonnummer), "+436641234567")
         self.assertEqual(self.profile.turnus, self.other_turnus)
         bootstrap = self.client.get(reverse("bootstrap-api")).json()

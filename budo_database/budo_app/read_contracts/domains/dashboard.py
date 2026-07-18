@@ -5,7 +5,16 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
 
-from django.db.models import FloatField, Model, Q, Sum, Value
+from django.db.models import (
+    Exists,
+    FloatField,
+    Model,
+    OuterRef,
+    Prefetch,
+    Q,
+    Sum,
+    Value,
+)
 from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
 
@@ -154,6 +163,7 @@ def _profile_payload(profile, focus_ids):
         "coffee": profile.coffee,
         "role_display": profile.get_rolle(),
         "food_display": profile.get_food(),
+        "budo_family": profile.budo_family,
         "focus_ids": focus_ids,
     }
 
@@ -173,6 +183,7 @@ def _kid_payload(kid):
         "special_food": kid.get_clean_special_food(),
         "drugs": kid.get_clean_drugs(),
         "illness": kid.get_clean_illness(),
+        "budo_family": kid.budo_family,
     }
 
 
@@ -191,6 +202,7 @@ def _empty_summary(profile):
         },
         "kids": [],
         "focuses": [],
+        "focus_assignments_complete": {"w1": False, "w2": False},
     }
 
 
@@ -207,6 +219,7 @@ def build_dashboard_contract(request):
             "totals": {},
             "kids": [],
             "focuses": [],
+            "focus_assignments_complete": {"w1": False, "w2": False},
             "activity": {
                 "notes": _activity_page("notes", None),
                 "transactions": _activity_page("transactions", None),
@@ -234,12 +247,34 @@ def build_dashboard_contract(request):
         focuses = list(
             Schwerpunkte.objects.filter(
                 schwerpunktzeit__turnus_id=turnus_id,
-                betreuende=profile,
             )
-            .only("id", "swp_name")
+            .select_related("schwerpunktzeit")
+            .annotate(
+                dashboard_is_personal=Exists(
+                    Schwerpunkte.betreuende.through.objects.filter(
+                        schwerpunkte_id=OuterRef("pk"),
+                        profil_id=profile.id,
+                    )
+                )
+            )
+            .prefetch_related(
+                Prefetch(
+                    "swp_kinder",
+                    queryset=(
+                        Kinder.objects.filter(turnus_id=turnus_id)
+                        .only("id")
+                        .order_by()
+                    ),
+                    to_attr="dashboard_kids",
+                )
+            )
+            .only("id", "swp_name", "schwerpunktzeit__woche")
             .order_by("schwerpunktzeit__woche", "swp_name", "id")
         )
-        focus_ids = [focus.id for focus in focuses]
+        personal_focuses = [
+            focus for focus in focuses if focus.dashboard_is_personal
+        ]
+        focus_ids = [focus.id for focus in personal_focuses]
         team = list(
             Profil.objects.filter(turnus_id=turnus_id)
             .annotate(
@@ -272,6 +307,7 @@ def build_dashboard_contract(request):
                 "special_food_description",
                 "drugs",
                 "illness",
+                "budo_family",
             )
             .order_by("kid_vorname", "kid_nachname", "id")
         )
@@ -283,6 +319,21 @@ def build_dashboard_contract(request):
                 output_field=FloatField(),
             ),
         )
+        assigned_weeks_by_kid = {}
+        for focus in focuses:
+            week = focus.schwerpunktzeit.woche
+            for kid in focus.dashboard_kids:
+                assigned_weeks_by_kid.setdefault(kid.id, set()).add(week)
+        present_kid_ids = {
+            kid.id for kid in kids if kid.anwesend is True
+        }
+        focus_assignments_complete = {
+            week: bool(present_kid_ids) and all(
+                week in assigned_weeks_by_kid.get(kid_id, set())
+                for kid_id in present_kid_ids
+            )
+            for week in ("w1", "w2")
+        }
         summary = {
             "profile": _profile_payload(profile, focus_ids),
             "team": [
@@ -310,9 +361,15 @@ def build_dashboard_contract(request):
             },
             "kids": [_kid_payload(kid) for kid in kids],
             "focuses": [
-                {"id": focus.id, "name": focus.swp_name}
-                for focus in focuses
+                {
+                    "id": focus.id,
+                    "name": focus.swp_name,
+                    "week": focus.schwerpunktzeit.woche,
+                    "kid_ids": [kid.id for kid in focus.dashboard_kids],
+                }
+                for focus in personal_focuses
             ],
+            "focus_assignments_complete": focus_assignments_complete,
         }
 
     return {

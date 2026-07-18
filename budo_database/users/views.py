@@ -99,7 +99,7 @@ def dashboard(request):
 class ProfilUpdate(UpdateView):
     model = Profil
     fields = ['rufname', 'allergien', 'coffee', 'rolle',
-              'essen', 'telefonnummer', 'turnus']
+              'essen', 'telefonnummer', 'budo_family', 'turnus']
     template_name = "users/profil.html"
     success_url = reverse_lazy('dashboard')
 

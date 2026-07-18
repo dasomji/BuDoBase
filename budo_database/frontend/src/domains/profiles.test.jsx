@@ -21,6 +21,7 @@ const profile = {
   role_display: 'Betreuer:in',
   food: 'vt',
   food_display: '🧀 Vegetarisch',
+  budo_family: 'M',
   money_total: 12.5,
   money_items: [{
     id: 7,
@@ -56,6 +57,7 @@ describe('Profil and Teamer pages', () => {
     expect(within(details).getByText('Rolle').closest('p')).toHaveTextContent('Betreuer:in');
     expect(within(details).getByText('Turnus').closest('p')).toHaveTextContent('T2-2026');
     expect(within(details).getByText('Essen').closest('p')).toHaveTextContent('🧀 Vegetarisch');
+    expect(within(details).getByText('BuDo-Familie').closest('p')).toHaveTextContent('Medi');
     expect(within(details).getByText('Allergien').closest('p')).toHaveTextContent('Nüsse');
     expect(within(details).getByText('Kaffee').closest('p')).toHaveTextContent('Schwarz');
     expect(within(details).getByRole('link', { name: 'ada@example.test' })).toHaveAttribute('href', 'mailto:ada@example.test');
@@ -73,6 +75,8 @@ describe('Profil and Teamer pages', () => {
     expect(screen.getByLabelText('Kaffee')).toHaveValue('Schwarz');
     expect(screen.getByLabelText('Rolle')).toHaveValue('b');
     expect(screen.getByLabelText('Essen')).toHaveValue('vt');
+    expect(screen.getByLabelText('BuDo-Familie')).toHaveValue('M');
+    expect(screen.getByRole('option', { name: 'X-largie' })).toHaveValue('XL');
     expect(screen.getByLabelText('Telefonnummer')).toHaveValue('+4312345');
     expect(screen.getByLabelText('Turnus')).toHaveValue('2');
     expect(screen.getByRole('option', { name: 'T4-2026' })).toHaveValue('4');

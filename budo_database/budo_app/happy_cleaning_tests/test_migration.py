@@ -8,7 +8,7 @@ from django.test import TransactionTestCase
 class HappyCleaningMigrationTests(TransactionTestCase):
     migrate_from = ("budo_app", "0070_auditevent")
     migrate_to = ("budo_app", "0071_happy_cleaning_schema")
-    restore_to = ("budo_app", "0072_happycleaningcommandrequest")
+    restore_to = ("budo_app", "0074_profil_budo_family")
 
     def test_existing_children_keep_a_null_happy_cleaning_number(self):
         executor = MigrationExecutor(connection)

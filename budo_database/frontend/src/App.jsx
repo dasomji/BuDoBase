@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppSidebar, ApplicationShell } from './app-sidebar';
 import { Header, Messages } from './components';
 import {
   loadBootstrap,
@@ -152,9 +153,8 @@ export default function App({
   }
   const title = resolveRouteTitle(route, data);
   document.title = title;
-  return (
+  const content = (
     <>
-      {!route.standalone && <Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data) : null} />}
       <Messages items={data.messages} />
       {realtimeSync.enabled && (
         realtimeSync.connection !== 'connected' || !realtimeSync.httpAvailable
@@ -167,5 +167,14 @@ export default function App({
       )}
       {renderRoute(route, { data, mutate, refresh: refreshRoute, fetchImpl, realtimeSync })}
     </>
+  );
+  if (route.standalone) return content;
+  return (
+    <ApplicationShell
+      sidebar={data.authenticated ? <AppSidebar /> : null}
+      header={<Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data) : null} />}
+    >
+      {content}
+    </ApplicationShell>
   );
 }

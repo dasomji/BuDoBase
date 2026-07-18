@@ -34,6 +34,7 @@ class DashboardContractTests(TestCase):
         self.profile.turnus = self.turnus
         self.profile.rolle = "b"
         self.profile.essen = "vt"
+        self.profile.budo_family = "M"
         self.profile.allergien = "Haselnüsse"
         self.profile.coffee = "Schwarz"
         self.profile.save()
@@ -51,6 +52,7 @@ class DashboardContractTests(TestCase):
             turnus_dauer=1,
             vegetarisch="ja",
             special_food_description="glutenfrei",
+            budo_family="M",
             drugs="Asthmaspray",
             illness="Allergie",
             sozialversicherungsnr="PRIVATE-SVNR",
@@ -62,6 +64,7 @@ class DashboardContractTests(TestCase):
             schwerpunktzeit=self.turnus.schwerpunktzeit_set.get(woche="w1"),
         )
         self.focus.betreuende.add(self.profile)
+        self.kid.schwerpunkte.add(self.focus)
         Geld.objects.create(kinder=self.kid, amount=20, added_by=self.user)
         Geld.objects.create(kinder=self.kid, amount=-2, added_by=self.user)
         BetreuerinnenGeld.objects.create(
@@ -117,6 +120,7 @@ class DashboardContractTests(TestCase):
             "coffee": "Schwarz",
             "role_display": "Betreuer:in",
             "food_display": "🧀 Vegetarisch",
+            "budo_family": "M",
             "focus_ids": [self.focus.id],
         })
         self.assertEqual(payload["team"], [{
@@ -149,11 +153,18 @@ class DashboardContractTests(TestCase):
             "special_food": "glutenfrei",
             "drugs": "Asthmaspray",
             "illness": "Allergie",
+            "budo_family": "M",
         }])
         self.assertEqual(payload["focuses"], [{
             "id": self.focus.id,
             "name": "Wald",
+            "week": "w1",
+            "kid_ids": [self.kid.id],
         }])
+        self.assertEqual(
+            payload["focus_assignments_complete"],
+            {"w1": True, "w2": False},
+        )
         self.assertEqual(
             payload["activity"]["notes"]["items"][0],
             {
@@ -181,6 +192,54 @@ class DashboardContractTests(TestCase):
             "Other private teamer",
         ):
             self.assertNotIn(private_value, response_text)
+
+    def test_focus_completion_requires_every_present_kid_but_ignores_absent_kids(self):
+        week_two_focus = Schwerpunkte.objects.create(
+            swp_name="See",
+            schwerpunktzeit=self.turnus.schwerpunktzeit_set.get(woche="w2"),
+        )
+        week_two_focus.betreuende.add(self.profile)
+        self.kid.schwerpunkte.add(week_two_focus)
+        absent_kid = Kinder.objects.create(
+            kid_index="T2-absent",
+            kid_vorname="Absent",
+            kid_nachname="Kid",
+            turnus=self.turnus,
+            anwesend=False,
+        )
+
+        complete = self.client.get(self.contract_url()).json()
+
+        self.assertEqual(
+            complete["focus_assignments_complete"],
+            {"w1": True, "w2": True},
+        )
+        self.assertNotIn(
+            absent_kid.id,
+            [kid_id for focus in complete["focuses"] for kid_id in focus["kid_ids"]],
+        )
+
+        second_present_kid = Kinder.objects.create(
+            kid_index="T2-present",
+            kid_vorname="Present",
+            kid_nachname="Kid",
+            turnus=self.turnus,
+            anwesend=True,
+        )
+        incomplete = self.client.get(self.contract_url()).json()
+
+        self.assertEqual(
+            incomplete["focus_assignments_complete"],
+            {"w1": False, "w2": False},
+        )
+
+        second_present_kid.schwerpunkte.add(self.focus, week_two_focus)
+        completed_again = self.client.get(self.contract_url()).json()
+
+        self.assertEqual(
+            completed_again["focus_assignments_complete"],
+            {"w1": True, "w2": True},
+        )
 
     def test_activity_uses_stable_independent_keyset_pages(self):
         for index in range(24):
@@ -327,6 +386,10 @@ class DashboardContractTests(TestCase):
         self.assertEqual(payload["kids"], [])
         self.assertEqual(payload["team"], [])
         self.assertEqual(payload["focuses"], [])
+        self.assertEqual(
+            payload["focus_assignments_complete"],
+            {"w1": False, "w2": False},
+        )
         self.assertEqual(payload["totals"]["kids"], 0)
         self.assertEqual(payload["activity"]["notes"]["items"], [])
         self.assertEqual(payload["activity"]["transactions"]["items"], [])
