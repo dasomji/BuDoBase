@@ -19,6 +19,17 @@ def assignment_page(request, event_id):
 
 @require_GET
 @login_required
+def print_number_page(request, event_id):
+    get_object_or_404(
+        HappyCleaning.objects.only("id"),
+        id=event_id,
+        turnus_id=request.user.profil.turnus_id,
+    )
+    return HttpResponse("<html><body></body></html>")
+
+
+@require_GET
+@login_required
 def station_detail_page(request, event_id, station_id):
     get_object_or_404(
         HappyCleaningStation.objects.only("id"),

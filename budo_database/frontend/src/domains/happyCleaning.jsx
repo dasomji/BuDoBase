@@ -63,6 +63,9 @@ export function HappyCleaningOverviewPage({ data, mutate }) {
               <a className="button" href={`/happy-cleaning/${event.id}/stations/`} aria-label={`Stationen für Happy Cleaning ${event.display_number}`}>
                 Stationen
               </a>
+              <a className="button" href={`/happy-cleaning/${event.id}/print/`} aria-label={`Nummernliste für Happy Cleaning ${event.display_number} drucken`}>
+                Nummernliste
+              </a>
               {event.can_delete && (
                 <button className="button danger" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => remove(event)}>
                   Löschen
@@ -72,6 +75,70 @@ export function HappyCleaningOverviewPage({ data, mutate }) {
           </li>
         ))}
       </ol>
+    </main>
+  );
+}
+
+function PrintSection({ id, title, children, empty }) {
+  return (
+    <section className="happy-cleaning-print-section" aria-labelledby={id}>
+      <h2 id={id}>{title}</h2>
+      {empty
+        ? <p className="happy-cleaning-print-empty">Keine Kinder in diesem Abschnitt.</p>
+        : <ul className="happy-cleaning-print-list">{children}</ul>}
+    </section>
+  );
+}
+
+export function HappyCleaningPrintPage({ data }) {
+  return (
+    <main className="happy-cleaning-print-page" id="body-container">
+      <div className="happy-cleaning-print-actions react-actions" aria-label="Druckaktionen">
+        <a className="button" href="/happy-cleaning/">Zur Übersicht</a>
+        <button className="button" type="button" onClick={() => window.print()}>
+          Nummernliste drucken
+        </button>
+      </div>
+      <header className="happy-cleaning-print-title">
+        <h1>Happy Cleaning {data.event.display_number} · Nummernliste</h1>
+      </header>
+      <PrintSection
+        id="happy-cleaning-present-numbered"
+        title="Anwesend mit Nummer"
+        empty={!data.present_numbered.length}
+      >
+        {data.present_numbered.map(child => (
+          <li className="happy-cleaning-print-row" key={child.id}>
+            <span className="happy-cleaning-print-number" aria-label={`Nummer ${child.number}`}>{child.number}</span>
+            <span>{child.full_name}</span>
+          </li>
+        ))}
+      </PrintSection>
+      <PrintSection
+        id="happy-cleaning-present-numberless"
+        title="Anwesend ohne Nummer"
+        empty={!data.present_numberless.length}
+      >
+        {data.present_numberless.map(child => (
+          <li className="happy-cleaning-print-row happy-cleaning-print-row-numberless" key={child.id}>
+            <span>{child.full_name}</span>
+          </li>
+        ))}
+      </PrintSection>
+      <PrintSection
+        id="happy-cleaning-absent"
+        title="Abwesend"
+        empty={!data.absent.length}
+      >
+        {data.absent.map(child => (
+          <li className="happy-cleaning-print-row happy-cleaning-print-row-absent" key={child.id}>
+            <span>{child.full_name}</span>
+            <span className="happy-cleaning-print-meta">
+              Nummer {child.number ?? '—'} · Abwesenheitsort: {child.absence_location || 'Nicht angegeben'}
+            </span>
+          </li>
+        ))}
+      </PrintSection>
     </main>
   );
 }
@@ -360,6 +427,16 @@ export const happyCleaningRoutes = [
     params: match => ({ event_id: match[1] }),
     resolveTitle: (_route, data) => `Einteilung · Happy Cleaning ${data.event?.display_number || ''}`.trim(),
     render: ({ data, mutate, refresh, realtimeSync }) => <HappyCleaningAssignmentPage data={data} mutate={mutate} refresh={refresh} realtimeSync={realtimeSync} />,
+  },
+  {
+    pattern: /^\/happy-cleaning\/(\d+)\/print$/,
+    page: 'happy-cleaning-print',
+    title: 'Happy Cleaning Nummernliste',
+    domain: 'happy-cleaning',
+    readContractKey: 'happy-cleaning-print',
+    params: match => ({ event_id: match[1] }),
+    resolveTitle: (_route, data) => `Nummernliste · Happy Cleaning ${data.event?.display_number || ''}`.trim(),
+    render: ({ data }) => <HappyCleaningPrintPage data={data} />,
   },
   ...happyCleaningStationDetailRoutes,
   {

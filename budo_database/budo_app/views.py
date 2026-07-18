@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.contrib import messages
 from .models import Kinder, SpezialFamilien, Profil, BetreuerinnenGeld
 from .forms import CSVUploadForm, BetreuerinnenGeldForm, BirthdayNotizForm
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from django.db import transaction
 from .utils import (
     cache_user_profile,
@@ -15,7 +15,6 @@ from .utils import (
     parse_sv_birthday,
     safe_get_object_or_404,
 )
-import csv
 import pandas as pd
 import logging
 from .auslagerorte_views import (
@@ -98,26 +97,9 @@ def update_pfand(request):
 
 
 @login_required
+@require_GET
 def happy_cleaning(request):
-    # Get the current turnus (you might need to adjust this based on how you store the current turnus)
-    current_turnus = request.user.profil.turnus
-
-    # Query kids from the current turnus
-    kids = Kinder.objects.filter(turnus=current_turnus)
-
-    # Create the HttpResponse object with CSV header
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="happy_cleaning.csv"'
-
-    # Create the CSV writer
-    writer = csv.writer(response)
-    writer.writerow(['ID', 'Kindername'])
-
-    # Write data rows
-    for kid in kids:
-        writer.writerow([kid.id, f"{kid.kid_vorname} {kid.kid_nachname}"])
-
-    return response
+    return HttpResponse("<html><body></body></html>")
 
 
 @login_required

@@ -46,6 +46,10 @@ class ReactFrontendMiddleware:
                 "react_app.html",
                 {
                     "request_path": request.get_full_path(),
+                    "react_print_page": bool(re.fullmatch(
+                        r"/happy-cleaning/\d+/print/",
+                        request.path,
+                    )),
                     "legacy_print_body": legacy_body,
                     "legacy_uses_google_font": "fonts.googleapis.com" in legacy_html,
                 },

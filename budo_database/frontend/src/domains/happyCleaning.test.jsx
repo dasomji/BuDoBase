@@ -1,9 +1,13 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute } from '../routes';
-import { HappyCleaningManagementPage, HappyCleaningOverviewPage } from './happyCleaning';
+import {
+  HappyCleaningManagementPage,
+  HappyCleaningOverviewPage,
+  HappyCleaningPrintPage,
+} from './happyCleaning';
 
 
 const stationsData = {
@@ -56,6 +60,7 @@ describe('Happy Cleaning management', () => {
 
   it('owns refreshable overview and management routes with immutable event IDs', () => {
     const overview = parseRoute('/happy-cleaning/');
+    const print = parseRoute('/happy-cleaning/7/print/');
     const management = parseRoute('/happy-cleaning/7/stations/');
     expect(overview).toMatchObject({
       page: 'happy-cleaning-overview',
@@ -69,6 +74,14 @@ describe('Happy Cleaning management', () => {
     });
     expect(routeDataRequest(management).url).toBe(
       '/api/route-data/happy-cleaning-stations/?event_id=7',
+    );
+    expect(print).toMatchObject({
+      page: 'happy-cleaning-print',
+      event_id: '7',
+      readContractKey: 'happy-cleaning-print',
+    });
+    expect(routeDataRequest(print).url).toBe(
+      '/api/route-data/happy-cleaning-print/?event_id=7',
     );
   });
 
@@ -85,6 +98,9 @@ describe('Happy Cleaning management', () => {
     );
     expect(screen.getByRole('link', { name: 'Stationen für Happy Cleaning 2' })).toHaveAttribute(
       'href', '/happy-cleaning/9/stations/',
+    );
+    expect(screen.getByRole('link', { name: 'Nummernliste für Happy Cleaning 1 drucken' })).toHaveAttribute(
+      'href', '/happy-cleaning/7/print/',
     );
     expect(screen.queryByRole('button', { name: 'Happy Cleaning 1 löschen' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' }));
@@ -162,5 +178,54 @@ describe('Happy Cleaning management', () => {
     unmount();
     render(<HappyCleaningManagementPage data={{ ...stationsData, stations: [] }} mutate={vi.fn()} />);
     expect(screen.getByText('Noch keine Station angelegt.')).toBeInTheDocument();
+  });
+
+  it('renders the printable allow-listed groups in projection order', () => {
+    render(<HappyCleaningPrintPage data={{
+      event: { id: 7, display_number: 2, revision: 5 },
+      present_numbered: [
+        { id: 2, full_name: 'Zoe Alpha', number: 2, illness: 'Private Krankheit' },
+        { id: 1, full_name: 'Ada Lovelace', number: 7, anmelder_email: 'private@example.test' },
+      ],
+      present_numberless: [
+        { id: 3, full_name: 'Aaron Zebra', anmerkung: 'Private Notiz' },
+        { id: 4, full_name: 'Grace Hopper' },
+      ],
+      absent: [
+        { id: 5, full_name: 'Barbara Able', number: 9, absence_location: 'Krankenhaus' },
+        { id: 6, full_name: 'Linus Torvalds', number: 3, absence_location: 'Sallingstadt' },
+      ],
+    }} />);
+
+    const numbered = within(screen.getByRole('region', { name: 'Anwesend mit Nummer' }));
+    const numberless = within(screen.getByRole('region', { name: 'Anwesend ohne Nummer' }));
+    const absent = within(screen.getByRole('region', { name: 'Abwesend' }));
+    expect(numbered.getAllByRole('listitem').map(row => row.textContent)).toEqual([
+      '2Zoe Alpha',
+      '7Ada Lovelace',
+    ]);
+    expect(numberless.getAllByRole('listitem').map(row => row.textContent)).toEqual([
+      'Aaron Zebra',
+      'Grace Hopper',
+    ]);
+    expect(absent.getAllByRole('listitem').map(row => row.textContent)).toEqual([
+      'Barbara AbleNummer 9 · Abwesenheitsort: Krankenhaus',
+      'Linus TorvaldsNummer 3 · Abwesenheitsort: Sallingstadt',
+    ]);
+    expect(screen.queryByText(/Private Krankheit|private@example\.test|Private Notiz/)).not.toBeInTheDocument();
+  });
+
+  it('keeps empty sections titled and offers a working print action', () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    render(<HappyCleaningPrintPage data={{
+      event: { id: 7, display_number: 2, revision: 5 },
+      present_numbered: [],
+      present_numberless: [],
+      absent: [],
+    }} />);
+
+    expect(screen.getAllByText('Keine Kinder in diesem Abschnitt.')).toHaveLength(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Nummernliste drucken' }));
+    expect(print).toHaveBeenCalledOnce();
   });
 });
