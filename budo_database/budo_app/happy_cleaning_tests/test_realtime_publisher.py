@@ -81,7 +81,7 @@ class HappyCleaningPostCommitDeliveryTests(TransactionTestCase):
         async def receives_nothing():
             try:
                 await asyncio.wait_for(layer.receive(channel), timeout=0.05)
-            except TimeoutError:
+            except asyncio.TimeoutError:
                 return True
             return False
 

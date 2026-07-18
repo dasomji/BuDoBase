@@ -50,6 +50,52 @@ jobs:
       - name: Run backend tests with deprecation warnings
         run: python -Wd manage.py test
 
+  django-postgresql:
+    name: Django PostgreSQL and Redis integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: budobase_test
+          POSTGRES_USER: budobase
+          POSTGRES_PASSWORD: budobase
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U budobase -d budobase_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://budobase:budobase@127.0.0.1:5432/budobase_test
+      DJANGO_ENVIRONMENT: development
+      REDIS_URL: redis://127.0.0.1:6379/0
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12.13"
+          cache: pip
+          cache-dependency-path: |
+            budo_database/requirements/base.txt
+            budo_database/requirements/production.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements/production.txt
+      - name: Run PostgreSQL and Redis integration tests
+        run: python manage.py test --verbosity 2
+
   backend-integrity:
     name: Backend integrity
     runs-on: ubuntu-latest
@@ -108,6 +154,7 @@ jobs:
       DJANGO_SECRET_KEY: ci-only-not-a-production-secret-0123456789abcdefghijklmnopqrstuvwxyz
       APP_URL: example.test
       DATABASE_URL: "sqlite:///:memory:"
+      REDIS_URL: redis://127.0.0.1:6379/0
       S3_BUCKET_NAME: ci-test-bucket
       S3_ACCESS_KEY_ID: ci-test-access-key
       S3_SECRET_ACCESS_KEY: ci-test-secret-key
