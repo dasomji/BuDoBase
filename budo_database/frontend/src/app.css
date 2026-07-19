@@ -111,6 +111,29 @@
   flex: 1 1 320px;
 }
 
+#interaction-bar form > .interaction-mode-buttons:not(.hidden) {
+  display: flex;
+  max-width: none;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--xs-padding);
+}
+
+#interaction-bar form .interaction-mode-buttons button {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  padding: 0;
+  border: 2px solid transparent;
+  font-size: 1.1rem;
+}
+
+#interaction-bar form .interaction-mode-buttons button[aria-pressed="true"] {
+  border-color: var(--dark-blue);
+  background-color: #e6c78b;
+}
+
 #interaction-bar form p {
   width: 100%;
   flex: 1 1 auto;

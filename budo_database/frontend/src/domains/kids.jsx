@@ -19,13 +19,19 @@ function interactionModeCookie() {
   return cookie?.split('=')[1] || null;
 }
 
+const interactionModes = {
+  'erste-hilfe-form': 'first_aid',
+  'geld-form': 'amount',
+  'notiz-form': 'notiz',
+};
+
 function saveInteractionMode(field) {
-  const value = field === 'amount' ? 'geld-form' : 'notiz-form';
+  const value = Object.entries(interactionModes).find(([, mode]) => mode === field)?.[0] || 'notiz-form';
   document.cookie = `interaction-bar=${value}; Max-Age=2592000; Path=/; SameSite=Lax`;
 }
 
 export function KidInteractionForm({ kid, token, onSaved }) {
-  const [field, setField] = useState(() => interactionModeCookie() === 'geld-form' ? 'amount' : 'notiz');
+  const [field, setField] = useState(() => interactionModes[interactionModeCookie()] || 'notiz');
   const show = name => event => {
     event.preventDefault();
     setField(name);
@@ -35,15 +41,23 @@ export function KidInteractionForm({ kid, token, onSaved }) {
     <div id="interaction-bar">
       <div id="interaction-input">
         <RestForm target={`/kid_details/${kid.id}`} token={token} onSuccess={onSaved} resetOnSuccess>
+          <div className="interaction-mode-buttons" role="group" aria-label="Eingabemodus">
+            <button type="button" aria-label="Notiz auswählen" aria-pressed={field === 'notiz'} onClick={show('notiz')}><span aria-hidden="true">📝</span></button>
+            <button type="button" aria-label="Taschengeld auswählen" aria-pressed={field === 'amount'} onClick={show('amount')}><span aria-hidden="true">💶</span></button>
+            <button type="button" aria-label="Erste Hilfe" aria-pressed={field === 'first_aid'} onClick={show('first_aid')}><span aria-hidden="true">🩹</span></button>
+          </div>
           <div id="notiz-form" className={field === 'notiz' ? '' : 'hidden'}>
             <p><label htmlFor="id_notiz" onClick={show('amount')}>Notiz</label><input id="id_notiz" name="notiz" placeholder="Notiz..." /></p>
           </div>
           <div id="geld-form" className={field === 'amount' ? '' : 'hidden'}>
             <p><label htmlFor="id_amount" onClick={show('notiz')}>Taschengeld</label><input id="id_amount" name="amount" type="number" min="0" step="0.01" placeholder="Taschengeld..." /></p>
           </div>
-          {field === 'notiz'
-            ? <button type="submit"><img src="/static/img/send-button.svg" alt="Senden" /></button>
-            : <><button className="money-action money-withdraw" type="submit" name="money_action" value="withdraw">Abbuchen</button><button className="money-action money-topup" type="submit" name="money_action" value="topup">Aufladen</button></>}
+          <div id="erste-hilfe-form" className={field === 'first_aid' ? '' : 'hidden'}>
+            <p><label htmlFor="id_erste_hilfe_beschreibung" onClick={show('notiz')}>Erste Hilfe</label><input id="id_erste_hilfe_beschreibung" name="erste_hilfe_beschreibung" placeholder="Erste-Hilfe-Maßnahme..." required disabled={field !== 'first_aid'} /></p>
+          </div>
+          {field === 'amount'
+            ? <><button className="money-action money-withdraw" type="submit" name="money_action" value="withdraw">Abbuchen</button><button className="money-action money-topup" type="submit" name="money_action" value="topup">Aufladen</button></>
+            : <button type="submit" name={field === 'first_aid' ? 'interaction_kind' : undefined} value={field === 'first_aid' ? 'first_aid' : undefined} aria-label={field === 'first_aid' ? 'EH-Eintrag senden' : undefined}><img src="/static/img/send-button.svg" alt={field === 'first_aid' ? '' : 'Senden'} /></button>}
         </RestForm>
       </div>
     </div>
@@ -90,6 +104,7 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
         </Column>
         <Column id="right-column">
           <Card title="Notizen" id="notizen"><FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} /><ul>{kid.notes.length ? kid.notes.map(note => <li key={note.id}>{note.author} am {formatGermanDate(note.date)}: {note.text}</li>) : <li>Noch keine Notizen.</li>}</ul></Card>
+          <Card title="Erste Hilfe" id="erste-hilfe"><ul>{kid.first_aid_entries?.length ? kid.first_aid_entries.map(entry => <li key={entry.id}>{entry.author} am {formatGermanDate(entry.date)}: {entry.text}</li>) : <li>Noch keine EH-Einträge.</li>}</ul></Card>
           <Card title={`Taschengeld: ${money(kid.remaining_money)}${kid.remaining_money < 5 ? ' 🚨' : ''}`} id="taschengeld"><ul>{kid.transactions.length ? kid.transactions.map(item => <li key={item.id}>{item.author} am {formatGermanDate(item.date)}: {money(item.amount)}</li>) : <li>Dieses Kind ist arm.</li>}</ul></Card>
           <Card title={`Pfand: ${kid.deposit}`} id="pfand"><div className="react-actions"><button className="button" type="button" onClick={() => deposit('increase')}>+ Pfand</button><button className="button" type="button" onClick={() => deposit('decrease')}>− Pfand</button></div></Card>
         </Column>

@@ -44,14 +44,22 @@ def serialize_datetime(value):
     return value.isoformat() if value else None
 
 
-def serialize_note(note):
+def _serialize_text_entry(entry, text):
     return {
-        "id": note.id,
-        "text": note.notiz or "",
-        "date": serialize_datetime(note.date_added),
-        "day": note.date_added.strftime("%d.%m.") if note.date_added else "",
-        "author": note.added_by.username,
+        "id": entry.id,
+        "text": text or "",
+        "date": serialize_datetime(entry.date_added),
+        "day": entry.date_added.strftime("%d.%m.") if entry.date_added else "",
+        "author": entry.added_by.username,
     }
+
+
+def serialize_note(note):
+    return _serialize_text_entry(note, note.notiz)
+
+
+def serialize_first_aid_entry(entry):
+    return _serialize_text_entry(entry, entry.beschreibung)
 
 
 def serialize_transaction(transaction):

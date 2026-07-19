@@ -19,6 +19,7 @@ from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
 
 from budo_app.models import (
+    ErsteHilfeEintrag,
     Geld,
     Kinder,
     Notizen,
@@ -36,7 +37,7 @@ from budo_app.read_contracts.common import (
 DASHBOARD_ACTIVITY_PAGE_SIZE = 20
 
 
-def _note_text(value):
+def _text_value(value):
     return value or ""
 
 
@@ -49,7 +50,13 @@ class ActivityStream:
 
 
 ACTIVITY_STREAMS = {
-    "notes": ActivityStream(Notizen, "notiz", "text", _note_text),
+    "first_aid": ActivityStream(
+        ErsteHilfeEintrag,
+        "beschreibung",
+        "text",
+        _text_value,
+    ),
+    "notes": ActivityStream(Notizen, "notiz", "text", _text_value),
     "transactions": ActivityStream(
         Geld,
         "amount",
@@ -221,6 +228,7 @@ def build_dashboard_contract(request):
             "focuses": [],
             "focus_assignments_complete": {"w1": False, "w2": False},
             "activity": {
+                "first_aid": _activity_page("first_aid", None),
                 "notes": _activity_page("notes", None),
                 "transactions": _activity_page("transactions", None),
             },
@@ -375,6 +383,7 @@ def build_dashboard_contract(request):
     return {
         **summary,
         "activity": {
+            "first_aid": _activity_page("first_aid", turnus_id),
             "notes": _activity_page("notes", turnus_id),
             "transactions": _activity_page("transactions", turnus_id),
         },

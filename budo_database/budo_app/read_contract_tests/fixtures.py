@@ -10,6 +10,7 @@ from budo_app.models import (
     AuslagerorteImage,
     AuslagerorteNotizen,
     BetreuerinnenGeld,
+    ErsteHilfeEintrag,
     Geld,
     Kinder,
     Notizen,
@@ -152,6 +153,11 @@ class ActiveTurnusFixtureFactory:
                 Notizen.objects.create(
                     kinder=kid,
                     notiz=f"Notiz {item} für Kind {index}",
+                    added_by=self.author,
+                )
+                ErsteHilfeEintrag.objects.create(
+                    kinder=kid,
+                    beschreibung=f"EH-Eintrag {item} für Kind {index}",
                     added_by=self.author,
                 )
                 Geld.objects.create(

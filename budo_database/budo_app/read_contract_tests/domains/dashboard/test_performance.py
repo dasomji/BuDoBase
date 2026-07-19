@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from budo_app.models import Geld, Kinder, Notizen, Turnus
+from budo_app.models import ErsteHilfeEintrag, Geld, Kinder, Notizen, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
     RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
@@ -57,6 +57,10 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
             20,
         )
         self.assertEqual(
+            len(realistic.response.json()["activity"]["first_aid"]["items"]),
+            20,
+        )
+        self.assertEqual(
             len(realistic.response.json()["activity"]["transactions"]["items"]),
             20,
         )
@@ -78,6 +82,14 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
             )
             for index in range(25)
         ])
+        ErsteHilfeEintrag.objects.bulk_create([
+            ErsteHilfeEintrag(
+                kinder=kid,
+                beschreibung=f"Bestehender EH-Eintrag {index}",
+                added_by=self.user,
+            )
+            for index in range(25)
+        ])
         Geld.objects.bulk_create([
             Geld(kinder=kid, amount=index, added_by=self.user)
             for index in range(25)
@@ -87,6 +99,14 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
             Notizen(
                 kinder=kid,
                 notiz=f"Historische Notiz {index}",
+                added_by=self.user,
+            )
+            for index in range(200)
+        ])
+        ErsteHilfeEintrag.objects.bulk_create([
+            ErsteHilfeEintrag(
+                kinder=kid,
+                beschreibung=f"Historischer EH-Eintrag {index}",
                 added_by=self.user,
             )
             for index in range(200)
@@ -101,6 +121,10 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
         self.assertQueryCountAtMost(after, 12)
         self.assertQueryGrowthAtMost(before, after, 0)
         self.assertEqual(len(after.response.json()["activity"]["notes"]["items"]), 20)
+        self.assertEqual(
+            len(after.response.json()["activity"]["first_aid"]["items"]),
+            20,
+        )
         self.assertEqual(
             len(after.response.json()["activity"]["transactions"]["items"]),
             20,

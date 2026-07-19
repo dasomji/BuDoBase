@@ -405,6 +405,24 @@ class Notizen(models.Model):
         verbose_name_plural = "Notizen"
 
 
+class ErsteHilfeEintrag(models.Model):
+    kinder = models.ForeignKey(
+        Kinder,
+        on_delete=models.CASCADE,
+        related_name="erste_hilfe_eintraege",
+    )
+    beschreibung = models.TextField()
+    date_added = models.DateTimeField(auto_now_add=True)
+    added_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.beschreibung
+
+    class Meta:
+        verbose_name = "EH-Eintrag"
+        verbose_name_plural = "EH-Einträge"
+
+
 class Geld(models.Model):
     kinder = models.ForeignKey(
         Kinder, on_delete=models.CASCADE, related_name='geld')
@@ -1155,8 +1173,10 @@ def invalidate_auslagerorte_turnus_cache(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Notizen)
 @receiver(post_delete, sender=Notizen)
-def invalidate_notizen_turnus_cache(sender, instance, **kwargs):
-    """Invalidate turnus cache when Notizen data changes"""
+@receiver(post_save, sender=ErsteHilfeEintrag)
+@receiver(post_delete, sender=ErsteHilfeEintrag)
+def invalidate_kid_activity_turnus_cache(sender, instance, **kwargs):
+    """Invalidate turnus cache when notes or first-aid entries change."""
     from .utils import invalidate_turnus_cache
     if instance.kinder and instance.kinder.turnus:
         invalidate_turnus_cache(instance.kinder.turnus)

@@ -2,12 +2,13 @@ from django.db.models import Prefetch
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
-from budo_app.models import Geld, Kinder, Notizen, Schwerpunkte
+from budo_app.models import ErsteHilfeEintrag, Geld, Kinder, Notizen, Schwerpunkte
 from budo_app.read_contracts.common import (
     active_turnus_id,
     kid_full_name,
     required_query_integer,
     serialize_datetime,
+    serialize_first_aid_entry,
     serialize_money,
     serialize_note,
     serialize_transaction,
@@ -102,6 +103,10 @@ def _detail_kid(kid):
         "booking_note": kid.get_clean_anmerkung_buchung(),
         "note": kid.get_clean_anmerkung(),
         "notes": [serialize_note(note) for note in kid.route_notes],
+        "first_aid_entries": [
+            serialize_first_aid_entry(entry)
+            for entry in kid.route_first_aid_entries
+        ],
         "transactions": [
             serialize_transaction(transaction) for transaction in transactions
         ],
@@ -137,6 +142,9 @@ def kid_detail(request):
         "date_added",
         "id",
     )
+    first_aid_entries = ErsteHilfeEintrag.objects.select_related(
+        "added_by"
+    ).order_by("-date_added", "-id")
     transactions = Geld.objects.select_related("added_by").order_by(
         "date_added",
         "id",
@@ -147,6 +155,11 @@ def kid_detail(request):
         .prefetch_related(
             Prefetch("schwerpunkte", queryset=focuses, to_attr="route_focuses"),
             Prefetch("notizen", queryset=notes, to_attr="route_notes"),
+            Prefetch(
+                "erste_hilfe_eintraege",
+                queryset=first_aid_entries,
+                to_attr="route_first_aid_entries",
+            ),
             Prefetch("geld", queryset=transactions),
         )
     )

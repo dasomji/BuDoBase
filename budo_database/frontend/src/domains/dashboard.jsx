@@ -12,8 +12,8 @@ function ActivityList({ kind, initialPage, fetchImpl }) {
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-  const notes = kind === 'notes';
-  const label = notes ? 'Notizen' : 'Transaktionen';
+  const textActivity = kind !== 'transactions';
+  const label = kind === 'notes' ? 'Notizen' : kind === 'first_aid' ? 'EH-Einträge' : 'Transaktionen';
 
   useEffect(() => {
     setPage(initialPage);
@@ -47,7 +47,7 @@ function ActivityList({ kind, initialPage, fetchImpl }) {
       <ul>{page.items.map(item => (
         <li key={item.id}>
           <p><strong>{item.author}</strong> am {formatGermanDate(item.date)}: <a href={`/kid_details/${item.kid_id}`}>{item.kid}</a></p>
-          <p>{notes ? item.text : `Betrag: ${money(item.amount)}`}</p>
+          <p>{textActivity ? item.text : `Betrag: ${money(item.amount)}`}</p>
         </li>
       ))}</ul>
       {error && <p className="activity-error" role="alert">Ältere {label} konnten nicht geladen werden.</p>}
@@ -158,6 +158,7 @@ export function DashboardPage({ data, fetchImpl = fetch }) {
         <p><span className="label">Zugabreise</span>: {totals.train_departure}</p>
       </Card>
       <Card title="Notizen" id="db-notizen"><ActivityList kind="notes" initialPage={activity.notes} fetchImpl={fetchImpl} /></Card>
+      <Card title="Erste Hilfe" id="db-erste-hilfe"><ActivityList kind="first_aid" initialPage={activity.first_aid} fetchImpl={fetchImpl} /></Card>
       <Card title="Meine BuDo-Familie" id="db-budo-familie">
         {profile?.budo_family
           ? <><p><span className="label">{familyLabels[profile.budo_family] || profile.budo_family}</span></p>{familyKids.length ? <ul>{familyKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul> : <p>Keine Kinder in dieser BuDo-Familie.</p>}</>

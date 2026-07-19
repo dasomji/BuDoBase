@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from budo_app.models import Geld, Kinder, Notizen, Turnus
+from budo_app.models import ErsteHilfeEintrag, Geld, Kinder, Notizen, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
     RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
@@ -83,6 +83,11 @@ class KidsContractPerformanceTests(QueryBudgetAssertions, TestCase):
                 notiz=f"Zusätzliche Notiz {index}",
                 added_by=self.user,
             )
+            ErsteHilfeEintrag.objects.create(
+                kinder=kid,
+                beschreibung=f"Zusätzlicher EH-Eintrag {index}",
+                added_by=self.user,
+            )
             Geld.objects.create(
                 kinder=kid,
                 amount=-1,
@@ -98,6 +103,7 @@ class KidsContractPerformanceTests(QueryBudgetAssertions, TestCase):
         payload = realistic.response.json()["kids"][0]
         self.assertEqual(realistic.status_code, 200)
         self.assertEqual(len(payload["notes"]), 42)
+        self.assertEqual(len(payload["first_aid_entries"]), 42)
         self.assertEqual(len(payload["transactions"]), 42)
         self.assertLess(
             realistic.response_bytes,

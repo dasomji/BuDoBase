@@ -1,7 +1,20 @@
 from datetime import datetime
 from django.conf import settings
 from django.forms import ModelForm, Form
-from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, AuslagerorteNotizen, AuslagerorteImage, Schwerpunktzeit, Geld
+from .models import (
+    Auslagerorte,
+    AuslagerorteImage,
+    AuslagerorteNotizen,
+    ErsteHilfeEintrag,
+    Geld,
+    Kinder,
+    Meal,
+    Notizen,
+    Profil,
+    Schwerpunkte,
+    Schwerpunktzeit,
+    Turnus,
+)
 from django import forms
 from django.contrib.auth.models import User
 import datetime
@@ -15,6 +28,27 @@ class NotizForm(forms.ModelForm):
         widgets = {
             "notiz": forms.TextInput(attrs={'class': 'w3-input', 'placeholder': 'Notiz...'})
         }
+
+
+class ErsteHilfeEintragForm(forms.ModelForm):
+    erste_hilfe_beschreibung = forms.CharField(
+        label="Erste Hilfe",
+        strip=True,
+        error_messages={"required": "Bitte eine Beschreibung eingeben."},
+        widget=forms.TextInput(attrs={
+            "class": "w3-input",
+            "disabled": True,
+            "placeholder": "Erste-Hilfe-Maßnahme...",
+        }),
+    )
+
+    class Meta:
+        model = ErsteHilfeEintrag
+        fields = []
+
+    def save(self, commit=True):
+        self.instance.beschreibung = self.cleaned_data["erste_hilfe_beschreibung"]
+        return super().save(commit=commit)
 
 
 class GeldForm(forms.ModelForm):
