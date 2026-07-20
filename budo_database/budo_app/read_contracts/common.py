@@ -57,14 +57,22 @@ def _serialize_text_entry(entry, text):
 
 def serialize_photos(entry, child_name, kind):
     photos = getattr(entry, "route_photos", ())
-    label = "Notizfoto" if kind == "notes" else "EH-Foto"
+    if kind == "notes":
+        label, entry_label = "Notizfoto", "Notiz"
+    else:
+        label, entry_label = "EH-Foto", "EH-Eintrag"
+    entry_suffix = (
+        f", {entry_label} vom {entry.date_added.strftime('%d.%m.%Y %H:%M')}"
+        if entry.date_added
+        else ""
+    )
     return [
         {
             "id": photo.id,
             "url": reverse("attachment-media", args=(kind, photo.id)),
             "width": photo.width,
             "height": photo.height,
-            "alt": f"{label} {ordinal} von {child_name}",
+            "alt": f"{label} {ordinal} von {child_name}{entry_suffix}",
         }
         for ordinal, photo in enumerate(photos, start=1)
     ]

@@ -85,11 +85,12 @@ class DashboardFirstAidPhotoContractTests(QueryBudgetAssertions, TestCase):
         self.assertTrue(initial["has_more"])
         newest = initial["items"][0]
         self.assertEqual(newest["id"], entries[-1].id)
+        newest_stamp = entries[-1].date_added.strftime("%d.%m.%Y %H:%M")
         self.assertEqual(
             [photo["alt"] for photo in newest["photos"]],
             [
-                "EH-Foto 1 von Grace Hopper",
-                "EH-Foto 2 von Grace Hopper",
+                f"EH-Foto 1 von Grace Hopper, EH-Eintrag vom {newest_stamp}",
+                f"EH-Foto 2 von Grace Hopper, EH-Eintrag vom {newest_stamp}",
             ],
         )
         self.assertEqual(

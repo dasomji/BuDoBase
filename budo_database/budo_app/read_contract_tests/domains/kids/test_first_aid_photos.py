@@ -73,20 +73,21 @@ class KidDetailFirstAidPhotoContractTests(QueryBudgetAssertions, TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         item = response.json()["kids"][0]["first_aid_entries"][0]
         self.assertEqual(item["id"], entry.id)
+        entry_stamp = entry.date_added.strftime("%d.%m.%Y %H:%M")
         self.assertEqual(item["photos"], [
             {
                 "id": first.id,
                 "url": reverse("attachment-media", args=("first-aid", first.id)),
                 "width": 31,
                 "height": 19,
-                "alt": "EH-Foto 1 von Ada Lovelace",
+                "alt": f"EH-Foto 1 von Ada Lovelace, EH-Eintrag vom {entry_stamp}",
             },
             {
                 "id": second.id,
                 "url": reverse("attachment-media", args=("first-aid", second.id)),
                 "width": 20,
                 "height": 32,
-                "alt": "EH-Foto 2 von Ada Lovelace",
+                "alt": f"EH-Foto 2 von Ada Lovelace, EH-Eintrag vom {entry_stamp}",
             },
         ])
         for photo in item["photos"]:
