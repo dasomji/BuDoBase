@@ -2,12 +2,28 @@
 <div id="interaction-bar">
     <div id="interaction-input">
         {% block forminput %}
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {%csrf_token %}
-            <div id="notiz-form">{{ notiz_form.as_p }}</div>
+            <div id="notiz-form">
+                {{ notiz_form.as_p }}
+                <label for="id_notiz_fotos" aria-label="Notiz-Fotos">+</label>
+                <input id="id_notiz_fotos" name="notiz_fotos" type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
+            </div>
             <div id="geld-form" class="hidden">{{ geld_form.as_p }}</div>
             <div id="erste-hilfe-form" class="hidden">
                 {{ erste_hilfe_form.as_p }}
+                <p>
+                    <label for="id_erste_hilfe_fotos" aria-label="EH-Fotos">+</label>
+                    <input
+                        id="id_erste_hilfe_fotos"
+                        name="erste_hilfe_fotos"
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                        multiple
+                        disabled
+                    >
+                    <small>JPEG, PNG, WebP, HEIC oder HEIF; höchstens 5 Fotos mit je 10 MB.</small>
+                </p>
                 <input type="hidden" name="interaction_kind" value="first_aid" disabled>
             </div>
             <button type="submit"><img src="{% static 'img/send-button.svg' %}" alt="send"></button>

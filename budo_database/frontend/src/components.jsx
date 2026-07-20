@@ -244,6 +244,10 @@ export function RestForm({ target, token, children, className = '', encType, onS
     setSubmitting(true);
     setErrors([]);
     const body = new FormData(form);
+    form.querySelectorAll('input[type="file"][multiple][name]').forEach(input => {
+      body.delete(input.name);
+      Array.from(input.files || []).forEach(file => body.append(input.name, file));
+    });
     const submitter = event.nativeEvent.submitter;
     if (submitter?.name) body.set(submitter.name, submitter.value);
     body.set('_target', target);

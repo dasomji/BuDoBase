@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Card, Column, Columns, FieldList, findById, RestForm, SearchTable } from '../components';
+import { FirstAidEntry, NoteEntry } from './first-aid';
+import { FirstAidGallery } from './first-aid-gallery';
 import {
   displayOrPlaceholder,
   formatGermanDate,
@@ -40,7 +42,7 @@ export function KidInteractionForm({ kid, token, onSaved }) {
   return (
     <div id="interaction-bar">
       <div id="interaction-input">
-        <RestForm target={`/kid_details/${kid.id}`} token={token} onSuccess={onSaved} resetOnSuccess>
+        <RestForm target={`/kid_details/${kid.id}`} token={token} encType="multipart/form-data" onSuccess={onSaved} resetOnSuccess>
           <div className="interaction-mode-buttons" role="group" aria-label="Eingabemodus">
             <button type="button" aria-label="Notiz auswählen" aria-pressed={field === 'notiz'} onClick={show('notiz')}><span aria-hidden="true">📝</span></button>
             <button type="button" aria-label="Taschengeld auswählen" aria-pressed={field === 'amount'} onClick={show('amount')}><span aria-hidden="true">💶</span></button>
@@ -48,12 +50,27 @@ export function KidInteractionForm({ kid, token, onSaved }) {
           </div>
           <div id="notiz-form" className={field === 'notiz' ? '' : 'hidden'}>
             <p><label htmlFor="id_notiz" onClick={show('amount')}>Notiz</label><input id="id_notiz" name="notiz" placeholder="Notiz..." /></p>
+            <label className="attachment-button" htmlFor="id_notiz_fotos"><span className="sr-only">Notiz-Fotos</span><span aria-hidden="true">+</span></label>
+            <input id="id_notiz_fotos" className="attachment-input" aria-label="Notiz-Fotos" name="notiz_fotos" type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif" multiple disabled={field !== 'notiz'} />
           </div>
           <div id="geld-form" className={field === 'amount' ? '' : 'hidden'}>
             <p><label htmlFor="id_amount" onClick={show('notiz')}>Taschengeld</label><input id="id_amount" name="amount" type="number" min="0" step="0.01" placeholder="Taschengeld..." /></p>
           </div>
           <div id="erste-hilfe-form" className={field === 'first_aid' ? '' : 'hidden'}>
             <p><label htmlFor="id_erste_hilfe_beschreibung" onClick={show('notiz')}>Erste Hilfe</label><input id="id_erste_hilfe_beschreibung" name="erste_hilfe_beschreibung" placeholder="Erste-Hilfe-Maßnahme..." required disabled={field !== 'first_aid'} /></p>
+            <p className="first-aid-photo-field">
+              <label className="attachment-button" htmlFor="id_erste_hilfe_fotos"><span className="sr-only">EH-Fotos</span><span aria-hidden="true">+</span></label>
+              <input
+                id="id_erste_hilfe_fotos"
+                className="attachment-input"
+                name="erste_hilfe_fotos"
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                multiple
+                disabled={field !== 'first_aid'}
+              />
+              <small>JPEG, PNG, WebP, HEIC oder HEIF; höchstens 5 Fotos mit je 10 MB.</small>
+            </p>
           </div>
           {field === 'amount'
             ? <><button className="money-action money-withdraw" type="submit" name="money_action" value="withdraw">Abbuchen</button><button className="money-action money-topup" type="submit" name="money_action" value="topup">Aufladen</button></>
@@ -92,7 +109,7 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
   if (!kid) return <NotFoundPage />;
   const deposit = action => mutate('/update_pfand/', { id: kid.id, action });
   return (
-    <>
+    <FirstAidGallery entries={[...(kid.notes || []), ...(kid.first_aid_entries || [])]} childName={kid.full_name}>
       <Columns>
         <Column id="left-column">
           <Card title={`${kid.full_name}${kid.present ? '' : ' ❌'}`} id="kinderinfos"><FieldList items={[["Geschlecht", kid.sex], ["Alter", kid.age], ["Geburtstag", formatKidBirthday(kid)], ["Aufenthaltsdauer", `${kid.weeks}-wöchig`], ["Geschwister", kid.siblings], ["Zeltwunsch", kid.tent_request], ["War schon mal im Bunten Dorf", yesNo(kid.budo_experience)]]} /></Card>
@@ -103,14 +120,14 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
           <Card title="Familie" id="family_info"><FieldList items={[["Organisation", kid.organization], ["Anmelder:in", kid.registrant_name], ["Anmelder:in Email", <a href={`mailto:${kid.registrant_email}`}>{kid.registrant_email}</a>], ["Anmelder:in Mobil", <a href={`tel:${kid.registrant_phone}`}>{kid.registrant_phone}</a>], ["Hauptversichert bei", kid.insured_with], ["Notfallkontakte", kid.emergency_contacts]]} /></Card>
         </Column>
         <Column id="right-column">
-          <Card title="Notizen" id="notizen"><FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} /><ul>{kid.notes.length ? kid.notes.map(note => <li key={note.id}>{note.author} am {formatGermanDate(note.date)}: {note.text}</li>) : <li>Noch keine Notizen.</li>}</ul></Card>
-          <Card title="Erste Hilfe" id="erste-hilfe"><ul>{kid.first_aid_entries?.length ? kid.first_aid_entries.map(entry => <li key={entry.id}>{entry.author} am {formatGermanDate(entry.date)}: {entry.text}</li>) : <li>Noch keine EH-Einträge.</li>}</ul></Card>
+          <Card title="Notizen" id="notizen"><FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} /><ul>{kid.notes.length ? kid.notes.map(note => <NoteEntry entry={note} childName={kid.full_name} key={note.id} />) : <li>Noch keine Notizen.</li>}</ul></Card>
+          <Card title="Erste Hilfe" id="erste-hilfe"><ul>{kid.first_aid_entries?.length ? kid.first_aid_entries.map(entry => <FirstAidEntry entry={entry} childName={kid.full_name} key={entry.id} />) : <li>Noch keine EH-Einträge.</li>}</ul></Card>
           <Card title={`Taschengeld: ${money(kid.remaining_money)}${kid.remaining_money < 5 ? ' 🚨' : ''}`} id="taschengeld"><ul>{kid.transactions.length ? kid.transactions.map(item => <li key={item.id}>{item.author} am {formatGermanDate(item.date)}: {money(item.amount)}</li>) : <li>Dieses Kind ist arm.</li>}</ul></Card>
           <Card title={`Pfand: ${kid.deposit}`} id="pfand"><div className="react-actions"><button className="button" type="button" onClick={() => deposit('increase')}>+ Pfand</button><button className="button" type="button" onClick={() => deposit('decrease')}>− Pfand</button></div></Card>
         </Column>
       </Columns>
       <KidInteractionForm kid={kid} token={data.csrf_token} onSaved={onSaved} />
-    </>
+    </FirstAidGallery>
   );
 }
 

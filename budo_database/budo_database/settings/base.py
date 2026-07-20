@@ -114,6 +114,30 @@ LOCATION_IMAGE_MAX_FILE_SIZE = 20 * 1024 * 1024
 LOCATION_IMAGE_MAX_TOTAL_SIZE = 100 * 1024 * 1024
 LOCATION_IMAGE_MAX_PIXELS = 40_000_000
 
+ATTACHMENT_IMAGE_MAX_FILES = 5
+ATTACHMENT_IMAGE_MAX_FILE_SIZE = 10 * 1024 * 1024
+ATTACHMENT_IMAGE_MAX_PIXELS = 40_000_000
+ATTACHMENT_IMAGE_MAX_EDGE = 1600
+ATTACHMENT_IMAGE_WEBP_QUALITY = 80
+ATTACHMENT_IMAGE_ROOT = BASE_DIR / "private-media" / "attachments"
+
+# Entry images live outside MEDIA_ROOT and have no public base URL.
+# They are served only by the authorization-checking application endpoint.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "attachments": {
+        "BACKEND": "budo_app.private_storage.PrivateFirstAidFileSystemStorage",
+        "OPTIONS": {
+            "location": ATTACHMENT_IMAGE_ROOT,
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

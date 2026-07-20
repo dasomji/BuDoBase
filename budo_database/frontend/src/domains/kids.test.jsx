@@ -79,6 +79,25 @@ describe('Kinder pages', () => {
     expect(description).toHaveValue('');
   });
 
+  it('submits note image attachments through the + control', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
+
+    const input = screen.getByLabelText('Notiz-Fotos');
+    const photo = new File(['photo'], 'iphone.heic', { type: 'image/heic' });
+    expect(input).toHaveAttribute('type', 'file');
+    expect(input).toHaveAttribute('multiple');
+    fireEvent.change(screen.getByPlaceholderText('Notiz...'), { target: { value: 'Mit Foto' } });
+    fireEvent.change(input, { target: { files: [photo] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    const body = fetchMock.mock.calls[0][1].body;
+    expect(body.get('notiz')).toBe('Mit Foto');
+    expect(body.getAll('notiz_fotos')).toEqual([photo]);
+  });
+
   it('shows the server validation message for a blank first-aid description', async () => {
     const fetchMock = vi.fn().mockResolvedValue(response(
       { ok: false, errors: ['Bitte eine Beschreibung eingeben.'] },

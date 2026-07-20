@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
 from budo_app.models import ErsteHilfeEintrag, Geld, Kinder, Notizen, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
@@ -83,7 +84,7 @@ class KidsContractPerformanceTests(QueryBudgetAssertions, TestCase):
                 notiz=f"Zusätzliche Notiz {index}",
                 added_by=self.user,
             )
-            ErsteHilfeEintrag.objects.create(
+            create_first_aid_entry_for_test(
                 kinder=kid,
                 beschreibung=f"Zusätzlicher EH-Eintrag {index}",
                 added_by=self.user,

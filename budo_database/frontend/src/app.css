@@ -364,8 +364,8 @@
 
 .sidebar-brand-logo {
   display: inline-grid;
-  width: 1.25rem;
-  flex: 0 0 1.25rem;
+  width: 1rem;
+  flex: 0 0 1rem;
   place-items: center;
 }
 
@@ -1396,5 +1396,169 @@ input[name="amount"]::placeholder {
   }
   html {
     @apply font-sans;
+  }
+}
+
+.first-aid-entry {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.first-aid-photo-strip {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  gap: var(--s-padding);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--xs-padding) 0;
+  overscroll-behavior-inline: contain;
+  touch-action: pan-x pan-y;
+}
+
+.first-aid-photo-trigger {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.first-aid-photo {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: 200px;
+  object-fit: contain;
+}
+
+.first-aid-photo-field {
+  flex-wrap: wrap;
+}
+
+.attachment-input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.attachment-button {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.first-aid-photo-field small {
+  width: 100%;
+  text-align: center;
+}
+
+.first-aid-gallery-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgb(0 0 0 / 78%);
+}
+
+.first-aid-gallery-viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: grid;
+  place-items: center;
+  padding: var(--m-padding);
+}
+
+.first-aid-gallery {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  width: min(100%, 1100px);
+  max-height: calc(100dvh - (2 * var(--m-padding)));
+  gap: var(--s-padding);
+  padding: var(--m-padding);
+  border-radius: var(--radius);
+  background: #181818;
+  color: #fff;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 45%);
+}
+
+.first-aid-gallery-title,
+.first-aid-gallery-description {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-inline: 3rem;
+  text-align: center;
+}
+
+.first-aid-gallery-title {
+  font-size: 1.25rem;
+}
+
+.first-aid-gallery-description {
+  color: #eee;
+}
+
+.first-aid-gallery-close,
+.first-aid-gallery-control {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: 50%;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.first-aid-gallery-close {
+  position: absolute;
+  top: var(--s-padding);
+  right: var(--s-padding);
+}
+
+.first-aid-gallery-media {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+}
+
+.first-aid-gallery-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(100dvh - 12rem);
+  object-fit: contain;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+@media (max-width: 600px) {
+  .first-aid-gallery-viewport {
+    padding: var(--xs-padding);
+  }
+
+  .first-aid-gallery {
+    max-height: calc(100dvh - (2 * var(--xs-padding)));
+    gap: var(--xs-padding);
+    padding: var(--s-padding);
+  }
+
+  .first-aid-gallery-title,
+  .first-aid-gallery-description {
+    padding-inline: 2.5rem;
   }
 }

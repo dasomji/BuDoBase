@@ -19,8 +19,28 @@ from django import forms
 from django.contrib.auth.models import User
 import datetime
 
+from .first_aid_contract import FIRST_AID_DESCRIPTION_MAX_LENGTH
+from .first_aid_photos import FirstAidPhotoError, process_first_aid_photos
 
-class NotizForm(forms.ModelForm):
+
+class AttachmentFormMixin:
+    attachment_field_name = "fotos"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        try:
+            self.processed_photos = process_first_aid_photos(
+                self.files.getlist(self.attachment_field_name)
+            )
+        except FirstAidPhotoError as error:
+            self.add_error(None, error)
+            self.processed_photos = ()
+        return cleaned_data
+
+
+class NotizForm(AttachmentFormMixin, forms.ModelForm):
+    attachment_field_name = "notiz_fotos"
+
     class Meta:
         model = Notizen
         fields = ['notiz']
@@ -30,11 +50,19 @@ class NotizForm(forms.ModelForm):
         }
 
 
-class ErsteHilfeEintragForm(forms.ModelForm):
+class ErsteHilfeEintragForm(AttachmentFormMixin, forms.ModelForm):
+    attachment_field_name = "erste_hilfe_fotos"
     erste_hilfe_beschreibung = forms.CharField(
         label="Erste Hilfe",
         strip=True,
-        error_messages={"required": "Bitte eine Beschreibung eingeben."},
+        max_length=FIRST_AID_DESCRIPTION_MAX_LENGTH,
+        error_messages={
+            "required": "Bitte eine Beschreibung eingeben.",
+            "max_length": (
+                "Die Beschreibung darf höchstens "
+                f"{FIRST_AID_DESCRIPTION_MAX_LENGTH} Zeichen lang sein."
+            ),
+        },
         widget=forms.TextInput(attrs={
             "class": "w3-input",
             "disabled": True,

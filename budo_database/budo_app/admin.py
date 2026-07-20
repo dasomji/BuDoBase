@@ -1,8 +1,31 @@
 from django import forms
-from django.utils.html import format_html
 from django.contrib import admin
+from django.core.files.base import ContentFile
+from django.db import transaction
 from django.template.defaultfilters import filesizeformat
-from .models import AuditEvent, Kinder, Turnus, Schwerpunkte, Auslagerorte, AuslagerorteImage, AuslagerorteNotizen, Notizen, Document, Profil, Meal, Schwerpunktzeit, SchwerpunktWahl, SpezialFamilien
+from django.utils.html import format_html
+
+from .first_aid_contract import FIRST_AID_MAX_PHOTOS
+from .first_aid_photos import process_first_aid_photos
+from .models import (
+    AuditEvent,
+    Auslagerorte,
+    AuslagerorteImage,
+    AuslagerorteNotizen,
+    Document,
+    ErsteHilfeEintrag,
+    ErsteHilfeFoto,
+    Kinder,
+    Meal,
+    Notizen,
+    NotizFoto,
+    Profil,
+    SchwerpunktWahl,
+    Schwerpunkte,
+    Schwerpunktzeit,
+    SpezialFamilien,
+    Turnus,
+)
 
 
 class KinderAdminForm(forms.ModelForm):
@@ -194,6 +217,135 @@ class SchwerpunktzeitAdmin(admin.ModelAdmin):
     display_swps.short_description = 'Schwerpunkte'
 
 
+class AttachmentAdminForm(forms.ModelForm):
+    """Turn an admin upload into the same optimized WebP used by the frontend."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields["datei"].required = False
+
+    def _get_validation_exclusions(self):
+        exclusions = set(super()._get_validation_exclusions())
+        exclusions.update(("datei", "position", "width", "height", "checksum"))
+        return exclusions
+
+    def clean(self):
+        cleaned = super().clean()
+        upload = self.files.get(self.add_prefix("datei"))
+        self.processed_photo = (
+            process_first_aid_photos([upload])[0] if upload is not None else None
+        )
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        processed = self.processed_photo
+        if processed is not None:
+            storage = instance._meta.get_field("datei").storage
+            old_name = instance.datei.name if instance.pk and instance.datei else None
+            saved_name = storage.save(processed.storage_key, ContentFile(processed.content))
+            instance.datei = saved_name
+            instance.width = processed.width
+            instance.height = processed.height
+            instance.checksum = processed.checksum
+            if old_name and old_name != saved_name:
+                transaction.on_commit(lambda: storage.delete(old_name))
+        if commit:
+            instance.save()
+        return instance
+
+
+class NotizFotoAdminForm(AttachmentAdminForm):
+    class Meta:
+        model = NotizFoto
+        fields = ("position", "datei")
+        widgets = {"datei": forms.FileInput()}
+
+
+class ErsteHilfeFotoAdminForm(AttachmentAdminForm):
+    class Meta:
+        model = ErsteHilfeFoto
+        fields = ("position", "datei")
+        widgets = {"datei": forms.FileInput()}
+
+
+class AttachmentInline(admin.TabularInline):
+    fields = ("position", "datei", "width", "height")
+    readonly_fields = ("width", "height")
+    extra = 1
+    max_num = FIRST_AID_MAX_PHOTOS
+    validate_max = True
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_add_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_staff
+
+
+class NotizFotoInline(AttachmentInline):
+    model = NotizFoto
+    form = NotizFotoAdminForm
+
+
+class ErsteHilfeFotoInline(AttachmentInline):
+    model = ErsteHilfeFoto
+    form = ErsteHilfeFotoAdminForm
+
+
+class TurnusEntryAdmin(admin.ModelAdmin):
+    readonly_fields = ("date_added", "added_by")
+    ordering = ("-date_added", "-id")
+
+    def has_module_permission(self, request):
+        return request.user.is_staff and getattr(
+            getattr(request.user, "profil", None), "turnus_id", None
+        ) is not None
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        turnus_id = getattr(getattr(request.user, "profil", None), "turnus_id", None)
+        return queryset.filter(kinder__turnus_id=turnus_id) if turnus_id else queryset.none()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_staff and self._same_turnus(request, obj)
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_staff and self._same_turnus(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_staff and self._same_turnus(request, obj)
+
+    @staticmethod
+    def _same_turnus(request, obj):
+        if obj is None:
+            return True
+        return obj.kinder.turnus_id == getattr(
+            getattr(request.user, "profil", None), "turnus_id", None
+        )
+
+
+class NotizenAdmin(TurnusEntryAdmin):
+    list_display = ("notiz", "kids_name", "added_by", "date_added")
+    inlines = (NotizFotoInline,)
+
+
+class FirstAidEntryAdmin(TurnusEntryAdmin):
+    list_display = ("beschreibung", "kinder", "added_by", "date_added")
+    list_select_related = ("kinder", "added_by")
+    inlines = (ErsteHilfeFotoInline,)
+
+
 class AuditEventAdmin(admin.ModelAdmin):
     list_display = (
         "occurred_at", "turnus", "actor_label", "action", "outcome",
@@ -232,3 +384,4 @@ admin.site.register(Schwerpunktzeit, SchwerpunktzeitAdmin)
 admin.site.register(SchwerpunktWahl)
 admin.site.register(SpezialFamilien, SpezialFamilienAdmin)
 admin.site.register(AuditEvent, AuditEventAdmin)
+admin.site.register(ErsteHilfeEintrag, FirstAidEntryAdmin)

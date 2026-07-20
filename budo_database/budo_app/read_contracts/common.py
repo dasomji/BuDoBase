@@ -1,4 +1,5 @@
 from django.http import Http404
+from django.urls import reverse
 
 from budo_app.models import Profil
 
@@ -54,12 +55,37 @@ def _serialize_text_entry(entry, text):
     }
 
 
-def serialize_note(note):
-    return _serialize_text_entry(note, note.notiz)
+def serialize_photos(entry, child_name, kind):
+    photos = getattr(entry, "route_photos", ())
+    label = "Notizfoto" if kind == "notes" else "EH-Foto"
+    return [
+        {
+            "id": photo.id,
+            "url": reverse("attachment-media", args=(kind, photo.id)),
+            "width": photo.width,
+            "height": photo.height,
+            "alt": f"{label} {ordinal} von {child_name}",
+        }
+        for ordinal, photo in enumerate(photos, start=1)
+    ]
 
 
-def serialize_first_aid_entry(entry):
-    return _serialize_text_entry(entry, entry.beschreibung)
+def serialize_note(note, child_name=""):
+    serialized = _serialize_text_entry(note, note.notiz)
+    if hasattr(note, "route_photos"):
+        serialized["photos"] = serialize_photos(note, child_name, "notes")
+    return serialized
+
+
+def serialize_first_aid_photos(entry, child_name):
+    return serialize_photos(entry, child_name, "first-aid")
+
+
+def serialize_first_aid_entry(entry, child_name):
+    return {
+        **_serialize_text_entry(entry, entry.beschreibung),
+        "photos": serialize_first_aid_photos(entry, child_name),
+    }
 
 
 def serialize_transaction(transaction):

@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
 from budo_app.models import (
     ErsteHilfeEintrag,
     Geld,
@@ -126,12 +127,12 @@ class KidDetailContractTests(TestCase):
             amount=10,
             added_by=self.user,
         )
-        self.first_aid_older = ErsteHilfeEintrag.objects.create(
+        self.first_aid_older = create_first_aid_entry_for_test(
             kinder=self.kid,
             beschreibung="Hand gekühlt",
             added_by=self.user,
         )
-        self.first_aid_newer = ErsteHilfeEintrag.objects.create(
+        self.first_aid_newer = create_first_aid_entry_for_test(
             kinder=self.kid,
             beschreibung="Knie verbunden",
             added_by=self.user,
@@ -144,7 +145,7 @@ class KidDetailContractTests(TestCase):
             turnus=self.other_turnus,
             sozialversicherungsnr="private-other-turnus",
         )
-        ErsteHilfeEintrag.objects.create(
+        create_first_aid_entry_for_test(
             kinder=self.other_kid,
             beschreibung="Fremder EH-Eintrag",
             added_by=self.user,
@@ -175,6 +176,7 @@ class KidDetailContractTests(TestCase):
             "date": self.note.date_added.isoformat(),
             "day": self.note.date_added.strftime("%d.%m."),
             "author": "kid-detail-user",
+            "photos": [],
         }])
         self.assertEqual(kid["first_aid_entries"], [
             {
@@ -183,6 +185,7 @@ class KidDetailContractTests(TestCase):
                 "date": self.first_aid_newer.date_added.isoformat(),
                 "day": self.first_aid_newer.date_added.strftime("%d.%m."),
                 "author": "kid-detail-user",
+                "photos": [],
             },
             {
                 "id": self.first_aid_older.id,
@@ -190,6 +193,7 @@ class KidDetailContractTests(TestCase):
                 "date": self.first_aid_older.date_added.isoformat(),
                 "day": self.first_aid_older.date_added.strftime("%d.%m."),
                 "author": "kid-detail-user",
+                "photos": [],
             },
         ])
         self.assertNotContains(response, "Fremder EH-Eintrag")
@@ -300,6 +304,7 @@ class KidDetailMutationContractTests(TestCase):
             "date": entry.date_added.isoformat(),
             "day": entry.date_added.strftime("%d.%m."),
             "author": "kid-mutation-user",
+            "photos": [],
         }])
 
     def test_first_aid_write_rejects_a_kid_outside_the_active_turnus(self):

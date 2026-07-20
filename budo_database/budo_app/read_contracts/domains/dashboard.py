@@ -20,14 +20,18 @@ from rest_framework.exceptions import ValidationError
 
 from budo_app.models import (
     ErsteHilfeEintrag,
+    ErsteHilfeFoto,
     Geld,
     Kinder,
     Notizen,
+    NotizFoto,
     Profil,
     Schwerpunkte,
 )
 from budo_app.read_contracts.common import (
     kid_full_name,
+    serialize_first_aid_photos,
+    serialize_photos,
     serialize_money,
     serialize_utc_datetime,
 )
@@ -96,7 +100,7 @@ def _decode_cursor(value):
 
 
 def _activity_queryset(stream, turnus_id):
-    return (
+    queryset = (
         stream.model.objects.filter(kinder__turnus_id=turnus_id)
         .select_related("kinder", "added_by")
         .only(
@@ -110,25 +114,44 @@ def _activity_queryset(stream, turnus_id):
         )
         .order_by("-date_added", "-id")
     )
+    if stream.model in (ErsteHilfeEintrag, Notizen):
+        photo_model = ErsteHilfeFoto if stream.model is ErsteHilfeEintrag else NotizFoto
+        photos = photo_model.objects.only(
+            "id",
+            "eintrag_id",
+            "position",
+            "width",
+            "height",
+        ).order_by("position", "id")
+        queryset = queryset.prefetch_related(
+            Prefetch("fotos", queryset=photos, to_attr="route_photos")
+        )
+    return queryset
 
 
 def _activity_item(stream, item):
+    child_name = kid_full_name(
+        item.kinder.kid_vorname,
+        item.kinder.kid_nachname,
+    )
     common = {
         "id": item.id,
         "date": serialize_utc_datetime(item.date_added),
         "author": item.added_by.username,
         "kid_id": item.kinder_id,
-        "kid": kid_full_name(
-            item.kinder.kid_vorname,
-            item.kinder.kid_nachname,
-        ),
+        "kid": child_name,
     }
-    return {
+    serialized = {
         **common,
         stream.response_field: stream.serialize_value(
             getattr(item, stream.source_field),
         ),
     }
+    if stream.model is ErsteHilfeEintrag:
+        serialized["photos"] = serialize_first_aid_photos(item, child_name)
+    elif stream.model is Notizen:
+        serialized["photos"] = serialize_photos(item, child_name, "notes")
+    return serialized
 
 
 def _activity_page(kind, turnus_id, cursor=None):

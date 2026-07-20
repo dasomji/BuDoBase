@@ -1,6 +1,8 @@
-import { Children, useEffect, useState } from 'react';
+import { Children, useCallback, useEffect, useState } from 'react';
 
 import { Card, Column, Columns } from '../components';
+import { FirstAidEntry, NoteEntry } from './first-aid';
+import { FirstAidGallery } from './first-aid-gallery';
 import { formatGermanDate, formatKidBirthday, linkKid, money } from './shared';
 
 function appendUnique(current, incoming) {
@@ -8,7 +10,7 @@ function appendUnique(current, incoming) {
   return [...current, ...incoming.filter(item => !existing.has(item.id))];
 }
 
-function ActivityList({ kind, initialPage, fetchImpl }) {
+function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -20,6 +22,10 @@ function ActivityList({ kind, initialPage, fetchImpl }) {
     setLoading(false);
     setError(false);
   }, [initialPage]);
+
+  useEffect(() => {
+    onItemsChange?.(page.items);
+  }, [onItemsChange, page.items]);
 
   const loadMore = async () => {
     setLoading(true);
@@ -45,10 +51,14 @@ function ActivityList({ kind, initialPage, fetchImpl }) {
   return (
     <>
       <ul>{page.items.map(item => (
-        <li key={item.id}>
-          <p><strong>{item.author}</strong> am {formatGermanDate(item.date)}: <a href={`/kid_details/${item.kid_id}`}>{item.kid}</a></p>
-          <p>{textActivity ? item.text : `Betrag: ${money(item.amount)}`}</p>
-        </li>
+        kind === 'first_aid'
+          ? <FirstAidEntry entry={item} childName={item.kid} showChildLink key={item.id} />
+          : kind === 'notes'
+            ? <NoteEntry entry={item} childName={item.kid} showChildLink key={item.id} />
+          : <li key={item.id}>
+            <p><strong>{item.author}</strong> am {formatGermanDate(item.date)}: <a href={`/kid_details/${item.kid_id}`}>{item.kid}</a></p>
+            <p>{textActivity ? item.text : `Betrag: ${money(item.amount)}`}</p>
+          </li>
       ))}</ul>
       {error && <p className="activity-error" role="alert">Ältere {label} konnten nicht geladen werden.</p>}
       {page.has_more && (
@@ -120,7 +130,7 @@ function DashboardColumns({ children }) {
   );
 }
 
-export function DashboardPage({ data, fetchImpl = fetch }) {
+export function DashboardPage({ data, fetchImpl = fetch, onFirstAidItemsChange }) {
   const {
     profile,
     totals,
@@ -129,6 +139,12 @@ export function DashboardPage({ data, fetchImpl = fetch }) {
     focus_assignments_complete: assignmentsComplete = {},
     activity,
   } = data;
+  const [firstAidItems, setFirstAidItems] = useState(activity.first_aid.items);
+  const [noteItems, setNoteItems] = useState(activity.notes.items);
+  const handleFirstAidItemsChange = useCallback(items => {
+    setFirstAidItems(items);
+    onFirstAidItemsChange?.(items);
+  }, [onFirstAidItemsChange]);
   const firstTimers = kids.filter(kid => kid.budo_experience === false);
   const oneWeek = kids.filter(kid => kid.weeks === 1);
   const health = kids.filter(kid => kid.drugs || kid.illness);
@@ -149,7 +165,8 @@ export function DashboardPage({ data, fetchImpl = fetch }) {
     </Card>
   );
   return (
-    <DashboardColumns>
+    <FirstAidGallery entries={[...noteItems, ...firstAidItems]}>
+      <DashboardColumns>
       <Card title={`Kinder: ${totals.checked_in}`} id="db-kinderübersicht">
         <p><span className="label">Eingecheckt</span>: {totals.checked_in}/{totals.kids}</p>
         <p><span className="label">Geschlechter</span>: {kids.filter(kid => kid.sex === 'männlich').length} ♂ // {kids.filter(kid => kid.sex === 'weiblich').length} ♀ // {kids.filter(kid => !['männlich', 'weiblich'].includes(kid.sex)).length} ⚧</p>
@@ -157,8 +174,8 @@ export function DashboardPage({ data, fetchImpl = fetch }) {
         <p><span className="label">Zuganreise</span>: {totals.train_arrival}</p>
         <p><span className="label">Zugabreise</span>: {totals.train_departure}</p>
       </Card>
-      <Card title="Notizen" id="db-notizen"><ActivityList kind="notes" initialPage={activity.notes} fetchImpl={fetchImpl} /></Card>
-      <Card title="Erste Hilfe" id="db-erste-hilfe"><ActivityList kind="first_aid" initialPage={activity.first_aid} fetchImpl={fetchImpl} /></Card>
+      <Card title="Notizen" id="db-notizen"><ActivityList kind="notes" initialPage={activity.notes} fetchImpl={fetchImpl} onItemsChange={setNoteItems} /></Card>
+      <Card title="Erste Hilfe" id="db-erste-hilfe"><ActivityList kind="first_aid" initialPage={activity.first_aid} fetchImpl={fetchImpl} onItemsChange={handleFirstAidItemsChange} /></Card>
       <Card title="Meine BuDo-Familie" id="db-budo-familie">
         {profile?.budo_family
           ? <><p><span className="label">{familyLabels[profile.budo_family] || profile.budo_family}</span></p>{familyKids.length ? <ul>{familyKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul> : <p>Keine Kinder in dieser BuDo-Familie.</p>}</>
@@ -173,7 +190,8 @@ export function DashboardPage({ data, fetchImpl = fetch }) {
       <Card title={`Geburtstagskinder: ${birthdays.length}`} id="db-geburtstagskinder">{birthdays.map(kid => <p key={kid.id}>{linkKid(kid)}: {formatKidBirthday(kid)}</p>)}</Card>
       <Card title={`Verabschiedungsliste: ${goodbyes.length}`} id="db-sechzehner">{goodbyes.map(kid => <p key={kid.id}>{linkKid(kid)}: {kid.age} – {formatKidBirthday(kid)}</p>)}</Card>
       <Card title="Taschengeldtransaktionen" id="db-geld"><ActivityList kind="transactions" initialPage={activity.transactions} fetchImpl={fetchImpl} /></Card>
-    </DashboardColumns>
+      </DashboardColumns>
+    </FirstAidGallery>
   );
 }
 

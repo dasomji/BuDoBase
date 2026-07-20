@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
 from budo_app.models import (
     BetreuerinnenGeld,
     ErsteHilfeEintrag,
@@ -78,7 +79,7 @@ class DashboardContractTests(TestCase):
             notiz="Heute angekommen",
             added_by=self.user,
         )
-        self.first_aid_entry = ErsteHilfeEintrag.objects.create(
+        self.first_aid_entry = create_first_aid_entry_for_test(
             kinder=self.kid,
             beschreibung="Knie verbunden",
             added_by=self.user,
@@ -99,7 +100,7 @@ class DashboardContractTests(TestCase):
             notiz="OTHER-PRIVATE-NOTE",
             added_by=other_user,
         )
-        ErsteHilfeEintrag.objects.create(
+        create_first_aid_entry_for_test(
             kinder=other_kid,
             beschreibung="OTHER-PRIVATE-FIRST-AID",
             added_by=other_user,
@@ -185,6 +186,7 @@ class DashboardContractTests(TestCase):
                 "author": "dashboard-user",
                 "kid_id": self.kid.id,
                 "kid": "Grace Hopper",
+                "photos": [],
             },
         )
         self.assertEqual(
@@ -198,6 +200,7 @@ class DashboardContractTests(TestCase):
                 "author": "dashboard-user",
                 "kid_id": self.kid.id,
                 "kid": "Grace Hopper",
+                "photos": [],
             }],
         )
         self.assertEqual(
@@ -274,7 +277,7 @@ class DashboardContractTests(TestCase):
                 added_by=self.user,
             )
         for index in range(24):
-            ErsteHilfeEintrag.objects.create(
+            create_first_aid_entry_for_test(
                 kinder=self.kid,
                 beschreibung=f"EH-Eintrag {index}",
                 added_by=self.user,
@@ -287,9 +290,7 @@ class DashboardContractTests(TestCase):
             )
         tied_time = datetime(2026, 7, 8, 12, 0, tzinfo=timezone.utc)
         Notizen.objects.filter(kinder=self.kid).update(date_added=tied_time)
-        ErsteHilfeEintrag.objects.filter(kinder=self.kid).update(
-            date_added=tied_time,
-        )
+        ErsteHilfeEintrag.objects.filter(kinder=self.kid).update(date_added=tied_time)
         Geld.objects.filter(kinder=self.kid).update(date_added=tied_time)
         expected_note_ids = list(
             Notizen.objects.filter(kinder=self.kid)
