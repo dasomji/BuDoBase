@@ -1,6 +1,7 @@
 .env
 .artifacts/
 db.sqlite3
+private-media/
 frontend/node_modules/
 staticfiles/
 *.pyc

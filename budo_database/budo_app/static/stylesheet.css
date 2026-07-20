@@ -1125,6 +1125,18 @@ h2.murder_name {
   cursor: pointer;
 }
 
+#interaction-bar form label[for="id_erste_hilfe_beschreibung"]::after {
+  content: "🩹";
+  font-size: 2rem;
+  cursor: pointer;
+}
+
+#interaction-bar form label[for="id_notiz_fotos"],
+#interaction-bar form label[for="id_erste_hilfe_fotos"] {
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
 #interaction-bar form button {
   height: 2rem;
   padding: 0;
