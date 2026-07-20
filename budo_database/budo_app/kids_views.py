@@ -257,7 +257,8 @@ def kid_details(request, id):
                 else:
                     return redirect('kid_details', id=id)
         else:
-            if notiz_form.is_valid():
+            note_failed = not notiz_form.is_valid()
+            if not note_failed:
                 notiz = notiz_form.cleaned_data.get('notiz')
                 if notiz:
                     try:
@@ -273,8 +274,15 @@ def kid_details(request, id):
                             None,
                             "Die Notiz konnte nicht gespeichert werden. Bitte erneut versuchen.",
                         )
+                        note_failed = True
+                elif notiz_form.processed_photos:
+                    notiz_form.add_error(
+                        "notiz",
+                        "Bitte zu den Fotos eine Notiz eingeben.",
+                    )
+                    note_failed = True
 
-            if geld_form.is_valid():
+            if not note_failed and geld_form.is_valid():
                 geld = geld_form.cleaned_data.get("amount")
                 if geld:
                     geld = geld_form.save(commit=False)
