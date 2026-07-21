@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -35,7 +38,10 @@ describe('Kinder pages', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
 
-    expect(screen.getByPlaceholderText('Notiz...')).toBeVisible();
+    const note = screen.getByPlaceholderText('Notiz...');
+    expect(note).toBeVisible();
+    expect(note.tagName).toBe('TEXTAREA');
+    expect(note).toHaveAttribute('rows', '2');
     expect(screen.getByRole('button', { name: 'Senden' })).toHaveClass('interaction-send-button');
     expect(screen.getByPlaceholderText('Taschengeld...').closest('#geld-form')).toHaveClass('hidden');
     expect(screen.queryByRole('group', { name: 'Eingabemodus' })).not.toBeInTheDocument();
@@ -70,6 +76,8 @@ describe('Kinder pages', () => {
 
     const description = screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...');
     expect(description).toBeVisible();
+    expect(description.tagName).toBe('TEXTAREA');
+    expect(description).toHaveAttribute('rows', '2');
     expect(description).toBeRequired();
     expect(document.cookie).toContain('interaction-bar=erste-hilfe-form');
     fireEvent.change(description, { target: { value: 'Knie verbunden' } });
@@ -247,7 +255,7 @@ describe('Kinder pages', () => {
           messages: [],
           profile: { id: 1, rufname: 'Ada' },
           turnus: { id: 2, label: 'T2' },
-          permissions: {},
+          permissions: { change_kids: true },
           search_index: { kids: [{ id: 7, full_name: 'Ada Lovelace', present: true }], focuses: [], places: [] },
         });
       }
@@ -275,12 +283,23 @@ describe('Kinder pages', () => {
     render(<App fetchImpl={fetchImpl} />);
 
     expect(await screen.findByRole('heading', { name: 'Pfand: 1' })).toBeInTheDocument();
+    expect(document.querySelector('#headertitle h1 a')).toHaveAttribute('href', '/admin/budo_app/kinder/7/change/');
     fireEvent.click(screen.getByRole('button', { name: '+ Pfand' }));
     expect(await screen.findByRole('heading', { name: 'Pfand: 2' })).toBeInTheDocument();
 
     expect(detailReads).toBe(2);
     expect(fetchImpl.mock.calls.filter(([url]) => url === '/api/bootstrap/')).toHaveLength(1);
     expect(fetchImpl.mock.calls.some(([url]) => url.startsWith('/api/app-data/'))).toBe(false);
+  });
+
+  it('keeps interaction textareas to two through four lines and right-aligns Pfand actions', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
+
+    expect(css).toMatch(/\.interaction-textarea\s*\{[^}]*field-sizing:\s*content;[^}]*min-height:\s*2lh;[^}]*max-height:\s*4lh;[^}]*overflow-y:\s*auto;/s);
+    expect(css).toMatch(/#pfand \.card-info-container\s*\{[^}]*padding-top:\s*0;/s);
+    expect(css).toMatch(/#pfand \.deposit-actions\s*\{[^}]*justify-content:\s*flex-end;[^}]*margin-top:\s*0;/s);
+    expect(css).toMatch(/@media \(max-width: 600px\)[\s\S]*#interaction-bar form:has\(\.interaction-send-button\)\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;/);
+    expect(css).toMatch(/\.interaction-textarea\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;/s);
   });
 });
 

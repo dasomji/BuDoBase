@@ -103,16 +103,50 @@ class AuslagerorteDetail(LoginRequiredMixin, DetailView):
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         auslagernotiz_form = AuslagerNotizForm(request.POST)
+        uploaded_images = request.FILES.getlist('images')
+        image_form = AuslagerorteImageForm(
+            request.POST,
+            request.FILES,
+        ) if uploaded_images else None
 
-        if auslagernotiz_form.is_valid():
-            notiz = auslagernotiz_form.save(commit=False)
-            notiz.auslagerort = self.object
-            notiz.added_by = request.user
-            notiz.save()
-            return redirect('auslagerorte-detail', pk=self.object.pk)
+        if auslagernotiz_form.is_valid() and (image_form is None or image_form.is_valid()):
+            attempted_images = []
+            try:
+                with transaction.atomic():
+                    notiz = auslagernotiz_form.save(commit=False)
+                    notiz.auslagerort = self.object
+                    notiz.added_by = request.user
+                    notiz.save()
+                    for uploaded_image in uploaded_images:
+                        stored_image = AuslagerorteImage(
+                            auslagerort=self.object,
+                            notiz=notiz,
+                            image=uploaded_image,
+                        )
+                        attempted_images.append(stored_image)
+                        stored_image.save()
+            except Exception:
+                for stored_image in attempted_images:
+                    name = stored_image.image.name
+                    if not name or not stored_image.image._committed:
+                        continue
+                    try:
+                        stored_image.image.storage.delete(name)
+                    except Exception:
+                        logger.exception(
+                            "Failed to clean up comment image after upload failure"
+                        )
+                logger.exception("Location comment image upload failed")
+                auslagernotiz_form.add_error(
+                    None,
+                    "Der Kommentar konnte nicht gespeichert werden. Bitte erneut versuchen.",
+                )
+            else:
+                return redirect('auslagerorte-detail', pk=self.object.pk)
 
         context = self.get_context_data(object=self.object)
         context['auslagernotiz_form'] = auslagernotiz_form
+        context['form'] = image_form or AuslagerorteImageForm()
         return self.render_to_response(context)
 
 

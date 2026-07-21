@@ -1132,7 +1132,8 @@ h2.murder_name {
 }
 
 #interaction-bar form label[for="id_notiz_fotos"],
-#interaction-bar form label[for="id_erste_hilfe_fotos"] {
+#interaction-bar form label[for="id_erste_hilfe_fotos"],
+#interaction-bar form label[for="id_place_comment_images"] {
   font-size: 1.5rem;
   cursor: pointer;
 }
