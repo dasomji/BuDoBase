@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { Card, Column, Columns, FieldList, findById, MapCard, NativeForm, RestForm, SearchTable } from '../components';
 import { formatGermanDate, NotFoundPage } from './shared';
 
@@ -7,15 +9,43 @@ export function PlacesPage({ data }) {
     { key: 'name', label: 'Name', render: row => <a href={`/auslagerorte/${row.id}/`}>{row.name}</a> },
     { key: 'maps_link', label: 'Wo', render: row => row.maps_link ? <a href={row.maps_link}>Google Maps</a> : '---' },
     { key: 'parking_link', label: 'Parkspot', render: row => row.parking_link ? <a href={row.parking_link}>Google Maps</a> : '---' },
-    { key: 'actions', label: 'Aktionen', sortable: false, render: row => <><a href={`/auslagerorte/${row.id}/update`}>✏️</a> <a href={`/auslagerorte/${row.id}/`}>👁️</a></> },
   ];
   return <Columns><Column id="left-column" className="normal-column"><SearchTable columns={columns} rows={rows} /></Column><Column id="right-column"><MapCard places={data.places} /></Column></Columns>;
+}
+
+function PlaceCommentForm({ place, token, onSaved }) {
+  const [photoCount, setPhotoCount] = useState(0);
+  const handleSaved = onSaved
+    ? async result => {
+        await onSaved(result);
+        setPhotoCount(0);
+      }
+    : undefined;
+  return (
+    <div id="interaction-bar">
+      <div id="interaction-input">
+        <RestForm target={`/auslagerorte/${place.id}/`} token={token} encType="multipart/form-data" onSuccess={handleSaved} resetOnSuccess>
+          <div>
+            <p className="place-comment-input-field">
+              <textarea className="interaction-textarea" name="notiz" placeholder="Kommentar..." rows="2" aria-label="Kommentar" />
+              <label className="attachment-button" htmlFor="id_place_comment_images">
+                <span className="sr-only">Kommentar-Bilder</span><span aria-hidden="true">+</span>
+                {photoCount > 0 && <span className="attachment-count" aria-hidden="true">{photoCount}</span>}
+              </label>
+              <input id="id_place_comment_images" className="attachment-input" aria-label="Kommentar-Bilder" name="images" type="file" accept="image/*" multiple onChange={event => setPhotoCount(event.target.files?.length || 0)} />
+            </p>
+          </div>
+          <button className="interaction-send-button" type="submit" aria-label="Kommentar senden">➤</button>
+        </RestForm>
+      </div>
+    </div>
+  );
 }
 
 export function PlaceDetailPage({ data, id, onSaved }) {
   const place = findById(data.places, id);
   if (!place) return <NotFoundPage />;
-  return <><Columns className="auslagerorte-detail"><Column id="left-column"><Card title={place.name}><FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} /><a className="button" href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</a></Card><Card title="Kommentare"><ul>{place.notes.map(note => <li key={note.id}><strong>{note.author}</strong> am {formatGermanDate(note.date)}: {note.text}</li>)}</ul></Card></Column><Column id="right-column"><Card title="Bilder"><div className="gallery-container">{place.images.map((src, index) => <div className="gallery-item" key={src}><img src={src} alt={`${place.name} ${index + 1}`} /></div>)}</div><a className="button" href={`/auslagerorte/${place.id}/upload-image/`}>Bilder hochladen</a></Card><MapCard places={[place]} /></Column></Columns><div id="interaction-bar"><RestForm target={`/auslagerorte/${place.id}/`} token={data.csrf_token} onSuccess={onSaved} resetOnSuccess><input name="notiz" placeholder="Kommentar..." /><button type="submit">➤</button></RestForm></div></>;
+  return <><Columns className="auslagerorte-detail"><Column id="left-column"><Card title={place.name}><FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} /><div className="react-actions place-edit-actions"><a className="button" href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</a></div></Card><Card title="Kommentare"><ul>{place.notes.map(note => <li key={note.id}><strong>{note.author}</strong> am {formatGermanDate(note.date)}: {note.text}{note.photos?.length > 0 && <div className="comment-photo-strip">{note.photos.map(photo => <img src={photo.url} alt={photo.alt} key={photo.id} />)}</div>}</li>)}</ul></Card></Column><Column id="right-column"><Card title="Bilder"><div className="gallery-container">{place.images.map((src, index) => <div className="gallery-item" key={src}><img src={src} alt={`${place.name} ${index + 1}`} /></div>)}</div><a className="button" href={`/auslagerorte/${place.id}/upload-image/`}>Bilder hochladen</a></Card><MapCard places={[place]} /></Column></Columns><PlaceCommentForm place={place} token={data.csrf_token} onSaved={onSaved} /></>;
 }
 
 export function PlaceFormPage({ data, id }) {
@@ -39,7 +69,12 @@ export const placeRoutes = [
     title: 'Auslagerorte',
     domain: 'places',
     readContractKey: 'places-list',
-    headerAction: () => <a className="button" href="/auslagerorte/create">Ort hinzufügen</a>,
+    headerAction: () => (
+      <a className="button mobile-icon-action" href="/auslagerorte/create" aria-label="Ort hinzufügen">
+        <span className="desktop-action-label">Ort hinzufügen</span>
+        <span className="mobile-action-label" aria-hidden="true">+</span>
+      </a>
+    ),
     render: ({ data }) => <PlacesPage data={data} />,
   },
   {

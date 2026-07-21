@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -15,6 +18,30 @@ describe('allocation page', () => {
     cleanup();
     vi.restoreAllMocks();
     window.history.pushState({}, '', '/');
+  });
+
+  it('allows the allocation column background to grow with expanded kid cards', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
+    const desktopRule = css.match(/@media only screen and \(min-width: 761px\) \{\s*\.allocation-page \.allocation-table-column \{([^}]*)\}/)?.[1];
+
+    expect(desktopRule).toBeDefined();
+    expect(desktopRule).toContain('min-height: calc(100svh - var(--app-header-height, 0px));');
+    expect(desktopRule).not.toMatch(/(^|\s)height:/);
+  });
+
+  it('explains an empty focus when kid lists are displayed', () => {
+    const { rerender } = render(<AllocationPage week="2" mutate={vi.fn()} showKids data={{
+      focuses: [{ id: 2, name: 'Wald', week: 'w2', kid_ids: [], stats: null }],
+      kids: [],
+    }} />);
+
+    expect(screen.getByText('Noch keine Kinder für diesen Schwerpunkt eingeteilt')).toBeInTheDocument();
+
+    rerender(<AllocationPage week="2" mutate={vi.fn()} showKids={false} data={{
+      focuses: [{ id: 2, name: 'Wald', week: 'w2', kid_ids: [], stats: null }],
+      kids: [],
+    }} />);
+    expect(screen.queryByText('Noch keine Kinder für diesen Schwerpunkt eingeteilt')).not.toBeInTheDocument();
   });
 
   it('renders assignment stats above a two-column kid list and highlights selected choices', () => {

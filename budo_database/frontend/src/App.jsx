@@ -8,7 +8,7 @@ import {
 } from './dataLoader';
 import { notFoundRoute } from './domains/shared';
 import { useHappyCleaningSync } from './happyCleaningSync';
-import { isPublicRoute, parseRoute, renderRoute, resolveRouteTitle, routeHeaderAction } from './routes';
+import { isPublicRoute, parseRoute, renderRoute, resolveRouteHeaderTitle, resolveRouteTitle, routeHeaderAction } from './routes';
 
 export { parseRoute } from './routes';
 
@@ -173,7 +173,7 @@ export default function App({
   return (
     <ApplicationShell
       sidebar={data.authenticated ? <AppSidebar /> : null}
-      header={<Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data, { pageState, setPageState, mutate }) : null} />}
+      header={<Header title={resolveRouteHeaderTitle(route, data, title)} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data, { pageState, setPageState, mutate }) : null} />}
     >
       {content}
     </ApplicationShell>

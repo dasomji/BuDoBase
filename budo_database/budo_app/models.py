@@ -1121,6 +1121,13 @@ class Auslagerorte(models.Model):
 class AuslagerorteImage(models.Model):
     auslagerort = models.ForeignKey(
         Auslagerorte, related_name='images', on_delete=models.CASCADE)
+    notiz = models.ForeignKey(
+        'AuslagerorteNotizen',
+        related_name='images',
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+    )
     image = ResizedImageField(
         size=[1080, 1080],
         force_format="JPEG",

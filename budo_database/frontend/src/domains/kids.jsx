@@ -55,7 +55,7 @@ export function KidInteractionForm({ kid, token, onSaved }) {
           <div id="notiz-form" className={field === 'notiz' ? '' : 'hidden'}>
             <p className="note-input-field">
               <label htmlFor="id_notiz" onClick={show('amount')} title="Zu Taschengeld wechseln">Notiz</label>
-              <input id="id_notiz" name="notiz" placeholder="Notiz..." />
+              <textarea className="interaction-textarea" id="id_notiz" name="notiz" placeholder="Notiz..." rows="2" />
               <label className="attachment-button" htmlFor="id_notiz_fotos">
                 <span className="sr-only">Notiz-Fotos</span><span aria-hidden="true">+</span>
                 {notePhotoCount > 0 && <span className="attachment-count" aria-hidden="true">{notePhotoCount}</span>}
@@ -69,7 +69,7 @@ export function KidInteractionForm({ kid, token, onSaved }) {
           <div id="erste-hilfe-form" className={field === 'first_aid' ? '' : 'hidden'}>
             <p className="first-aid-input-field">
               <label htmlFor="id_erste_hilfe_beschreibung" onClick={show('notiz')} title="Zu Notiz wechseln">Erste Hilfe</label>
-              <input id="id_erste_hilfe_beschreibung" name="erste_hilfe_beschreibung" placeholder="Erste-Hilfe-Maßnahme..." required disabled={field !== 'first_aid'} />
+              <textarea className="interaction-textarea" id="id_erste_hilfe_beschreibung" name="erste_hilfe_beschreibung" placeholder="Erste-Hilfe-Maßnahme..." rows="2" required disabled={field !== 'first_aid'} />
               <label className="attachment-button" htmlFor="id_erste_hilfe_fotos">
                 <span className="sr-only">EH-Fotos</span><span aria-hidden="true">+</span>
                 {firstAidPhotoCount > 0 && <span className="attachment-count" aria-hidden="true">{firstAidPhotoCount}</span>}
@@ -137,7 +137,7 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
           <Card title="Notizen" id="notizen"><FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} /><ul>{kid.notes.length ? kid.notes.map(note => <NoteEntry entry={note} childName={kid.full_name} key={note.id} />) : <li>Noch keine Notizen.</li>}</ul></Card>
           <Card title="Erste Hilfe" id="erste-hilfe"><ul>{kid.first_aid_entries?.length ? kid.first_aid_entries.map(entry => <FirstAidEntry entry={entry} childName={kid.full_name} key={entry.id} />) : <li>Noch keine EH-Einträge.</li>}</ul></Card>
           <Card title={`Taschengeld: ${money(kid.remaining_money)}${kid.remaining_money < 5 ? ' 🚨' : ''}`} id="taschengeld"><ul>{kid.transactions.length ? kid.transactions.map(item => <li key={item.id}>{item.author} am {formatGermanDate(item.date)}: {money(item.amount)}</li>) : <li>Dieses Kind ist arm.</li>}</ul></Card>
-          <Card title={`Pfand: ${kid.deposit}`} id="pfand"><div className="react-actions"><button className="button" type="button" onClick={() => deposit('increase')}>+ Pfand</button><button className="button" type="button" onClick={() => deposit('decrease')}>− Pfand</button></div></Card>
+          <Card title={`Pfand: ${kid.deposit}`} id="pfand"><div className="react-actions deposit-actions"><button className="button" type="button" onClick={() => deposit('increase')}>+ Pfand</button><button className="button" type="button" onClick={() => deposit('decrease')}>− Pfand</button></div></Card>
         </Column>
       </Columns>
       <KidInteractionForm kid={kid} token={data.csrf_token} onSaved={onSaved} />
@@ -162,6 +162,9 @@ export const kidRoutes = [
     readContractKey: 'kid-detail',
     params: match => ({ id: match[1] }),
     resolveTitle: (route, data) => findById(data.kids, route.id)?.full_name || route.title,
+    resolveHeaderTitle: (route, data, title) => data.permissions?.change_kids
+      ? <a href={`/admin/budo_app/kinder/${route.id}/change/`}>{title}</a>
+      : title,
     render: ({ route, data, mutate, refresh }) => <KidDetailPage data={data} id={route.id} mutate={mutate} onSaved={refresh} />,
   },
 ];

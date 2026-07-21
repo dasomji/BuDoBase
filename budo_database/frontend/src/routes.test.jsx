@@ -94,6 +94,17 @@ describe('route inventory', () => {
     expect(attribute === 'formAction' ? action.form : action).toHaveAttribute(attribute === 'formAction' ? 'action' : attribute, target);
   });
 
+  it.each([
+    ['/swp-dashboard', 'SWP hinzufügen'],
+    ['/auslagerorte-list', 'Ort hinzufügen'],
+  ])('marks the create action on %s for compact mobile placement', (path, label) => {
+    render(routeHeaderAction(parseRoute(path), {}));
+
+    const action = screen.getByRole('link', { name: label });
+    expect(action).toHaveClass('mobile-icon-action');
+    expect(action.querySelector('.mobile-action-label')).toHaveTextContent('+');
+  });
+
   it('keeps standalone and not-found layout behavior declared in routing', () => {
     expect(parseRoute('/serienbrief').standalone).toBe(true);
     expect(parseRoute('/murdergame').standalone).toBe(true);

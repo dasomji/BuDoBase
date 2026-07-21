@@ -67,7 +67,21 @@ def _detail_place(place):
         "images": [
             image.image.url for image in place.route_images if image.image
         ],
-        "notes": [serialize_note(note) for note in place.route_notes],
+        "notes": [
+            {
+                **serialize_note(note),
+                "photos": [
+                    {
+                        "id": image.id,
+                        "url": image.image.url,
+                        "alt": f"Kommentarbild zu {place.name}",
+                    }
+                    for image in note.route_images
+                    if image.image
+                ],
+            }
+            for note in place.route_notes
+        ],
     }
 
 
@@ -78,7 +92,9 @@ def place_detail(request):
         "auslagerort_id",
         "image",
     ).order_by("id")
-    notes = AuslagerorteNotizen.objects.select_related("added_by").order_by(
+    notes = AuslagerorteNotizen.objects.select_related("added_by").prefetch_related(
+        Prefetch("images", queryset=images, to_attr="route_images"),
+    ).order_by(
         "date_added",
         "id",
     )

@@ -143,7 +143,12 @@ export const focusRoutes = [
     title: 'Schwerpunkte',
     domain: 'focuses',
     readContractKey: 'focus-dashboard',
-    headerAction: () => <a className="button" href="/schwerpunkt/create">SWP hinzufügen</a>,
+    headerAction: () => (
+      <a className="button mobile-icon-action" href="/schwerpunkt/create" aria-label="SWP hinzufügen">
+        <span className="desktop-action-label">SWP hinzufügen</span>
+        <span className="mobile-action-label" aria-hidden="true">+</span>
+      </a>
+    ),
     render: ({ data }) => <FocusDashboardPage data={data} />,
   },
 ];

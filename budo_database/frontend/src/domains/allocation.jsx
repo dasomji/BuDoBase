@@ -34,7 +34,9 @@ function AllocationCard({ focus, kids, showKids }) {
     <Card title={`${focus.name}: ${focus.kid_ids.length}`}>
       <AllocationStats focus={focus} showKids={showKids} />
       <ul className={`allocation-kids ${showKids ? '' : 'screen-hidden-kids'}`} aria-hidden={!showKids}>
-        {assignedKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}
+        {showKids && assignedKids.length === 0
+          ? <li className="allocation-kids-empty">Noch keine Kinder für diesen Schwerpunkt eingeteilt</li>
+          : assignedKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}
       </ul>
     </Card>
   );

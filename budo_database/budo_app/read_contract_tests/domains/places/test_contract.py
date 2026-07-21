@@ -159,6 +159,7 @@ class PlacesContractTests(TestCase):
             "author": "places-user",
             "date": note.date_added.isoformat(),
             "day": note.date_added.strftime("%d.%m."),
+            "photos": [],
         }])
 
     def test_form_and_image_contracts_return_only_their_required_initial_values(self):
@@ -265,6 +266,32 @@ class PlacesContractTests(TestCase):
             [note["text"] for note in refreshed.json()["places"][0]["notes"]],
             ["Neue Ortsnotiz"],
         )
+
+    def test_comment_images_are_tied_to_the_note_and_included_in_the_gallery(self):
+        target = f"/auslagerorte/{self.place.id}/"
+
+        response = self.client.post(
+            reverse("form-submit-api"),
+            {
+                "_target": target,
+                "notiz": "Beschädigte Feuerstelle",
+                "images": [image_upload("damage.png")],
+            },
+        )
+        refreshed = self.client.get(
+            self.contract_url("place-detail", self.place),
+        ).json()["places"][0]
+
+        self.assertEqual(response.status_code, 200, response.json())
+        note = AuslagerorteNotizen.objects.get(notiz="Beschädigte Feuerstelle")
+        image = self.place.images.get()
+        self.assertEqual(image.notiz, note)
+        self.assertEqual(refreshed["images"], [image.image.url])
+        self.assertEqual(refreshed["notes"][0]["photos"], [{
+            "id": image.id,
+            "url": image.image.url,
+            "alt": "Kommentarbild zu Ada Hütte",
+        }])
 
     def test_create_update_and_searchable_name_refresh_use_existing_forms(self):
         target = f"/auslagerorte/{self.place.id}/update"

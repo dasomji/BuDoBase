@@ -47,6 +47,10 @@ export function resolveRouteTitle(route, data) {
   return route.resolveTitle?.(route, data) || route.title;
 }
 
+export function resolveRouteHeaderTitle(route, data, title) {
+  return route.resolveHeaderTitle?.(route, data, title) || title;
+}
+
 export function routeHeaderAction(route, data, pageContext = {}) {
   return route.headerAction?.(data, pageContext) || null;
 }

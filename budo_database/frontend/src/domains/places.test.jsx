@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
 import { parseRoute } from '../routes';
-import { ImageUploadPage, PlaceDetailPage } from './places';
+import { ImageUploadPage, PlaceDetailPage, PlacesPage } from './places';
 
 const response = (data, { ok = true, status = 200 } = {}) => ({
   ok,
@@ -16,6 +16,15 @@ describe('Auslagerorte workflows', () => {
     cleanup();
     vi.unstubAllGlobals();
     window.history.pushState({}, '', '/');
+  });
+
+  it('omits the redundant actions column from the places list', () => {
+    render(<PlacesPage data={{
+      places: [{ id: 4, name: 'Ada Hütte', maps_link: '', parking_link: '', coordinates: null }],
+    }} />);
+
+    expect(screen.queryByRole('columnheader', { name: 'Aktionen' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ada Hütte' })).toHaveAttribute('href', '/auslagerorte/4/');
   });
 
   it('requires multiple images and hints accepted file types', () => {
@@ -91,7 +100,7 @@ describe('Auslagerorte workflows', () => {
     render(<App fetchImpl={fetchMock} />);
     const note = await screen.findByPlaceholderText('Kommentar...');
     fireEvent.change(note, { target: { value: 'Wasser abdrehen' } });
-    fireEvent.click(screen.getByRole('button', { name: '➤' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Kommentar senden' }));
 
     expect(await screen.findByText(/Wasser abdrehen/)).toBeInTheDocument();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
@@ -113,11 +122,41 @@ describe('Auslagerorte workflows', () => {
       places: [{ id: 4, name: 'Ada Hütte', coordinates: null, notes: [], images: [] }],
     }} id="4" onSaved={onSaved} />);
 
-    fireEvent.change(screen.getByPlaceholderText('Kommentar...'), { target: { value: 'Neue Notiz' } });
-    fireEvent.click(screen.getByRole('button', { name: '➤' }));
+    const comment = screen.getByPlaceholderText('Kommentar...');
+    expect(comment.tagName).toBe('TEXTAREA');
+    expect(comment).toHaveAttribute('rows', '2');
+    expect(comment.form).toHaveAttribute('enctype', 'multipart/form-data');
+    fireEvent.change(comment, { target: { value: 'Neue Notiz' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Kommentar senden' }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
     expect(fetchMock.mock.calls[0][1].body.get('_target')).toBe('/auslagerorte/4/');
     expect(fetchMock.mock.calls[0][1].body.get('notiz')).toBe('Neue Notiz');
+  });
+
+  it('uploads comment images and shows them with the comment as well as in Bilder', async () => {
+    const onSaved = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue(response({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const place = {
+      id: 4,
+      name: 'Ada Hütte',
+      coordinates: null,
+      notes: [{ id: 8, author: 'Ada', date: '2026-07-17', text: 'Feuerstelle', photos: [{ id: 9, url: '/media/damage.jpg', alt: 'Kommentarbild zu Ada Hütte' }] }],
+      images: ['/media/damage.jpg'],
+    };
+    render(<PlaceDetailPage data={{ csrf_token: 'csrf-token', places: [place] }} id="4" onSaved={onSaved} />);
+
+    expect(screen.getAllByRole('img', { name: /Ada Hütte/ })).toHaveLength(2);
+    const photo = new File(['photo'], 'damage.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByLabelText('Kommentar-Bilder'), { target: { files: [photo] } });
+    expect(document.querySelector('.attachment-count')).toHaveTextContent('1');
+    fireEvent.change(screen.getByPlaceholderText('Kommentar...'), { target: { value: 'Mit Bild' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Kommentar senden' }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+    const body = fetchMock.mock.calls[0][1].body;
+    expect(body.get('notiz')).toBe('Mit Bild');
+    expect(body.getAll('images')).toEqual([photo]);
   });
 });
