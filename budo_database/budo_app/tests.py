@@ -1,9 +1,14 @@
-from django.test import TestCase, Client, override_settings
+from django.test import TestCase, Client, SimpleTestCase, override_settings
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from .forms import AuslagerorteImageForm
 from .models import Auslagerorte, AuslagerorteImage, Document, Turnus, Kinder
-from .excelProcessor import parse_birthday, process_excel, validate_workbook_columns
+from .excelProcessor import (
+    parse_birthday,
+    parse_budo_erfahrung,
+    process_excel,
+    validate_workbook_columns,
+)
 from unittest.mock import patch
 from django.contrib.auth.models import User
 from io import BytesIO
@@ -43,7 +48,7 @@ def make_image_upload(name="location.png", size=(1200, 600), color="red"):
 def sample_excel_frames():
     budo = pd.DataFrame([{
         "Index": "T1-1",
-        "AnreiseText": "Betreute Anreise, Top Jugendticket ist vorhanden",
+        "AnreiseText": "Betreute Anreise, Top Jugendticket vorhanden",
         "AbreiseText": "Betreute Abreise",
         "Turnusdauer": "ganz",
         "War_schon_mal_im_Bunten_Dorf": "Ja",
@@ -85,6 +90,13 @@ def sample_excel_frames():
         "Notfall Kontakte": "Mama",
     }])
     return budo, budo_raw
+
+
+class ExcelValueParsingTest(SimpleTestCase):
+    def test_uppercase_ja_is_parsed_as_previous_budo_experience(self):
+        for value in ("JA", "JA\n", "JA, mehrmals \n"):
+            with self.subTest(value=value):
+                self.assertIs(parse_budo_erfahrung(value), True)
 
 
 class AuslagerorteImageTest(TestCase):
@@ -634,6 +646,37 @@ class ExcelProcessingTransactionTest(TestCase):
         self.assertIsNotNone(first_kid.kid_vorname)
         self.assertIsNotNone(first_kid.kid_nachname)
         self.assertEqual(first_kid.turnus, self.turnus)
+        self.assertTrue(first_kid.top_jugendticket)
+
+    @patch('budo_app.excelProcessor.read_workbook')
+    def test_top_jugendticket_is_imported_from_anreise_text(
+            self, mock_read_workbook):
+        budo, budo_raw = sample_excel_frames()
+        budo.loc[0, "AnreiseText"] = (
+            "Ja, betreute Anreise und Top Jugendticket vorhanden"
+        )
+        budo.loc[0, "AbreiseText"] = "Betreute Abreise"
+        mock_read_workbook.return_value = (budo, budo_raw)
+
+        process_excel(self.turnus)
+
+        kid = Kinder.objects.get(turnus=self.turnus)
+        self.assertTrue(kid.top_jugendticket)
+
+    @patch('budo_app.excelProcessor.read_workbook')
+    def test_no_top_jugendticket_is_not_imported_as_ticket(
+            self, mock_read_workbook):
+        budo, budo_raw = sample_excel_frames()
+        budo.loc[0, "AnreiseText"] = (
+            "Betreute Anreise, kein Top Jugendticket vorhanden"
+        )
+        budo.loc[0, "AbreiseText"] = "Betreute Abreise"
+        mock_read_workbook.return_value = (budo, budo_raw)
+
+        process_excel(self.turnus)
+
+        kid = Kinder.objects.get(turnus=self.turnus)
+        self.assertFalse(kid.top_jugendticket)
 
     @patch('budo_app.excelProcessor.read_workbook')
     @patch('budo_app.models.Kinder.save')

@@ -170,10 +170,10 @@ def parse_birthday(value):
 
 
 def parse_budo_erfahrung(value):
-    value = str(value)
-    if "Ja" in value or "ja" in value:
+    value = str(value).casefold()
+    if "ja" in value:
         return True
-    if "Nein" in value or "nein" in value:
+    if "nein" in value:
         return False
     return None
 
@@ -277,9 +277,12 @@ def process_excel(turnus=None):
                 else:
                     kid_abreise = False
 
-                # extract from Abreise and Anreise if kid has Top Jugendticket
-                if (", Top Jugendticket ist vorhanden" in str(budo["AnreiseText"][i]) or
-                        ", Top Jugendticket ist vorhanden" in str(budo["AbreiseText"][i])):
+                # AnreiseText and AbreiseText use different ticket wording.
+                anreise_text = str(budo["AnreiseText"][i])
+                abreise_text = str(budo["AbreiseText"][i])
+                if (", Top Jugendticket vorhanden" in anreise_text or
+                        " und Top Jugendticket vorhanden" in anreise_text or
+                        ", Top Jugendticket ist vorhanden" in abreise_text):
                     kid_jugendticket = True
                 else:
                     kid_jugendticket = False
