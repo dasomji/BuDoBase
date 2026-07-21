@@ -14,7 +14,14 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
 from . import models
-from .forms import CheckInForm, CheckOutForm, GeldForm, NotizForm
+from .first_aid_photos import FirstAidCreationError, create_first_aid_entry, create_note
+from .forms import (
+    CheckInForm,
+    CheckOutForm,
+    ErsteHilfeEintragForm,
+    GeldForm,
+    NotizForm,
+)
 from .models import Auslagerorte, Kinder, Profil, Schwerpunkte
 from .utils import (
     cache_user_profile,
@@ -222,38 +229,79 @@ def kid_details(request, id):
     }
 
     if request.method == 'POST':
-        notiz_form = NotizForm(request.POST)
+        notiz_form = NotizForm(request.POST, request.FILES)
         geld_form = GeldForm(request.POST)
+        erste_hilfe_form = ErsteHilfeEintragForm(request.POST, request.FILES)
         context["notiz_form"] = notiz_form
         context["geld_form"] = geld_form
+        context["erste_hilfe_form"] = erste_hilfe_form
 
-        if notiz_form.is_valid():
-            notiz = notiz_form.cleaned_data.get('notiz')
-            if notiz:
-                notiz = notiz_form.save(commit=False)
-                notiz.kinder = this_kid
-                notiz.added_by = request.user
-                notiz.save()
-
-        if geld_form.is_valid():
-            geld = geld_form.cleaned_data.get("amount")
-            if geld:
-                geld = geld_form.save(commit=False)
-                if request.POST.get("money_action") == "withdraw":
-                    geld.amount = -abs(geld.amount)
+        if request.POST.get("interaction_kind") == "first_aid":
+            if erste_hilfe_form.is_valid():
+                try:
+                    create_first_aid_entry(
+                        child=this_kid,
+                        actor=request.user,
+                        description=erste_hilfe_form.cleaned_data[
+                            "erste_hilfe_beschreibung"
+                        ],
+                        photos=erste_hilfe_form.processed_photos,
+                        request=request,
+                    )
+                except FirstAidCreationError:
+                    logger.exception("EH-Eintrag konnte nicht gespeichert werden")
+                    erste_hilfe_form.add_error(
+                        None,
+                        "Der EH-Eintrag konnte nicht gespeichert werden. Bitte erneut versuchen.",
+                    )
                 else:
-                    geld.amount = abs(geld.amount)
-                geld.kinder = this_kid
-                geld.added_by = request.user
-                geld.save()
-            return redirect('kid_details', id=id)
+                    return redirect('kid_details', id=id)
         else:
+            note_failed = not notiz_form.is_valid()
+            if not note_failed:
+                notiz = notiz_form.cleaned_data.get('notiz')
+                if notiz:
+                    try:
+                        create_note(
+                            child=this_kid,
+                            actor=request.user,
+                            text=notiz,
+                            photos=notiz_form.processed_photos,
+                        )
+                    except FirstAidCreationError:
+                        logger.exception("Notiz konnte nicht gespeichert werden")
+                        notiz_form.add_error(
+                            None,
+                            "Die Notiz konnte nicht gespeichert werden. Bitte erneut versuchen.",
+                        )
+                        note_failed = True
+                elif notiz_form.processed_photos:
+                    notiz_form.add_error(
+                        "notiz",
+                        "Bitte zu den Fotos eine Notiz eingeben.",
+                    )
+                    note_failed = True
+
+            if not note_failed and geld_form.is_valid():
+                geld = geld_form.cleaned_data.get("amount")
+                if geld:
+                    geld = geld_form.save(commit=False)
+                    if request.POST.get("money_action") == "withdraw":
+                        geld.amount = -abs(geld.amount)
+                    else:
+                        geld.amount = abs(geld.amount)
+                    geld.kinder = this_kid
+                    geld.added_by = request.user
+                    geld.save()
+                return redirect('kid_details', id=id)
             logger.debug("Geld form is not valid: %s", geld_form.errors)
     else:
         notiz_form = NotizForm()
         geld_form = GeldForm()
+        erste_hilfe_form = ErsteHilfeEintragForm()
         context["notiz_form"] = notiz_form
         context["geld_form"] = geld_form
+        context["erste_hilfe_form"] = erste_hilfe_form
 
     return HttpResponse(template.render(context, request))
 

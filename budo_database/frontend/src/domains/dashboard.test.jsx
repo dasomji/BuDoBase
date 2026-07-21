@@ -46,6 +46,7 @@ const dashboardData = (activity = {}) => ({
   focus_assignments_complete: { w1: true, w2: true },
   activity: {
     notes: emptyPage,
+    first_aid: emptyPage,
     transactions: emptyPage,
     ...activity,
   },
@@ -83,6 +84,7 @@ describe('dashboard page', () => {
     for (const heading of [
       'Kinder: 1',
       'Notizen',
+      'Erste Hilfe',
       'Meine BuDo-Familie',
       'Mein SWP 1',
       'Mein SWP 2',
@@ -106,17 +108,17 @@ describe('dashboard page', () => {
 
   it.each([
     [1400, [
-      ['db-kinderübersicht', 'db-swp-1', 'db-einwöchig', 'db-geburtstagskinder'],
-      ['db-notizen', 'db-swp-2', 'db-gesundheit', 'db-sechzehner'],
-      ['db-budo-familie', 'db-ersties', 'db-essen', 'db-geld'],
+      ['db-kinderübersicht', 'db-budo-familie', 'db-ersties', 'db-essen', 'db-geld'],
+      ['db-notizen', 'db-swp-1', 'db-einwöchig', 'db-geburtstagskinder'],
+      ['db-erste-hilfe', 'db-swp-2', 'db-gesundheit', 'db-sechzehner'],
     ]],
     [1000, [
-      ['db-kinderübersicht', 'db-budo-familie', 'db-swp-2', 'db-einwöchig', 'db-essen', 'db-sechzehner'],
-      ['db-notizen', 'db-swp-1', 'db-ersties', 'db-gesundheit', 'db-geburtstagskinder', 'db-geld'],
+      ['db-kinderübersicht', 'db-erste-hilfe', 'db-swp-1', 'db-ersties', 'db-gesundheit', 'db-geburtstagskinder', 'db-geld'],
+      ['db-notizen', 'db-budo-familie', 'db-swp-2', 'db-einwöchig', 'db-essen', 'db-sechzehner'],
     ]],
     [700, [[
-      'db-kinderübersicht', 'db-notizen', 'db-budo-familie', 'db-swp-1', 'db-swp-2', 'db-ersties',
-      'db-einwöchig', 'db-gesundheit', 'db-essen', 'db-geburtstagskinder', 'db-sechzehner', 'db-geld',
+      'db-kinderübersicht', 'db-notizen', 'db-erste-hilfe', 'db-budo-familie', 'db-swp-1', 'db-swp-2',
+      'db-ersties', 'db-einwöchig', 'db-gesundheit', 'db-essen', 'db-geburtstagskinder', 'db-sechzehner', 'db-geld',
     ]]],
   ])('stacks cards without row gaps in fixed flex columns at %ipx', (width, expectedColumns) => {
     setDashboardViewport(width);
@@ -175,6 +177,41 @@ describe('dashboard page', () => {
     expect(screen.getByText('Neu')).toBeInTheDocument();
     expect(screen.queryByText('Duplikat')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ältere Notizen laden' })).not.toBeInTheDocument();
+  });
+
+  it('renders first-aid activity and appends older EH entries', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(response({
+      activity: {
+        first_aid: {
+          items: [{ id: 8, author: 'Boris', date: '2026-07-01T10:00:00Z', kid_id: 7, kid: 'Grace Hopper', text: 'Hand gekühlt' }],
+          next_cursor: null,
+          has_more: false,
+          limit: 20,
+        },
+      },
+    }));
+    render(<DashboardPage
+      data={dashboardData({
+        first_aid: {
+          items: [{ id: 9, author: 'Ada', date: '2026-07-02T10:00:00Z', kid_id: 7, kid: 'Grace Hopper', text: 'Knie verbunden' }],
+          next_cursor: 'eh cursor',
+          has_more: true,
+          limit: 20,
+        },
+      })}
+      fetchImpl={fetchImpl}
+    />);
+
+    const card = screen.getByRole('heading', { name: 'Erste Hilfe' }).closest('.card');
+    expect(card).toHaveTextContent('Ada am 02.07.2026: Grace Hopper');
+    expect(card).toHaveTextContent('Knie verbunden');
+    fireEvent.click(screen.getByRole('button', { name: 'Ältere EH-Einträge laden' }));
+
+    await waitFor(() => expect(fetchImpl).toHaveBeenCalledWith(
+      '/api/route-data/dashboard/?activity=first_aid&cursor=eh+cursor',
+      { credentials: 'same-origin' },
+    ));
+    expect(await screen.findByText('Hand gekühlt')).toBeInTheDocument();
   });
 
   it('shows a recoverable error when an activity continuation fails', async () => {

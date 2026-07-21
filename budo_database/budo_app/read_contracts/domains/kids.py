@@ -2,12 +2,21 @@ from django.db.models import Prefetch
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
-from budo_app.models import Geld, Kinder, Notizen, Schwerpunkte
+from budo_app.models import (
+    ErsteHilfeEintrag,
+    ErsteHilfeFoto,
+    Geld,
+    Kinder,
+    Notizen,
+    NotizFoto,
+    Schwerpunkte,
+)
 from budo_app.read_contracts.common import (
     active_turnus_id,
     kid_full_name,
     required_query_integer,
     serialize_datetime,
+    serialize_first_aid_entry,
     serialize_money,
     serialize_note,
     serialize_transaction,
@@ -63,9 +72,10 @@ def _directory_kid(kid):
 def _detail_kid(kid):
     focus_names = _focus_names_by_week(kid)
     transactions = kid.geld.all()
+    child_name = kid_full_name(kid.kid_vorname, kid.kid_nachname)
     return {
         "id": kid.id,
-        "full_name": kid_full_name(kid.kid_vorname, kid.kid_nachname),
+        "full_name": child_name,
         "present": kid.anwesend,
         "sex": kid.sex,
         "age": kid.get_alter(),
@@ -101,7 +111,11 @@ def _detail_kid(kid):
         "emergency_contacts": kid.notfall_kontakte,
         "booking_note": kid.get_clean_anmerkung_buchung(),
         "note": kid.get_clean_anmerkung(),
-        "notes": [serialize_note(note) for note in kid.route_notes],
+        "notes": [serialize_note(note, child_name) for note in kid.route_notes],
+        "first_aid_entries": [
+            serialize_first_aid_entry(entry, child_name)
+            for entry in kid.route_first_aid_entries
+        ],
         "transactions": [
             serialize_transaction(transaction) for transaction in transactions
         ],
@@ -133,9 +147,27 @@ def kid_detail(request):
         raise Http404
 
     focuses = _focus_queryset(turnus_id)
-    notes = Notizen.objects.select_related("added_by").order_by(
-        "date_added",
+    note_photos = NotizFoto.objects.only(
+        "id", "eintrag_id", "position", "width", "height"
+    ).order_by("position", "id")
+    notes = (
+        Notizen.objects.select_related("added_by")
+        .prefetch_related(Prefetch("fotos", queryset=note_photos, to_attr="route_photos"))
+        .order_by("date_added", "id")
+    )
+    photos = ErsteHilfeFoto.objects.only(
         "id",
+        "eintrag_id",
+        "position",
+        "width",
+        "height",
+    ).order_by("position", "id")
+    first_aid_entries = (
+        ErsteHilfeEintrag.objects.select_related("added_by")
+        .prefetch_related(
+            Prefetch("fotos", queryset=photos, to_attr="route_photos")
+        )
+        .order_by("-date_added", "-id")
     )
     transactions = Geld.objects.select_related("added_by").order_by(
         "date_added",
@@ -147,6 +179,11 @@ def kid_detail(request):
         .prefetch_related(
             Prefetch("schwerpunkte", queryset=focuses, to_attr="route_focuses"),
             Prefetch("notizen", queryset=notes, to_attr="route_notes"),
+            Prefetch(
+                "erste_hilfe_eintraege",
+                queryset=first_aid_entries,
+                to_attr="route_first_aid_entries",
+            ),
             Prefetch("geld", queryset=transactions),
         )
     )

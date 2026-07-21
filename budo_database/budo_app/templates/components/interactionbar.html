@@ -2,10 +2,30 @@
 <div id="interaction-bar">
     <div id="interaction-input">
         {% block forminput %}
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {%csrf_token %}
-            <div id="notiz-form">{{ notiz_form.as_p }}</div>
+            <div id="notiz-form">
+                {{ notiz_form.as_p }}
+                <label for="id_notiz_fotos" aria-label="Notiz-Fotos">+</label>
+                <input id="id_notiz_fotos" name="notiz_fotos" type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
+            </div>
             <div id="geld-form" class="hidden">{{ geld_form.as_p }}</div>
+            <div id="erste-hilfe-form" class="hidden">
+                {{ erste_hilfe_form.as_p }}
+                <p>
+                    <label for="id_erste_hilfe_fotos" aria-label="EH-Fotos">+</label>
+                    <input
+                        id="id_erste_hilfe_fotos"
+                        name="erste_hilfe_fotos"
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                        multiple
+                        disabled
+                    >
+                    <small>JPEG, PNG, WebP, HEIC oder HEIF; höchstens 5 Fotos mit je 10 MB.</small>
+                </p>
+                <input type="hidden" name="interaction_kind" value="first_aid" disabled>
+            </div>
             <button type="submit"><img src="{% static 'img/send-button.svg' %}" alt="send"></button>
         </form>
         {% endblock %}
@@ -33,26 +53,28 @@
             document.cookie = name + "=" + (value || "") + expires + "; path=/";
         }
 
-        // Check for existing cookie and set visibility
-        const visibleDivId = getInteractionCookie(cookieName);
-        if (visibleDivId) {
+        function activateForm(activeDiv) {
             formDivs.forEach(div => {
-                if (div.id === visibleDivId) {
-                    div.classList.remove('hidden');
-                } else {
-                    div.classList.add('hidden');
-                }
+                const active = div === activeDiv;
+                div.classList.toggle('hidden', !active);
+                div.querySelectorAll('input, select, textarea').forEach(control => {
+                    control.disabled = !active;
+                });
             });
         }
+
+        const visibleDivId = getInteractionCookie(cookieName);
+        const savedDiv = Array.from(formDivs).find(div => div.id === visibleDivId);
+        const initiallyVisible = savedDiv || Array.from(formDivs).find(div => !div.classList.contains('hidden'));
+        activateForm(initiallyVisible || formDivs[0]);
 
         formDivs.forEach(div => {
             const label = div.querySelector('label');
             if (label) {
                 label.addEventListener('click', function () {
                     let currentIndex = Array.from(formDivs).indexOf(div);
-                    formDivs[currentIndex].classList.add('hidden');
                     let nextIndex = (currentIndex + 1) % formDivs.length;
-                    formDivs[nextIndex].classList.remove('hidden');
+                    activateForm(formDivs[nextIndex]);
                     setCookie(cookieName, formDivs[nextIndex].id,
                         7); // Save visible div id in cookie for 7 days
                 });

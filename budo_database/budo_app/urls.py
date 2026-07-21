@@ -3,6 +3,7 @@ from . import views
 from django.conf import settings
 from django.conf.urls.static import static
 from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail, SchwerpunkteCreate, AuslagerorteCreate, AuslagerorteImageUpload, AuslagerorteDetail, AuslagerorteUpdate
+from .first_aid_media import attachment_media
 from .happy_cleaning_page_views import (
     assignment_page,
     print_number_page,
@@ -11,6 +12,11 @@ from .happy_cleaning_page_views import (
 )
 
 urlpatterns = [
+    path(
+        'api/attachments/<str:kind>/<int:photo_id>/',
+        attachment_media,
+        name='attachment-media',
+    ),
     path('update_notiz_abreise/', views.update_notiz_abreise,
          name='update_notiz_abreise'),
     path("upload/", views.uploadFile, name="uploadFile"),

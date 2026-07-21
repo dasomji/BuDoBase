@@ -3,10 +3,13 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.dispatch import receiver
-from django.db.models.signals import post_save, post_delete, pre_save
+from django.db.models.signals import post_save, post_delete, pre_delete, pre_save
 from django.contrib.auth.models import User
+from django.core.validators import RegexValidator
 from phonenumber_field.modelfields import PhoneNumberField
 from django_resized import ResizedImageField
+from .first_aid_contract import OPAQUE_WEBP_KEY_PATTERN, SHA256_PATTERN
+from .private_storage import attachment_storage
 from .storage_lifecycle import (
     delete_field_file_on_commit,
     delete_storage_object_on_commit,
@@ -405,6 +408,95 @@ class Notizen(models.Model):
         verbose_name_plural = "Notizen"
 
 
+class ErsteHilfeEintrag(models.Model):
+    kinder = models.ForeignKey(
+        Kinder,
+        on_delete=models.CASCADE,
+        related_name="erste_hilfe_eintraege",
+    )
+    beschreibung = models.TextField()
+    date_added = models.DateTimeField(auto_now_add=True)
+    added_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.beschreibung
+
+    class Meta:
+        verbose_name = "EH-Eintrag"
+        verbose_name_plural = "EH-Einträge"
+
+
+class AttachmentImage(models.Model):
+    datei = models.FileField(
+        storage=attachment_storage,
+        validators=[
+            RegexValidator(
+                OPAQUE_WEBP_KEY_PATTERN,
+                "Bilder benötigen einen opaken WebP-Speicherschlüssel.",
+            ),
+        ],
+    )
+    position = models.PositiveIntegerField()
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    checksum = models.CharField(
+        max_length=64,
+        validators=[
+            RegexValidator(
+                SHA256_PATTERN,
+                "Die Prüfsumme muss ein kleingeschriebener SHA-256-Wert sein.",
+            ),
+        ],
+    )
+
+    class Meta:
+        abstract = True
+        ordering = ("position", "id")
+
+
+class NotizFoto(AttachmentImage):
+    eintrag = models.ForeignKey(
+        Notizen,
+        on_delete=models.CASCADE,
+        related_name="fotos",
+    )
+
+    class Meta(AttachmentImage.Meta):
+        verbose_name = "Notizfoto"
+        verbose_name_plural = "Notizfotos"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("eintrag", "position"),
+                name="notiz_foto_eintrag_position_uniq",
+            ),
+        ]
+
+
+class ErsteHilfeFoto(AttachmentImage):
+    eintrag = models.ForeignKey(
+        ErsteHilfeEintrag,
+        on_delete=models.CASCADE,
+        related_name="fotos",
+    )
+
+    class Meta(AttachmentImage.Meta):
+        verbose_name = "EH-Foto"
+        verbose_name_plural = "EH-Fotos"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("eintrag", "position"),
+                name="eh_foto_eintrag_position_uniq",
+            ),
+        ]
+
+
+@receiver(pre_delete, sender=NotizFoto)
+@receiver(pre_delete, sender=ErsteHilfeFoto)
+def delete_attachment_file(sender, instance, **kwargs):
+    """Delete transformed image bytes when admin/cascade removes their row."""
+    delete_field_file_on_commit(instance.datei)
+
+
 class Geld(models.Model):
     kinder = models.ForeignKey(
         Kinder, on_delete=models.CASCADE, related_name='geld')
@@ -724,6 +816,20 @@ class HappyCleaningAssignment(models.Model):
 class ImmutableAuditEventQuerySet(models.QuerySet):
     def update(self, **kwargs):
         raise ValidationError("Audit events are immutable.")
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        raise ValidationError("Audit events are immutable.")
+
+    def bulk_create(
+        self,
+        objs,
+        batch_size=None,
+        ignore_conflicts=False,
+        update_conflicts=False,
+        update_fields=None,
+        unique_fields=None,
+    ):
+        raise ValidationError("Audit events may only be created by the audit service.")
 
     def delete(self):
         raise ValidationError(
@@ -1155,8 +1261,10 @@ def invalidate_auslagerorte_turnus_cache(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Notizen)
 @receiver(post_delete, sender=Notizen)
-def invalidate_notizen_turnus_cache(sender, instance, **kwargs):
-    """Invalidate turnus cache when Notizen data changes"""
+@receiver(post_save, sender=ErsteHilfeEintrag)
+@receiver(post_delete, sender=ErsteHilfeEintrag)
+def invalidate_kid_activity_turnus_cache(sender, instance, **kwargs):
+    """Invalidate turnus cache when notes or first-aid entries change."""
     from .utils import invalidate_turnus_cache
     if instance.kinder and instance.kinder.turnus:
         invalidate_turnus_cache(instance.kinder.turnus)

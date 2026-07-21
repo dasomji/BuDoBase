@@ -1,13 +1,46 @@
 from datetime import datetime
 from django.conf import settings
 from django.forms import ModelForm, Form
-from .models import Kinder, Notizen, Turnus, Profil, Schwerpunkte, Meal, Auslagerorte, AuslagerorteNotizen, AuslagerorteImage, Schwerpunktzeit, Geld
+from .models import (
+    Auslagerorte,
+    AuslagerorteImage,
+    AuslagerorteNotizen,
+    ErsteHilfeEintrag,
+    Geld,
+    Kinder,
+    Meal,
+    Notizen,
+    Profil,
+    Schwerpunkte,
+    Schwerpunktzeit,
+    Turnus,
+)
 from django import forms
 from django.contrib.auth.models import User
 import datetime
 
+from .first_aid_contract import FIRST_AID_DESCRIPTION_MAX_LENGTH
+from .first_aid_photos import FirstAidPhotoError, process_first_aid_photos
 
-class NotizForm(forms.ModelForm):
+
+class AttachmentFormMixin:
+    attachment_field_name = "fotos"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        try:
+            self.processed_photos = process_first_aid_photos(
+                self.files.getlist(self.attachment_field_name)
+            )
+        except FirstAidPhotoError as error:
+            self.add_error(None, error)
+            self.processed_photos = ()
+        return cleaned_data
+
+
+class NotizForm(AttachmentFormMixin, forms.ModelForm):
+    attachment_field_name = "notiz_fotos"
+
     class Meta:
         model = Notizen
         fields = ['notiz']
@@ -15,6 +48,35 @@ class NotizForm(forms.ModelForm):
         widgets = {
             "notiz": forms.TextInput(attrs={'class': 'w3-input', 'placeholder': 'Notiz...'})
         }
+
+
+class ErsteHilfeEintragForm(AttachmentFormMixin, forms.ModelForm):
+    attachment_field_name = "erste_hilfe_fotos"
+    erste_hilfe_beschreibung = forms.CharField(
+        label="Erste Hilfe",
+        strip=True,
+        max_length=FIRST_AID_DESCRIPTION_MAX_LENGTH,
+        error_messages={
+            "required": "Bitte eine Beschreibung eingeben.",
+            "max_length": (
+                "Die Beschreibung darf höchstens "
+                f"{FIRST_AID_DESCRIPTION_MAX_LENGTH} Zeichen lang sein."
+            ),
+        },
+        widget=forms.TextInput(attrs={
+            "class": "w3-input",
+            "disabled": True,
+            "placeholder": "Erste-Hilfe-Maßnahme...",
+        }),
+    )
+
+    class Meta:
+        model = ErsteHilfeEintrag
+        fields = []
+
+    def save(self, commit=True):
+        self.instance.beschreibung = self.cleaned_data["erste_hilfe_beschreibung"]
+        return super().save(commit=commit)
 
 
 class GeldForm(forms.ModelForm):

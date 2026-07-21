@@ -4,8 +4,10 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
 from budo_app.models import (
     BetreuerinnenGeld,
+    ErsteHilfeEintrag,
     Geld,
     Kinder,
     Notizen,
@@ -77,6 +79,11 @@ class DashboardContractTests(TestCase):
             notiz="Heute angekommen",
             added_by=self.user,
         )
+        self.first_aid_entry = create_first_aid_entry_for_test(
+            kinder=self.kid,
+            beschreibung="Knie verbunden",
+            added_by=self.user,
+        )
 
         other_user = User.objects.create_user(username="other-dashboard-user")
         other_user.profil.turnus = self.other_turnus
@@ -91,6 +98,11 @@ class DashboardContractTests(TestCase):
         Notizen.objects.create(
             kinder=other_kid,
             notiz="OTHER-PRIVATE-NOTE",
+            added_by=other_user,
+        )
+        create_first_aid_entry_for_test(
+            kinder=other_kid,
+            beschreibung="OTHER-PRIVATE-FIRST-AID",
             added_by=other_user,
         )
         Geld.objects.create(kinder=other_kid, amount=999, added_by=other_user)
@@ -174,7 +186,22 @@ class DashboardContractTests(TestCase):
                 "author": "dashboard-user",
                 "kid_id": self.kid.id,
                 "kid": "Grace Hopper",
+                "photos": [],
             },
+        )
+        self.assertEqual(
+            payload["activity"]["first_aid"]["items"],
+            [{
+                "id": self.first_aid_entry.id,
+                "text": "Knie verbunden",
+                "date": self.first_aid_entry.date_added.isoformat().replace(
+                    "+00:00", "Z"
+                ),
+                "author": "dashboard-user",
+                "kid_id": self.kid.id,
+                "kid": "Grace Hopper",
+                "photos": [],
+            }],
         )
         self.assertEqual(
             [
@@ -189,6 +216,7 @@ class DashboardContractTests(TestCase):
             "PRIVATE-CONTACT",
             "PRIVATE-DESCRIPTION",
             "OTHER-PRIVATE-NOTE",
+            "OTHER-PRIVATE-FIRST-AID",
             "Other private teamer",
         ):
             self.assertNotIn(private_value, response_text)
@@ -248,6 +276,12 @@ class DashboardContractTests(TestCase):
                 notiz=f"Notiz {index}",
                 added_by=self.user,
             )
+        for index in range(24):
+            create_first_aid_entry_for_test(
+                kinder=self.kid,
+                beschreibung=f"EH-Eintrag {index}",
+                added_by=self.user,
+            )
         for index in range(23):
             Geld.objects.create(
                 kinder=self.kid,
@@ -256,9 +290,15 @@ class DashboardContractTests(TestCase):
             )
         tied_time = datetime(2026, 7, 8, 12, 0, tzinfo=timezone.utc)
         Notizen.objects.filter(kinder=self.kid).update(date_added=tied_time)
+        ErsteHilfeEintrag.objects.filter(kinder=self.kid).update(date_added=tied_time)
         Geld.objects.filter(kinder=self.kid).update(date_added=tied_time)
         expected_note_ids = list(
             Notizen.objects.filter(kinder=self.kid)
+            .order_by("-date_added", "-id")
+            .values_list("id", flat=True)
+        )
+        expected_first_aid_ids = list(
+            ErsteHilfeEintrag.objects.filter(kinder=self.kid)
             .order_by("-date_added", "-id")
             .values_list("id", flat=True)
         )
@@ -276,6 +316,11 @@ class DashboardContractTests(TestCase):
             [item["id"] for item in initial["notes"]["items"]],
             expected_note_ids[:20],
         )
+        self.assertEqual(
+            [item["id"] for item in initial["first_aid"]["items"]],
+            expected_first_aid_ids[:20],
+        )
+        self.assertTrue(initial["first_aid"]["has_more"])
         self.assertEqual(
             [item["id"] for item in initial["transactions"]["items"]],
             expected_transaction_ids[:20],
@@ -308,6 +353,28 @@ class DashboardContractTests(TestCase):
         self.assertFalse(older_notes["has_more"])
         self.assertIsNone(older_notes["next_cursor"])
 
+        first_aid_continuation = self.client.get(
+            self.contract_url(),
+            {
+                "activity": "first_aid",
+                "cursor": initial["first_aid"]["next_cursor"],
+            },
+        )
+
+        self.assertEqual(first_aid_continuation.status_code, 200)
+        older_first_aid = first_aid_continuation.json()["activity"]["first_aid"]
+        combined_first_aid_ids = (
+            [item["id"] for item in initial["first_aid"]["items"]]
+            + [item["id"] for item in older_first_aid["items"]]
+        )
+        self.assertEqual(combined_first_aid_ids, expected_first_aid_ids)
+        self.assertEqual(
+            len(combined_first_aid_ids),
+            len(set(combined_first_aid_ids)),
+        )
+        self.assertFalse(older_first_aid["has_more"])
+        self.assertIsNone(older_first_aid["next_cursor"])
+
     def test_rejects_invalid_activity_pagination_inputs(self):
         invalid_stream = self.client.get(
             self.contract_url(),
@@ -317,6 +384,10 @@ class DashboardContractTests(TestCase):
             self.contract_url(),
             {"activity": "notes", "cursor": "not-a-cursor"},
         )
+        invalid_first_aid_cursor = self.client.get(
+            self.contract_url(),
+            {"activity": "first_aid", "cursor": "not-a-cursor"},
+        )
         unscoped_cursor = self.client.get(
             self.contract_url(),
             {"cursor": "not-a-cursor"},
@@ -324,6 +395,7 @@ class DashboardContractTests(TestCase):
 
         self.assertEqual(invalid_stream.status_code, 400)
         self.assertEqual(invalid_cursor.status_code, 400)
+        self.assertEqual(invalid_first_aid_cursor.status_code, 400)
         self.assertEqual(unscoped_cursor.status_code, 400)
 
     def test_subsequent_load_reflects_persisted_money_and_note_mutations(self):
@@ -392,4 +464,5 @@ class DashboardContractTests(TestCase):
         )
         self.assertEqual(payload["totals"]["kids"], 0)
         self.assertEqual(payload["activity"]["notes"]["items"], [])
+        self.assertEqual(payload["activity"]["first_aid"]["items"], [])
         self.assertEqual(payload["activity"]["transactions"]["items"], [])

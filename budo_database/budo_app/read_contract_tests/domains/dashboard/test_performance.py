@@ -4,7 +4,8 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from budo_app.models import Geld, Kinder, Notizen, Turnus
+from budo_app.first_aid_tests.fixtures import bulk_create_first_aid_entries_for_test
+from budo_app.models import ErsteHilfeEintrag, Geld, Kinder, Notizen, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
     RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
@@ -57,10 +58,14 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
             20,
         )
         self.assertEqual(
+            len(realistic.response.json()["activity"]["first_aid"]["items"]),
+            20,
+        )
+        self.assertEqual(
             len(realistic.response.json()["activity"]["transactions"]["items"]),
             20,
         )
-        self.assertQueryCountAtMost(realistic, 12)
+        self.assertQueryCountAtMost(realistic, 13)
         self.assertQueryGrowthAtMost(small, realistic, 1)
         self.assertLess(
             realistic.response_bytes,
@@ -78,6 +83,14 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
             )
             for index in range(25)
         ])
+        bulk_create_first_aid_entries_for_test([
+            ErsteHilfeEintrag(
+                kinder=kid,
+                beschreibung=f"Bestehender EH-Eintrag {index}",
+                added_by=self.user,
+            )
+            for index in range(25)
+        ])
         Geld.objects.bulk_create([
             Geld(kinder=kid, amount=index, added_by=self.user)
             for index in range(25)
@@ -91,6 +104,14 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
             )
             for index in range(200)
         ])
+        bulk_create_first_aid_entries_for_test([
+            ErsteHilfeEintrag(
+                kinder=kid,
+                beschreibung=f"Historischer EH-Eintrag {index}",
+                added_by=self.user,
+            )
+            for index in range(200)
+        ])
         Geld.objects.bulk_create([
             Geld(kinder=kid, amount=index, added_by=self.user)
             for index in range(200)
@@ -98,9 +119,13 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
 
         after = measure_http_get(self.client, self.contract_url())
 
-        self.assertQueryCountAtMost(after, 12)
+        self.assertQueryCountAtMost(after, 13)
         self.assertQueryGrowthAtMost(before, after, 0)
         self.assertEqual(len(after.response.json()["activity"]["notes"]["items"]), 20)
+        self.assertEqual(
+            len(after.response.json()["activity"]["first_aid"]["items"]),
+            20,
+        )
         self.assertEqual(
             len(after.response.json()["activity"]["transactions"]["items"]),
             20,

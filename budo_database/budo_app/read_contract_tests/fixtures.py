@@ -5,11 +5,13 @@ from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
+from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
 from budo_app.models import (
     Auslagerorte,
     AuslagerorteImage,
     AuslagerorteNotizen,
     BetreuerinnenGeld,
+    ErsteHilfeEintrag,
     Geld,
     Kinder,
     Notizen,
@@ -152,6 +154,11 @@ class ActiveTurnusFixtureFactory:
                 Notizen.objects.create(
                     kinder=kid,
                     notiz=f"Notiz {item} für Kind {index}",
+                    added_by=self.author,
+                )
+                create_first_aid_entry_for_test(
+                    kinder=kid,
+                    beschreibung=f"EH-Eintrag {item} für Kind {index}",
                     added_by=self.author,
                 )
                 Geld.objects.create(

@@ -36,7 +36,9 @@ describe('Kinder pages', () => {
     render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
 
     expect(screen.getByPlaceholderText('Notiz...')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Senden' })).toHaveClass('interaction-send-button');
     expect(screen.getByPlaceholderText('Taschengeld...').closest('#geld-form')).toHaveClass('hidden');
+    expect(screen.queryByRole('group', { name: 'Eingabemodus' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('Notiz'));
 
     expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
@@ -52,6 +54,71 @@ describe('Kinder pages', () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
     expect(fetchMock.mock.calls[0][1].body.get('money_action')).toBe('withdraw');
     expect(screen.getByPlaceholderText('Taschengeld...')).toHaveValue(null);
+  });
+
+  it('switches to Erste Hilfe and submits a required description', async () => {
+    const onSaved = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
+
+    fireEvent.click(screen.getByText('Notiz'));
+    fireEvent.click(screen.getByText('Taschengeld'));
+
+    const description = screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...');
+    expect(description).toBeVisible();
+    expect(description).toBeRequired();
+    expect(document.cookie).toContain('interaction-bar=erste-hilfe-form');
+    fireEvent.change(description, { target: { value: 'Knie verbunden' } });
+    fireEvent.click(screen.getByRole('button', { name: 'EH-Eintrag senden' }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+    const body = fetchMock.mock.calls[0][1].body;
+    expect(body.get('interaction_kind')).toBe('first_aid');
+    expect(body.get('erste_hilfe_beschreibung')).toBe('Knie verbunden');
+    expect(description).toHaveValue('');
+  });
+
+  it('submits note image attachments through the + control', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
+
+    const input = screen.getByLabelText('Notiz-Fotos');
+    const photo = new File(['photo'], 'iphone.heic', { type: 'image/heic' });
+    expect(input).toHaveAttribute('type', 'file');
+    expect(input).toHaveAttribute('multiple');
+    fireEvent.change(screen.getByPlaceholderText('Notiz...'), { target: { value: 'Mit Foto' } });
+    fireEvent.change(input, { target: { files: [photo] } });
+    expect(document.querySelector('.attachment-count')).toHaveTextContent('1');
+    expect(document.querySelector('.note-input-field .attachment-button')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    const body = fetchMock.mock.calls[0][1].body;
+    expect(body.get('notiz')).toBe('Mit Foto');
+    expect(body.getAll('notiz_fotos')).toEqual([photo]);
+  });
+
+  it('shows the server validation message for a blank first-aid description', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response(
+      { ok: false, errors: ['Bitte eine Beschreibung eingeben.'] },
+      { ok: false, status: 422 },
+    ));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
+
+    fireEvent.click(screen.getByText('Notiz'));
+    fireEvent.click(screen.getByText('Taschengeld'));
+    fireEvent.change(screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...'), {
+      target: { value: '   ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'EH-Eintrag senden' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Bitte eine Beschreibung eingeben.');
   });
 
   it('restores the saved Taschengeld mode from its cookie', () => {
@@ -80,6 +147,9 @@ describe('Kinder pages', () => {
       tetanus: null,
       tick_vaccine: 'Ja',
       notes: [],
+      first_aid_entries: [
+        { id: 3, author: 'Boris', date: '2026-07-03T10:00:00Z', text: 'Knie verbunden' },
+      ],
       transactions: [],
       remaining_money: 0,
       deposit: 0,
@@ -93,6 +163,8 @@ describe('Kinder pages', () => {
     expect(screen.getByText('Medikamente auf Rezept').closest('p')).toHaveTextContent('Medikamente auf Rezept: ❗');
     expect(screen.getByText('Tetanusimpfung').closest('p')).toHaveTextContent('Tetanusimpfung: ❗');
     expect(screen.getByText('Zeckenimpfung').closest('p')).toHaveTextContent('Zeckenimpfung: Ja');
+    const firstAidCard = screen.getByRole('heading', { name: 'Erste Hilfe' }).closest('.card');
+    expect(firstAidCard).toHaveTextContent('Boris am 03.07.2026: Knie verbunden');
     const checkAction = screen.getByRole('link', { name: action });
     expect(checkAction).toHaveAttribute('href', path);
     expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');

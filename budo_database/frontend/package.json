@@ -27,6 +27,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "latest",
     "@testing-library/react": "latest",
+    "@testing-library/user-event": "^14.6.1",
     "jsdom": "latest",
     "vitest": "latest"
   }

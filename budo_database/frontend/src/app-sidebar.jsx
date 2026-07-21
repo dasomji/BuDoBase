@@ -108,6 +108,14 @@ function NavigationLink({ item, sub = false }) {
 }
 
 const SIDEBAR_GROUP_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+const SIDEBAR_STATE_COOKIE_NAME = 'sidebar_state';
+
+function readSidebarState() {
+  if (typeof document === 'undefined') return true;
+  const prefix = `${SIDEBAR_STATE_COOKIE_NAME}=`;
+  const cookie = document.cookie.split('; ').find(value => value.startsWith(prefix));
+  return cookie ? cookie.slice(prefix.length) !== 'false' : true;
+}
 
 function sidebarGroupCookieName(label) {
   return `sidebar_group_${encodeURIComponent(label)}`;
@@ -178,11 +186,10 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               render={<a href="/dashboard/" />}
-              size="lg"
               tooltip="BuDoBase Dashboard"
               className="sidebar-brand"
             >
-              <span className="sidebar-brand-logo"><Logo /></span>
+              <Logo />
               <span>BuDoBase</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -227,7 +234,7 @@ export function AppSidebar() {
 export function ApplicationShell({ sidebar, header, children }) {
   return (
     <TooltipProvider>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={readSidebarState()}>
         {sidebar}
         <div className="app-shell-content">
           {header}

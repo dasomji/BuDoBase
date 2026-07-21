@@ -5,7 +5,15 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from budo_app.models import Geld, Kinder, Notizen, Schwerpunkte, Turnus
+from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
+from budo_app.models import (
+    ErsteHilfeEintrag,
+    Geld,
+    Kinder,
+    Notizen,
+    Schwerpunkte,
+    Turnus,
+)
 
 
 DETAIL_FIELDS = {
@@ -43,6 +51,7 @@ DETAIL_FIELDS = {
     "booking_note",
     "note",
     "notes",
+    "first_aid_entries",
     "transactions",
     "remaining_money",
     "deposit",
@@ -118,6 +127,16 @@ class KidDetailContractTests(TestCase):
             amount=10,
             added_by=self.user,
         )
+        self.first_aid_older = create_first_aid_entry_for_test(
+            kinder=self.kid,
+            beschreibung="Hand gekühlt",
+            added_by=self.user,
+        )
+        self.first_aid_newer = create_first_aid_entry_for_test(
+            kinder=self.kid,
+            beschreibung="Knie verbunden",
+            added_by=self.user,
+        )
         self.other_kid = Kinder.objects.create(
             kid_index="T3-1",
             kid_vorname="Other",
@@ -125,6 +144,11 @@ class KidDetailContractTests(TestCase):
             kid_birthday=date(2012, 8, 2),
             turnus=self.other_turnus,
             sozialversicherungsnr="private-other-turnus",
+        )
+        create_first_aid_entry_for_test(
+            kinder=self.other_kid,
+            beschreibung="Fremder EH-Eintrag",
+            added_by=self.user,
         )
 
     def contract_url(self, kid):
@@ -152,7 +176,27 @@ class KidDetailContractTests(TestCase):
             "date": self.note.date_added.isoformat(),
             "day": self.note.date_added.strftime("%d.%m."),
             "author": "kid-detail-user",
+            "photos": [],
         }])
+        self.assertEqual(kid["first_aid_entries"], [
+            {
+                "id": self.first_aid_newer.id,
+                "text": "Knie verbunden",
+                "date": self.first_aid_newer.date_added.isoformat(),
+                "day": self.first_aid_newer.date_added.strftime("%d.%m."),
+                "author": "kid-detail-user",
+                "photos": [],
+            },
+            {
+                "id": self.first_aid_older.id,
+                "text": "Hand gekühlt",
+                "date": self.first_aid_older.date_added.isoformat(),
+                "day": self.first_aid_older.date_added.strftime("%d.%m."),
+                "author": "kid-detail-user",
+                "photos": [],
+            },
+        ])
+        self.assertNotContains(response, "Fremder EH-Eintrag")
         self.assertEqual(kid["transactions"], [{
             "id": self.transaction.id,
             "amount": 10.0,
@@ -220,6 +264,74 @@ class KidDetailMutationContractTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         return response.json()["kids"][0]
+
+    def test_first_aid_write_requires_text_and_refreshes_the_detail_contract(self):
+        empty = self.client.post(
+            reverse("form-submit-api"),
+            {
+                "_target": f"/kid_details/{self.kid.id}",
+                "interaction_kind": "first_aid",
+                "erste_hilfe_beschreibung": "   ",
+            },
+            HTTP_X_CSRFTOKEN=self.csrf_token,
+        )
+
+        self.assertEqual(empty.status_code, 422)
+        self.assertEqual(
+            empty.json()["errors"],
+            ["Bitte eine Beschreibung eingeben."],
+        )
+        self.assertFalse(ErsteHilfeEintrag.objects.exists())
+
+        accepted = self.client.post(
+            reverse("form-submit-api"),
+            {
+                "_target": f"/kid_details/{self.kid.id}",
+                "interaction_kind": "first_aid",
+                "erste_hilfe_beschreibung": "Knie gereinigt und verbunden",
+            },
+            HTTP_X_CSRFTOKEN=self.csrf_token,
+        )
+
+        self.assertEqual(accepted.status_code, 200)
+        entry = ErsteHilfeEintrag.objects.get()
+        self.assertEqual(entry.kinder, self.kid)
+        self.assertEqual(entry.added_by, self.user)
+        self.assertEqual(entry.beschreibung, "Knie gereinigt und verbunden")
+        self.assertEqual(self.detail_payload()["first_aid_entries"], [{
+            "id": entry.id,
+            "text": "Knie gereinigt und verbunden",
+            "date": entry.date_added.isoformat(),
+            "day": entry.date_added.strftime("%d.%m."),
+            "author": "kid-mutation-user",
+            "photos": [],
+        }])
+
+    def test_first_aid_write_rejects_a_kid_outside_the_active_turnus(self):
+        other_turnus = Turnus.objects.create(
+            turnus_nr=3,
+            turnus_beginn=date(2026, 8, 1),
+        )
+        other_kid = Kinder.objects.create(
+            kid_index="T3-1",
+            kid_vorname="Other",
+            kid_nachname="Turnus",
+            kid_birthday=date(2012, 8, 2),
+            turnus=other_turnus,
+        )
+
+        response = self.client.post(
+            reverse("form-submit-api"),
+            {
+                "_target": f"/kid_details/{other_kid.id}",
+                "interaction_kind": "first_aid",
+                "erste_hilfe_beschreibung": "Darf nicht gespeichert werden",
+            },
+            HTTP_X_CSRFTOKEN=self.csrf_token,
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(ErsteHilfeEintrag.objects.exists())
 
     def test_existing_note_money_and_pfand_writes_refresh_coherent_detail_data(self):
         note_response = self.client.post(

@@ -1,4 +1,5 @@
 from django.http import Http404
+from django.urls import reverse
 
 from budo_app.models import Profil
 
@@ -44,13 +45,54 @@ def serialize_datetime(value):
     return value.isoformat() if value else None
 
 
-def serialize_note(note):
+def _serialize_text_entry(entry, text):
     return {
-        "id": note.id,
-        "text": note.notiz or "",
-        "date": serialize_datetime(note.date_added),
-        "day": note.date_added.strftime("%d.%m.") if note.date_added else "",
-        "author": note.added_by.username,
+        "id": entry.id,
+        "text": text or "",
+        "date": serialize_datetime(entry.date_added),
+        "day": entry.date_added.strftime("%d.%m.") if entry.date_added else "",
+        "author": entry.added_by.username,
+    }
+
+
+def serialize_photos(entry, child_name, kind):
+    photos = getattr(entry, "route_photos", ())
+    if kind == "notes":
+        label, entry_label = "Notizfoto", "Notiz"
+    else:
+        label, entry_label = "EH-Foto", "EH-Eintrag"
+    entry_suffix = (
+        f", {entry_label} vom {entry.date_added.strftime('%d.%m.%Y %H:%M')}"
+        if entry.date_added
+        else ""
+    )
+    return [
+        {
+            "id": photo.id,
+            "url": reverse("attachment-media", args=(kind, photo.id)),
+            "width": photo.width,
+            "height": photo.height,
+            "alt": f"{label} {ordinal} von {child_name}{entry_suffix}",
+        }
+        for ordinal, photo in enumerate(photos, start=1)
+    ]
+
+
+def serialize_note(note, child_name=""):
+    serialized = _serialize_text_entry(note, note.notiz)
+    if hasattr(note, "route_photos"):
+        serialized["photos"] = serialize_photos(note, child_name, "notes")
+    return serialized
+
+
+def serialize_first_aid_photos(entry, child_name):
+    return serialize_photos(entry, child_name, "first-aid")
+
+
+def serialize_first_aid_entry(entry, child_name):
+    return {
+        **_serialize_text_entry(entry, entry.beschreibung),
+        "photos": serialize_first_aid_photos(entry, child_name),
     }
 
 

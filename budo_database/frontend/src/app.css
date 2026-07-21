@@ -93,6 +93,28 @@
   line-height: 1;
 }
 
+.kid-detail-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.kid-detail-grid > .detail-column {
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .kid-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .kid-detail-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 #interaction-bar #interaction-input {
   justify-content: center;
   padding: var(--xs-padding) var(--s-padding);
@@ -118,6 +140,28 @@
   gap: var(--m-padding);
 }
 
+#interaction-bar form :is(
+  label[for="id_notiz"],
+  label[for="id_amount"],
+  label[for="id_erste_hilfe_beschreibung"]
+) {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  place-items: center;
+  line-height: 1;
+}
+
+#interaction-bar form :is(
+  label[for="id_notiz"],
+  label[for="id_amount"],
+  label[for="id_erste_hilfe_beschreibung"]
+)::after {
+  display: block;
+  line-height: 1;
+}
+
 #interaction-bar form input {
   min-width: 0;
 }
@@ -125,6 +169,12 @@
 #interaction-bar form button img {
   width: 2rem;
   height: 2rem;
+}
+
+#interaction-bar form .interaction-send-button,
+#interaction-bar form .interaction-send-button:hover {
+  background: transparent;
+  cursor: pointer;
 }
 
 #interaction-bar form .money-action {
@@ -140,6 +190,23 @@
 #interaction-bar form .money-topup,
 #interaction-bar form .money-topup:hover {
   background-color: #d9534f;
+  color: white;
+}
+
+@media (max-width: 600px) {
+  #interaction-bar form > #geld-form:not(.hidden) {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  #interaction-bar form > #geld-form p,
+  #interaction-bar form > #geld-form input {
+    min-width: 0;
+  }
+
+  #interaction-bar form .money-action {
+    flex: 0 0 auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -336,21 +403,10 @@
 }
 
 [data-sidebar="sidebar"] .sidebar-brand {
-  height: 3rem;
+  height: 2rem;
 }
 
-.sidebar-brand-logo {
-  display: inline-grid;
-  width: 1.25rem;
-  flex: 0 0 1.25rem;
-  place-items: center;
-}
-
-.sidebar-brand-logo svg {
-  max-width: 1.25rem;
-}
-
-[data-slot="sidebar"][data-collapsible="icon"] [data-sidebar="menu-button"] > span:not(.sidebar-brand-logo),
+[data-slot="sidebar"][data-collapsible="icon"] [data-sidebar="menu-button"] > span,
 [data-slot="sidebar"][data-collapsible="icon"] .sidebar-group-chevron {
   display: none;
 }
@@ -1373,5 +1429,194 @@ input[name="amount"]::placeholder {
   }
   html {
     @apply font-sans;
+  }
+}
+
+.first-aid-entry {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.first-aid-photo-strip {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  gap: var(--s-padding);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--xs-padding) 0;
+  overscroll-behavior-inline: contain;
+  touch-action: pan-x pan-y;
+}
+
+.first-aid-photo-trigger {
+  max-width: 100%;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.first-aid-photo {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+}
+
+.attachment-input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.attachment-button {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 0;
+  cursor: pointer;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.note-input-field,
+.first-aid-input-field {
+  position: relative;
+}
+
+#interaction-bar form :is(.note-input-field, .first-aid-input-field) input:not(.attachment-input) {
+  padding-right: 2.5rem;
+  background-color: white;
+}
+
+#interaction-bar form :is(.note-input-field, .first-aid-input-field) .attachment-button {
+  position: absolute;
+  right: 0;
+  background: transparent;
+}
+
+.attachment-count {
+  position: absolute;
+  right: -0.25rem;
+  bottom: -0.25rem;
+  display: grid;
+  min-width: 1rem;
+  height: 1rem;
+  place-items: center;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  background: #b42318;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.first-aid-gallery-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgb(0 0 0 / 78%);
+}
+
+.first-aid-gallery-viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: grid;
+  place-items: center;
+  padding: var(--m-padding);
+}
+
+.first-aid-gallery {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  width: min(100%, 1100px);
+  max-height: calc(100dvh - (2 * var(--m-padding)));
+  gap: var(--s-padding);
+  padding: var(--m-padding);
+  border-radius: var(--radius);
+  background: #181818;
+  color: #fff;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 45%);
+}
+
+.first-aid-gallery-title,
+.first-aid-gallery-description {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-inline: 3rem;
+  text-align: center;
+}
+
+.first-aid-gallery-title {
+  font-size: 1.25rem;
+}
+
+.first-aid-gallery-description {
+  color: #eee;
+}
+
+.first-aid-gallery-close,
+.first-aid-gallery-control {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: 50%;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.first-aid-gallery-close {
+  position: absolute;
+  top: var(--s-padding);
+  right: var(--s-padding);
+}
+
+.first-aid-gallery-media {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+}
+
+.first-aid-gallery-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(100dvh - 12rem);
+  object-fit: contain;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+@media (max-width: 600px) {
+  .first-aid-gallery-viewport {
+    padding: var(--xs-padding);
+  }
+
+  .first-aid-gallery {
+    max-height: calc(100dvh - (2 * var(--xs-padding)));
+    gap: var(--xs-padding);
+    padding: var(--s-padding);
+  }
+
+  .first-aid-gallery-title,
+  .first-aid-gallery-description {
+    padding-inline: 2.5rem;
   }
 }
