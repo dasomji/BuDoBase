@@ -5,6 +5,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+:where(
+  a[href],
+  button:not(:disabled),
+  select:not(:disabled),
+  summary,
+  label[for],
+  input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"]):not(:disabled),
+  [role="button"]:not([aria-disabled="true"])
+) {
+  cursor: pointer;
+}
+
 @font-face {
   font-family: "Roboto";
   font-style: normal;
@@ -1168,10 +1180,48 @@ input[name="amount"]::placeholder {
   }
 }
 
+.allocation-page {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.allocation-page .table-sticky-controls {
+  position: sticky;
+  z-index: 5;
+  top: var(--app-header-height, 0px);
+  flex: 0 0 auto;
+}
+
+.allocation-card-row {
+  display: flex;
+  width: 100%;
+  gap: var(--m-padding);
+  align-items: flex-start;
+  overflow-x: auto;
+}
+
+.allocation-card-row > .card {
+  min-width: min(20rem, 80vw);
+  flex: 1 0 20rem;
+  margin: 0;
+}
+
+.allocation-page .allocation-table-column {
+  width: 100%;
+  min-width: 0;
+}
+
 .allocation-stats {
   margin-bottom: var(--m-padding);
   padding-bottom: var(--s-padding);
   border-bottom: 1px solid rgba(55, 55, 55, 0.25);
+}
+
+.allocation-stats.without-kid-divider {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .allocation-stats p {
@@ -1182,6 +1232,10 @@ input[name="amount"]::placeholder {
   margin-bottom: 0;
 }
 
+.allocation-print-title {
+  display: none;
+}
+
 .allocation-kids {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1190,26 +1244,77 @@ input[name="amount"]::placeholder {
   padding-left: var(--l-padding);
 }
 
+.allocation-kids.screen-hidden-kids {
+  display: none;
+}
+
 .allocation-kids li {
   min-width: 0;
   break-inside: avoid;
 }
 
-.allocation-page .swp-choice button.active {
-  background-color: #4caf50;
-  box-shadow: inset 0 0 0 2px #2f7632;
+.allocation-page .swp-choice .swp-medal {
+  display: inline-flex;
+  width: 2.375rem;
+  height: 2.375rem;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 2.375rem;
+  border: 1px solid rgba(55, 55, 55, 0.45);
+  border-radius: 50%;
+  padding: 0;
+  color: #30291d;
+  font-weight: 600;
+  text-shadow: 0 1px rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.65), 0 1px 2px rgba(55, 55, 55, 0.2);
+}
+
+.allocation-page .swp-choice .swp-medal-1 {
+  background: linear-gradient(145deg, #fff0a3, #d4a514 70%, #b8860b);
+}
+
+.allocation-page .swp-choice .swp-medal-2 {
+  background: linear-gradient(145deg, #f4f4f4, #b8bec4 70%, #8d949b);
+}
+
+.allocation-page .swp-choice .swp-medal-3 {
+  background: linear-gradient(145deg, #efbc83, #c77832 70%, #96501f);
+}
+
+.allocation-page .swp-choice .swp-medal.active {
+  border-color: #373737;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.75), 0 0 0 2px #373737, 0 2px 5px rgba(55, 55, 55, 0.35);
+}
+
+.allocation-page .swp-choice .swp-medal:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.allocation-page .allocation-edit-friends,
+.allocation-page .allocation-edit-friends:hover {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 @media only screen and (min-width: 761px) {
   .allocation-page .allocation-table-column {
-    min-height: 80vh;
+    display: flex;
+    height: calc(100svh - var(--app-header-height, 0px));
+    min-height: 50vh;
+    flex-direction: column;
   }
 
   .allocation-page .allocation-table-column > .table-container:has(#kids-table) {
     height: 0;
-    min-height: 0;
+    min-height: 50vh;
     max-height: none;
     flex: 1 1 0;
+  }
+
+  .allocation-page #kids-table {
+    min-height: 50vh;
   }
 }
 
@@ -1250,6 +1355,77 @@ input[name="amount"]::placeholder {
   .app-shell-content {
     display: block;
     min-height: 0;
+  }
+
+  .allocation-page#body-container,
+  .allocation-page .allocation-table-column,
+  .allocation-page .table-sticky-controls {
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .allocation-page .allocation-card-row {
+    display: block;
+    overflow: visible;
+  }
+
+  .allocation-page .allocation-card-row > .card {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    break-after: page;
+    page-break-after: always;
+    border: 0;
+    background: white !important;
+    box-shadow: none;
+  }
+
+  .allocation-page .allocation-card-row > .card:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .allocation-page .card-toggle,
+  .allocation-page .allocation-stats,
+  .allocation-page .filter-table,
+  .allocation-page .table-container:has(#kids-table) {
+    display: none !important;
+  }
+
+  .allocation-page .card-info-container,
+  .allocation-page .card-info-content {
+    display: block !important;
+    margin: 0;
+    padding: 0;
+    background: white !important;
+  }
+
+  .allocation-page .allocation-print-title {
+    display: block;
+    margin: 0 0 8mm;
+    font-size: 20pt;
+  }
+
+  .allocation-page .allocation-kids,
+  .allocation-page .allocation-kids.screen-hidden-kids {
+    display: block;
+    margin: 0;
+    padding-left: 6mm;
+  }
+
+  .allocation-page .allocation-kids li {
+    margin-bottom: 2mm;
+  }
+
+  .allocation-page .allocation-kids a {
+    color: black;
+    text-decoration: none;
   }
 
   .happy-cleaning-print-page#body-container {

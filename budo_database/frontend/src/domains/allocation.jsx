@@ -1,4 +1,4 @@
-import { Card, Column, Columns, SearchTable } from '../components';
+import { Card, Column, SearchTable } from '../components';
 import { displayOrPlaceholder, linkKid } from './shared';
 
 const EMPTY_STATS = {
@@ -15,12 +15,12 @@ function formatAverageAge(value) {
   }).format(Number(value));
 }
 
-function AllocationStats({ focus }) {
+function AllocationStats({ focus, showKids }) {
   const stats = focus.stats || EMPTY_STATS;
   const sex = { ...EMPTY_STATS.sex, ...stats.sex };
   const families = { ...EMPTY_STATS.families, ...stats.families };
   return (
-    <div className="allocation-stats" aria-label={`Statistik ${focus.name}`}>
+    <div className={`allocation-stats ${showKids ? '' : 'without-kid-divider'}`} aria-label={`Statistik ${focus.name}`}>
       <p><span className="label">Ø Alter</span>: {formatAverageAge(stats.average_age)}</p>
       <p><span className="label">Geschlechter</span>: {sex.male} ♂ · {sex.female} ♀ · {sex.diverse} ⚧</p>
       <p><span className="label">BuDo-Familien</span>: {families.S} S · {families.M} M · {families.L} L · {families.XL} XL</p>
@@ -28,19 +28,20 @@ function AllocationStats({ focus }) {
   );
 }
 
-function AllocationCard({ focus, kids }) {
+function AllocationCard({ focus, kids, showKids }) {
   const assignedKids = kids.filter(kid => focus.kid_ids.includes(kid.id));
   return (
     <Card title={`${focus.name}: ${focus.kid_ids.length}`}>
-      <AllocationStats focus={focus} />
-      <ul className="allocation-kids">
+      <h2 className="allocation-print-title">{focus.name}</h2>
+      <AllocationStats focus={focus} showKids={showKids} />
+      <ul className={`allocation-kids ${showKids ? '' : 'screen-hidden-kids'}`} aria-hidden={!showKids}>
         {assignedKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}
       </ul>
     </Card>
   );
 }
 
-export function AllocationPage({ data, week, mutate }) {
+export function AllocationPage({ data, week, mutate, showKids = true }) {
   const focuses = data.focuses.filter(focus => focus.week === `w${week}`);
   const rows = data.kids.map(kid => ({ ...kid, filterText: kid.full_name }));
   const columns = [
@@ -75,7 +76,7 @@ export function AllocationPage({ data, week, mutate }) {
               const selected = Number(choice?.[choiceKey]) === focus.id;
               return (
                 <button
-                  className={selected ? 'active' : ''}
+                  className={`swp-medal swp-medal-${rank} ${selected ? 'active' : ''}`}
                   type="button"
                   key={rank}
                   aria-pressed={selected}
@@ -103,7 +104,9 @@ export function AllocationPage({ data, week, mutate }) {
           <>
             {friends || '---'}{' '}
             <button
+              className="allocation-edit-friends"
               type="button"
+              aria-label={`Freunde von ${kid.full_name} bearbeiten`}
               onClick={() => {
                 const value = window.prompt('Freunde bearbeiten', friends);
                 if (value !== null) mutate('/update_freunde/', { kid_id: kid.id, freunde: value, week });
@@ -116,17 +119,22 @@ export function AllocationPage({ data, week, mutate }) {
       },
     },
     { key: 'age', label: 'Alter' },
+    { key: 'budo_family', label: 'Familie', render: kid => displayOrPlaceholder(kid.budo_family) },
     { key: 'siblings', label: 'Geschwister', render: kid => displayOrPlaceholder(kid.siblings) },
   ];
+  const overview = (
+    <div className="allocation-card-row" aria-label="SWP-Übersicht">
+      {focuses.map(focus => (
+        <AllocationCard focus={focus} kids={data.kids} showKids={showKids} key={focus.id} />
+      ))}
+    </div>
+  );
   return (
-    <Columns className="allocation-page">
-      <Column id="left-column" className="allocation-card-column">
-        {focuses.map(focus => <AllocationCard focus={focus} kids={data.kids} key={focus.id} />)}
-      </Column>
+    <main className="allocation-page" id="body-container">
       <Column id="right-column" className="allocation-table-column">
-        <SearchTable columns={columns} rows={rows} showFilter />
+        <SearchTable columns={columns} rows={rows} showFilter beforeFilter={overview} />
       </Column>
-    </Columns>
+    </main>
   );
 }
 
@@ -137,5 +145,25 @@ export const allocationRoutes = [{
   domain: 'allocation',
   readContractKey: 'allocation',
   params: match => ({ week: match[1], title: `SWP-Einteilung Woche ${match[1]}` }),
-  render: ({ route, data, mutate }) => <AllocationPage data={data} week={route.week} mutate={mutate} />,
+  headerAction: (_data, { pageState = {}, setPageState }) => (
+    <button
+      className="button"
+      type="button"
+      aria-pressed={pageState.showAllocationKids !== false}
+      onClick={() => setPageState?.(current => ({
+        ...current,
+        showAllocationKids: current.showAllocationKids === false,
+      }))}
+    >
+      {pageState.showAllocationKids === false ? 'Kinder anzeigen' : 'Kinder ausblenden'}
+    </button>
+  ),
+  render: ({ route, data, mutate, pageState = {} }) => (
+    <AllocationPage
+      data={data}
+      week={route.week}
+      mutate={mutate}
+      showKids={pageState.showAllocationKids !== false}
+    />
+  ),
 }];

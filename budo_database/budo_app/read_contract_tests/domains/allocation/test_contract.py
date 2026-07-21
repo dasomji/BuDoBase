@@ -129,6 +129,7 @@ class AllocationContractTests(TestCase):
                         "id": self.kid.id,
                         "full_name": "Ada Kind",
                         "age": self.kid.get_alter(),
+                        "budo_family": "M",
                         "siblings": "Bea",
                         "focus_ids": [self.lake.id],
                         "choices": [
