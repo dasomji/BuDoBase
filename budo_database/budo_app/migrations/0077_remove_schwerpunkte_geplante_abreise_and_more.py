@@ -3,6 +3,11 @@
 from django.db import migrations, models
 
 
+def fill_missing_auslagern(apps, schema_editor):
+    Schwerpunkte = apps.get_model('budo_app', 'Schwerpunkte')
+    Schwerpunkte.objects.filter(auslagern__isnull=True).update(auslagern=False)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -18,6 +23,7 @@ class Migration(migrations.Migration):
             model_name='schwerpunkte',
             name='geplante_ankunft',
         ),
+        migrations.RunPython(fill_missing_auslagern, migrations.RunPython.noop),
         migrations.AlterField(
             model_name='schwerpunkte',
             name='auslagern',
