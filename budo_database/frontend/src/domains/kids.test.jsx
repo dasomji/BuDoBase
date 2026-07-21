@@ -36,7 +36,9 @@ describe('Kinder pages', () => {
     render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
 
     expect(screen.getByPlaceholderText('Notiz...')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Senden' })).toHaveClass('interaction-send-button');
     expect(screen.getByPlaceholderText('Taschengeld...').closest('#geld-form')).toHaveClass('hidden');
+    expect(screen.queryByRole('group', { name: 'Eingabemodus' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('Notiz'));
 
     expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
@@ -63,7 +65,8 @@ describe('Kinder pages', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Erste Hilfe' }));
+    fireEvent.click(screen.getByText('Notiz'));
+    fireEvent.click(screen.getByText('Taschengeld'));
 
     const description = screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...');
     expect(description).toBeVisible();
@@ -90,6 +93,8 @@ describe('Kinder pages', () => {
     expect(input).toHaveAttribute('multiple');
     fireEvent.change(screen.getByPlaceholderText('Notiz...'), { target: { value: 'Mit Foto' } });
     fireEvent.change(input, { target: { files: [photo] } });
+    expect(document.querySelector('.attachment-count')).toHaveTextContent('1');
+    expect(document.querySelector('.note-input-field .attachment-button')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
@@ -106,7 +111,8 @@ describe('Kinder pages', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Erste Hilfe' }));
+    fireEvent.click(screen.getByText('Notiz'));
+    fireEvent.click(screen.getByText('Taschengeld'));
     fireEvent.change(screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...'), {
       target: { value: '   ' },
     });

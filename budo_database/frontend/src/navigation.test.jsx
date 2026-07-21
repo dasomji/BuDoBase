@@ -7,6 +7,7 @@ describe('application sidebar navigation', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    document.cookie = 'sidebar_state=; Max-Age=0; Path=/';
     window.history.pushState({}, '', '/');
   });
 
@@ -54,5 +55,18 @@ describe('application sidebar navigation', () => {
 
     expect(screen.getByText('Suche').closest('.app-shell-content')).toBeInTheDocument();
     expect(screen.getByText('Aktion').closest('.app-shell-content')).toBeInTheDocument();
+  });
+
+  it('restores and updates the sidebar state cookie', () => {
+    document.cookie = 'sidebar_state=false; Path=/';
+    render(<ApplicationShell sidebar={<AppSidebar />} header={<div>Header</div>}><div>Inhalt</div></ApplicationShell>);
+
+    const sidebar = document.querySelector('[data-slot="sidebar"]');
+    expect(sidebar).toHaveAttribute('data-state', 'collapsed');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle Sidebar' }));
+
+    expect(sidebar).toHaveAttribute('data-state', 'expanded');
+    expect(document.cookie).toContain('sidebar_state=true');
   });
 });

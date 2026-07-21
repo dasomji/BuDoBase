@@ -138,7 +138,8 @@ describe('EH photo upload and card strips', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Erste Hilfe' }));
+    fireEvent.click(screen.getByText('Notiz'));
+    fireEvent.click(screen.getByText('Taschengeld'));
     const form = screen.getByRole('button', { name: 'EH-Eintrag senden' }).closest('form');
     const description = screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...');
     const photoInput = screen.getByLabelText(/EH-Fotos/i);
@@ -151,11 +152,11 @@ describe('EH photo upload and card strips', () => {
     expect(photoInput).toHaveAttribute('type', 'file');
     expect(photoInput).toHaveAttribute('multiple');
     acceptedPhotoInput(photoInput);
-    expect(screen.getByText(/JPEG.*PNG.*WebP.*HEIC.*HEIF/i)).toBeInTheDocument();
-    expect(screen.getByText(/höchstens 5.*10 MB/i)).toBeInTheDocument();
 
     fireEvent.change(description, { target: { value: 'Knie verbunden' } });
     fireEvent.change(photoInput, { target: { files } });
+    expect(document.querySelector('.first-aid-input-field .attachment-count')).toHaveTextContent('2');
+    expect(document.querySelector('.first-aid-input-field .attachment-button')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'EH-Eintrag senden' }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
@@ -176,7 +177,8 @@ describe('EH photo upload and card strips', () => {
     )));
     render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Erste Hilfe' }));
+    fireEvent.click(screen.getByText('Notiz'));
+    fireEvent.click(screen.getByText('Taschengeld'));
     const description = screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...');
     const photoInput = screen.getByLabelText(/EH-Fotos/i);
     fireEvent.change(description, { target: { value: 'Knie verbunden' } });
@@ -208,7 +210,8 @@ describe('EH photo upload and card strips', () => {
     render(<App fetchImpl={fetchImpl} />);
 
     expect(await screen.findByText('Noch keine EH-Einträge.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Erste Hilfe' }));
+    fireEvent.click(screen.getByText('Notiz'));
+    fireEvent.click(screen.getByText('Taschengeld'));
     fireEvent.change(screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...'), {
       target: { value: 'Private medizinische Beschreibung' },
     });
@@ -316,8 +319,10 @@ describe('EH photo strip CSS contract', () => {
     expect(strip).toContain('min-width:0');
     expect(strip).toContain('overflow-x:auto');
     expect(trigger).toContain('flex:00auto');
+    expect(trigger).toContain('max-width:100%');
     expect(image).toContain('width:auto');
     expect(image).toContain('height:auto');
+    expect(image).toContain('max-width:100%');
     expect(image).toContain('max-height:200px');
     expect(image).toContain('object-fit:contain');
     expect(galleryImage).toContain('touch-action:pan-y');

@@ -34,6 +34,15 @@ function saveInteractionMode(field) {
 
 export function KidInteractionForm({ kid, token, onSaved }) {
   const [field, setField] = useState(() => interactionModes[interactionModeCookie()] || 'notiz');
+  const [notePhotoCount, setNotePhotoCount] = useState(0);
+  const [firstAidPhotoCount, setFirstAidPhotoCount] = useState(0);
+  const handleSaved = onSaved
+    ? async result => {
+        await onSaved(result);
+        setNotePhotoCount(0);
+        setFirstAidPhotoCount(0);
+      }
+    : undefined;
   const show = name => event => {
     event.preventDefault();
     setField(name);
@@ -42,24 +51,29 @@ export function KidInteractionForm({ kid, token, onSaved }) {
   return (
     <div id="interaction-bar">
       <div id="interaction-input">
-        <RestForm target={`/kid_details/${kid.id}`} token={token} encType="multipart/form-data" onSuccess={onSaved} resetOnSuccess>
-          <div className="interaction-mode-buttons" role="group" aria-label="Eingabemodus">
-            <button type="button" aria-label="Notiz auswählen" aria-pressed={field === 'notiz'} onClick={show('notiz')}><span aria-hidden="true">📝</span></button>
-            <button type="button" aria-label="Taschengeld auswählen" aria-pressed={field === 'amount'} onClick={show('amount')}><span aria-hidden="true">💶</span></button>
-            <button type="button" aria-label="Erste Hilfe" aria-pressed={field === 'first_aid'} onClick={show('first_aid')}><span aria-hidden="true">🩹</span></button>
-          </div>
+        <RestForm target={`/kid_details/${kid.id}`} token={token} encType="multipart/form-data" onSuccess={handleSaved} resetOnSuccess>
           <div id="notiz-form" className={field === 'notiz' ? '' : 'hidden'}>
-            <p><label htmlFor="id_notiz" onClick={show('amount')}>Notiz</label><input id="id_notiz" name="notiz" placeholder="Notiz..." /></p>
-            <label className="attachment-button" htmlFor="id_notiz_fotos"><span className="sr-only">Notiz-Fotos</span><span aria-hidden="true">+</span></label>
-            <input id="id_notiz_fotos" className="attachment-input" aria-label="Notiz-Fotos" name="notiz_fotos" type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif" multiple disabled={field !== 'notiz'} />
+            <p className="note-input-field">
+              <label htmlFor="id_notiz" onClick={show('amount')} title="Zu Taschengeld wechseln">Notiz</label>
+              <input id="id_notiz" name="notiz" placeholder="Notiz..." />
+              <label className="attachment-button" htmlFor="id_notiz_fotos">
+                <span className="sr-only">Notiz-Fotos</span><span aria-hidden="true">+</span>
+                {notePhotoCount > 0 && <span className="attachment-count" aria-hidden="true">{notePhotoCount}</span>}
+              </label>
+              <input id="id_notiz_fotos" className="attachment-input" aria-label="Notiz-Fotos" name="notiz_fotos" type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif" multiple disabled={field !== 'notiz'} onChange={event => setNotePhotoCount(event.target.files?.length || 0)} />
+            </p>
           </div>
           <div id="geld-form" className={field === 'amount' ? '' : 'hidden'}>
-            <p><label htmlFor="id_amount" onClick={show('notiz')}>Taschengeld</label><input id="id_amount" name="amount" type="number" min="0" step="0.01" placeholder="Taschengeld..." /></p>
+            <p><label htmlFor="id_amount" onClick={show('first_aid')} title="Zu Erste Hilfe wechseln">Taschengeld</label><input id="id_amount" name="amount" type="number" min="0" step="0.01" placeholder="Taschengeld..." /></p>
           </div>
           <div id="erste-hilfe-form" className={field === 'first_aid' ? '' : 'hidden'}>
-            <p><label htmlFor="id_erste_hilfe_beschreibung" onClick={show('notiz')}>Erste Hilfe</label><input id="id_erste_hilfe_beschreibung" name="erste_hilfe_beschreibung" placeholder="Erste-Hilfe-Maßnahme..." required disabled={field !== 'first_aid'} /></p>
-            <p className="first-aid-photo-field">
-              <label className="attachment-button" htmlFor="id_erste_hilfe_fotos"><span className="sr-only">EH-Fotos</span><span aria-hidden="true">+</span></label>
+            <p className="first-aid-input-field">
+              <label htmlFor="id_erste_hilfe_beschreibung" onClick={show('notiz')} title="Zu Notiz wechseln">Erste Hilfe</label>
+              <input id="id_erste_hilfe_beschreibung" name="erste_hilfe_beschreibung" placeholder="Erste-Hilfe-Maßnahme..." required disabled={field !== 'first_aid'} />
+              <label className="attachment-button" htmlFor="id_erste_hilfe_fotos">
+                <span className="sr-only">EH-Fotos</span><span aria-hidden="true">+</span>
+                {firstAidPhotoCount > 0 && <span className="attachment-count" aria-hidden="true">{firstAidPhotoCount}</span>}
+              </label>
               <input
                 id="id_erste_hilfe_fotos"
                 className="attachment-input"
@@ -68,13 +82,13 @@ export function KidInteractionForm({ kid, token, onSaved }) {
                 accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
                 multiple
                 disabled={field !== 'first_aid'}
+                onChange={event => setFirstAidPhotoCount(event.target.files?.length || 0)}
               />
-              <small>JPEG, PNG, WebP, HEIC oder HEIF; höchstens 5 Fotos mit je 10 MB.</small>
             </p>
           </div>
           {field === 'amount'
             ? <><button className="money-action money-withdraw" type="submit" name="money_action" value="withdraw">Abbuchen</button><button className="money-action money-topup" type="submit" name="money_action" value="topup">Aufladen</button></>
-            : <button type="submit" name={field === 'first_aid' ? 'interaction_kind' : undefined} value={field === 'first_aid' ? 'first_aid' : undefined} aria-label={field === 'first_aid' ? 'EH-Eintrag senden' : undefined}><img src="/static/img/send-button.svg" alt={field === 'first_aid' ? '' : 'Senden'} /></button>}
+            : <button className="interaction-send-button" type="submit" name={field === 'first_aid' ? 'interaction_kind' : undefined} value={field === 'first_aid' ? 'first_aid' : undefined} aria-label={field === 'first_aid' ? 'EH-Eintrag senden' : undefined}><img src="/static/img/send-button.svg" alt={field === 'first_aid' ? '' : 'Senden'} /></button>}
         </RestForm>
       </div>
     </div>
@@ -110,7 +124,7 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
   const deposit = action => mutate('/update_pfand/', { id: kid.id, action });
   return (
     <FirstAidGallery entries={[...(kid.notes || []), ...(kid.first_aid_entries || [])]} childName={kid.full_name}>
-      <Columns>
+      <Columns className="kid-detail-grid">
         <Column id="left-column">
           <Card title={`${kid.full_name}${kid.present ? '' : ' ❌'}`} id="kinderinfos"><FieldList items={[["Geschlecht", kid.sex], ["Alter", kid.age], ["Geburtstag", formatKidBirthday(kid)], ["Aufenthaltsdauer", `${kid.weeks}-wöchig`], ["Geschwister", kid.siblings], ["Zeltwunsch", kid.tent_request], ["War schon mal im Bunten Dorf", yesNo(kid.budo_experience)]]} /></Card>
           <Card title="BuDo" id="budo-container"><FieldList items={[["Turnus", data.turnus?.label], ["Budo Familie", kid.budo_family], ["Haus", kid.special_family], ["SWP 1", kid.focus_w1], ["SWP 2", kid.focus_w2]]} /><div className="react-actions"><a className="button" href={`/${kid.present ? 'check_out' : 'check_in'}/${kid.id}`}>{kid.present ? 'Auschecken' : 'Einchecken'}</a></div></Card>

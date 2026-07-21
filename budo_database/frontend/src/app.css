@@ -93,6 +93,28 @@
   line-height: 1;
 }
 
+.kid-detail-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.kid-detail-grid > .detail-column {
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .kid-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .kid-detail-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 #interaction-bar #interaction-input {
   justify-content: center;
   padding: var(--xs-padding) var(--s-padding);
@@ -111,34 +133,33 @@
   flex: 1 1 320px;
 }
 
-#interaction-bar form > .interaction-mode-buttons:not(.hidden) {
-  display: flex;
-  max-width: none;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: var(--xs-padding);
-}
-
-#interaction-bar form .interaction-mode-buttons button {
-  display: inline-grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  padding: 0;
-  border: 2px solid transparent;
-  font-size: 1.1rem;
-}
-
-#interaction-bar form .interaction-mode-buttons button[aria-pressed="true"] {
-  border-color: var(--dark-blue);
-  background-color: #e6c78b;
-}
-
 #interaction-bar form p {
   width: 100%;
   flex: 1 1 auto;
   justify-content: center;
   gap: var(--m-padding);
+}
+
+#interaction-bar form :is(
+  label[for="id_notiz"],
+  label[for="id_amount"],
+  label[for="id_erste_hilfe_beschreibung"]
+) {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  place-items: center;
+  line-height: 1;
+}
+
+#interaction-bar form :is(
+  label[for="id_notiz"],
+  label[for="id_amount"],
+  label[for="id_erste_hilfe_beschreibung"]
+)::after {
+  display: block;
+  line-height: 1;
 }
 
 #interaction-bar form input {
@@ -148,6 +169,12 @@
 #interaction-bar form button img {
   width: 2rem;
   height: 2rem;
+}
+
+#interaction-bar form .interaction-send-button,
+#interaction-bar form .interaction-send-button:hover {
+  background: transparent;
+  cursor: pointer;
 }
 
 #interaction-bar form .money-action {
@@ -163,6 +190,23 @@
 #interaction-bar form .money-topup,
 #interaction-bar form .money-topup:hover {
   background-color: #d9534f;
+  color: white;
+}
+
+@media (max-width: 600px) {
+  #interaction-bar form > #geld-form:not(.hidden) {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  #interaction-bar form > #geld-form p,
+  #interaction-bar form > #geld-form input {
+    min-width: 0;
+  }
+
+  #interaction-bar form .money-action {
+    flex: 0 0 auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -359,21 +403,10 @@
 }
 
 [data-sidebar="sidebar"] .sidebar-brand {
-  height: 3rem;
+  height: 2rem;
 }
 
-.sidebar-brand-logo {
-  display: inline-grid;
-  width: 1rem;
-  flex: 0 0 1rem;
-  place-items: center;
-}
-
-.sidebar-brand-logo svg {
-  max-width: 1.25rem;
-}
-
-[data-slot="sidebar"][data-collapsible="icon"] [data-sidebar="menu-button"] > span:not(.sidebar-brand-logo),
+[data-slot="sidebar"][data-collapsible="icon"] [data-sidebar="menu-button"] > span,
 [data-slot="sidebar"][data-collapsible="icon"] .sidebar-group-chevron {
   display: none;
 }
@@ -1418,6 +1451,7 @@ input[name="amount"]::placeholder {
 }
 
 .first-aid-photo-trigger {
+  max-width: 100%;
   flex: 0 0 auto;
   padding: 0;
   border: 0;
@@ -1428,13 +1462,9 @@ input[name="amount"]::placeholder {
   display: block;
   width: auto;
   height: auto;
-  max-width: none;
+  max-width: 100%;
   max-height: 200px;
   object-fit: contain;
-}
-
-.first-aid-photo-field {
-  flex-wrap: wrap;
 }
 
 .attachment-input {
@@ -1446,20 +1476,48 @@ input[name="amount"]::placeholder {
 }
 
 .attachment-button {
+  position: relative;
   display: inline-grid;
   place-items: center;
   inline-size: 2rem;
   block-size: 2rem;
-  border: 1px solid currentColor;
-  border-radius: 50%;
+  border: 0;
   cursor: pointer;
   font-size: 1.5rem;
   line-height: 1;
 }
 
-.first-aid-photo-field small {
-  width: 100%;
-  text-align: center;
+.note-input-field,
+.first-aid-input-field {
+  position: relative;
+}
+
+#interaction-bar form :is(.note-input-field, .first-aid-input-field) input:not(.attachment-input) {
+  padding-right: 2.5rem;
+  background-color: white;
+}
+
+#interaction-bar form :is(.note-input-field, .first-aid-input-field) .attachment-button {
+  position: absolute;
+  right: 0;
+  background: transparent;
+}
+
+.attachment-count {
+  position: absolute;
+  right: -0.25rem;
+  bottom: -0.25rem;
+  display: grid;
+  min-width: 1rem;
+  height: 1rem;
+  place-items: center;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  background: #b42318;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .first-aid-gallery-backdrop {
