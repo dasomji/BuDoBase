@@ -143,7 +143,7 @@ export function Header({ title, authenticated, searchData, action }) {
   );
 }
 
-export function Card({ title, children, id, initiallyClosed = false, className = '' }) {
+export function Card({ title, children, id, initiallyClosed = false, className = '', headerAction = null }) {
   const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 759px)').matches;
   const [closed, setClosed] = useState(initiallyClosed || mobile);
   return (
@@ -163,6 +163,15 @@ export function Card({ title, children, id, initiallyClosed = false, className =
         }}
       >
         <h2>{title}</h2>
+        {headerAction && (
+          <span
+            className="card-header-action"
+            onClick={event => event.stopPropagation()}
+            onKeyDown={event => event.stopPropagation()}
+          >
+            {headerAction}
+          </span>
+        )}
         <span className="icon" aria-hidden="true">
           <span className="open-icon">{closed ? '+' : '−'}</span>
         </span>
@@ -325,7 +334,7 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
   return <form action={action} method={method} encType={encType} className="form-grid">{contents()}</form>;
 }
 
-export function MapCard({ places = [] }) {
+export function MapCard({ places = [], headerAction = null }) {
   const element = useRef(null);
   const locations = useMemo(() => places.map(place => ({
     ...place,
@@ -333,7 +342,7 @@ export function MapCard({ places = [] }) {
   })).filter(place => place.point.length === 2 && place.point.every(Number.isFinite)), [places]);
   useEffect(() => {
     if (!element.current || !locations.length) return undefined;
-    const map = L.map(element.current, { scrollWheelZoom: false });
+    const map = L.map(element.current, { scrollWheelZoom: true, touchZoom: true });
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       subdomains: 'abcd',
@@ -351,7 +360,7 @@ export function MapCard({ places = [] }) {
     observer.observe(element.current);
     return () => { observer.disconnect(); map.remove(); };
   }, [locations]);
-  return <Card title="Karte" id="swp-map" className="transparent"><div className="react-map interactive-map" id="map" ref={element}>{!locations.length && <p>Keine Koordinaten verfügbar.</p>}</div></Card>;
+  return <Card title="Karte" id="swp-map" className="transparent" headerAction={headerAction}><div className="react-map interactive-map" id="map" ref={element}>{!locations.length && <p>Keine Koordinaten verfügbar.</p>}</div></Card>;
 }
 
 export function Messages({ items = [] }) {

@@ -92,6 +92,25 @@
   filter: none;
 }
 
+.card-header-action {
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.card-header-action > .button {
+  display: inline-block;
+}
+
+.map-week-switch {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.map-week-switch > .button[aria-pressed="false"] {
+  background: transparent;
+  outline: 1px solid currentColor;
+}
+
 .info-header-container > .icon {
   display: inline-grid;
   place-items: center;
@@ -274,6 +293,48 @@
   height: 420px;
   padding: 0;
   text-align: initial;
+}
+
+.focus-dashboard > .focus-weeks-column {
+  flex: 0 1 auto;
+}
+
+.focus-dashboard > .focus-map-column {
+  flex: 1 1 0;
+}
+
+@media only screen and (min-width: 761px) {
+  .focus-dashboard#body-container {
+    height: calc(100svh - var(--app-header-height, 0px));
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .focus-dashboard > .focus-weeks-column {
+    overflow-y: auto;
+  }
+
+  .focus-dashboard > .focus-map-column,
+  .focus-map-column #swp-map,
+  .focus-map-column #swp-map > .card-info-container,
+  .focus-map-column #swp-map > .card-info-container > .card-info-content {
+    min-height: 0;
+  }
+
+  .focus-map-column #swp-map {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .focus-map-column #swp-map:not(.closed-card) > .card-info-container {
+    flex: 1;
+  }
+
+  .focus-map-column .interactive-map {
+    height: 100%;
+    min-height: 280px;
+  }
 }
 
 .leaflet-text {
