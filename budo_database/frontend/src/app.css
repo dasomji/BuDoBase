@@ -279,6 +279,35 @@
   gap: 0.5rem !important;
 }
 
+.checkbox-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.checkbox-group legend {
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.checkbox-group-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.form-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.form-buttons .button {
+  flex: 1 1 0;
+  text-align: center;
+}
+
 .react-map {
   min-height: 280px;
   display: grid;
@@ -353,6 +382,26 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.75rem;
+}
+
+.focus-meals-card .react-actions,
+.focus-detail-actions {
+  justify-content: flex-end;
+}
+
+.focus-detail-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+}
+
+.focus-detail-fields p {
+  flex: 1 1 calc(50% - 0.75rem);
+  min-width: 14rem;
+}
+
+.focus-detail-fields .full-width {
+  flex-basis: 100%;
 }
 
 .react-actions button,
@@ -1293,7 +1342,7 @@ input[name="amount"]::placeholder {
   margin-bottom: 0;
 }
 
-.allocation-print-title {
+.allocation-print-pages {
   display: none;
 }
 
@@ -1418,75 +1467,46 @@ input[name="amount"]::placeholder {
     min-height: 0;
   }
 
-  .allocation-page#body-container,
-  .allocation-page .allocation-table-column,
-  .allocation-page .table-sticky-controls {
+  .allocation-page#body-container {
     display: block;
     width: 100%;
-    height: auto;
-    min-height: 0;
     margin: 0;
     padding: 0;
   }
 
-  .allocation-page .allocation-card-row {
-    display: block;
-    overflow: visible;
+  .allocation-page .allocation-table-column {
+    display: none !important;
   }
 
-  .allocation-page .allocation-card-row > .card {
+  .allocation-page .allocation-print-pages {
     display: block;
-    width: 100%;
-    min-width: 0;
+  }
+
+  .allocation-page .allocation-print-page {
+    min-height: calc(100vh - 28mm);
     margin: 0;
     padding: 0;
     break-after: page;
     page-break-after: always;
-    border: 0;
-    background: white !important;
-    box-shadow: none;
   }
 
-  .allocation-page .allocation-card-row > .card:last-child {
+  .allocation-page .allocation-print-page:last-child {
     break-after: auto;
     page-break-after: auto;
   }
 
-  .allocation-page .card-toggle,
-  .allocation-page .allocation-stats,
-  .allocation-page .filter-table,
-  .allocation-page .table-container:has(#kids-table) {
-    display: none !important;
-  }
-
-  .allocation-page .card-info-container,
-  .allocation-page .card-info-content {
-    display: block !important;
-    margin: 0;
-    padding: 0;
-    background: white !important;
-  }
-
-  .allocation-page .allocation-print-title {
-    display: block;
+  .allocation-page .allocation-print-page h1 {
     margin: 0 0 8mm;
     font-size: 20pt;
   }
 
-  .allocation-page .allocation-kids,
-  .allocation-page .allocation-kids.screen-hidden-kids {
-    display: block;
+  .allocation-page .allocation-print-page ul {
     margin: 0;
     padding-left: 6mm;
   }
 
-  .allocation-page .allocation-kids li {
+  .allocation-page .allocation-print-page li {
     margin-bottom: 2mm;
-  }
-
-  .allocation-page .allocation-kids a {
-    color: black;
-    text-decoration: none;
   }
 
   .happy-cleaning-print-page#body-container {

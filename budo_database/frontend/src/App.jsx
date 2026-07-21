@@ -173,7 +173,7 @@ export default function App({
   return (
     <ApplicationShell
       sidebar={data.authenticated ? <AppSidebar /> : null}
-      header={<Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data, { pageState, setPageState }) : null} />}
+      header={<Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data, { pageState, setPageState, mutate }) : null} />}
     >
       {content}
     </ApplicationShell>

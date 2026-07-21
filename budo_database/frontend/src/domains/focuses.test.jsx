@@ -18,8 +18,6 @@ const focus = {
   time_id: 11,
   start: '2026-07-05',
   off_site: true,
-  departure: '2026-07-05T09:30:00Z',
-  arrival: '2026-07-05T18:00:00Z',
   place_id: 7,
   place: 'Waldplatz',
   coordinates: '',
@@ -122,27 +120,42 @@ describe('Schwerpunkte pages', () => {
 
     expect(screen.getByRole('heading', { name: 'Wald' })).toBeInTheDocument();
     expect(screen.getByText(/Bäume kennenlernen/)).toBeInTheDocument();
+    const detailFields = document.querySelector('.focus-detail-fields');
+    expect([...detailFields.querySelectorAll('p')].map(item => item.querySelector('.label').textContent)).toEqual([
+      'Ort', 'Auslagern', 'Betreuende', 'Kinder', 'Wann', 'Beginnt am', 'Beschreibung',
+    ]);
+    expect(within(detailFields).getByText('Beschreibung').closest('p')).toHaveClass('full-width');
     expect(screen.getByRole('link', { name: 'Waldplatz' })).toHaveAttribute('href', '/auslagerorte/7/');
     expect(screen.getByText(/Grace/)).toBeInTheDocument();
     expect(screen.getByText('Beginnt am').closest('p')).toHaveTextContent('05.07.2026');
-    expect(screen.getByText('Geschätzte Abreise').closest('p')).toHaveTextContent('05.07.2026, 09:30');
-    expect(screen.getByText('Geschätzte Rückkehr').closest('p')).toHaveTextContent('05.07.2026, 18:00');
+    expect(screen.queryByText('Geschätzte Abreise')).not.toBeInTheDocument();
+    expect(screen.queryByText('Geschätzte Rückkehr')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ada Kind' })).toHaveAttribute('href', '/kid_details/21');
     expect(screen.getByText('Asthmaspray')).toBeInTheDocument();
     expect(screen.getByText('Allergie')).toBeInTheDocument();
-    expect(screen.getByText('warm')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'SWP bearbeiten' })).toHaveAttribute('href', '/schwerpunkt/3/update');
-    expect(screen.getByRole('link', { name: 'Essen bearbeiten' })).toHaveAttribute('href', '/swpmeals/3');
+    const mealsCard = screen.getByRole('heading', { name: 'Essen' }).closest('.card');
+    expect(mealsCard).toHaveClass('focus-meals-card');
+    expect(within(mealsCard).getByText('warm')).toBeInTheDocument();
+    const editFocus = screen.getByRole('link', { name: 'SWP bearbeiten' });
+    expect(editFocus).toHaveAttribute('href', '/schwerpunkt/3/update');
+    expect(editFocus.closest('.focus-detail-actions')).not.toBeNull();
+    expect(within(mealsCard).getByRole('link', { name: 'Essen bearbeiten' })).toHaveAttribute('href', '/swpmeals/3');
+    expect(within(mealsCard).getByRole('link', { name: 'Essen bearbeiten' }).closest('.react-actions')).not.toBeNull();
   });
 
   it('retains the create form, current option lists, and REST target', () => {
     render(<FocusFormPage data={options} />);
 
     expect(screen.getByRole('heading', { name: 'Schwerpunkt erstellen' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Schwerpunktzeit').compareDocumentPosition(screen.getByLabelText('Schwerpunktname')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByLabelText('Schwerpunktname')).toBeRequired();
     expect(screen.getByLabelText('Schwerpunktname').form).toHaveAttribute('action', '/schwerpunkt/create');
     expect(screen.getByRole('option', { name: 'Waldplatz' })).toHaveValue('7');
-    expect(screen.getByRole('option', { name: 'Grace' })).toHaveValue('5');
+    expect(screen.getByRole('group', { name: 'Lagert ihr aus?' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Ja' })).not.toBeChecked();
+    expect(screen.getByRole('group', { name: 'Betreuende' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Grace' })).toHaveAttribute('value', '5');
+    expect(screen.getByRole('checkbox', { name: 'Grace' })).not.toBeChecked();
     expect(screen.getByRole('option', { name: 'Woche 1 (3 Tage) - T2-2026' })).toHaveValue('11');
   });
 
@@ -152,10 +165,18 @@ describe('Schwerpunkte pages', () => {
     expect(screen.getByRole('heading', { name: 'Schwerpunkt updaten' })).toBeInTheDocument();
     expect(screen.getByLabelText('Schwerpunktname')).toHaveValue('Wald');
     expect(screen.getByLabelText('Ort')).toHaveValue('7');
-    expect(screen.getByLabelText('Betreuende')).toHaveValue(['5']);
+    expect(screen.getByRole('checkbox', { name: 'Grace' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Grace' })).toHaveAttribute('name', 'betreuende');
     expect(screen.getByLabelText('Schwerpunktzeit')).toHaveValue('11');
-    expect(screen.getByLabelText('Auslagern')).toBeChecked();
-    expect(screen.getByLabelText('Geplante Abreise')).toHaveValue('2026-07-05T09:30');
+    expect(screen.getByRole('group', { name: 'Lagert ihr aus?' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Ja' })).toBeChecked();
+    expect(screen.getByLabelText('Ort').compareDocumentPosition(screen.getByRole('group', { name: 'Lagert ihr aus?' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByLabelText('Geplante Abreise')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Geplante Ankunft')).not.toBeInTheDocument();
+    const cancel = screen.getByRole('link', { name: 'Cancel' });
+    expect(cancel.parentElement).toHaveClass('form-buttons');
+    expect(cancel.parentElement).toContainElement(screen.getByRole('button', { name: 'Speichern' }));
+    expect(screen.getByLabelText('Schwerpunktzeit').compareDocumentPosition(screen.getByLabelText('Schwerpunktname')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByLabelText('Schwerpunktname').form).toHaveAttribute('action', '/schwerpunkt/3/update');
   });
 

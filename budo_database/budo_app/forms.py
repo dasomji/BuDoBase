@@ -161,8 +161,9 @@ class SchwerpunktForm(forms.ModelForm):
 
     class Meta:
         model = Schwerpunkte
-        fields = ['swp_name', 'ort', 'betreuende', 'beschreibung',
-                  'schwerpunktzeit', 'auslagern', 'geplante_abreise', 'geplante_ankunft']
+        fields = ['swp_name', 'ort', 'auslagern', 'betreuende', 'beschreibung',
+                  'schwerpunktzeit']
+        labels = {'auslagern': 'Lagert ihr aus?'}
         widgets = {
             'betreuende': forms.CheckboxSelectMultiple,
             'schwerpunktzeit': forms.Select(choices=Schwerpunktzeit.WOCHEN_AUSWAHL)

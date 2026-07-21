@@ -57,10 +57,6 @@
             {% endfor %}
           </table>
         </div>
-        {%if schwerpunkt.auslagern %}
-        <p><span class="label">Geschätzte Abreise</span>: {{ schwerpunkt.geplante_abreise }}</p>
-        <p><span class="label">Geschätzte Rückkehr</span>: {{ schwerpunkt.geplante_ankunft }}</p>
-        {% endif %}
         <div class="button-container">
           <div class="form-buttons">
             <a href="{% url 'schwerpunkt-update' pk=schwerpunkt.pk %}" class="button">SWP bearbeiten</a>
