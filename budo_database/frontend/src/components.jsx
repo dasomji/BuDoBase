@@ -101,8 +101,24 @@ export function GlobalSearch({ data, onNavigate = path => window.location.assign
 
 export function Header({ title, authenticated, searchData, action }) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const headerRef = useRef(null);
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      const height = headerRef.current?.getBoundingClientRect().height || 0;
+      document.documentElement.style.setProperty('--app-header-height', `${height}px`);
+    };
+    updateHeaderHeight();
+    window.addEventListener('resize', updateHeaderHeight);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateHeaderHeight);
+    if (headerRef.current) observer?.observe(headerRef.current);
+    return () => {
+      window.removeEventListener('resize', updateHeaderHeight);
+      observer?.disconnect();
+      document.documentElement.style.removeProperty('--app-header-height');
+    };
+  }, [searchOpen]);
   return (
-    <header id="headermenu">
+    <header id="headermenu" ref={headerRef}>
       <div id="header-content" className={searchOpen ? 'search-open' : ''}>
         {authenticated
           ? <SidebarTrigger id="menu-button" aria-label="Sidebar ein- oder ausklappen" />
@@ -187,7 +203,7 @@ function compareTableValues(left, right) {
   return leftText.localeCompare(rightText, 'de', { numeric: true, sensitivity: 'base' });
 }
 
-export function SearchTable({ columns, rows, showFilter = false, id = 'kids-table', empty = 'Keine Einträge' }) {
+export function SearchTable({ columns, rows, showFilter = false, id = 'kids-table', empty = 'Keine Einträge', beforeFilter = null }) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState(null);
   const visibleRows = useMemo(() => {
@@ -210,7 +226,12 @@ export function SearchTable({ columns, rows, showFilter = false, id = 'kids-tabl
   }));
   return (
     <>
-      {showFilter && <input className="filter-table" type="search" placeholder="Kinder filtern..." aria-label="Kinder filtern" value={query} onChange={event => setQuery(event.target.value)} />}
+      {(beforeFilter || showFilter) && (
+        <div className={beforeFilter ? 'table-sticky-controls' : ''}>
+          {beforeFilter}
+          {showFilter && <input className="filter-table" type="search" placeholder="Kinder filtern..." aria-label="Kinder filtern" value={query} onChange={event => setQuery(event.target.value)} />}
+        </div>
+      )}
       <div className="table-container">
         <table id={id}>
           <thead><tr className="table-header">{columns.map((column, index) => {

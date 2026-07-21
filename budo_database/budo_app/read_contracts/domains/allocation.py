@@ -99,6 +99,7 @@ def build_allocation_contract(request):
                     kid.kid_vorname, kid.kid_nachname
                 ),
                 "age": age,
+                "budo_family": kid.budo_family,
                 "siblings": kid.get_clean_geschwister(),
                 "focus_ids": focus_ids,
                 "choices": [

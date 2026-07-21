@@ -25,6 +25,7 @@ export default function App({
   const route = useMemo(() => parseRoute(window.location.pathname), []);
   const [bootstrap, setBootstrap] = useState(null);
   const [bootstrapError, setBootstrapError] = useState(null);
+  const [pageState, setPageState] = useState({});
   const [routeState, setRouteState] = useState({
     loading: false,
     data: null,
@@ -137,7 +138,7 @@ export default function App({
     }
     let responsePayload = {};
     try { responsePayload = await response.json(); } catch { responsePayload = {}; }
-    await refreshRoute();
+    await refreshRoute({ preserveData: true });
     return responsePayload;
   };
 
@@ -165,14 +166,14 @@ export default function App({
             : 'Realtime-Verbindung unterbrochen. Daten werden abgeglichen…'}
         </p>
       )}
-      {renderRoute(route, { data, mutate, refresh: refreshRoute, fetchImpl, realtimeSync })}
+      {renderRoute(route, { data, mutate, refresh: refreshRoute, fetchImpl, realtimeSync, pageState, setPageState })}
     </>
   );
   if (route.standalone) return content;
   return (
     <ApplicationShell
       sidebar={data.authenticated ? <AppSidebar /> : null}
-      header={<Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data) : null} />}
+      header={<Header title={title} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data, { pageState, setPageState }) : null} />}
     >
       {content}
     </ApplicationShell>

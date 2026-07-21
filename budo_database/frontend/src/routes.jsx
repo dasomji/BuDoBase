@@ -47,8 +47,8 @@ export function resolveRouteTitle(route, data) {
   return route.resolveTitle?.(route, data) || route.title;
 }
 
-export function routeHeaderAction(route, data) {
-  return route.headerAction?.(data) || null;
+export function routeHeaderAction(route, data, pageContext = {}) {
+  return route.headerAction?.(data, pageContext) || null;
 }
 
 export function isPublicRoute(route) {
