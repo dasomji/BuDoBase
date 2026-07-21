@@ -9,6 +9,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.template import loader
 from django.urls import reverse_lazy
+from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView
@@ -292,6 +293,7 @@ def kitchen(request):
 
 
 @login_required
+@never_cache
 def swp_einteilung(request, week):
     profil = Profil.objects.get(user=request.user)
     active_turnus = profil.turnus

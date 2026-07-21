@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { Card, Column, Columns, FieldList, findById, MapCard, NativeForm, RestForm, SearchTable } from '../components';
 import { displayOrPlaceholder, formatGermanDate, linkKid, MealTable, NotFoundPage, yesNo } from './shared';
 
@@ -17,11 +19,46 @@ const formatGermanDateTime = value => {
   return match ? `${match[3]}.${match[2]}.${match[1]}, ${match[4]}:${match[5]}` : value;
 };
 
+const MAP_WEEK_COOKIE = 'swp_map_week';
+
+const storedMapWeek = () => {
+  if (typeof document === 'undefined') return 'w1';
+  const value = document.cookie.split('; ').find(cookie => cookie.startsWith(`${MAP_WEEK_COOKIE}=`))?.split('=')[1];
+  return value === 'w2' ? 'w2' : 'w1';
+};
+
 export function FocusDashboardPage({ data }) {
+  const [mapWeek, setMapWeek] = useState(storedMapWeek);
   const group = week => data.focuses.filter(focus => focus.week === week);
-  const columns = [{ key: 'name', label: 'Name', render: focus => <a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a> }, { key: 'place', label: 'Ort', render: focus => focus.place_id ? <a href={`/auslagerorte/${focus.place_id}/`}>{focus.place}</a> : '---' }, { key: 'carers', label: 'Betreuende', render: focus => focus.carers || '---' }, { key: 'off_site', label: 'Auslagern', render: focus => yesNo(focus.off_site) }, { key: 'kids', label: 'Kinder', render: focus => focus.kid_count, sortValue: focus => focus.kid_count }, { key: 'meals', label: 'Essenseinteilung', render: focus => yesNo(focus.meals_assigned), sortValue: focus => focus.meals_assigned }, { key: 'actions', label: 'Aktionen', sortable: false, render: focus => <><a href={`/swpmeals/${focus.id}`}>🍔</a> <a href={`/schwerpunkt/${focus.id}/update`}>✏️</a> <a href={`/schwerpunkt/${focus.id}/`}>👁️</a></> }];
+  const selectMapWeek = week => {
+    setMapWeek(week);
+    document.cookie = `${MAP_WEEK_COOKIE}=${week}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  };
+  const columns = [
+    {
+      key: 'name',
+      label: 'Name',
+      render: focus => <strong><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}{!focus.meals_assigned && ' ❗🍔'}</a></strong>,
+    },
+    { key: 'place', label: 'Ort', render: focus => focus.place_id ? <a href={`/auslagerorte/${focus.place_id}/`}>{focus.place}</a> : '---' },
+    { key: 'carers', label: 'Betreuende', render: focus => focus.carers || '---' },
+    { key: 'off_site', label: 'Auslagern', render: focus => yesNo(focus.off_site) },
+    { key: 'kids', label: 'Kinder', render: focus => focus.kid_count, sortValue: focus => focus.kid_count },
+  ];
   const tables = [['u', 'Unklar Wann'], ['w1', 'Woche 1'], ['w2', 'Woche 2']].filter(([week]) => group(week).length || week !== 'u');
-  return <Columns><Column id="left-column"><MapCard places={data.focuses.filter(focus => focus.coordinates).map(focus => ({ id: focus.id, name: focus.name, coordinates: focus.coordinates, href: `/schwerpunkt/${focus.id}/` }))} /></Column><Column id="right-column" className="normal-column">{tables.map(([week, title]) => <Card title={title} className="transparent" key={week}><SearchTable columns={columns} rows={group(week)} />{week !== 'u' && <div className="react-actions"><a className="button" href={`/swp-einteilung-${week}`}>Kinder einteilen</a></div>}</Card>)}</Column></Columns>;
+  return <Columns className="focus-dashboard">
+    <Column id="left-column" className="focus-weeks-column">
+      {tables.map(([week, title]) => <Card title={title} className="transparent" key={week} headerAction={week !== 'u' ? <a className="button" href={`/swp-einteilung-${week}`}>Kinder einteilen</a> : null}><SearchTable columns={columns} rows={group(week)} /></Card>)}
+    </Column>
+    <Column id="right-column" className="focus-map-column">
+      <MapCard
+        places={data.focuses.filter(focus => focus.week === mapWeek && focus.coordinates).map(focus => ({ id: focus.id, name: focus.name, coordinates: focus.coordinates, href: `/schwerpunkt/${focus.id}/` }))}
+        headerAction={<span className="map-week-switch" role="group" aria-label="Kartenwoche">
+          {['w1', 'w2'].map(week => <button key={week} type="button" className="button" aria-pressed={mapWeek === week} onClick={() => selectMapWeek(week)}>Woche {week.slice(1)}</button>)}
+        </span>}
+      />
+    </Column>
+  </Columns>;
 }
 
 export function FocusDetailPage({ data, id }) {

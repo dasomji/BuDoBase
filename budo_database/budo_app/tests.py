@@ -92,6 +92,29 @@ def sample_excel_frames():
     return budo, budo_raw
 
 
+class SchwerpunktAllocationCachingTest(TestCase):
+    def setUp(self):
+        self.turnus = Turnus.objects.create(
+            turnus_nr=88,
+            turnus_beginn=date(2026, 7, 1),
+        )
+        self.user = User.objects.create_user(
+            username="allocation-cache-user",
+            password="secret",
+        )
+        self.user.profil.turnus = self.turnus
+        self.user.profil.save()
+        self.client.force_login(self.user)
+
+    def test_allocation_pages_are_not_browser_cached(self):
+        for route_name in ("swp-einteilung-w1", "swp-einteilung-w2"):
+            with self.subTest(route_name=route_name):
+                response = self.client.get(reverse(route_name))
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("no-store", response.headers["Cache-Control"])
+
+
 class ExcelValueParsingTest(SimpleTestCase):
     def test_uppercase_ja_is_parsed_as_previous_budo_experience(self):
         for value in ("JA", "JA\n", "JA, mehrmals \n"):
