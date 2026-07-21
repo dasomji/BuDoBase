@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date
 
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
@@ -60,8 +60,6 @@ class FocusContractTests(TestCase):
             schwerpunktzeit=self.turnus.schwerpunktzeit_set.get(woche="w1"),
             ort=self.place,
             auslagern=True,
-            geplante_abreise=datetime(2026, 7, 5, 9, 30, tzinfo=timezone.utc),
-            geplante_ankunft=datetime(2026, 7, 5, 18, 0, tzinfo=timezone.utc),
         )
         self.focus.betreuende.add(self.carer)
         self.focus.meals.filter(day=1, meal_type="lunch").update(
@@ -149,8 +147,6 @@ class FocusContractTests(TestCase):
             "duration": 3,
             "start": "2026-07-05",
             "off_site": True,
-            "departure": "2026-07-05T09:30:00Z",
-            "arrival": "2026-07-05T18:00:00Z",
             "place_id": self.place.id,
             "place": "Waldplatz",
             "coordinates": "48.5, 15.0",
@@ -230,8 +226,6 @@ class FocusContractTests(TestCase):
             "description": "Bäume kennenlernen",
             "time_id": self.focus.schwerpunktzeit_id,
             "off_site": True,
-            "departure": "2026-07-05T09:30:00Z",
-            "arrival": "2026-07-05T18:00:00Z",
             "place_id": self.place.id,
             "carer_ids": [self.carer.id],
         })
@@ -356,6 +350,8 @@ class FocusContractTests(TestCase):
         self.assertFalse(invalid.json()["ok"])
         self.assertTrue(invalid.json()["errors"])
 
+        self.focus.auslagern = False
+        self.focus.save(update_fields=["auslagern"])
         saved = self.client.post(
             reverse("form-submit-api"),
             {
@@ -366,12 +362,12 @@ class FocusContractTests(TestCase):
                 "beschreibung": "Aktualisiert",
                 "schwerpunktzeit": self.focus.schwerpunktzeit_id,
                 "auslagern": "on",
-                "geplante_abreise": "2026-07-05T10:00",
-                "geplante_ankunft": "2026-07-05T17:00",
             },
         )
 
         self.assertEqual(saved.status_code, 200)
+        self.focus.refresh_from_db()
+        self.assertTrue(self.focus.auslagern)
         self.assertEqual(saved.json(), {
             "ok": True,
             "redirect": f"/schwerpunkt/{self.focus.id}/",
@@ -442,8 +438,6 @@ class FocusContractTests(TestCase):
                 "beschreibung": "Bühne",
                 "schwerpunktzeit": self.focus.schwerpunktzeit_id,
                 "auslagern": "",
-                "geplante_abreise": "",
-                "geplante_ankunft": "",
             },
         )
 

@@ -313,6 +313,10 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
   const contents = (submitting = false) => (
     <>
       {fields.map(field => {
+        if (field.type === 'checkbox-group') {
+          const selected = new Set((field.value || []).map(String));
+          return <fieldset className="checkbox-group" key={field.name}><legend>{field.label}</legend><div className="checkbox-group-options">{field.options?.map(option => <label className="checkbox-row" key={option.value}><input type="checkbox" name={field.name} value={option.value} defaultChecked={selected.has(String(option.value))} />{option.label}</label>)}</div></fieldset>;
+        }
         if (field.type === 'select') {
           return <label key={field.name}>{field.label}<select name={field.name} defaultValue={field.value ?? ''} multiple={field.multiple}>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
         }
@@ -320,12 +324,12 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
           return <label key={field.name}>{field.label}<textarea name={field.name} defaultValue={field.value ?? ''} required={field.required} /></label>;
         }
         if (field.type === 'checkbox') {
+          if (field.groupLabel) return <fieldset className="checkbox-group" key={field.name}><legend>{field.groupLabel}</legend><label className="checkbox-row"><input type="checkbox" name={field.name} defaultChecked={Boolean(field.value)} />{field.label}</label></fieldset>;
           return <label className="checkbox-row" key={field.name}><input type="checkbox" name={field.name} defaultChecked={Boolean(field.value)} />{field.label}</label>;
         }
         return <label key={field.name}>{field.label}<input name={field.name} type={field.type || 'text'} defaultValue={field.type === 'file' ? undefined : field.value ?? ''} required={field.required} multiple={field.multiple} accept={field.accept} min={field.min} step={field.step} /></label>;
       })}
-      {children}
-      <div className="form-buttons"><input className="button" type="submit" value={submit} disabled={submitting} /></div>
+      <div className="form-buttons">{children}<input className="button" type="submit" value={submit} disabled={submitting} /></div>
     </>
   );
   if (method.toLowerCase() === 'post') {

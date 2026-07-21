@@ -16,7 +16,6 @@ from budo_app.read_contracts.common import (
     active_turnus_id,
     kid_full_name,
     required_query_integer,
-    serialize_utc_datetime,
 )
 
 
@@ -117,8 +116,6 @@ def _focus_detail(focus):
         "duration": focus.schwerpunktzeit.dauer,
         "start": focus.schwerpunktzeit.swp_beginn.isoformat(),
         "off_site": focus.auslagern,
-        "departure": serialize_utc_datetime(focus.geplante_abreise),
-        "arrival": serialize_utc_datetime(focus.geplante_ankunft),
         "place_id": focus.ort_id,
         "place": focus.ort.name if focus.ort else None,
         "coordinates": focus.ort.koordinaten if focus.ort else "",
@@ -196,8 +193,6 @@ def _focus_form_value(focus):
         "description": focus.beschreibung,
         "time_id": focus.schwerpunktzeit_id,
         "off_site": focus.auslagern,
-        "departure": serialize_utc_datetime(focus.geplante_abreise),
-        "arrival": serialize_utc_datetime(focus.geplante_ankunft),
         "place_id": focus.ort_id,
         "carer_ids": [carer.id for carer in focus.route_carers],
     }

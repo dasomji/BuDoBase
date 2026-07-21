@@ -45,8 +45,11 @@ describe('allocation page', () => {
     expect(stats).toHaveTextContent('Ø Alter: 12,5');
     expect(stats).toHaveTextContent('Geschlechter: 1 ♂ · 1 ♀ · 1 ⚧');
     expect(stats).toHaveTextContent('BuDo-Familien: 1 S · 1 M · 0 L · 1 XL');
-    expect(within(card).getByRole('heading', { name: 'Wald' })).toHaveClass('allocation-print-title');
     expect(within(card).getByRole('list')).toHaveClass('allocation-kids');
+    const printPages = screen.getByRole('region', { name: 'SWP-Listen', hidden: true });
+    const printPage = within(printPages).getByRole('heading', { name: 'Wald', hidden: true }).closest('.allocation-print-page');
+    expect(within(printPage).getAllByRole('listitem', { hidden: true }).map(item => item.textContent)).toEqual(['Ada', 'Bea', 'Chris']);
+    expect(within(printPage).queryByRole('link', { hidden: true })).not.toBeInTheDocument();
     expect(screen.getAllByRole('option', { name: 'Wald' })[0].selected).toBe(true);
     expect(screen.getAllByRole('button', { name: '1' })[0]).toHaveClass('swp-medal', 'swp-medal-1', 'active');
     expect(screen.getAllByRole('button', { name: '2' })[0]).toHaveClass('swp-medal-2');

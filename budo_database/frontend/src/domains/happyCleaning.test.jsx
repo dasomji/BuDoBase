@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute } from '../routes';
 import {
+  HappyCleaningCreateButton,
   HappyCleaningManagementPage,
   HappyCleaningOverviewPage,
   HappyCleaningPrintPage,
@@ -85,7 +86,7 @@ describe('Happy Cleaning management', () => {
     );
   });
 
-  it('lists contiguous events, creates, and requires the event name for eligible deletion', async () => {
+  it('lists contiguous events and requires the event name for eligible deletion', async () => {
     const mutate = vi.fn().mockResolvedValue({ ok: true });
     render(<HappyCleaningOverviewPage data={{ events: [
       { id: 7, display_number: 1, revision: 2, can_delete: false },
@@ -102,8 +103,7 @@ describe('Happy Cleaning management', () => {
       'href', '/happy-cleaning/7/print/',
     );
     expect(screen.queryByRole('button', { name: 'Happy Cleaning 1 löschen' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' }));
-    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('button', { name: 'Happy Cleaning hinzufügen' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Happy Cleaning 2 löschen' }));
 
     const dialog = within(screen.getByRole('dialog', { name: 'Happy Cleaning 2 löschen' }));
@@ -116,16 +116,28 @@ describe('Happy Cleaning management', () => {
     expect(deleteButton).toBeEnabled();
     fireEvent.click(deleteButton);
 
-    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(2));
-    expect(mutate.mock.calls[0][0]).toBe('/api/happy-cleaning/events/create/');
-    expect(mutate.mock.calls[1][0]).toBe('/api/happy-cleaning/events/9/delete/');
-    expect(mutate.mock.calls[1][1]).toMatchObject({ expected_revision: 4 });
+    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
+    expect(mutate.mock.calls[0][0]).toBe('/api/happy-cleaning/events/9/delete/');
+    expect(mutate.mock.calls[0][1]).toMatchObject({ expected_revision: 4 });
+  });
+
+  it('creates Happy Cleaning from the header action', async () => {
+    const mutate = vi.fn().mockResolvedValue({ ok: true });
+    render(<HappyCleaningCreateButton mutate={mutate} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' }));
+
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/create/',
+      expect.objectContaining({ request_id: expect.any(String) }),
+    ));
   });
 
   it('renders compact expandable cards, progress, forms, and accessible ordering', async () => {
     const mutate = vi.fn().mockResolvedValue({ ok: true });
     render(<HappyCleaningManagementPage data={stationsData} mutate={mutate} />);
 
+    expect(screen.queryByRole('link', { name: 'Zur Übersicht' })).not.toBeInTheDocument();
     expect(screen.getByText('50%')).toBeInTheDocument();
     expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.queryByLabelText('Name der Station Speisesaal')).not.toBeInTheDocument();

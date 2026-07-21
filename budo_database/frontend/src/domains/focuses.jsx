@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Card, Column, Columns, FieldList, findById, MapCard, NativeForm, RestForm, SearchTable } from '../components';
+import { Card, Column, Columns, findById, MapCard, NativeForm, RestForm, SearchTable } from '../components';
 import { displayOrPlaceholder, formatGermanDate, linkKid, MealTable, NotFoundPage, yesNo } from './shared';
 
 const focusKidColumns = [
@@ -12,12 +12,6 @@ const focusKidColumns = [
   { key: 'drugs', label: 'Medikamente', render: row => displayOrPlaceholder(row.drugs) },
   { key: 'illness', label: 'Gesundheitliches', render: row => displayOrPlaceholder(row.illness) },
 ];
-
-const formatGermanDateTime = value => {
-  if (!value) return value;
-  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  return match ? `${match[3]}.${match[2]}.${match[1]}, ${match[4]}:${match[5]}` : value;
-};
 
 const MAP_WEEK_COOKIE = 'swp_map_week';
 
@@ -61,25 +55,36 @@ export function FocusDashboardPage({ data }) {
   </Columns>;
 }
 
+function FocusDetails({ focus, kidCount }) {
+  const fields = [
+    ['Ort', focus.place_id ? <a href={`/auslagerorte/${focus.place_id}/`}>{focus.place}</a> : 'Noch unklar'],
+    ['Auslagern', yesNo(focus.off_site)],
+    ['Betreuende', focus.carers],
+    ['Kinder', kidCount],
+    ['Wann', focus.time],
+    ['Beginnt am', formatGermanDate(focus.start)],
+    ['Beschreibung', focus.description, 'full-width'],
+  ];
+  return <div className="focus-detail-fields">{fields.map(([label, value, className]) => <p className={className || ''} key={label}><span className="label">{label}</span>: {value}</p>)}</div>;
+}
+
 export function FocusDetailPage({ data, id }) {
   const focus = data.focus;
   if (!focus) return <NotFoundPage />;
   const kids = data.kids;
   const mapPlaces = focus.place_id ? [{ id: focus.place_id, name: focus.place, coordinates: focus.coordinates }] : [];
-  return <Columns><Column id="left-column"><Card title={focus.name}><FieldList items={[["Beschreibung", focus.description], ["Kinder", kids.length], ["Ort", focus.place_id ? <a href={`/auslagerorte/${focus.place_id}/`}>{focus.place}</a> : 'Noch unklar'], ["Auslagern", yesNo(focus.off_site)], ["Betreuende", focus.carers], ["Wann", focus.time], ["Beginnt am", formatGermanDate(focus.start)], ["Geschätzte Abreise", focus.off_site ? formatGermanDateTime(focus.departure) : null], ["Geschätzte Rückkehr", focus.off_site ? formatGermanDateTime(focus.arrival) : null]]} /><MealTable focus={focus} /><div className="react-actions"><a className="button" href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</a><a className="button" href={`/swpmeals/${focus.id}`}>Essen bearbeiten</a></div></Card><MapCard places={mapPlaces} /></Column><Column id="right-column"><SearchTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
+  return <Columns><Column id="left-column"><Card title={focus.name}><FocusDetails focus={focus} kidCount={kids.length} /><div className="react-actions focus-detail-actions"><a className="button" href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</a></div></Card><Card title="Essen" className="focus-meals-card"><MealTable focus={focus} /><div className="react-actions"><a className="button" href={`/swpmeals/${focus.id}`}>Essen bearbeiten</a></div></Card><MapCard places={mapPlaces} /></Column><Column id="right-column"><SearchTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
 }
 
 export function FocusFormPage({ data, id }) {
   const focus = id ? data.focus : null;
   const fields = [
+    { name: 'schwerpunktzeit', label: 'Schwerpunktzeit', type: 'select', value: focus?.time_id, options: data.focus_times.map(item => ({ value: item.id, label: item.label })) },
     { name: 'swp_name', label: 'Schwerpunktname', value: focus?.name, required: true },
     { name: 'ort', label: 'Ort', type: 'select', value: focus?.place_id, options: [{ value: '', label: '---------' }, ...data.places.map(item => ({ value: item.id, label: item.name }))] },
-    { name: 'betreuende', label: 'Betreuende', type: 'select', multiple: true, value: focus?.carer_ids || [], options: data.team.map(item => ({ value: item.id, label: item.rufname })) },
+    { name: 'auslagern', label: 'Ja', groupLabel: 'Lagert ihr aus?', type: 'checkbox', value: focus?.off_site ?? false },
+    { name: 'betreuende', label: 'Betreuende', type: 'checkbox-group', value: focus?.carer_ids || [], options: data.team.map(item => ({ value: item.id, label: item.rufname })) },
     { name: 'beschreibung', label: 'Beschreibung', type: 'textarea', value: focus?.description },
-    { name: 'schwerpunktzeit', label: 'Schwerpunktzeit', type: 'select', value: focus?.time_id, options: data.focus_times.map(item => ({ value: item.id, label: item.label })) },
-    { name: 'auslagern', label: 'Auslagern', type: 'checkbox', value: focus?.off_site },
-    { name: 'geplante_abreise', label: 'Geplante Abreise', type: 'datetime-local', value: focus?.departure?.slice(0, 16) },
-    { name: 'geplante_ankunft', label: 'Geplante Ankunft', type: 'datetime-local', value: focus?.arrival?.slice(0, 16) },
   ];
   return <Columns><Column id="single-column"><Card title={`Schwerpunkt ${focus ? 'updaten' : 'erstellen'}`}><NativeForm token={data.csrf_token} action={focus ? `/schwerpunkt/${focus.id}/update` : '/schwerpunkt/create'} fields={fields}><a className="button" href="/swp-dashboard/">Cancel</a></NativeForm></Card></Column></Columns>;
 }

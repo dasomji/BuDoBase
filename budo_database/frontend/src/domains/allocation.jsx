@@ -32,7 +32,6 @@ function AllocationCard({ focus, kids, showKids }) {
   const assignedKids = kids.filter(kid => focus.kid_ids.includes(kid.id));
   return (
     <Card title={`${focus.name}: ${focus.kid_ids.length}`}>
-      <h2 className="allocation-print-title">{focus.name}</h2>
       <AllocationStats focus={focus} showKids={showKids} />
       <ul className={`allocation-kids ${showKids ? '' : 'screen-hidden-kids'}`} aria-hidden={!showKids}>
         {assignedKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}
@@ -134,6 +133,9 @@ export function AllocationPage({ data, week, mutate, showKids = true }) {
       <Column id="right-column" className="allocation-table-column">
         <SearchTable columns={columns} rows={rows} showFilter beforeFilter={overview} />
       </Column>
+      <section className="allocation-print-pages" aria-label="SWP-Listen">
+        {focuses.map(focus => <article className="allocation-print-page" key={focus.id}><h1>{focus.name}</h1><ul>{data.kids.filter(kid => focus.kid_ids.includes(kid.id)).map(kid => <li key={kid.id}>{kid.full_name}</li>)}</ul></article>)}
+      </section>
     </main>
   );
 }

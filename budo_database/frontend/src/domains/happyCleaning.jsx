@@ -67,6 +67,23 @@ function DeleteConfirmationDialog({ event, onCancel, onConfirm }) {
   );
 }
 
+export function HappyCleaningCreateButton({ mutate }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const create = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await mutate('/api/happy-cleaning/events/create/', { request_id: requestId() });
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return <><button className="button" type="button" disabled={busy} onClick={create}>Happy Cleaning hinzufügen</button>{error && <span className="error header-action-error" role="alert">{error}</span>}</>;
+}
+
 export function HappyCleaningOverviewPage({ data, mutate }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -97,11 +114,6 @@ export function HappyCleaningOverviewPage({ data, mutate }) {
           onConfirm={() => remove(deleteCandidate)}
         />
       )}
-      <div className="happy-cleaning-toolbar">
-        <button className="button" type="button" disabled={busy} onClick={() => run('/api/happy-cleaning/events/create/')}>
-          Happy Cleaning hinzufügen
-        </button>
-      </div>
       {error && <p className="error" role="alert">{error}</p>}
       {!data.events.length && <p>Noch kein Happy Cleaning angelegt.</p>}
       <ol className="happy-cleaning-events">
@@ -449,7 +461,6 @@ export function HappyCleaningManagementPage({ data, mutate, realtimeSync }) {
   return (
     <main className="happy-cleaning-page happy-cleaning-management" id="body-container">
       <div className="happy-cleaning-toolbar">
-        <a className="button" href="/happy-cleaning/">Zur Übersicht</a>
         <button className="button" type="button" onClick={() => setCopyOpen(true)}>Stationen kopieren</button>
       </div>
       {error && <p className="error" role="alert">{error}</p>}
@@ -484,6 +495,7 @@ export const happyCleaningRoutes = [
     title: 'Happy Cleaning',
     domain: 'happy-cleaning',
     readContractKey: 'happy-cleaning-overview',
+    headerAction: (_data, { mutate }) => <HappyCleaningCreateButton mutate={mutate} />,
     render: ({ data, mutate }) => <HappyCleaningOverviewPage data={data} mutate={mutate} />,
   },
   {
