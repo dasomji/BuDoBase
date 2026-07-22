@@ -157,6 +157,19 @@ class PocketMoneyFormTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.kid.get_taschengeld_sum(), -1)
 
+    def test_checkout_uses_pfand_adjusted_balance_for_transaction_sign(self):
+        self.kid.pfand = 1
+        self.kid.save()
+        Geld.objects.create(kinder=self.kid, added_by=self.user, amount=0.1)
+
+        response = self.client.post(
+            reverse("form-submit-api"),
+            {"_target": f"/check_out/{self.kid.id}", "early_abreise_date": "2026-07-02", "amount": 0.15},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.kid.get_remaining_taschengeld(), 0)
+
     def test_checkout_rejects_a_negative_amount_without_checking_out(self):
         self.kid.anwesend = True
         self.kid.save()

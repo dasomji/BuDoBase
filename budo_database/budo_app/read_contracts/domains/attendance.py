@@ -45,6 +45,7 @@ def _selected_attendance_kid(request):
         "ausweis",
         "e_card",
         "einverstaendnis_erklaerung",
+        "pfand",
     )
 
 
@@ -57,10 +58,13 @@ def check_out(request):
     pocket_money = Geld.objects.filter(kinder_id=kid["id"]).aggregate(
         total=Sum("amount"),
     )["total"]
+    remaining_pocket_money = (pocket_money or 0) - (
+        kid["pfand"] * Kinder.PFAND_VALUE
+    )
     return {
         "kid": {
             **_attendance_kid(kid),
-            "pocket_money": serialize_money(pocket_money),
+            "pocket_money": serialize_money(remaining_pocket_money),
         },
     }
 

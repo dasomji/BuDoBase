@@ -395,7 +395,7 @@ def check_out(request, id):
         'schwerpunkte': schwerpunkte,
         'auslagerorte': auslagerorte,
     }
-    pocket_money_balance = this_kid.get_taschengeld_sum()
+    pocket_money_balance = this_kid.get_remaining_taschengeld()
 
     if request.method == 'POST':
         check_out_form = CheckOutForm(request.POST, instance=this_kid)
