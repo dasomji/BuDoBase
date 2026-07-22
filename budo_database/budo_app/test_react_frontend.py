@@ -32,6 +32,17 @@ class ReactShellTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, "/login/?next=/team/")
 
+    def test_kitchen_print_uses_the_current_react_page(self):
+        user = User.objects.create_user("kitchen-print-user", password="secret")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("kitchen"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-react-print-page="true"')
+        self.assertContains(response, "#root { display: block !important; }")
+        self.assertContains(response, "#legacy-print-root { display: none !important; }")
+
     def test_selected_profile_edit_deep_link_requires_profile_permission(self):
         editor = User.objects.create_user("profile-editor", password="secret")
         selected = User.objects.create_user("selected-profile").profil
@@ -156,6 +167,19 @@ class PocketMoneyFormTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.kid.get_taschengeld_sum(), -1)
+
+    def test_checkout_uses_pfand_adjusted_balance_for_transaction_sign(self):
+        self.kid.pfand = 1
+        self.kid.save()
+        Geld.objects.create(kinder=self.kid, added_by=self.user, amount=0.1)
+
+        response = self.client.post(
+            reverse("form-submit-api"),
+            {"_target": f"/check_out/{self.kid.id}", "early_abreise_date": "2026-07-02", "amount": 0.15},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.kid.get_remaining_taschengeld(), 0)
 
     def test_checkout_rejects_a_negative_amount_without_checking_out(self):
         self.kid.anwesend = True

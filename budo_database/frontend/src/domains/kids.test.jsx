@@ -193,7 +193,7 @@ describe('Kinder pages', () => {
         focus_w2: 'Theater',
         siblings: '---',
         tent_request: 'Ada',
-        food: '🥦',
+        food: '🌱',
         drugs: '',
         illness: '',
         note: '',

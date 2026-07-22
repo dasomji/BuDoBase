@@ -267,9 +267,9 @@ class FocusContractTests(TestCase):
         })
         self.assertEqual(response.json()["meal_choices"], [
             {"value": "", "label": "---------"},
+            {"value": "budo", "label": "BuDo"},
             {"value": "box", "label": "Box"},
-            {"value": "budo", "label": "Im BuDo"},
-            {"value": "warm", "label": "Warm geliefert"},
+            {"value": "warm", "label": "Warm"},
         ])
         self.assertEqual(response.json()["meal_types"], {
             "breakfast": "Frühstück",

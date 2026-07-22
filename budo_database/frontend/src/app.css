@@ -356,6 +356,56 @@
   text-align: center;
 }
 
+#body-container.focus-meals-page #single-column {
+  width: 100%;
+  max-width: 64rem;
+}
+
+.focus-meals-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--corner-rad);
+}
+
+.focus-meals-form-table {
+  width: 100%;
+  min-width: 40rem;
+}
+
+.focus-meals-form-table th,
+.focus-meals-form-table td {
+  padding: var(--s-padding);
+  border-bottom: 1px solid #8f8f8f;
+  vertical-align: middle;
+}
+
+.focus-meals-form-table thead th {
+  background-color: var(--dark-blue);
+  font-weight: 700;
+}
+
+.focus-meals-form-table tbody th {
+  background-color: var(--bg-blue);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.focus-meals-form-table select {
+  width: 100%;
+  min-width: 9rem;
+  border: 2px solid white;
+  border-radius: var(--corner-rad);
+  padding: var(--xs-padding);
+  background-color: white;
+  font-weight: 300;
+}
+
+.focus-meals-form > .button {
+  width: fit-content;
+  justify-self: end;
+}
+
 .react-map {
   min-height: 280px;
   display: grid;
@@ -378,6 +428,66 @@
 
 .focus-dashboard > .focus-map-column {
   flex: 1 1 0;
+}
+
+#body-container.kitchen-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.kitchen-layout > .detail-column,
+.kitchen-layout .card,
+.kitchen-layout .card-info-content {
+  min-width: 0;
+}
+
+.kitchen-layout .card-info-container {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.kitchen-meal-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--corner-rad);
+}
+
+.kitchen-meal-table-scroll:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.kitchen-meal-table-scroll > .meal-table {
+  width: 100%;
+  min-width: 36rem;
+}
+
+.focus-kitchen-info + .focus-kitchen-info {
+  margin-top: var(--l-padding);
+  padding-top: var(--l-padding);
+  border-top: 1px solid currentColor;
+}
+
+.focus-kitchen-info h3,
+.focus-kitchen-info h4 {
+  margin-top: var(--m-padding);
+}
+
+.focus-intolerances ul {
+  padding-left: var(--l-padding);
+  list-style: disc outside;
+}
+
+.kitchen-print-pages {
+  display: none;
+}
+
+@media only screen and (min-width: 1024px) {
+  #body-container.kitchen-layout {
+    grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
+  }
 }
 
 @media only screen and (min-width: 761px) {
@@ -1677,6 +1787,110 @@ input[name="amount"]::placeholder {
   .happy-cleaning-print-empty {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  #root {
+    min-height: 0;
+    background: white !important;
+  }
+
+  .kitchen-layout#body-container {
+    display: none !important;
+  }
+
+  .kitchen-print-pages {
+    display: block !important;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .kitchen-print-page {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .kitchen-print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .kitchen-print-page > h1,
+  .kitchen-print-focus-page .focus-kitchen-info > h1 {
+    margin: 0 0 8mm;
+    font-size: 24pt;
+    line-height: 1.15;
+  }
+
+  .kitchen-print-menu-page .print-nobreak,
+  .kitchen-print-focus-page .focus-kitchen-info {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .kitchen-print-menu-page .print-nobreak + .print-nobreak {
+    margin-top: 7mm;
+  }
+
+  .kitchen-print-menu-page .print-nobreak > h2 {
+    margin: 0 0 2mm;
+    font-size: 14pt;
+  }
+
+  .kitchen-print-page .kitchen-meal-table-scroll {
+    overflow: visible;
+  }
+
+  .kitchen-print-page .kitchen-meal-table-scroll > .meal-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+    padding: 0;
+    font-family: Arial, Helvetica, "Noto Color Emoji", "Segoe UI Emoji", sans-serif;
+    font-size: 9pt;
+  }
+
+  .kitchen-print-page .meal-table :is(th, td):first-child {
+    width: 12%;
+  }
+
+  .kitchen-print-page .meal-table :is(th, td):nth-child(2),
+  .kitchen-print-page .meal-table :is(th, td):nth-child(3),
+  .kitchen-print-page .meal-table :is(th, td):nth-child(4) {
+    width: 21%;
+  }
+
+  .kitchen-print-page .meal-table :is(th, td):last-child {
+    width: 25%;
+  }
+
+  .kitchen-print-page .meal-table th,
+  .kitchen-print-page .meal-table td {
+    padding: 1.5mm 2mm;
+    overflow-wrap: break-word;
+  }
+
+  .kitchen-print-kicker {
+    margin: 0 0 2mm;
+    font-size: 12pt;
+    font-weight: 700;
+  }
+
+  .kitchen-print-focus-page .focus-kitchen-info h3 {
+    margin-top: 7mm;
+  }
+
+  .kitchen-print-focus-page .focus-kitchen-info h4 {
+    margin-top: 4mm;
+  }
+
+  .kitchen-print-focus-page .focus-intolerances {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10mm;
   }
 
   .card-info-container {

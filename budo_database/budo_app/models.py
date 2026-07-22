@@ -95,7 +95,7 @@ class Profil(models.Model):
         if self.essen == "vt":
             return "🧀 Vegetarisch"
         if self.essen == "vn":
-            return "🥦 Vegan"
+            return "🌱 Vegan"
 
     def get_rolle(self):
         return dict(self.ROLLEN).get(self.rolle)
@@ -212,6 +212,8 @@ class Kinder(models.Model):
     came_back = models.DateField(null=True, blank=True)
     anmerkung_team = models.CharField(
         max_length=1000, null=True, default="", blank=True)
+    PFAND_VALUE = 0.25
+
     pfand = models.IntegerField(default=0)
     happy_cleaning_number = models.PositiveIntegerField(
         null=True,
@@ -263,7 +265,7 @@ class Kinder(models.Model):
     def get_veggie(self):
         if self.vegetarisch:
             if self.vegetarisch.lower() == "ja":
-                return "🥦"
+                return "🌱"
             elif str(self.vegetarisch).lower().strip() in ("nein", "nan"):
                 return "🥩"
             else:
@@ -343,8 +345,8 @@ class Kinder(models.Model):
         return sum((transaction.amount or 0) for transaction in self.geld.all())
 
     def get_remaining_taschengeld(self):
-        """Calculate remaining money after pfand deduction (0.25 per pfand)"""
-        return self.get_taschengeld_sum() - (self.pfand * 0.25)
+        """Calculate remaining money after pfand deduction."""
+        return self.get_taschengeld_sum() - (self.pfand * self.PFAND_VALUE)
 
     @classmethod
     def get_zugabreise_count(cls, turnus=None):

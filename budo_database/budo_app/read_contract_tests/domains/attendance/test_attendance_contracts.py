@@ -164,6 +164,20 @@ class AttendanceContractTests(TestCase):
             },
         })
 
+    def test_check_out_deducts_pfand_from_current_pocket_money(self):
+        self.active_kid.pfand = 2
+        self.active_kid.save()
+        Geld.objects.create(
+            kinder=self.active_kid,
+            added_by=self.user,
+            amount=12.5,
+        )
+
+        response = self.client.get(self.contract_url("check-out", self.active_kid))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["kid"]["pocket_money"], 12.0)
+
     def test_check_out_does_not_expose_a_cross_turnus_kid(self):
         response = self.client.get(self.contract_url("check-out", self.other_kid))
 

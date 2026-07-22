@@ -35,7 +35,7 @@ export function formatKidBirthday(kid) {
 }
 
 export function MealTable({ focus }) {
-  return <div className="card-table-container"><table className="card-table"><thead><tr><th /><th>Frühstück</th><th>Mittagessen</th><th>Abendessen</th></tr></thead><tbody>{Object.entries(focus.meals).map(([day, meals]) => <tr key={day}><td>Tag {day}</td><td>{displayOrPlaceholder(meals.breakfast)}</td><td>{displayOrPlaceholder(meals.lunch)}</td><td>{displayOrPlaceholder(meals.dinner)}</td></tr>)}</tbody></table></div>;
+  return <div className="card-table-container"><table className="card-table"><thead><tr><th /><th>Frühstück</th><th>Mittagessen</th><th>Abendessen</th></tr></thead><tbody>{Object.entries(focus.meals).map(([day, meals]) => <tr key={day}><th className="meal-day" scope="row">Tag {day}</th><td>{displayOrPlaceholder(meals.breakfast)}</td><td>{displayOrPlaceholder(meals.lunch)}</td><td>{displayOrPlaceholder(meals.dinner)}</td></tr>)}</tbody></table></div>;
 }
 
 export function NotFoundPage() {

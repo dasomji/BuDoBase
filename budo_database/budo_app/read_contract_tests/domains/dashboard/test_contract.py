@@ -161,7 +161,7 @@ class DashboardContractTests(TestCase):
             "budo_experience": False,
             "birthday": "2012-07-02",
             "birthday_during_turnus": True,
-            "food": "🥦 - glutenfrei",
+            "food": "🌱 - glutenfrei",
             "special_food": "glutenfrei",
             "drugs": "Asthmaspray",
             "illness": "Allergie",

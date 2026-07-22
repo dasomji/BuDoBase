@@ -32,7 +32,7 @@ const dashboardData = (activity = {}) => ({
     budo_experience: false,
     birthday: '2012-07-02',
     birthday_during_turnus: true,
-    food: '🥦 - glutenfrei',
+    food: '🌱 - glutenfrei',
     special_food: 'glutenfrei',
     drugs: 'Asthmaspray',
     illness: 'Allergie',
