@@ -93,7 +93,54 @@ export function MealsPage({ data, id }) {
   const focus = data.focus;
   if (!focus) return <NotFoundPage />;
   const entries = focus.meal_items;
-  return <Columns><Column id="single-column"><Card title="Wann esst ihr wo?"><RestForm target={`/swpmeals/${focus.id}`} token={data.csrf_token} className="form-grid"><input type="hidden" name="form-TOTAL_FORMS" value={entries.length} /><input type="hidden" name="form-INITIAL_FORMS" value={entries.length} />{entries.map((meal, index) => { const fieldId = `meal-${meal.id}`; return <div className="meal-input" key={meal.id}><input type="hidden" name={`form-${index}-id`} value={meal.id} /><label htmlFor={fieldId}>Tag {meal.day} · {data.meal_types[meal.type]}</label><select id={fieldId} name={`form-${index}-meal_choice`} defaultValue={meal.choice}>{data.meal_choices.map(choice => <option value={choice.value} key={choice.value}>{choice.label}</option>)}</select></div>; })}<input className="button" type="submit" value="Speichern" /></RestForm></Card></Column></Columns>;
+  const days = [...new Set(entries.map(meal => meal.day))].sort((left, right) => left - right);
+  const mealTypes = Object.entries(data.meal_types);
+  const indexedMeals = new Map(entries.map((meal, index) => [`${meal.day}-${meal.type}`, { meal, index }]));
+  return (
+    <Columns className="focus-meals-page">
+      <Column id="single-column" className="focus-meals-column">
+        <Card title="Wann esst ihr wo?">
+          <RestForm target={`/swpmeals/${focus.id}`} token={data.csrf_token} className="form-grid focus-meals-form">
+            <input type="hidden" name="form-TOTAL_FORMS" value={entries.length} />
+            <input type="hidden" name="form-INITIAL_FORMS" value={entries.length} />
+            <div className="focus-meals-table-scroll">
+              <table className="focus-meals-form-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Tag</th>
+                    {mealTypes.map(([type, label]) => <th scope="col" key={type}>{label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>{days.map(day => (
+                  <tr key={day}>
+                    <th scope="row">Tag {day}</th>
+                    {mealTypes.map(([type, label]) => {
+                      const indexedMeal = indexedMeals.get(`${day}-${type}`);
+                      if (!indexedMeal) return <td key={type}>—</td>;
+                      const { meal, index } = indexedMeal;
+                      const fieldId = `meal-${meal.id}`;
+                      return (
+                        <td key={type}>
+                          <input type="hidden" name={`form-${index}-id`} value={meal.id} />
+                          <label className="sr-only" htmlFor={fieldId}>Tag {day} · {label}</label>
+                          <select id={fieldId} name={`form-${index}-meal_choice`} defaultValue={meal.choice}>
+                            {data.meal_choices.map(choice => (
+                              <option value={choice.value} key={choice.value}>{choice.label}</option>
+                            ))}
+                          </select>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <input className="button" type="submit" value="Speichern" />
+          </RestForm>
+        </Card>
+      </Column>
+    </Columns>
+  );
 }
 
 const selectedFocusTitle = (route, data) => data.focus?.name || findById(data.focuses || [], route.id)?.name || route.title;

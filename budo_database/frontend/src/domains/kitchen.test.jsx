@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
@@ -24,6 +24,18 @@ describe('Küche page', () => {
     expect(screen.getByRole('heading', { name: 'Menüplan Woche 1' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Menüplan Woche 2' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Schwerpunktinfos Woche 1' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Essen & Allergien bei Kindern' })).toBeInTheDocument();
+
+    const layout = document.querySelector('.kitchen-layout');
+    expect(layout).not.toBeNull();
+    expect([...layout.children].map(column => column.id)).toEqual(['left-column', 'right-column']);
+    expect([...layout.querySelector('#right-column').querySelectorAll(':scope > .card > .card-toggle > h2')]
+      .map(heading => heading.textContent)).toEqual([
+      'Essen & Allergien bei Kindern',
+      'Team',
+      'Schwerpunktinfos Woche 1',
+      'Schwerpunktinfos Woche 2',
+    ]);
   });
 
   it('renders attendance, food, allergies, meals, and Schwerpunkt context from the focused projection', () => {
@@ -32,7 +44,7 @@ describe('Küche page', () => {
         id: 7,
         full_name: 'Ada Lovelace',
         present: false,
-        food: '🥦 - glutenfrei',
+        food: '🌱 - glutenfrei',
         special_food: 'glutenfrei',
       }],
       team: [{
@@ -47,8 +59,17 @@ describe('Küche page', () => {
         week: 'w1',
         duration: 1,
         kid_count: 1,
+        carer_count: 1,
         carers: 'Kathi',
-        place: 'Waldhaus',
+        dietary_counts: {
+          flexitarian: 0,
+          vegetarian: 1,
+          vegan: 1,
+        },
+        intolerances: {
+          kids: [{ name: 'Ada Lovelace', diet: 'vegetarian', details: 'glutenfrei' }],
+          team: [{ name: 'Kathi', diet: 'vegan', details: 'Haselnüsse' }],
+        },
         meals: [
           { day: 1, type: 'breakfast', choice: 'box' },
           { day: 1, type: 'lunch', choice: 'warm' },
@@ -57,14 +78,63 @@ describe('Küche page', () => {
       }],
     }} />);
 
-    expect(screen.getByRole('link', { name: 'Ada Lovelace ❌' })).toHaveAttribute('href', '/kid_details/7');
-    expect(screen.getByText('glutenfrei')).toBeInTheDocument();
-    expect(screen.getByText(/Kathi: 🧀 Vegetarisch · Haselnüsse/)).toBeInTheDocument();
-    expect(screen.getByText('Kinder').closest('p')).toHaveTextContent('Kinder: 1');
-    expect(screen.getByText('Betreuende').closest('p')).toHaveTextContent('Betreuende: Kathi');
-    expect(screen.getByText('Ort').closest('p')).toHaveTextContent('Ort: Waldhaus');
-    expect(screen.getAllByText('Waldküche (1)').length).toBeGreaterThan(0);
-    expect(screen.getByRole('heading', { name: 'Tag 1' })).toBeInTheDocument();
+    const page = within(document.querySelector('.kitchen-layout'));
+    expect(page.getByRole('link', { name: 'Ada Lovelace ❌' })).toHaveAttribute('href', '/kid_details/7');
+    const kidFoodEntry = page.getByRole('link', { name: 'Ada Lovelace ❌' }).closest('.print-nobreak');
+    expect(kidFoodEntry.querySelectorAll('p')).toHaveLength(1);
+    expect(kidFoodEntry).toHaveTextContent('🌱 - glutenfrei');
+    expect(page.getByText(/Kathi: 🧀 Vegetarisch · Haselnüsse/)).toBeInTheDocument();
+    expect(page.getByText('Kinder', { selector: '.label' }).closest('p')).toHaveTextContent('Kinder: 1');
+    expect(page.getByText('Betreuende', { selector: '.label' }).closest('p')).toHaveTextContent('Betreuende: Kathi');
+    expect(page.queryByText('Ort')).not.toBeInTheDocument();
+    expect(page.getByText('Flexitarisch').closest('p')).toHaveTextContent('Flexitarisch: 0');
+    expect(page.getByText('Vegetarisch').closest('p')).toHaveTextContent('Vegetarisch: 1');
+    expect(page.getByText('Vegan').closest('p')).toHaveTextContent('Vegan: 1');
+    expect(page.getByText('Ada Lovelace (Vegetarisch): glutenfrei')).toBeInTheDocument();
+    expect(page.getByText('Kathi (Vegan): Haselnüsse')).toBeInTheDocument();
+    const focusInfo = page.getByRole('heading', { name: 'Waldküche' }).closest('.focus-kitchen-info');
+    expect(focusInfo.querySelector('.card-table-container')).not.toBeInTheDocument();
+    expect(page.getAllByText('Waldküche (0 🥩, 1 🧀, 1 🌱)')).toHaveLength(3);
+    expect(page.getByRole('heading', { name: 'Tag 1' })).toBeInTheDocument();
+    const menuTable = page.getByRole('table', { name: 'Menüplan Tag 1' });
+    expect(within(menuTable).getAllByText('2 (0 🥩, 1 🧀, 1 🌱)')).toHaveLength(2);
+    expect(page.getByLabelText('Menüplan Tag 1 horizontal scrollen')).toContainElement(menuTable);
+  });
+
+  it('provides one print menu page per active week and one page per Schwerpunkt', () => {
+    const focus = (id, name, week) => ({
+      id,
+      name,
+      week,
+      duration: 1,
+      kid_count: 1,
+      carer_count: 0,
+      carers: '',
+      dietary_counts: { flexitarian: 1, vegetarian: 0, vegan: 0 },
+      intolerances: { kids: [], team: [] },
+      meals: [
+        { day: 1, type: 'breakfast', choice: 'box' },
+        { day: 1, type: 'lunch', choice: 'budo' },
+        { day: 1, type: 'dinner', choice: 'warm' },
+      ],
+    });
+    render(<KitchenPage data={{
+      kids: [],
+      team: [],
+      focuses: [focus(11, 'Waldküche', 'w1'), focus(12, 'Seecamp', 'w2')],
+    }} />);
+
+    const printPages = screen.getByRole('region', { name: 'Küchen-Druckseiten', hidden: true });
+    const pages = [...printPages.querySelectorAll(':scope > .kitchen-print-page')];
+    expect(pages.map(page => page.getAttribute('aria-label'))).toEqual([
+      'Menüplan Woche 1',
+      'Schwerpunktzettel Woche 1: Waldküche',
+      'Menüplan Woche 2',
+      'Schwerpunktzettel Woche 2: Seecamp',
+    ]);
+    expect(within(pages[0]).getByRole('table', { name: 'Menüplan Tag 1', hidden: true })).toBeInTheDocument();
+    expect(pages[1].querySelectorAll('.focus-kitchen-info')).toHaveLength(1);
+    expect(within(pages[1]).getByRole('heading', { name: 'Waldküche', hidden: true })).toBeInTheDocument();
   });
 
   it('uses the Küche route contract and renders its response', async () => {

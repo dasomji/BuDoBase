@@ -47,7 +47,7 @@ class ReactFrontendMiddleware:
                 {
                     "request_path": request.get_full_path(),
                     "react_print_page": bool(re.fullmatch(
-                        r"(?:/happy-cleaning/\d+/print/|/swp-einteilung-w[12]/?)",
+                        r"(?:/happy-cleaning/\d+/print/|/swp-einteilung-w[12]/?|/kitchen/?)",
                         request.path,
                     )),
                     "legacy_print_body": legacy_body,

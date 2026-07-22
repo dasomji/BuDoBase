@@ -119,7 +119,7 @@ class KidsDirectoryContractTests(TestCase):
                 "focus_w2": "Wald",
                 "siblings": "Charles",
                 "tent_request": "Grace",
-                "food": "🥦 - glutenfrei",
+                "food": "🌱 - glutenfrei",
                 "drugs": "Asthmaspray",
                 "illness": "Allergie",
                 "note": "Teamnotiz",

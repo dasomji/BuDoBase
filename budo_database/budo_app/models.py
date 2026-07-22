@@ -95,7 +95,7 @@ class Profil(models.Model):
         if self.essen == "vt":
             return "🧀 Vegetarisch"
         if self.essen == "vn":
-            return "🥦 Vegan"
+            return "🌱 Vegan"
 
     def get_rolle(self):
         return dict(self.ROLLEN).get(self.rolle)
@@ -265,7 +265,7 @@ class Kinder(models.Model):
     def get_veggie(self):
         if self.vegetarisch:
             if self.vegetarisch.lower() == "ja":
-                return "🥦"
+                return "🌱"
             elif str(self.vegetarisch).lower().strip() in ("nein", "nan"):
                 return "🥩"
             else:

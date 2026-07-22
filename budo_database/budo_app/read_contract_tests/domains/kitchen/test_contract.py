@@ -7,6 +7,7 @@ from django.urls import reverse
 from budo_app.models import (
     Auslagerorte,
     Kinder,
+    Profil,
     Schwerpunkte,
     Schwerpunktzeit,
     Turnus,
@@ -99,7 +100,7 @@ class KitchenContractTests(TestCase):
                         "id": self.kid.id,
                         "full_name": "Ada Lovelace",
                         "present": False,
-                        "food": "🥦 - glutenfrei",
+                        "food": "🌱 - glutenfrei",
                         "special_food": "glutenfrei",
                     }
                 ],
@@ -118,8 +119,23 @@ class KitchenContractTests(TestCase):
                         "week": "w1",
                         "duration": 1,
                         "kid_count": 1,
+                        "carer_count": 0,
                         "carers": "",
-                        "place": "Waldhaus",
+                        "dietary_counts": {
+                            "flexitarian": 0,
+                            "vegetarian": 1,
+                            "vegan": 0,
+                        },
+                        "intolerances": {
+                            "kids": [
+                                {
+                                    "name": "Ada Lovelace",
+                                    "diet": "vegetarian",
+                                    "details": "glutenfrei",
+                                }
+                            ],
+                            "team": [],
+                        },
                         "meals": [
                             {
                                 "day": 1,
@@ -204,8 +220,10 @@ class KitchenContractTests(TestCase):
                 "week",
                 "duration",
                 "kid_count",
+                "carer_count",
                 "carers",
-                "place",
+                "dietary_counts",
+                "intolerances",
                 "meals",
             },
         )
@@ -230,6 +248,62 @@ class KitchenContractTests(TestCase):
             "email",
         ):
             self.assertNotIn(private_field, response_text)
+
+    def test_summarizes_diets_and_intolerances_for_kids_and_carers(self):
+        flexitarian_kid = Kinder.objects.create(
+            kid_index="T2-2",
+            kid_vorname="Berta",
+            kid_nachname="Box",
+            turnus=self.turnus,
+            vegetarisch="nein",
+            special_food_description="Laktose",
+        )
+        vegan_user = User.objects.create_user(username="vegan-kitchen")
+        vegan_profile = Profil.objects.get(user=vegan_user)
+        vegan_profile.turnus = self.turnus
+        vegan_profile.rufname = "Vera"
+        vegan_profile.essen = "vn"
+        vegan_profile.allergien = "Soja"
+        vegan_profile.save()
+        self.focus.swp_kinder.add(flexitarian_kid)
+        self.focus.betreuende.add(self.user.profil, vegan_profile)
+
+        focus = self.client.get(self.contract_url()).json()["focuses"][0]
+
+        self.assertEqual(focus["carer_count"], 2)
+        self.assertEqual(
+            focus["dietary_counts"],
+            {"flexitarian": 1, "vegetarian": 2, "vegan": 1},
+        )
+        self.assertEqual(
+            focus["intolerances"],
+            {
+                "kids": [
+                    {
+                        "name": "Ada Lovelace",
+                        "diet": "vegetarian",
+                        "details": "glutenfrei",
+                    },
+                    {
+                        "name": "Berta Box",
+                        "diet": "flexitarian",
+                        "details": "Laktose",
+                    },
+                ],
+                "team": [
+                    {
+                        "name": "Kathi",
+                        "diet": "vegetarian",
+                        "details": "Haselnüsse",
+                    },
+                    {
+                        "name": "Vera",
+                        "diet": "vegan",
+                        "details": "Soja",
+                    },
+                ],
+            },
+        )
 
     def test_requires_authentication_and_has_safe_no_turnus_behavior(self):
         self.client.logout()

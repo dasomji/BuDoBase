@@ -135,6 +135,7 @@ describe('Schwerpunkte pages', () => {
     expect(screen.getByText('Allergie')).toBeInTheDocument();
     const mealsCard = screen.getByRole('heading', { name: 'Essen' }).closest('.card');
     expect(mealsCard).toHaveClass('focus-meals-card');
+    expect(within(mealsCard).getByRole('rowheader', { name: 'Tag 1' })).toHaveClass('meal-day');
     expect(within(mealsCard).getByText('warm')).toBeInTheDocument();
     const editFocus = screen.getByRole('link', { name: 'SWP bearbeiten' });
     expect(editFocus).toHaveAttribute('href', '/schwerpunkt/3/update');
@@ -189,24 +190,41 @@ describe('Schwerpunkte pages', () => {
         meal_items: [
           { id: 31, day: 1, type: 'breakfast', choice: 'box' },
           { id: 32, day: 1, type: 'lunch', choice: 'warm' },
+          { id: 33, day: 1, type: 'dinner', choice: 'budo' },
+          { id: 34, day: 2, type: 'breakfast', choice: 'budo' },
+          { id: 35, day: 2, type: 'lunch', choice: 'box' },
+          { id: 36, day: 2, type: 'dinner', choice: 'warm' },
+          { id: 37, day: 3, type: 'breakfast', choice: 'warm' },
+          { id: 38, day: 3, type: 'lunch', choice: 'budo' },
+          { id: 39, day: 3, type: 'dinner', choice: 'box' },
         ],
       },
       meal_types: { breakfast: 'Frühstück', lunch: 'Mittagessen', dinner: 'Abendessen' },
       meal_choices: [
         { value: '', label: '---------' },
+        { value: 'budo', label: 'BuDo' },
         { value: 'box', label: 'Box' },
-        { value: 'budo', label: 'Im BuDo' },
-        { value: 'warm', label: 'Warm geliefert' },
+        { value: 'warm', label: 'Warm' },
       ],
     };
 
     render(<MealsPage data={mealData} id="3" />);
 
     expect(screen.getByRole('heading', { name: 'Wann esst ihr wo?' })).toBeInTheDocument();
+    expect(screen.getAllByRole('columnheader').map(header => header.textContent)).toEqual([
+      'Tag', 'Frühstück', 'Mittagessen', 'Abendessen',
+    ]);
+    expect(screen.getAllByRole('rowheader').map(header => header.textContent)).toEqual([
+      'Tag 1', 'Tag 2', 'Tag 3',
+    ]);
+    expect(screen.getAllByRole('combobox')).toHaveLength(9);
     expect(screen.getByLabelText('Tag 1 · Frühstück')).toHaveValue('box');
     expect(screen.getByLabelText('Tag 1 · Mittagessen')).toHaveValue('warm');
+    expect(screen.getByLabelText('Tag 3 · Abendessen')).toHaveValue('box');
     expect(screen.getByLabelText('Tag 1 · Frühstück').form).toHaveAttribute('action', '/swpmeals/3');
-    expect(screen.getAllByRole('option', { name: 'Im BuDo' })).toHaveLength(2);
+    expect(screen.getAllByRole('option', { name: 'BuDo' })).toHaveLength(9);
+    expect(screen.getAllByRole('option', { name: 'Box' })).toHaveLength(9);
+    expect(screen.getAllByRole('option', { name: 'Warm' })).toHaveLength(9);
   });
 
   it('declares every focus route contract without changing its browser URL', () => {

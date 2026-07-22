@@ -49,6 +49,11 @@ h2 {
   margin: 0px;
 }
 
+h3,
+h4 {
+  font-weight: 700;
+}
+
 a {
   color: var(--text-color);
   font-weight: 400;
@@ -531,6 +536,10 @@ button.closebtn {
 
 .card-table :is(th, td) {
   padding-right: var(--s-padding);
+}
+
+.card-table .meal-day {
+  font-weight: 700;
 }
 
 .input-container p {

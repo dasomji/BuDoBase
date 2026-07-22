@@ -233,10 +233,9 @@ def focus_meals(request):
         },
         "meal_choices": [
             {"value": "", "label": "---------"},
-            *[
-                {"value": value, "label": label}
-                for value, label in Meal.MEAL_CHOICES
-            ],
+            {"value": "budo", "label": "BuDo"},
+            {"value": "box", "label": "Box"},
+            {"value": "warm", "label": "Warm"},
         ],
         "meal_types": dict(Meal.MEAL_TYPES),
     }

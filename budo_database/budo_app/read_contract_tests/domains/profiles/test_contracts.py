@@ -182,7 +182,7 @@ class ProfileContractTests(TestCase):
                 "role": "b",
                 "role_display": "Betreuer:in",
                 "food": "vn",
-                "food_display": "🥦 Vegan",
+                "food_display": "🌱 Vegan",
                 "budo_family": "L",
                 "focuses": [{
                     "id": selected_focus.id,

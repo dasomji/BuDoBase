@@ -23,6 +23,50 @@ def _team_member(profile):
     }
 
 
+def _kid_dietary_category(kid):
+    return "vegetarian" if kid.get_veggie_bool() else "flexitarian"
+
+
+def _profile_dietary_category(profile):
+    return {
+        "ft": "flexitarian",
+        "vt": "vegetarian",
+        "vn": "vegan",
+    }.get(profile.essen, "flexitarian")
+
+
+def _dietary_counts(focus):
+    counts = {"flexitarian": 0, "vegetarian": 0, "vegan": 0}
+    for kid in focus.kitchen_kids:
+        counts[_kid_dietary_category(kid)] += 1
+    for profile in focus.kitchen_carers:
+        counts[_profile_dietary_category(profile)] += 1
+    return counts
+
+
+def _intolerances(focus):
+    return {
+        "kids": [
+            {
+                "name": kid_full_name(kid.kid_vorname, kid.kid_nachname),
+                "diet": _kid_dietary_category(kid),
+                "details": details,
+            }
+            for kid in focus.kitchen_kids
+            if (details := kid.get_clean_special_food())
+        ],
+        "team": [
+            {
+                "name": profile.rufname,
+                "diet": _profile_dietary_category(profile),
+                "details": profile.allergien,
+            }
+            for profile in focus.kitchen_carers
+            if profile.allergien
+        ],
+    }
+
+
 def _focus(focus):
     return {
         "id": focus.id,
@@ -30,10 +74,12 @@ def _focus(focus):
         "week": focus.schwerpunktzeit.woche,
         "duration": focus.schwerpunktzeit.dauer,
         "kid_count": len(focus.kitchen_kids),
+        "carer_count": len(focus.kitchen_carers),
         "carers": ", ".join(
             profile.rufname for profile in focus.kitchen_carers
         ),
-        "place": focus.ort.name if focus.ort else None,
+        "dietary_counts": _dietary_counts(focus),
+        "intolerances": _intolerances(focus),
         "meals": [
             {
                 "day": meal.day,
@@ -72,20 +118,28 @@ def build_kitchen_contract(request):
             schwerpunktzeit__turnus_id=turnus_id,
             schwerpunktzeit__woche__in=("w1", "w2"),
         )
-        .select_related("schwerpunktzeit", "ort")
+        .select_related("schwerpunktzeit")
         .prefetch_related(
             Prefetch(
                 "swp_kinder",
-                queryset=Kinder.objects.filter(
-                    turnus_id=turnus_id,
-                ).only("id"),
+                queryset=(
+                    Kinder.objects.filter(turnus_id=turnus_id)
+                    .only(
+                        "id",
+                        "kid_vorname",
+                        "kid_nachname",
+                        "vegetarisch",
+                        "special_food_description",
+                    )
+                    .order_by("kid_vorname", "kid_nachname", "id")
+                ),
                 to_attr="kitchen_kids",
             ),
             Prefetch(
                 "betreuende",
                 queryset=(
                     Profil.objects.filter(turnus_id=turnus_id)
-                    .only("id", "rufname")
+                    .only("id", "rufname", "essen", "allergien")
                     .order_by("rufname", "id")
                 ),
                 to_attr="kitchen_carers",
@@ -105,8 +159,6 @@ def build_kitchen_contract(request):
         .only(
             "id",
             "swp_name",
-            "ort__id",
-            "ort__name",
             "schwerpunktzeit__id",
             "schwerpunktzeit__woche",
             "schwerpunktzeit__dauer",
