@@ -447,6 +447,16 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.kitchen-layout .kitchen-meal-day {
+  display: grid;
+  gap: var(--m-padding);
+  padding-block: var(--l-padding);
+}
+
+.kitchen-layout .kitchen-meal-day:first-child {
+  padding-top: 0;
+}
+
 .kitchen-meal-table-scroll {
   width: 100%;
   max-width: 100%;
@@ -933,6 +943,10 @@
     grid-column: 1 / -1;
     grid-row: 3;
     justify-self: end;
+  }
+
+  #headerbutton:has(.kitchen-print-button) {
+    display: none;
   }
 
   #header-content:has(#headerbutton .mobile-icon-action) {

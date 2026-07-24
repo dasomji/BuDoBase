@@ -33,16 +33,24 @@ function formatDietaryPortions(counts) {
   return `${counts.flexitarian} 🥩, ${counts.vegetarian} 🧀, ${counts.vegan} 🌱`;
 }
 
+function MealFocusList({ focuses }) {
+  if (!focuses.length) return '---';
+
+  return focuses.map(focus => (
+    <div className="kitchen-meal-focus" key={focus.id}>
+      {focus.name} ({formatDietaryPortions(dietaryPortions([focus]))})
+    </div>
+  ));
+}
+
 function WeekMealPlan({ focuses }) {
   const maxDays = Math.max(0, ...focuses.map(focus => focus.duration));
   const matchingFocuses = (day, type, choices) => focuses.filter(focus => (
     choices.includes(mealChoice(focus, day, type))
   ));
-  const cell = (day, type, choice) => matchingFocuses(day, type, [choice])
-    .map(focus => `${focus.name} (${formatDietaryPortions(dietaryPortions([focus]))})`);
 
   return <>{Array.from({ length: maxDays }, (_, index) => index + 1).map(day => (
-    <div className="print-nobreak" key={day}>
+    <div className="print-nobreak kitchen-meal-day" key={day}>
       <h2>Tag {day}</h2>
       <div
         className="kitchen-meal-table-scroll"
@@ -59,9 +67,9 @@ function WeekMealPlan({ focuses }) {
             return (
               <tr key={type}>
                 <td>{label}</td>
-                <td>{cell(day, type, 'box').join(', ') || '---'}</td>
-                <td>{cell(day, type, 'budo').join(', ') || '---'}</td>
-                <td>{cell(day, type, 'warm').join(', ') || '---'}</td>
+                <td><MealFocusList focuses={matchingFocuses(day, type, ['box'])} /></td>
+                <td><MealFocusList focuses={matchingFocuses(day, type, ['budo'])} /></td>
+                <td><MealFocusList focuses={matchingFocuses(day, type, ['warm'])} /></td>
                 <td>{portions ? `${portions} (${formatDietaryPortions(cookingPortions)})` : '---'}</td>
               </tr>
             );
@@ -196,5 +204,10 @@ export const kitchenRoutes = [{
   title: 'Küche',
   domain: 'kitchen',
   readContractKey: 'kitchen',
+  headerAction: () => (
+    <button className="button kitchen-print-button" type="button" onClick={() => window.print()}>
+      Drucken
+    </button>
+  ),
   render: ({ data }) => <KitchenPage data={data} />,
 }];
