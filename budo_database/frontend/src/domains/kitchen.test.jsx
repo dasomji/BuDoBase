@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
@@ -101,6 +101,35 @@ describe('Küche page', () => {
     expect(page.getByLabelText('Menüplan Tag 1 horizontal scrollen')).toContainElement(menuTable);
   });
 
+  it('renders each Schwerpunkt in a meal cell on its own line', () => {
+    const focus = (id, name) => ({
+      id,
+      name,
+      week: 'w1',
+      duration: 1,
+      kid_count: 1,
+      carer_count: 0,
+      dietary_counts: { flexitarian: 1, vegetarian: 0, vegan: 0 },
+      meals: [{ day: 1, type: 'breakfast', choice: 'box' }],
+    });
+    render(<KitchenPage data={{
+      kids: [],
+      team: [],
+      focuses: [focus(11, 'Blubb'), focus(12, 'Test'), focus(13, 'rumm')],
+    }} />);
+
+    const menuTable = within(document.querySelector('.kitchen-layout'))
+      .getByRole('table', { name: 'Menüplan Tag 1' });
+    const boxCell = within(menuTable).getByText('Frühstück').closest('tr').children[1];
+
+    expect([...boxCell.querySelectorAll(':scope > .kitchen-meal-focus')]
+      .map(entry => entry.textContent)).toEqual([
+      'Blubb (1 🥩, 0 🧀, 0 🌱)',
+      'Test (1 🥩, 0 🧀, 0 🌱)',
+      'rumm (1 🥩, 0 🧀, 0 🌱)',
+    ]);
+  });
+
   it('provides one print menu page per active week and one page per Schwerpunkt', () => {
     const focus = (id, name, week) => ({
       id,
@@ -154,9 +183,15 @@ describe('Küche page', () => {
       }))
       .mockResolvedValueOnce(response({ kids: [], team: [], focuses: [] }));
 
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
     render(<App fetchImpl={fetchImpl} />);
 
     expect(await screen.findByRole('heading', { name: 'Menüplan Woche 1' })).toBeInTheDocument();
+    const printButton = screen.getByRole('button', { name: 'Drucken' });
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+    expect(search.compareDocumentPosition(printButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(printButton);
+    expect(print).toHaveBeenCalledOnce();
     expect(fetchImpl.mock.calls[1][0]).toBe('/api/route-data/kitchen/');
     expect(fetchImpl.mock.calls.some(([url]) => url.startsWith('/api/app-data/'))).toBe(false);
   });
