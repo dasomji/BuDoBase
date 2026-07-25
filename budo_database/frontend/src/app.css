@@ -2786,3 +2786,11 @@ input[name="amount"]::placeholder {
     padding-inline: 2.5rem;
   }
 }
+.happy-cleaning-conflict-resolution{display:grid;gap:var(--m-padding)}
+.happy-cleaning-conflict-card{border:1px solid #37373740;border-radius:var(--corner-rad);padding:var(--m-padding);display:grid;grid-template-columns:minmax(12rem,1fr) minmax(18rem,2fr);gap:var(--m-padding)}
+.happy-cleaning-conflict-card legend{font-weight:700}
+.happy-cleaning-conflict-target{display:grid;align-content:start;gap:var(--xs-padding)}
+.happy-cleaning-conflict-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--xs-padding)}
+.happy-cleaning-conflict-action{min-height:44px;border:1px solid #37373740;border-radius:var(--corner-rad);padding:var(--s-padding);display:grid;grid-template-columns:auto 1fr;align-items:center;gap:var(--xs-padding)}
+.happy-cleaning-conflict-action small{grid-column:2;color:#8a1c1c}
+@media (width<=900px){.happy-cleaning-conflict-card{grid-template-columns:1fr}.happy-cleaning-conflict-actions{grid-template-columns:1fr}.happy-cleaning-conflict-action{min-height:52px}}

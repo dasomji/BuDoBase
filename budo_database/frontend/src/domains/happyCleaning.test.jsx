@@ -305,6 +305,50 @@ describe('Happy Cleaning management', () => {
     expect(await dialog.findByRole('alert')).toHaveTextContent('network down');
   });
 
+  it('requires an accessible explicit conflict decision and one eligible candidate', async () => {
+    const mutate = vi.fn().mockResolvedValue({
+      ok: true, result: 'conflicts', target_revision: 4,
+      source_event_id: 5, station_ids: [50], conflict_free_station_ids: [],
+      conflicts: [
+        {
+          source_station_id: 50, source_name: 'Bad', source_task_count: 2,
+          target_station_id: 90, target_name: 'Bad Kinder', target_task_count: 1,
+          overwrite_eligible: false, overwrite_disabled_reason: 'Bereits zugeordnet.',
+        },
+        {
+          source_station_id: 50, source_name: 'Bad', source_task_count: 2,
+          target_station_id: 91, target_name: 'Bad Team', target_task_count: 3,
+          overwrite_eligible: true, overwrite_disabled_reason: null,
+        },
+      ],
+    });
+    const data = {
+      user_id: 42, active_year: 2026,
+      copy_targets: [{ id: 9, revision: 4, label: 'Happy Cleaning 2' }],
+      years: [{ year: 2026, loaded: true, is_active: true, turnuses: [{
+        id: 1, number: 1, is_active: true, events: [{
+          id: 5, display_number: 1, revision: 2,
+          stations: [{ id: 50, name: 'Bad', task_item_count: 2 }],
+        }],
+      }] }],
+    };
+    render(<HappyCleaningOverviewPage data={data} mutate={mutate} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Stationen aus Happy Cleaning 1 kopieren' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Stationen kopieren' }));
+    fireEvent.click(dialog.getByLabelText('Station Bad auswählen'));
+    fireEvent.change(dialog.getByLabelText('Ziel-Happy-Cleaning'), { target: { value: '9' } });
+    fireEvent.click(dialog.getByRole('button', { name: 'Prüfen und kopieren' }));
+    expect(await dialog.findByText('1 Konfliktgruppe(n) ungelöst.')).toBeInTheDocument();
+    expect(dialog.getByRole('radio', { name: 'Bestehende Station überschreiben' })).not.toBeChecked();
+    expect(dialog.getByRole('button', { name: 'Auswahl verbindlich kopieren' })).toBeDisabled();
+    fireEvent.change(dialog.getByLabelText('Bestehende Station für Bad'), { target: { value: '90' } });
+    expect(dialog.getByRole('radio', { name: /Bestehende Station überschreiben/ })).toBeDisabled();
+    expect(dialog.getByText('Bereits zugeordnet.')).toBeInTheDocument();
+    fireEvent.change(dialog.getByLabelText('Bestehende Station für Bad'), { target: { value: '91' } });
+    fireEvent.click(dialog.getByRole('radio', { name: 'Inhalte anhängen' }));
+    expect(dialog.getByRole('button', { name: 'Auswahl verbindlich kopieren' })).toBeEnabled();
+  });
+
   it('creates Happy Cleaning from the header action', async () => {
     const mutate = vi.fn().mockResolvedValue({ ok: true });
     render(<HappyCleaningCreateButton mutate={mutate} />);

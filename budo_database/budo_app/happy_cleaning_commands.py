@@ -1009,12 +1009,99 @@ def _copy_source_document(document, todo_id_map):
     return copied
 
 
+def _new_todos_and_document(source_station, target_station):
+    source_todos = list(source_station.todos.all())
+    copied_todos = HappyCleaningTodo.objects.bulk_create([
+        HappyCleaningTodo(
+            station=target_station,
+            text=todo.text,
+            position=position,
+            checked=False,
+            version=1,
+        )
+        for position, todo in enumerate(source_todos, start=1)
+    ])
+    todo_id_map = {
+        source_todo.id: copied_todo.id
+        for source_todo, copied_todo in zip(source_todos, copied_todos)
+    }
+    return copied_todos, _copy_source_document(
+        source_station.content_document,
+        todo_id_map,
+    )
+
+
+def _copy_responsible(source_station, target):
+    responsible = source_station.responsible_profile
+    if responsible and responsible.turnus_id != target.turnus_id:
+        return None
+    return responsible
+
+
+def _create_station_copy(source_station, target, position):
+    station = HappyCleaningStation.objects.create(
+        happy_cleaning=target,
+        name=source_station.name,
+        max_kids=source_station.max_kids,
+        meeting_point=source_station.meeting_point,
+        wishes=source_station.wishes,
+        responsible_profile=_copy_responsible(source_station, target),
+        position=position,
+        version=1,
+    )
+    todos, station.content_document = _new_todos_and_document(
+        source_station, station,
+    )
+    station.save(update_fields=["content_document"])
+    return station, len(todos)
+
+
+def _turnus_copy_label(source, source_station):
+    return (
+        f"Kopiert aus {source_station.name} Happy Cleaning "
+        f"{source.display_number} – {source.turnus.turnus_nr}. Turnus "
+        f"{source.turnus.turnus_beginn.year}:"
+    )
+
+
+def _validate_resolutions(resolutions, conflicts_by_source, candidates_by_source):
+    if not isinstance(resolutions, list):
+        raise CommandError(
+            "validation_error",
+            errors={"resolutions": ["One decision is required per conflicting source."]},
+        )
+    decisions = {}
+    for value in resolutions:
+        if not isinstance(value, Mapping):
+            raise CommandError("validation_error", errors={"resolutions": ["Malformed decision."]})
+        source_id = value.get("source_station_id")
+        action = value.get("action")
+        target_id = value.get("target_station_id")
+        if source_id in decisions or source_id not in conflicts_by_source:
+            raise CommandError("validation_error", errors={"resolutions": ["Each conflicting source must occur exactly once."]})
+        if action not in {"overwrite", "append", "separate", "skip"}:
+            raise CommandError("validation_error", errors={"resolutions": ["Unknown action."]})
+        if action in {"overwrite", "append"}:
+            if target_id not in candidates_by_source[source_id]:
+                raise CommandError("validation_error", errors={"resolutions": ["Choose one matching target station."]})
+        elif target_id is not None:
+            raise CommandError("validation_error", errors={"resolutions": ["This action does not accept a target station."]})
+        decisions[source_id] = (action, target_id)
+    if set(decisions) != set(conflicts_by_source):
+        raise CommandError(
+            "validation_error",
+            errors={"resolutions": ["One decision is required per conflicting source."]},
+        )
+    return decisions
+
+
 def copy_stations(
     context,
     event_id,
     expected_revision,
     source_event_id,
     station_ids,
+    resolutions=None,
 ):
     action = "happy_cleaning.station.copy"
     with transaction.atomic():
@@ -1065,11 +1152,25 @@ def copy_stations(
         conflicts = [{
             "source_station_id": source_station.id,
             "source_name": source_station.name,
+            "source_task_count": source_station.todos.count(),
             "target_station_id": target_station.id,
             "target_name": target_station.name,
+            "target_task_count": target_station.todos.count(),
+            "overwrite_eligible": not target_station.has_ever_had_assignment,
+            "overwrite_disabled_reason": (
+                None if not target_station.has_ever_had_assignment
+                else "Diese Station war bereits einer Einteilung zugeordnet."
+            ),
         } for source_station in selected for target_station in target_stations
           if station_names_are_similar(source_station.name, target_station.name)]
-        if conflicts:
+        conflicts_by_source = {}
+        candidates_by_source = {}
+        for conflict in conflicts:
+            conflicts_by_source.setdefault(conflict["source_station_id"], []).append(conflict)
+            candidates_by_source.setdefault(conflict["source_station_id"], set()).add(
+                conflict["target_station_id"]
+            )
+        if conflicts and resolutions is None:
             return complete_command(context, action, {
                 "ok": True,
                 "result": "conflicts",
@@ -1078,50 +1179,123 @@ def copy_stations(
                 "source_event_id": source.id,
                 "station_ids": [station.id for station in selected],
                 "conflicts": conflicts,
+                "conflict_free_station_ids": [
+                    station.id for station in selected
+                    if station.id not in conflicts_by_source
+                ],
             }), False
+        decisions = (
+            _validate_resolutions(
+                resolutions, conflicts_by_source, candidates_by_source,
+            )
+            if conflicts else {}
+        )
+        target_by_id = {station.id: station for station in target_stations}
+        for source_id, (resolution, target_id) in decisions.items():
+            if (
+                resolution == "overwrite"
+                and target_by_id[target_id].has_ever_had_assignment
+            ):
+                raise CommandError(
+                    "overwrite_locked",
+                    status=409,
+                    errors={"resolutions": ["The chosen target has previously been assigned."]},
+                )
         next_position = (
             HappyCleaningStation.objects.filter(happy_cleaning=target)
             .aggregate(value=Max("position"))["value"]
             or 0
         )
         copied = []
+        result_counts = {
+            "copied": 0, "overwritten": 0, "appended": 0, "skipped": 0,
+            "todos_created": 0,
+        }
+        audit_decisions = []
         for source_station in selected:
-            next_position += 1
-            responsible = source_station.responsible_profile
-            if responsible and responsible.turnus_id != target.turnus_id:
-                responsible = None
-            station = HappyCleaningStation.objects.create(
-                happy_cleaning=target,
-                name=source_station.name,
-                max_kids=source_station.max_kids,
-                meeting_point=source_station.meeting_point,
-                wishes=source_station.wishes,
-                responsible_profile=responsible,
-                position=next_position,
-                version=1,
+            resolution, target_station_id = decisions.get(
+                source_station.id, ("separate", None),
             )
-            source_todos = list(source_station.todos.all())
-            copied_todos = HappyCleaningTodo.objects.bulk_create([
-                HappyCleaningTodo(
-                    station=station,
-                    text=todo.text,
-                    position=position,
-                    checked=False,
-                    version=1,
+            if resolution == "skip":
+                result_counts["skipped"] += 1
+                audit_decisions.append({
+                    "source_station_id": source_station.id,
+                    "action": "skip",
+                    "target_station_id": None,
+                })
+                continue
+            if resolution == "overwrite":
+                station = target_by_id[target_station_id]
+                station.todos.all().delete()
+                station.name = source_station.name
+                station.max_kids = source_station.max_kids
+                station.meeting_point = source_station.meeting_point
+                station.wishes = source_station.wishes
+                station.responsible_profile = _copy_responsible(
+                    source_station, target,
                 )
-                for position, todo in enumerate(source_todos, start=1)
-            ])
-            todo_id_map = {
-                source_todo.id: copied_todo.id
-                for source_todo, copied_todo in zip(source_todos, copied_todos)
-            }
-            station.content_document = _copy_source_document(
-                source_station.content_document,
-                todo_id_map,
-            )
-            station.save(update_fields=["content_document"])
-            copied.append(station)
-        _bump_event(target)
+                station.version += 1
+                todos, station.content_document = _new_todos_and_document(
+                    source_station, station,
+                )
+                station.save(update_fields=[
+                    "name", "max_kids", "meeting_point", "wishes",
+                    "responsible_profile", "content_document", "version",
+                ])
+                result_counts["overwritten"] += 1
+                result_counts["todos_created"] += len(todos)
+            elif resolution == "append":
+                station = target_by_id[target_station_id]
+                existing_count = station.todos.count()
+                source_todos = list(source_station.todos.all())
+                copied_todos = HappyCleaningTodo.objects.bulk_create([
+                    HappyCleaningTodo(
+                        station=station,
+                        text=todo.text,
+                        position=existing_count + position,
+                        checked=False,
+                        version=1,
+                    )
+                    for position, todo in enumerate(source_todos, start=1)
+                ])
+                todo_map = {
+                    old.id: new.id
+                    for old, new in zip(source_todos, copied_todos)
+                }
+                appended = _copy_source_document(
+                    source_station.content_document, todo_map,
+                )
+                station.content_document = {
+                    "type": "doc",
+                    "content": [
+                        *station.content_document["content"],
+                        {
+                            "type": "paragraph",
+                            "content": [{"type": "text", "text": _turnus_copy_label(source, source_station)}],
+                        },
+                        *appended["content"],
+                    ],
+                }
+                validate_station_document(station.content_document)
+                station.version += 1
+                station.save(update_fields=["content_document", "version"])
+                result_counts["appended"] += 1
+                result_counts["todos_created"] += len(copied_todos)
+            else:
+                next_position += 1
+                station, todo_count = _create_station_copy(
+                    source_station, target, next_position,
+                )
+                copied.append(station)
+                result_counts["copied"] += 1
+                result_counts["todos_created"] += todo_count
+            audit_decisions.append({
+                "source_station_id": source_station.id,
+                "action": resolution,
+                "target_station_id": target_station_id or station.id,
+            })
+        if any(value for key, value in result_counts.items() if key != "skipped"):
+            _bump_event(target)
         audit_success(
             context,
             action=action,
@@ -1131,12 +1305,15 @@ def copy_stations(
             details={
                 "happy_cleaning_id": target.id,
                 "source_happy_cleaning_id": source.id,
-                "copied_station_count": len(copied),
+                "source_station_ids": [station.id for station in selected],
+                "station_copy_decisions": audit_decisions,
+                "station_copy_result_counts": result_counts,
             },
         )
         return complete_command(context, action, {
             "ok": True,
-            "result": "copied",
+            "result": "resolved" if conflicts else "copied",
             "event": event_projection(target),
+            "result_counts": result_counts,
             "copied_stations": [station_projection(item) for item in copied],
         }), False

@@ -185,6 +185,165 @@ class BulkStationCopyApiTests(TransactionTestCase):
         self.assertEqual(replay.json()["conflicts"], body["conflicts"])
         self.assertTrue(replay.json()["replayed"])
 
+    def test_resolves_conflicts_with_append_and_preserves_target_task_state(self):
+        target_station = HappyCleaningStation.objects.create(
+            happy_cleaning=self.target,
+            name="Große Küche",
+            max_kids=9,
+            meeting_point="Ziel",
+            wishes="Behalten",
+            responsible_profile=self.active_responsible.profil,
+            position=1,
+        )
+        target_todo = HappyCleaningTodo.objects.create(
+            station=target_station,
+            text="Bestehend",
+            position=1,
+            checked=True,
+            version=4,
+        )
+        preview = self.post(self.target, {
+            "request_id": "append-preview",
+            "expected_revision": 1,
+            "source_event_id": self.source.id,
+            "station_ids": [self.source_station.id],
+        }).json()
+        response = self.post(self.target, {
+            "request_id": "append-commit",
+            "expected_revision": preview["target_revision"],
+            "source_event_id": self.source.id,
+            "station_ids": preview["station_ids"],
+            "resolutions": [{
+                "source_station_id": self.source_station.id,
+                "target_station_id": target_station.id,
+                "action": "append",
+            }],
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["result_counts"]["appended"], 1)
+        target_station.refresh_from_db()
+        target_todo.refresh_from_db()
+        self.assertEqual(
+            (target_station.max_kids, target_station.meeting_point,
+             target_station.wishes, target_station.responsible_profile_id),
+            (9, "Ziel", "Behalten", self.active_responsible.profil.id),
+        )
+        self.assertEqual((target_todo.checked, target_todo.version), (True, 4))
+        appended = target_station.todos.exclude(pk=target_todo.id).get()
+        self.assertEqual((appended.checked, appended.version), (False, 1))
+        self.assertEqual(
+            target_station.content_document["content"][-3]["content"][0]["text"],
+            "Kopiert aus Küche Happy Cleaning 1 – 2. Turnus 2025:",
+        )
+
+    def test_overwrite_preserves_identity_position_and_rejects_ineligible_target(self):
+        target_station = HappyCleaningStation.objects.create(
+            happy_cleaning=self.target,
+            name="Küche groß",
+            max_kids=2,
+            meeting_point="Alt",
+            position=7,
+        )
+        response = self.post(self.target, {
+            "request_id": "overwrite",
+            "expected_revision": 1,
+            "source_event_id": self.source.id,
+            "station_ids": [self.source_station.id],
+            "resolutions": [{
+                "source_station_id": self.source_station.id,
+                "target_station_id": target_station.id,
+                "action": "overwrite",
+            }],
+        })
+        self.assertEqual(response.status_code, 200)
+        target_station.refresh_from_db()
+        self.assertEqual((target_station.name, target_station.position), ("Küche", 7))
+        self.assertIsNone(target_station.responsible_profile)
+        self.assertEqual(
+            (target_station.todos.get().checked, target_station.todos.get().version),
+            (False, 1),
+        )
+
+        target_station.has_ever_had_assignment = True
+        target_station.save(update_fields=["has_ever_had_assignment"])
+        rejected = self.post(self.target, {
+            "request_id": "overwrite-locked",
+            "expected_revision": self.target.revision + 1,
+            "source_event_id": self.source.id,
+            "station_ids": [self.source_station.id],
+            "resolutions": [{
+                "source_station_id": self.source_station.id,
+                "target_station_id": target_station.id,
+                "action": "overwrite",
+            }],
+        })
+        self.assertEqual(rejected.status_code, 409)
+
+    def test_requires_exactly_one_resolution_per_conflicting_source(self):
+        target_station = HappyCleaningStation.objects.create(
+            happy_cleaning=self.target,
+            name="Küche Nord",
+            max_kids=2,
+            meeting_point="Gang",
+            position=1,
+        )
+        payload = {
+            "request_id": "missing-resolution",
+            "expected_revision": 1,
+            "source_event_id": self.source.id,
+            "station_ids": [self.source_station.id],
+            "resolutions": [],
+        }
+        response = self.post(self.target, payload)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.target.stations.count(), 1)
+        target_station.refresh_from_db()
+        self.assertEqual(target_station.name, "Küche Nord")
+
+    def test_mixed_batch_skips_conflict_and_copies_conflict_free_source_idempotently(self):
+        HappyCleaningStation.objects.create(
+            happy_cleaning=self.target,
+            name="Küche Nord",
+            max_kids=2,
+            meeting_point="Gang",
+            position=1,
+        )
+        other_source = HappyCleaningStation.objects.create(
+            happy_cleaning=self.source,
+            name="Speisesaal",
+            max_kids=8,
+            meeting_point="Tür",
+            position=2,
+        )
+        payload = {
+            "request_id": "mixed-resolution",
+            "expected_revision": 1,
+            "source_event_id": self.source.id,
+            "station_ids": [self.source_station.id, other_source.id],
+            "resolutions": [{
+                "source_station_id": self.source_station.id,
+                "target_station_id": None,
+                "action": "skip",
+            }],
+        }
+        response = self.post(self.target, payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["result_counts"],
+            {
+                "copied": 1, "overwritten": 0, "appended": 0,
+                "skipped": 1, "todos_created": 0,
+            },
+        )
+        self.assertTrue(
+            self.target.stations.filter(name="Speisesaal").exists()
+        )
+        replay = self.post(self.target, payload)
+        self.assertTrue(replay.json()["replayed"])
+        self.assertEqual(
+            self.target.stations.filter(name="Speisesaal").count(), 1,
+        )
+
     def test_rejects_source_target_and_inactive_target_and_rolls_back_failures(self):
         self.assertEqual(
             self.post(self.source, {

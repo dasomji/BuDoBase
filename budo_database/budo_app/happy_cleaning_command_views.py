@@ -266,6 +266,7 @@ def station_copy(request, event_id):
             required_positive_integer(request.data, "expected_revision"),
             required_positive_integer(request.data, "source_event_id"),
             station_ids=station_ids,
+            resolutions=request.data.get("resolutions"),
         )
 
     return _run_command(

@@ -185,36 +185,98 @@ const readOverviewPreference = (key, activeYear) => {
   return { openYears: [activeYear], sort: { key: 'name', direction: 'asc' } };
 };
 
+function ConflictResolution({ preview, decisions, setDecisions }) {
+  const groups = Object.values(preview.conflicts.reduce((all, conflict) => {
+    (all[conflict.source_station_id] ||= {
+      id: conflict.source_station_id,
+      name: conflict.source_name,
+      taskCount: conflict.source_task_count,
+      candidates: [],
+    }).candidates.push(conflict);
+    return all;
+  }, {}));
+  const choose = (id, patch) => setDecisions(current => ({
+    ...current, [id]: { ...(current[id] || {}), ...patch },
+  }));
+  return <div className="happy-cleaning-conflict-resolution">
+    {!!preview.conflict_free_station_ids?.length && <p>{preview.conflict_free_station_ids.length} konfliktfreie Station(en) werden ebenfalls kopiert.</p>}
+    <p role="status">{groups.filter(group => !decisions[group.id]?.action).length} Konfliktgruppe(n) ungelöst.</p>
+    {groups.map(group => {
+      const decision = decisions[group.id] || {};
+      const candidate = group.candidates.find(item => item.target_station_id === Number(decision.target_station_id));
+      return <fieldset className="happy-cleaning-conflict-card" key={group.id}>
+        <legend>{group.name} ({group.taskCount ?? 0} Aufgaben)</legend>
+        <p className="happy-cleaning-conflict-summary">
+          {group.candidates.map(item => `${group.name} → ${item.target_name}`).join(', ')}
+        </p>
+        <label>Bestehende Station
+          <select aria-label={`Bestehende Station für ${group.name}`} value={decision.target_station_id || ''} onChange={event => choose(group.id, { target_station_id: Number(event.target.value) || null, action: null })}>
+            <option value="">Bitte wählen</option>
+            {group.candidates.map(item => <option key={item.target_station_id} value={item.target_station_id}>{item.target_name} ({item.target_task_count ?? 0} Aufgaben)</option>)}
+          </select>
+        </label>
+        <div className="happy-cleaning-conflict-actions">
+          {[
+            ['overwrite', 'Bestehende Station überschreiben'],
+            ['append', 'Inhalte anhängen'],
+            ['separate', 'Als eigene Station kopieren'],
+            ['skip', 'Überspringen'],
+          ].map(([value, label]) => {
+            const targetRequired = value === 'overwrite' || value === 'append';
+            const locked = value === 'overwrite' && candidate && !candidate.overwrite_eligible;
+            return <label className="happy-cleaning-conflict-action" key={value}>
+              <input type="radio" name={`resolution-${group.id}`} checked={decision.action === value} disabled={(targetRequired && !candidate) || locked} onChange={() => choose(group.id, { action: value })} />
+              <span>{label}</span>
+              {locked && <small>{candidate.overwrite_disabled_reason}</small>}
+            </label>;
+          })}
+        </div>
+      </fieldset>;
+    })}
+  </div>;
+}
+
 function OverviewCopyDialog({ source, targets, mutate, close }) {
   const [stationIds, setStationIds] = useState([]);
   const [targetId, setTargetId] = useState('');
   const [state, setState] = useState({ kind: 'ready' });
+  const [decisions, setDecisions] = useState({});
   const availableTargets = targets.filter(target => target.id !== source.id);
   const selectedAll = source.stations.length > 0
     && stationIds.length === source.stations.length;
-  const toggle = stationId => setStationIds(current => (
+  const toggle = stationId => {
+    setState({ kind: 'ready' });
+    setDecisions({});
+    setStationIds(current => (
     current.includes(stationId)
       ? current.filter(id => id !== stationId)
       : [...current, stationId]
-  ));
-  const submit = async () => {
+    ));
+  };
+  const submit = async (forcePreview = false) => {
     const target = availableTargets.find(item => String(item.id) === targetId);
     if (!target) return;
     setState({ kind: 'busy' });
     try {
+      const preview = !forcePreview && state.kind === 'conflicts' ? state.result : null;
       const result = await mutate(
         `/api/happy-cleaning/events/${target.id}/stations/copy/`,
         {
           request_id: requestId(),
-          expected_revision: target.revision,
-          source_event_id: source.id,
-          station_ids: stationIds,
+          expected_revision: preview?.target_revision ?? target.revision,
+          source_event_id: preview?.source_event_id ?? source.id,
+          station_ids: preview?.station_ids ?? stationIds,
+          ...(preview ? { resolutions: Object.entries(decisions).map(([id, decision]) => ({
+            source_station_id: Number(id),
+            action: decision.action,
+            target_station_id: ['overwrite', 'append'].includes(decision.action) ? Number(decision.target_station_id) : null,
+          })) } : {}),
         },
       );
       if (result.result === 'conflicts') setState({ kind: 'conflicts', result });
       else setState({
         kind: 'success',
-        count: result.copied_stations?.length ?? stationIds.length,
+        count: result.copied_stations?.length ?? stationIds.length - (result.result_counts?.skipped || 0),
       });
     } catch (caught) {
       setState({ kind: 'error', message: errorMessage(caught) });
@@ -229,7 +291,7 @@ function OverviewCopyDialog({ source, targets, mutate, close }) {
           type="checkbox"
           aria-label="Alle Stationen auswählen"
           checked={selectedAll}
-          onChange={() => setStationIds(selectedAll ? [] : source.stations.map(station => station.id))}
+          onChange={() => { setState({ kind: 'ready' }); setDecisions({}); setStationIds(selectedAll ? [] : source.stations.map(station => station.id)); }}
         />
         Alle auswählen
       </label>
@@ -248,7 +310,7 @@ function OverviewCopyDialog({ source, targets, mutate, close }) {
       </div>
       <label>
         Ziel-Happy-Cleaning
-        <select aria-label="Ziel-Happy-Cleaning" value={targetId} onChange={event => setTargetId(event.target.value)}>
+        <select aria-label="Ziel-Happy-Cleaning" value={targetId} onChange={event => { setState({ kind: 'ready' }); setDecisions({}); setTargetId(event.target.value); }}>
           <option value="">Bitte wählen</option>
           {availableTargets.map(target => (
             <option key={target.id} value={target.id}>{target.label}</option>
@@ -265,11 +327,7 @@ function OverviewCopyDialog({ source, targets, mutate, close }) {
       {state.kind === 'conflicts' && (
         <div role="alert">
           <p>Ähnliche Stationen gefunden (Zielversion {state.result.target_revision}):</p>
-          <ul>{state.result.conflicts.map(conflict => (
-            <li key={`${conflict.source_station_id}:${conflict.target_station_id}`}>
-              {conflict.source_name} → {conflict.target_name}
-            </li>
-          ))}</ul>
+          <ConflictResolution preview={state.result} decisions={decisions} setDecisions={setDecisions} />
         </div>
       )}
       {state.kind === 'error' && <p className="error" role="alert">{state.message}</p>}
@@ -277,11 +335,15 @@ function OverviewCopyDialog({ source, targets, mutate, close }) {
         <button
           className="button"
           type="button"
-          disabled={state.kind === 'busy' || !stationIds.length || !targetId}
+          disabled={state.kind === 'busy' || !stationIds.length || !targetId || (
+            state.kind === 'conflicts'
+            && new Set(state.result.conflicts.map(item => item.source_station_id)).size !== Object.values(decisions).filter(item => item.action).length
+          )}
           onClick={submit}
         >
-          {state.kind === 'conflicts' || state.kind === 'error' ? 'Erneut prüfen' : 'Prüfen und kopieren'}
+          {state.kind === 'conflicts' ? 'Auswahl verbindlich kopieren' : state.kind === 'error' ? 'Erneut prüfen' : 'Prüfen und kopieren'}
         </button>
+        {state.kind === 'conflicts' && <button className="button" type="button" onClick={() => { setDecisions({}); submit(true); }}>Erneut prüfen</button>}
         <button className="button" type="button" disabled={state.kind === 'busy'} onClick={close}>Schließen</button>
       </div>
     </section>
@@ -802,15 +864,21 @@ function CopyDialog({ data, busy, perform, close }) {
   const [sourceId, setSourceId] = useState('');
   const [stationId, setStationId] = useState('');
   const [conflictResult, setConflictResult] = useState(null);
+  const [decisions, setDecisions] = useState({});
   const copy = async (copyAll = true) => {
     const selectedStationIds = copyAll
       ? (source?.stations || []).map(station => station.id)
       : [Number(stationId)];
     const payload = {
       request_id: requestId(),
-      expected_revision: data.event.revision,
-      source_event_id: Number(sourceId),
-      station_ids: selectedStationIds,
+      expected_revision: conflictResult?.target_revision ?? data.event.revision,
+      source_event_id: conflictResult?.source_event_id ?? Number(sourceId),
+      station_ids: conflictResult?.station_ids ?? selectedStationIds,
+      ...(conflictResult ? { resolutions: Object.entries(decisions).map(([id, decision]) => ({
+        source_station_id: Number(id),
+        action: decision.action,
+        target_station_id: ['overwrite', 'append'].includes(decision.action) ? Number(decision.target_station_id) : null,
+      })) } : {}),
     };
     try {
       const result = await perform(
@@ -829,7 +897,7 @@ function CopyDialog({ data, busy, perform, close }) {
   return (
     <section className="card happy-cleaning-copy" role="dialog" aria-label="Stationen kopieren">
       <h2>Stationen kopieren</h2>
-      <label>Quell-Happy-Cleaning<select aria-label="Quell-Happy-Cleaning" value={sourceId} onChange={event => { setSourceId(event.target.value); setStationId(''); }}>
+      <label>Quell-Happy-Cleaning<select aria-label="Quell-Happy-Cleaning" value={sourceId} onChange={event => { setSourceId(event.target.value); setStationId(''); setConflictResult(null); setDecisions({}); }}>
         <option value="">Bitte wählen</option>
         {data.copy_sources.map(source => <option key={source.id} value={source.id}>{source.label}</option>)}
       </select></label>
@@ -842,16 +910,14 @@ function CopyDialog({ data, busy, perform, close }) {
       {conflictResult && (
         <div role="alert">
           <p>Ähnliche Stationen gefunden (Zielversion {conflictResult.target_revision}):</p>
-          <ul>{conflictResult.conflicts.map(conflict => (
-            <li key={`${conflict.source_station_id}:${conflict.target_station_id}`}>
-              {conflict.source_name} → {conflict.target_name}
-            </li>
-          ))}</ul>
+          <ConflictResolution preview={conflictResult} decisions={decisions} setDecisions={setDecisions} />
         </div>
       )}
       <div className="react-actions">
-        <button className="button" type="button" disabled={busy || !sourceId} onClick={() => copy()}>Alle Stationen kopieren</button>
-        <button className="button" type="button" disabled={busy || !stationId} onClick={() => copy(false)}>Ausgewählte Station kopieren</button>
+        <button className="button" type="button" disabled={busy || !sourceId || (
+          conflictResult && new Set(conflictResult.conflicts.map(item => item.source_station_id)).size !== Object.values(decisions).filter(item => item.action).length
+        )} onClick={() => copy()}>{conflictResult ? 'Auswahl verbindlich kopieren' : 'Alle Stationen kopieren'}</button>
+        <button className="button" type="button" disabled={busy || !stationId || !!conflictResult} onClick={() => copy(false)}>Ausgewählte Station kopieren</button>
         <button className="button" type="button" onClick={close}>Abbrechen</button>
       </div>
     </section>
