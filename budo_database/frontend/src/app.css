@@ -1259,6 +1259,49 @@ input[name="amount"]::placeholder {
   padding: 0;
 }
 
+.happy-cleaning-years {
+  display: grid;
+  gap: var(--m-padding);
+}
+
+.happy-cleaning-year {
+  padding: 0;
+}
+
+.happy-cleaning-year > .card-toggle {
+  padding: var(--m-padding);
+  border: 0;
+  background: transparent;
+}
+
+.happy-cleaning-year > .card-toggle h2 {
+  margin: 0;
+}
+
+.happy-cleaning-year > .card-info-container > .card-info-content {
+  padding: 0 var(--m-padding);
+}
+
+.happy-cleaning-overview-table-wrap {
+  overflow-x: auto;
+}
+
+.happy-cleaning-overview-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.happy-cleaning-overview-table th,
+.happy-cleaning-overview-table td {
+  padding: var(--s-padding);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+  text-align: left;
+}
+
+.happy-cleaning-empty-stations {
+  margin-bottom: 0;
+}
+
 .happy-cleaning-event,
 .happy-cleaning-station,
 .happy-cleaning-create,

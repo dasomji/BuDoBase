@@ -56,6 +56,7 @@ const stationsData = {
 describe('Happy Cleaning management', () => {
   afterEach(() => {
     cleanup();
+    localStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -89,19 +90,72 @@ describe('Happy Cleaning management', () => {
     );
   });
 
-  it('lists contiguous events and requires the event name for eligible deletion', async () => {
+  it('groups years, lazy loads history, persists user state, and globally sorts every station table', async () => {
     const mutate = vi.fn().mockResolvedValue({ ok: true });
-    render(<HappyCleaningOverviewPage data={{ events: [
-      { id: 7, display_number: 1, revision: 2, can_delete: false },
-      { id: 9, display_number: 2, revision: 4, can_delete: true },
-    ] }} mutate={mutate} />);
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        years: [{
+          year: 2025, loaded: true, is_active: false,
+          turnuses: [{ id: 3, number: 4, start: '2025-08-01', is_active: false, events: [{
+            id: 5, display_number: 1, revision: 2, can_delete: false,
+            stations: [{ id: 50, name: 'Archiv', max_kids: 8, meeting_point: 'Altbau', task_item_count: 1 }],
+          }] }],
+        }],
+      }),
+    });
+    const data = {
+      user_id: 42,
+      active_year: 2026,
+      years: [
+        {
+          year: 2026, loaded: true, is_active: true,
+          turnuses: [{ id: 1, number: 3, start: '2026-07-01', is_active: true, events: [
+            {
+              id: 7, display_number: 1, revision: 2, can_delete: false,
+              stations: [
+                { id: 70, name: 'Küche', max_kids: 2, meeting_point: 'Gang', task_item_count: 4 },
+                { id: 71, name: 'Bad', max_kids: 5, meeting_point: 'Hof', task_item_count: 1 },
+                { id: 72, name: 'Balkon', max_kids: 5, meeting_point: 'Hof', task_item_count: 2 },
+              ],
+            },
+            { id: 9, display_number: 2, revision: 4, can_delete: true, stations: [] },
+          ] }],
+        },
+        {
+          year: 2025, loaded: false, is_active: false,
+          turnuses: [{ id: 3, number: 4, start: '2025-08-01', is_active: false, events: [
+            { id: 5, display_number: 1, revision: 2, can_delete: false },
+          ] }],
+        },
+      ],
+    };
+    render(<HappyCleaningOverviewPage data={data} mutate={mutate} fetchImpl={fetchImpl} />);
 
-    expect(screen.getByRole('link', { name: 'Einteilung für Happy Cleaning 1' })).toHaveAttribute(
-      'href', '/happy-cleaning/7/assignment/',
-    );
-    expect(screen.getByRole('link', { name: 'Stationen für Happy Cleaning 2' })).toHaveAttribute(
-      'href', '/happy-cleaning/9/stations/',
-    );
+    expect(screen.getByRole('button', { name: '2026 schließen' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: '2025 öffnen' })).toHaveAttribute('aria-expanded', 'false');
+    const activeTable = screen.getAllByRole('table')[0];
+    expect(within(activeTable).getAllByRole('columnheader').map(cell => cell.textContent)).toEqual([
+      'Stationsname↑', 'Max Kinder', 'Treffpunkt', 'Anzahl Todos',
+    ]);
+    expect(within(activeTable).getAllByRole('row')[1]).toHaveTextContent('Bad');
+    fireEvent.click(within(activeTable).getByRole('button', { name: 'Max Kinder sortieren' }));
+    expect(within(activeTable).getAllByRole('row')[1]).toHaveTextContent('Küche');
+    fireEvent.click(within(activeTable).getByRole('button', { name: 'Max Kinder sortieren' }));
+    expect(within(activeTable).getAllByRole('row')[1]).toHaveTextContent('Bad');
+    expect(within(activeTable).getAllByRole('row')[2]).toHaveTextContent('Balkon');
+    expect(JSON.parse(localStorage.getItem('happy-cleaning-overview:42')).sort).toEqual({
+      key: 'max_kids', direction: 'desc',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '2025 öffnen' }));
+    await waitFor(() => expect(fetchImpl).toHaveBeenCalledWith(
+      '/api/route-data/happy-cleaning-overview/?year=2025',
+      { credentials: 'same-origin' },
+    ));
+    expect(await screen.findByText('Archiv')).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('happy-cleaning-overview:42')).openYears).toContain(2025);
+
     expect(screen.queryByRole('link', { name: /Nummernliste für Happy Cleaning/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Happy Cleaning 1 löschen' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Happy Cleaning hinzufügen' })).not.toBeInTheDocument();
@@ -131,6 +185,33 @@ describe('Happy Cleaning management', () => {
     await waitFor(() => expect(mutate).toHaveBeenCalledWith(
       '/api/happy-cleaning/events/create/',
       expect.objectContaining({ request_id: expect.any(String) }),
+    ));
+  });
+
+  it('restores the current user overview preference and lazy loads remembered open years', async () => {
+    localStorage.setItem('happy-cleaning-overview:8', JSON.stringify({
+      openYears: [2026, 2024],
+      sort: { key: 'task_item_count', direction: 'desc' },
+    }));
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ years: [{
+        year: 2024, loaded: true, is_active: false, turnuses: [],
+      }] }),
+    });
+    render(<HappyCleaningOverviewPage data={{
+      user_id: 8,
+      active_year: 2026,
+      years: [
+        { year: 2026, loaded: true, is_active: true, turnuses: [] },
+        { year: 2024, loaded: false, is_active: false, turnuses: [] },
+      ],
+    }} mutate={vi.fn()} fetchImpl={fetchImpl} />);
+
+    expect(screen.getByRole('button', { name: '2024 schließen' })).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() => expect(fetchImpl).toHaveBeenCalledWith(
+      '/api/route-data/happy-cleaning-overview/?year=2024',
+      { credentials: 'same-origin' },
     ));
   });
 
@@ -195,7 +276,9 @@ describe('Happy Cleaning management', () => {
   });
 
   it('renders clear empty states', () => {
-    const { unmount } = render(<HappyCleaningOverviewPage data={{ events: [] }} mutate={vi.fn()} />);
+    const { unmount } = render(<HappyCleaningOverviewPage data={{
+      user_id: 1, active_year: 2026, years: [],
+    }} mutate={vi.fn()} />);
     expect(screen.getByText('Noch kein Happy Cleaning angelegt.')).toBeInTheDocument();
     unmount();
     render(<HappyCleaningManagementPage data={{ ...stationsData, stations: [] }} mutate={vi.fn()} />);

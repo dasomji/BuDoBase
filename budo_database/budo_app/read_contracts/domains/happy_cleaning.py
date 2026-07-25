@@ -5,6 +5,7 @@ from budo_app.happy_cleaning_number_batch import (
     first_happy_cleaning_complete,
     number_batch_projection,
 )
+from budo_app.happy_cleaning_station_documents import count_tasks
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningAssignment,
@@ -12,6 +13,7 @@ from budo_app.models import (
     HappyCleaningTodo,
     Kinder,
     Profil,
+    Turnus,
 )
 from budo_app.read_contracts.common import (
     kid_full_name,
@@ -51,21 +53,123 @@ def _requested_event(request):
 
 
 def overview(request):
-    events = HappyCleaning.objects.filter(
-        turnus_id=require_active_turnus_id(request),
-    ).only(
-        "id",
-        "display_number",
-        "revision",
-        "has_operational_activity",
+    active_turnus_id = require_active_turnus_id(request)
+    active_turnus = (
+        HappyCleaning.objects.filter(turnus_id=active_turnus_id)
+        .values("turnus__turnus_beginn")
+        .first()
     )
+    if active_turnus is None:
+        active_start = Turnus.objects.filter(id=active_turnus_id).values_list(
+            "turnus_beginn", flat=True
+        ).first()
+    else:
+        active_start = active_turnus["turnus__turnus_beginn"]
+    if active_start is None:
+        raise Http404
+    active_year = active_start.year
+    requested_year = request.query_params.get("year")
+    if requested_year is not None:
+        if not str(requested_year).isdigit():
+            raise Http404
+        loaded_year = int(requested_year)
+    else:
+        loaded_year = active_year
+
+    events = list(
+        HappyCleaning.objects.select_related("turnus").only(
+            "id",
+            "turnus_id",
+            "turnus__turnus_nr",
+            "turnus__turnus_beginn",
+            "display_number",
+            "revision",
+            "has_operational_activity",
+        )
+    )
+    years_available = {event.turnus.turnus_beginn.year for event in events}
+    if requested_year is not None and loaded_year not in years_available:
+        raise Http404
+    station_rows = (
+        HappyCleaningStation.objects.filter(
+            happy_cleaning__turnus__turnus_beginn__year=loaded_year,
+        )
+        .only(
+            "id",
+            "happy_cleaning_id",
+            "name",
+            "max_kids",
+            "meeting_point",
+            "position",
+            "content_document",
+        )
+        .order_by("position", "id")
+    )
+    stations_by_event = {}
+    for station in station_rows:
+        stations_by_event.setdefault(station.happy_cleaning_id, []).append({
+            "id": station.id,
+            "name": station.name,
+            "max_kids": station.max_kids,
+            "meeting_point": station.meeting_point,
+            "task_item_count": count_tasks(station.content_document)["total"],
+        })
+
+    years = {}
+    for event in events:
+        year = event.turnus.turnus_beginn.year
+        turnuses = years.setdefault(year, {})
+        turnus = turnuses.setdefault(event.turnus_id, {
+            "id": event.turnus_id,
+            "number": event.turnus.turnus_nr,
+            "start": event.turnus.turnus_beginn.isoformat(),
+            "_start_date": event.turnus.turnus_beginn,
+            "is_active": event.turnus_id == active_turnus_id,
+            "events": [],
+        })
+        summary = {
+            **_event_summary(event),
+            "can_delete": (
+                event.turnus_id == active_turnus_id
+                and not event.has_operational_activity
+            ),
+        }
+        if year == loaded_year:
+            summary["stations"] = stations_by_event.get(event.id, [])
+        turnus["events"].append(summary)
+
+    ordered_years = sorted(
+        years,
+        key=lambda year: (year != active_year, -year),
+    )
+    if requested_year is not None:
+        ordered_years = [loaded_year]
     return {
-        "events": [
+        "user_id": request.user.id,
+        "active_year": active_year,
+        "years": [
             {
-                **_event_summary(event),
-                "can_delete": not event.has_operational_activity,
+                "year": year,
+                "is_active": year == active_year,
+                "loaded": year == loaded_year,
+                "turnuses": [
+                    {
+                        key: value
+                        for key, value in turnus.items()
+                        if not key.startswith("_")
+                    }
+                    for turnus in sorted(
+                        years[year].values(),
+                        key=lambda turnus: (
+                            not turnus["is_active"]
+                            if year == active_year else 1,
+                            -turnus["_start_date"].toordinal(),
+                            -turnus["id"],
+                        ),
+                    )
+                ],
             }
-            for event in events
+            for year in ordered_years
         ],
     }
 

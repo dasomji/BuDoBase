@@ -135,3 +135,47 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
                     realistic[key].response_bytes,
                     RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
                 )
+
+    def test_overview_initial_and_historical_year_have_bounded_queries_and_bytes(self):
+        historical_turnus = Turnus.objects.create(
+            turnus_nr=4,
+            turnus_beginn=date(2025, 8, 1),
+        )
+        historical_event = HappyCleaning.objects.create(
+            turnus=historical_turnus,
+            display_number=1,
+        )
+        initial_small = measure_http_get(
+            self.client,
+            self._url("happy-cleaning-overview"),
+        )
+        for index in range(30):
+            station = HappyCleaningStation.objects.create(
+                happy_cleaning=historical_event,
+                name=f"Historische Station {index:02d}",
+                max_kids=12,
+                meeting_point=f"Archiv {index:02d}",
+                position=index,
+            )
+            for todo_index in range(5):
+                HappyCleaningTodo.objects.create(
+                    station=station,
+                    text=f"Historische Aufgabe {todo_index}",
+                    position=todo_index,
+                )
+
+        initial_large = measure_http_get(
+            self.client,
+            self._url("happy-cleaning-overview"),
+        )
+        historical = measure_http_get(
+            self.client,
+            self._url("happy-cleaning-overview", year=2025),
+        )
+
+        self.assertQueryCountAtMost(initial_small, 6)
+        self.assertQueryCountAtMost(initial_large, 6)
+        self.assertQueryCountAtMost(historical, 6)
+        self.assertQueryGrowthAtMost(initial_small, initial_large, 0)
+        self.assertEqual(initial_small.response_bytes, initial_large.response_bytes)
+        self.assertLess(historical.response_bytes, 16_000)

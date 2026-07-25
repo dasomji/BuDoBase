@@ -149,27 +149,95 @@ class HappyCleaningContractTests(TestCase):
             )
         return path
 
-    def test_overview_lists_only_active_turnus_events_with_revisions(self):
+    def test_overview_orders_all_turni_and_only_eager_loads_the_active_year(self):
+        older_turnus = Turnus.objects.create(
+            turnus_nr=4,
+            turnus_beginn=date(2025, 8, 1),
+        )
+        earlier_same_year = Turnus.objects.create(
+            turnus_nr=1,
+            turnus_beginn=date(2026, 6, 1),
+        )
+        oldest_turnus = Turnus.objects.create(
+            turnus_nr=2,
+            turnus_beginn=date(2024, 7, 1),
+        )
+        HappyCleaning.objects.create(
+            turnus=earlier_same_year,
+            display_number=1,
+        )
+        HappyCleaning.objects.create(
+            turnus=oldest_turnus,
+            display_number=1,
+        )
+        older_event = HappyCleaning.objects.create(
+            turnus=older_turnus,
+            display_number=1,
+            revision=5,
+        )
+        HappyCleaningStation.objects.create(
+            happy_cleaning=older_event,
+            name="Historische Küche",
+            max_kids=9,
+            meeting_point="Altbau",
+            position=1,
+            content_document={
+                "type": "doc",
+                "content": [{
+                    "type": "taskList",
+                    "content": [
+                        {"type": "taskItem", "attrs": {"id": 9001, "checked": False, "version": 1}, "content": [{"type": "paragraph", "content": []}]},
+                        {"type": "taskItem", "attrs": {"id": 9002, "checked": True, "version": 1}, "content": [{"type": "paragraph", "content": []}]},
+                    ],
+                }],
+            },
+        )
         response = self.client.get(self.url("happy-cleaning-overview"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {
-            "events": [
-                {
-                    "id": self.event.id,
-                    "display_number": 1,
-                    "revision": 7,
-                    "can_delete": False,
-                },
-                {
-                    "id": self.empty_event.id,
-                    "display_number": 2,
-                    "revision": 2,
-                    "can_delete": True,
-                },
-            ],
-        })
-        self.assertNotContains(response, "99")
+        payload = response.json()
+        self.assertEqual(payload["user_id"], self.user.id)
+        self.assertEqual(payload["active_year"], 2026)
+        self.assertEqual([group["year"] for group in payload["years"]], [2026, 2025, 2024])
+        active = payload["years"][0]
+        self.assertTrue(active["loaded"])
+        self.assertEqual(
+            [turnus["id"] for turnus in active["turnuses"]],
+            [self.turnus.id, self.other_turnus.id, earlier_same_year.id],
+        )
+        self.assertEqual(
+            [event["display_number"] for event in active["turnuses"][0]["events"]],
+            [1, 2],
+        )
+        self.assertEqual(
+            active["turnuses"][0]["events"][0]["stations"][0],
+            {
+                "id": self.station.id,
+                "name": "Speisesaal",
+                "max_kids": 3,
+                "meeting_point": "Vor dem Speisesaal",
+                "task_item_count": 2,
+            },
+        )
+        historical = payload["years"][1]
+        self.assertFalse(historical["loaded"])
+        self.assertNotIn("stations", historical["turnuses"][0]["events"][0])
+        serialized = response.content.decode()
+        self.assertNotIn("Historische Küche", serialized)
+        self.assertNotIn("Other carer", serialized)
+        self.assertNotIn("Other Child", serialized)
+
+        loaded = self.client.get(self.url("happy-cleaning-overview", year=2025))
+        self.assertEqual(loaded.status_code, 200)
+        loaded_payload = loaded.json()
+        self.assertEqual([group["year"] for group in loaded_payload["years"]], [2025])
+        self.assertTrue(loaded_payload["years"][0]["loaded"])
+        station = loaded_payload["years"][0]["turnuses"][0]["events"][0]["stations"][0]
+        self.assertEqual(station["name"], "Historische Küche")
+        self.assertEqual(station["task_item_count"], 2)
+        loaded_serialized = loaded.content.decode()
+        self.assertNotIn("Other carer", loaded_serialized)
+        self.assertNotIn("Other Child", loaded_serialized)
 
     def test_assignment_snapshot_exposes_only_search_station_child_and_presence_fields(self):
         response = self.client.get(self.url(

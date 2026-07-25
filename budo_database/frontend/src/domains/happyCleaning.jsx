@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Printer } from 'lucide-react';
 
 import {
@@ -88,10 +88,98 @@ export function HappyCleaningCreateButton({ mutate }) {
   return <><button className="button" type="button" disabled={busy} onClick={create}>Happy Cleaning hinzufügen</button>{error && <span className="error header-action-error" role="alert">{error}</span>}</>;
 }
 
-export function HappyCleaningOverviewPage({ data, mutate }) {
+const overviewColumns = [
+  { key: 'name', label: 'Stationsname' },
+  { key: 'max_kids', label: 'Max Kinder' },
+  { key: 'meeting_point', label: 'Treffpunkt' },
+  { key: 'task_item_count', label: 'Anzahl Todos' },
+];
+
+const compareStationValues = (left, right, key) => {
+  const a = left[key];
+  const b = right[key];
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return String(a ?? '').localeCompare(String(b ?? ''), 'de', {
+    numeric: true,
+    sensitivity: 'base',
+  });
+};
+
+function StationSummaryTable({ stations, sort, onSort }) {
+  const sorted = useMemo(() => stations
+    .map((station, index) => ({ station, index }))
+    .sort((left, right) => {
+      const compared = compareStationValues(left.station, right.station, sort.key);
+      return (sort.direction === 'asc' ? compared : -compared) || left.index - right.index;
+    })
+    .map(item => item.station), [stations, sort]);
+  return (
+    <div className="happy-cleaning-overview-table-wrap">
+      <table className="happy-cleaning-overview-table">
+        <thead>
+          <tr>
+            {overviewColumns.map(column => {
+              const active = sort.key === column.key;
+              return (
+                <th key={column.key} scope="col" aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button className="table-sort-button" type="button" aria-label={`${column.label} sortieren`} onClick={() => onSort(column.key)}>
+                    {column.label}
+                    {active && <span className="sort-indicator" aria-hidden="true">{sort.direction === 'asc' ? '↑' : '↓'}</span>}
+                  </button>
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map(station => (
+            <tr key={station.id}>
+              <td>{station.name}</td>
+              <td>{station.max_kids}</td>
+              <td>{station.meeting_point}</td>
+              <td>{station.task_item_count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {!stations.length && <p className="happy-cleaning-empty-stations">Noch keine Stationen angelegt.</p>}
+    </div>
+  );
+}
+
+const readOverviewPreference = (key, activeYear) => {
+  try {
+    const stored = JSON.parse(globalThis.localStorage?.getItem(key) || 'null');
+    if (stored && Array.isArray(stored.openYears) && stored.sort) return stored;
+  } catch {
+    // Storage can be unavailable or contain stale data; use safe defaults.
+  }
+  return { openYears: [activeYear], sort: { key: 'name', direction: 'asc' } };
+};
+
+export function HappyCleaningOverviewPage({ data, mutate, fetchImpl = fetch }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const storageKey = `happy-cleaning-overview:${data.user_id}`;
+  const [preference, setPreference] = useState(
+    () => readOverviewPreference(storageKey, data.active_year),
+  );
+  const [years, setYears] = useState(data.years);
+  const [loadingYears, setLoadingYears] = useState([]);
+  const loadingYearRequests = useRef(new Set());
+  useEffect(() => {
+    setYears(current => data.years.map(group => (
+      group.loaded ? group : current.find(item => item.year === group.year && item.loaded) || group
+    )));
+  }, [data.years]);
+  useEffect(() => {
+    try {
+      globalThis.localStorage?.setItem(storageKey, JSON.stringify(preference));
+    } catch {
+      // Browser persistence is best-effort.
+    }
+  }, [preference, storageKey]);
   const run = async (url, payload = {}) => {
     setBusy(true);
     setError('');
@@ -109,6 +197,56 @@ export function HappyCleaningOverviewPage({ data, mutate }) {
       expected_revision: event.revision,
     });
   };
+  const changeSort = key => setPreference(current => ({
+    ...current,
+    sort: {
+      key,
+      direction: current.sort.key === key && current.sort.direction === 'asc' ? 'desc' : 'asc',
+    },
+  }));
+  const loadYear = async group => {
+    if (group.loaded || loadingYearRequests.current.has(group.year)) return;
+    loadingYearRequests.current.add(group.year);
+    setLoadingYears(current => [...current, group.year]);
+    try {
+      const response = await fetchImpl(
+        `/api/route-data/happy-cleaning-overview/?year=${group.year}`,
+        { credentials: 'same-origin' },
+      );
+      if (!response.ok) throw new Error(`Historisches Jahr konnte nicht geladen werden (${response.status})`);
+      const payload = await response.json();
+      const loaded = payload.years?.[0];
+      if (!loaded) throw new Error('Historisches Jahr konnte nicht geladen werden.');
+      setYears(current => current.map(item => item.year === group.year ? loaded : item));
+    } catch (caught) {
+      setError(caught.message);
+    } finally {
+      loadingYearRequests.current.delete(group.year);
+      setLoadingYears(current => current.filter(year => year !== group.year));
+    }
+  };
+  const toggleYear = async group => {
+    const opening = !preference.openYears.includes(group.year);
+    setPreference(current => ({
+      ...current,
+      openYears: opening
+        ? [...new Set([...current.openYears, group.year])]
+        : current.openYears.filter(year => year !== group.year),
+    }));
+    if (opening) await loadYear(group);
+  };
+  useEffect(() => {
+    years
+      .filter(group => preference.openYears.includes(group.year) && !group.loaded)
+      .forEach(group => { loadYear(group); });
+    // Re-run only when switching users; subsequent openings load in toggleYear.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
+  const eventCount = years.reduce(
+    (count, group) => count + group.turnuses.reduce(
+      (subtotal, turnus) => subtotal + turnus.events.length, 0,
+    ), 0,
+  );
   return (
     <main className="happy-cleaning-page" id="body-container">
       {deleteCandidate && (
@@ -119,27 +257,40 @@ export function HappyCleaningOverviewPage({ data, mutate }) {
         />
       )}
       {error && <p className="error" role="alert">{error}</p>}
-      {!data.events.length && <p>Noch kein Happy Cleaning angelegt.</p>}
-      <ol className="happy-cleaning-events">
-        {data.events.map(event => (
-          <li className="card happy-cleaning-event" key={event.id}>
-            <h2>Happy Cleaning {event.display_number}</h2>
-            <div className="react-actions">
-              <a className="button" href={`/happy-cleaning/${event.id}/assignment/`} aria-label={`Einteilung für Happy Cleaning ${event.display_number}`}>
-                Einteilung
-              </a>
-              <a className="button" href={`/happy-cleaning/${event.id}/stations/`} aria-label={`Stationen für Happy Cleaning ${event.display_number}`}>
-                Stationen
-              </a>
-              {event.can_delete && (
-                <button className="button danger" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
-                  Löschen
-                </button>
+      {!eventCount && <p>Noch kein Happy Cleaning angelegt.</p>}
+      <div className="happy-cleaning-years">
+        {years.map(group => {
+          const open = preference.openYears.includes(group.year);
+          const loading = loadingYears.includes(group.year);
+          return (
+            <section className={`card transparent happy-cleaning-year ${open ? '' : 'closed-card'}`} key={group.year}>
+              <button className="info-header-container card-toggle" type="button" aria-expanded={open} aria-label={`${group.year} ${open ? 'schließen' : 'öffnen'}`} onClick={() => toggleYear(group)}>
+                <h2>{group.year}</h2>
+              </button>
+              {open && (
+                <div className="card-info-container">
+                  <div className="card-info-content">
+                    {loading && <p role="status">Stationstabellen werden geladen…</p>}
+                    {group.loaded && group.turnuses.flatMap(turnus => turnus.events.map(event => (
+                      <article className="card happy-cleaning-event" key={event.id}>
+                        <h3>{turnus.number}. Turnus {group.year} · Happy Cleaning {event.display_number}</h3>
+                        <StationSummaryTable stations={event.stations} sort={preference.sort} onSort={changeSort} />
+                        <div className="react-actions">
+                          {event.can_delete && (
+                            <button className="button danger" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
+                              Löschen
+                            </button>
+                          )}
+                        </div>
+                      </article>
+                    )))}
+                  </div>
+                </div>
               )}
-            </div>
-          </li>
-        ))}
-      </ol>
+            </section>
+          );
+        })}
+      </div>
     </main>
   );
 }
@@ -514,7 +665,7 @@ export const happyCleaningRoutes = [
     domain: 'happy-cleaning',
     readContractKey: 'happy-cleaning-overview',
     headerAction: (_data, { mutate }) => <HappyCleaningCreateButton mutate={mutate} />,
-    render: ({ data, mutate }) => <HappyCleaningOverviewPage data={data} mutate={mutate} />,
+    render: ({ data, mutate, fetchImpl }) => <HappyCleaningOverviewPage data={data} mutate={mutate} fetchImpl={fetchImpl} />,
   },
   {
     pattern: /^\/happy-cleaning\/(\d+)\/assignment$/,

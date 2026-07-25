@@ -171,12 +171,16 @@ function AppContent({
     </>
   );
   if (route.standalone) return content;
+  const overviewSidebarEvents = (data.years || [])
+    .flatMap(year => year.turnuses || [])
+    .filter(turnus => turnus.is_active)
+    .flatMap(turnus => turnus.events || []);
   return (
     <ApplicationShell
       sidebar={data.authenticated ? (
         <AppSidebar happyCleaningEvents={
           route.page === 'happy-cleaning-overview'
-            ? data.events
+            ? overviewSidebarEvents
             : data.happy_cleaning_events
         } />
       ) : null}
