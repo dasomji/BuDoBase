@@ -57,6 +57,9 @@ COMMON_DETAIL_FIELDS = {
     "expected_version": (int,),
     "current_version": (int,),
     "changed_fields": (list,),
+    "old_capacity": (int,),
+    "new_capacity": (int,),
+    "overbooked_count": (int,),
     "result_count": (int,),
     "filter_count": (int,),
 }

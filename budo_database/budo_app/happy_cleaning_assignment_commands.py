@@ -83,6 +83,7 @@ def _station_projection(station):
         "max_kids": station.max_kids,
         "assigned_count": assigned_count,
         "free_seats": max(station.max_kids - assigned_count, 0),
+        "overbooked_count": max(assigned_count - station.max_kids, 0),
     }
 
 

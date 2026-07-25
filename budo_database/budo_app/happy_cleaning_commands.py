@@ -281,6 +281,7 @@ def event_projection(event):
 
 def station_projection(station):
     todos = list(station.todos.order_by("position", "id"))
+    assigned_count = station.assignments.count()
     return {
         "id": station.id,
         "version": station.version,
@@ -291,6 +292,8 @@ def station_projection(station):
         "responsible_profile_id": station.responsible_profile_id,
         "position": station.position,
         "has_ever_had_assignment": station.has_ever_had_assignment,
+        "assigned_count": assigned_count,
+        "overbooked_count": max(assigned_count - station.max_kids, 0),
         "document": station.content_document,
         "task_item_count": len(todos),
         "todos": [todo_projection(todo) for todo in todos],
@@ -673,7 +676,15 @@ def _save_structural_document(station, submitted):
     return document
 
 
-def update_station(context, event_id, station_id, expected_version, fields, document=None):
+def update_station(
+    context,
+    event_id,
+    station_id,
+    expected_version,
+    fields,
+    document=None,
+    overbooking_confirmation=None,
+):
     action = "happy_cleaning.station.update"
     with transaction.atomic():
         _locked_turnus(context)
@@ -694,11 +705,26 @@ def update_station(context, event_id, station_id, expected_version, fields, docu
             event_id=event.id,
             station_id=station.id,
         )
-        if (
-            station.has_ever_had_assignment
-            and station.max_kids != fields["max_kids"]
-        ):
-            raise CommandError("capacity_locked", status=409)
+        assigned_count = station.assignments.count()
+        proposed_overbooking = max(assigned_count - fields["max_kids"], 0)
+        if proposed_overbooking:
+            expected_confirmation = {
+                "capacity": fields["max_kids"],
+                "assigned_count": assigned_count,
+                "station_version": station.version,
+            }
+            if overbooking_confirmation != expected_confirmation:
+                raise CommandError(
+                    "overbooking_confirmation_required",
+                    status=409,
+                    extra={
+                        "confirmation": {
+                            **expected_confirmation,
+                            "overbooked_count": proposed_overbooking,
+                        },
+                    },
+                )
+        old_capacity = station.max_kids
         changed_fields = [
             name for name in (
                 "name", "max_kids", "meeting_point", "wishes",
@@ -739,6 +765,9 @@ def update_station(context, event_id, station_id, expected_version, fields, docu
                 "station_id": station.id,
                 "station_name": station.name,
                 "changed_fields": changed_fields,
+                "old_capacity": old_capacity,
+                "new_capacity": station.max_kids,
+                "overbooked_count": proposed_overbooking,
             },
         )
         return complete_command(context, action, {

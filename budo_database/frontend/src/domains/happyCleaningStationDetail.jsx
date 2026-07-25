@@ -30,8 +30,15 @@ const errorMessage = error => {
   if (error?.payload?.code === 'sync_unavailable') {
     return 'Vor der nächsten Änderung müssen aktuelle Daten geladen werden.';
   }
+  if (error?.payload?.code === 'overbooking_confirmation_required') {
+    return 'Die Einteilung hat sich geändert. Bitte aktuelle Überbelegung prüfen und erneut bestätigen.';
+  }
   return error?.message || 'Die Änderung konnte nicht gespeichert werden.';
 };
+
+const capacityLabel = station => station.overbooked_count > 0
+  ? `${station.overbooked_count} überbelegt`
+  : `${Math.max(station.max_kids - (station.assigned_count || 0), 0)} / ${station.max_kids} frei`;
 
 function Progress({ station }) {
   const total = station.todo_total_count;
@@ -115,29 +122,70 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
     document: initialDocument,
   });
   const save = async () => {
+    const capacity = Number(fields.max_kids);
+    const assignedCount = station.assigned_count || 0;
+    const overbookedCount = Math.max(assignedCount - capacity, 0);
+    let overbookingConfirmation;
+    if (!creating && overbookedCount > 0) {
+      if (!globalThis.confirm?.(
+        `Die Station wäre ${overbookedCount} überbelegt. Kapazität trotzdem speichern?`,
+      )) return false;
+      overbookingConfirmation = {
+        capacity,
+        assigned_count: assignedCount,
+        station_version: station.version,
+      };
+    }
+    const url = creating
+      ? `/api/happy-cleaning/events/${event.id}/stations/create/`
+      : `/api/happy-cleaning/events/${event.id}/stations/${station.id}/update/`;
+    const payload = {
+      request_id: commandRequestId.current,
+      ...(creating
+        ? { expected_revision: event.revision }
+        : { expected_version: station.version }),
+      ...fields,
+      max_kids: capacity,
+      ...(overbookingConfirmation ? {
+        overbooking_confirmation: overbookingConfirmation,
+      } : {}),
+      responsible_profile_id: fields.responsible_profile_id
+        ? Number(fields.responsible_profile_id)
+        : null,
+      document: currentDocument,
+    };
     setBusy(true);
     setError('');
     try {
-      const result = await mutate(
-        creating
-          ? `/api/happy-cleaning/events/${event.id}/stations/create/`
-          : `/api/happy-cleaning/events/${event.id}/stations/${station.id}/update/`,
-        {
-          request_id: commandRequestId.current,
-          ...(creating
-            ? { expected_revision: event.revision }
-            : { expected_version: station.version }),
-          ...fields,
-          max_kids: Number(fields.max_kids),
-          responsible_profile_id: fields.responsible_profile_id
-            ? Number(fields.responsible_profile_id)
-            : null,
-          document: currentDocument,
-        },
-      );
+      const result = await mutate(url, payload);
       await onSaved?.(result);
       return true;
     } catch (caught) {
+      const confirmation = caught?.payload?.confirmation;
+      if (
+        caught?.payload?.code === 'overbooking_confirmation_required'
+        && confirmation
+        && globalThis.confirm?.(
+          `Die Einteilung hat sich geändert: ${confirmation.overbooked_count} überbelegt. Trotzdem speichern?`,
+        )
+      ) {
+        try {
+          const result = await mutate(url, {
+            ...payload,
+            expected_version: confirmation.station_version,
+            overbooking_confirmation: {
+              capacity: confirmation.capacity,
+              assigned_count: confirmation.assigned_count,
+              station_version: confirmation.station_version,
+            },
+          });
+          await onSaved?.(result);
+          return true;
+        } catch (retryError) {
+          setError(errorMessage(retryError));
+          return false;
+        }
+      }
       setError(errorMessage(caught));
       return false;
     } finally {
@@ -185,7 +233,7 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
       </div>
       <form className="form-grid" onSubmit={async event_ => { event_.preventDefault(); await save(); }}>
         <label>Name<input aria-label="Name der Station" value={fields.name} onChange={event_ => setFields(value => ({ ...value, name: event_.target.value }))} /></label>
-        <label>Kapazität<input aria-label="Kapazität der Station" type="number" min="1" disabled={station.has_ever_had_assignment} value={fields.max_kids} onChange={event_ => setFields(value => ({ ...value, max_kids: event_.target.value }))} /></label>
+        <label>Kapazität<input aria-label="Kapazität der Station" type="number" min="1" required value={fields.max_kids} onChange={event_ => setFields(value => ({ ...value, max_kids: event_.target.value }))} /></label>
         <label>Treffpunkt<input aria-label="Treffpunkt der Station" value={fields.meeting_point} onChange={event_ => setFields(value => ({ ...value, meeting_point: event_.target.value }))} /></label>
         <label>Wünsche<textarea aria-label="Wünsche der Station" value={fields.wishes} onChange={event_ => setFields(value => ({ ...value, wishes: event_.target.value }))} /></label>
         <label>Hauptverantwortlich<select aria-label="Hauptverantwortlich" value={fields.responsible_profile_id} onChange={event_ => setFields(value => ({ ...value, responsible_profile_id: event_.target.value }))}>
@@ -286,6 +334,7 @@ export function HappyCleaningStationDetailPage({
         {station.can_edit && <button className="button" type="button" onClick={() => setEditing(true)}>Bearbeiten</button>}
         <dl className="happy-cleaning-station-facts">
           <div><dt>Max Kinder</dt><dd>{station.max_kids}</dd></div>
+          <div><dt>Plätze</dt><dd>{capacityLabel(station)}</dd></div>
           <div><dt>Treffpunkt</dt><dd>{station.meeting_point || '—'}</dd></div>
           <div><dt>Wünsche</dt><dd>{station.wishes || '—'}</dd></div>
           {station.responsible && (

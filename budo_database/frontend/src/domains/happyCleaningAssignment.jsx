@@ -434,6 +434,10 @@ const progress = station => station.todo_progress_percentage === null
   ? '—'
   : `${station.todo_progress_percentage}%`;
 
+const places = station => station.overbooked_count > 0
+  ? `${station.overbooked_count} überbelegt`
+  : `${station.free_seats} / ${station.max_kids} frei`;
+
 function StationDetailsDialog({ station, onSelect }) {
   const [open, setOpen] = useState(false);
   return (
@@ -457,7 +461,7 @@ function StationDetailsDialog({ station, onSelect }) {
               <div><dt>Wünsche</dt><dd>{station.wishes || '—'}</dd></div>
               <div><dt>Treffpunkt</dt><dd>{station.meeting_point}</dd></div>
               <div><dt>Verantwortlich</dt><dd>{station.responsible?.name || '—'}</dd></div>
-              <div><dt>Plätze</dt><dd>{station.free_seats} / {station.max_kids} frei</dd></div>
+              <div><dt>Plätze</dt><dd>{places(station)}</dd></div>
               <div><dt>Aufgaben</dt><dd>{progress(station)}</dd></div>
               <div>
                 <dt>Kinder</dt>
@@ -526,7 +530,7 @@ function DesktopStations({ eventId, stations, selected, busy, onActivate, onSele
                     <td className="happy-cleaning-desktop-column">{station.wishes || '—'}</td>
                     <td className="happy-cleaning-desktop-column">{station.meeting_point}</td>
                     <td className="happy-cleaning-desktop-column">{station.responsible?.name || '—'}</td>
-                    <td className="happy-cleaning-places-column">{station.free_seats} / {station.max_kids} frei</td>
+                    <td className="happy-cleaning-places-column">{places(station)}</td>
                     <td className="happy-cleaning-desktop-column">{progress(station)}</td>
                     <td className="happy-cleaning-desktop-column">
                       <span

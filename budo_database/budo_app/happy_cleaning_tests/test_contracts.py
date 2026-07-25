@@ -227,6 +227,8 @@ class HappyCleaningContractTests(TestCase):
                 "max_kids": 3,
                 "meeting_point": "Vor dem Speisesaal",
                 "task_item_count": 2,
+                "assigned_count": 2,
+                "overbooked_count": 0,
             },
         )
         historical = payload["years"][1]
@@ -329,6 +331,7 @@ class HappyCleaningContractTests(TestCase):
                     "max_kids": 3,
                     "assigned_count": 2,
                     "free_seats": 1,
+                    "overbooked_count": 0,
                     "todo_progress_percentage": 50,
                     "children": [
                         {
@@ -359,6 +362,7 @@ class HappyCleaningContractTests(TestCase):
                     "max_kids": 2,
                     "assigned_count": 0,
                     "free_seats": 2,
+                    "overbooked_count": 0,
                     "todo_progress_percentage": None,
                     "children": [],
                 },
@@ -426,6 +430,8 @@ class HappyCleaningContractTests(TestCase):
                     "responsible_profile_id": self.user.profil.id,
                     "position": 1,
                     "has_ever_had_assignment": True,
+                    "assigned_count": 2,
+                    "overbooked_count": 0,
                     "todo_progress_percentage": 50,
                     "todos": [
                         {
@@ -454,6 +460,8 @@ class HappyCleaningContractTests(TestCase):
                     "responsible_profile_id": None,
                     "position": 2,
                     "has_ever_had_assignment": False,
+                    "assigned_count": 0,
+                    "overbooked_count": 0,
                     "todo_progress_percentage": None,
                     "todos": [],
                 },
@@ -488,6 +496,8 @@ class HappyCleaningContractTests(TestCase):
                 "meeting_point": "Vor dem Speisesaal",
                 "wishes": "Fenster nicht vergessen",
                 "has_ever_had_assignment": True,
+                "assigned_count": 2,
+                "overbooked_count": 0,
                 "content": [{
                     "type": "task_list",
                     "items": [
@@ -549,6 +559,32 @@ class HappyCleaningContractTests(TestCase):
         })
         self.assertNotContains(response, "Other Child")
         self.assertNotContains(response, "Private Krankheit")
+
+    def test_overbooked_count_is_exact_across_read_contracts(self):
+        HappyCleaningStation.objects.filter(pk=self.station.pk).update(max_kids=1)
+
+        assignment = self.client.get(self.url(
+            "happy-cleaning-assignment",
+            event_id=self.event.id,
+        )).json()
+        overview = self.client.get(self.url(
+            "happy-cleaning-overview",
+        )).json()
+        detail = self.client.get(self.url(
+            "happy-cleaning-station-detail",
+            event_id=self.event.id,
+            station_id=self.station.id,
+        )).json()
+
+        assignment_station = next(
+            station for station in assignment["stations"]
+            if station["id"] == self.station.id
+        )
+        overview_station = overview["years"][0]["turnuses"][0]["events"][0]["stations"][0]
+        self.assertEqual(assignment_station["overbooked_count"], 1)
+        self.assertEqual(assignment_station["free_seats"], 0)
+        self.assertEqual(overview_station["overbooked_count"], 1)
+        self.assertEqual(detail["station"]["overbooked_count"], 1)
 
     def test_historical_station_detail_redacts_people_from_response(self):
         historical_turnus = Turnus.objects.create(

@@ -118,6 +118,27 @@ describe('Happy Cleaning assignment', () => {
     );
   });
 
+  it('shows the exact overbooked count instead of zero free seats', () => {
+    setViewport(false);
+    render(<HappyCleaningAssignmentPage
+      data={{
+        ...assignmentData,
+        stations: assignmentData.stations.map(station => station.id === 10
+          ? {
+            ...station,
+            assigned_count: 3,
+            free_seats: 0,
+            overbooked_count: 1,
+          }
+          : station),
+      }}
+      mutate={vi.fn()}
+    />);
+
+    expect(screen.getByText('1 überbelegt')).toBeInTheDocument();
+    expect(screen.getByText('0 / 1 frei')).toBeInTheDocument();
+  });
+
   it('shows the Carlos placeholder card before a child is selected', () => {
     setViewport(false);
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);

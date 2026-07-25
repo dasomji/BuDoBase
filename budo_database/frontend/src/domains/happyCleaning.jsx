@@ -22,6 +22,9 @@ const errorMessage = error => {
   if (code === 'capacity_locked') return 'Die Kapazität ist nach der ersten Einteilung dauerhaft gesperrt.';
   if (code === 'station_locked') return 'Diese Station kann nach der ersten Einteilung nicht gelöscht werden.';
   if (code === 'sync_unavailable') return 'Vor der nächsten Änderung müssen aktuelle Daten geladen werden.';
+  if (code === 'overbooking_confirmation_required') {
+    return 'Die Einteilung hat sich geändert. Bitte aktuelle Überbelegung prüfen und erneut bestätigen.';
+  }
   return error?.message || 'Die Änderung konnte nicht gespeichert werden.';
 };
 
@@ -163,7 +166,9 @@ function StationSummaryTable({ event, stations, sort, onSort, onSelect, selectio
                   onSelect(event, station);
                 }}
               >{station.name}</button></td>
-              <td>{station.max_kids}</td>
+              <td>{station.overbooked_count > 0
+                ? `${station.overbooked_count} überbelegt`
+                : station.max_kids}</td>
               <td>{station.meeting_point}</td>
               <td>{station.task_item_count}</td>
             </tr>
@@ -820,16 +825,30 @@ function StationForm({ station, profiles, onSave, busy }) {
   return (
     <form className="form-grid happy-cleaning-station-form" onSubmit={event => {
       event.preventDefault();
+      const numericCapacity = Number(capacity);
+      const overbookedCount = Math.max(
+        (station.assigned_count || 0) - numericCapacity, 0,
+      );
+      if (overbookedCount > 0 && !window.confirm(
+        `Die Station wäre ${overbookedCount} überbelegt. Kapazität trotzdem speichern?`,
+      )) return;
       onSave({
         name,
-        max_kids: Number(capacity),
+        max_kids: numericCapacity,
         meeting_point: meetingPoint,
         wishes,
         responsible_profile_id: responsible ? Number(responsible) : null,
+        ...(overbookedCount > 0 ? {
+          overbooking_confirmation: {
+            capacity: numericCapacity,
+            assigned_count: station.assigned_count,
+            station_version: station.version,
+          },
+        } : {}),
       });
     }}>
       <label>Name<input aria-label={`Name der Station ${label}`} value={name} onChange={event => setName(event.target.value)} /></label>
-      <label>Kapazität<input aria-label={`Kapazität der Station ${label}`} type="number" min="1" required disabled={station.has_ever_had_assignment} value={capacity} onChange={event => setCapacity(event.target.value)} /></label>
+      <label>Kapazität<input aria-label={`Kapazität der Station ${label}`} type="number" min="1" required value={capacity} onChange={event => setCapacity(event.target.value)} /></label>
       <label>Treffpunkt<input aria-label={`Treffpunkt der Station ${label}`} value={meetingPoint} onChange={event => setMeetingPoint(event.target.value)} /></label>
       <label>Wünsche<textarea aria-label={`Wünsche der Station ${label}`} value={wishes} onChange={event => setWishes(event.target.value)} /></label>
       <label>Hauptverantwortlich<select aria-label={`Hauptverantwortlich für Station ${label}`} value={responsible} onChange={event => setResponsible(event.target.value)}>
@@ -885,6 +904,7 @@ function StationCard({ event, station, profiles, index, count, expanded, setExpa
         <button className="happy-cleaning-expand" type="button" aria-expanded={expanded} aria-label={`${station.name} ${expanded ? 'schließen' : 'öffnen'}`} onClick={() => setExpanded(expanded ? null : station.id)}>
           <strong>{station.name}</strong>
         </button>
+        {station.overbooked_count > 0 && <strong>{station.overbooked_count} überbelegt</strong>}
         <Progress value={station.todo_progress_percentage} />
         <div className="happy-cleaning-order-controls">
           <button className="button" type="button" disabled={busy || index === 0} aria-label={`${station.name} nach oben`} onClick={() => reorderStations(index, -1)}>↑</button>
@@ -893,11 +913,30 @@ function StationCard({ event, station, profiles, index, count, expanded, setExpa
       </div>
       {expanded && (
         <div className="happy-cleaning-station-details">
-          <StationForm key={station.version} station={station} profiles={profiles} busy={busy} onSave={fields => perform(
-            `/api/happy-cleaning/events/${event.id}/stations/${station.id}/update/`,
-            { expected_version: station.version, ...fields },
-            station.id,
-          )} />
+          <StationForm key={station.version} station={station} profiles={profiles} busy={busy} onSave={async fields => {
+            const url = `/api/happy-cleaning/events/${event.id}/stations/${station.id}/update/`;
+            try {
+              return await perform(url, { expected_version: station.version, ...fields }, station.id);
+            } catch (caught) {
+              const confirmation = caught?.payload?.confirmation;
+              if (
+                caught?.payload?.code !== 'overbooking_confirmation_required'
+                || !confirmation
+                || !window.confirm(
+                  `Die Einteilung hat sich geändert: ${confirmation.overbooked_count} überbelegt. Trotzdem speichern?`,
+                )
+              ) throw caught;
+              return perform(url, {
+                expected_version: confirmation.station_version,
+                ...fields,
+                overbooking_confirmation: {
+                  capacity: confirmation.capacity,
+                  assigned_count: confirmation.assigned_count,
+                  station_version: confirmation.station_version,
+                },
+              }, station.id);
+            }
+          }} />
           <h3>Aufgaben</h3>
           {!station.todos.length && <p>Noch keine Aufgabe angelegt.</p>}
           <ul className="happy-cleaning-todos">

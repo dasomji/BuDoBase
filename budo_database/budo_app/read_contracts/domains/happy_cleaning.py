@@ -1,4 +1,4 @@
-from django.db.models import Prefetch, Q
+from django.db.models import Count, Prefetch, Q
 from django.http import Http404
 
 from budo_app.happy_cleaning_number_batch import (
@@ -101,6 +101,7 @@ def overview(request):
             "position",
             "content_document",
         )
+        .annotate(assigned_count=Count("assignments"))
         .order_by("position", "id")
     )
     stations_by_event = {}
@@ -111,6 +112,10 @@ def overview(request):
             "max_kids": station.max_kids,
             "meeting_point": station.meeting_point,
             "task_item_count": count_tasks(station.content_document)["total"],
+            "assigned_count": station.assigned_count,
+            "overbooked_count": max(
+                station.assigned_count - station.max_kids, 0
+            ),
         })
 
     years = {}
@@ -262,6 +267,7 @@ def _assignment_station(station, turnus_id):
         "max_kids": station.max_kids,
         "assigned_count": assigned_count,
         "free_seats": max(station.max_kids - assigned_count, 0),
+        "overbooked_count": max(assigned_count - station.max_kids, 0),
         "todo_progress_percentage": _todo_progress(station.route_todos),
         "children": [
             _station_child(assignment) for assignment in assignments
@@ -417,6 +423,8 @@ def _management_station(station, turnus_id):
         "responsible_profile_id": responsible_profile_id,
         "position": station.position,
         "has_ever_had_assignment": station.has_ever_had_assignment,
+        "assigned_count": station.assigned_count,
+        "overbooked_count": max(station.assigned_count - station.max_kids, 0),
         "todo_progress_percentage": _todo_progress(station.route_todos),
         "todos": [_todo(todo) for todo in station.route_todos],
     }
@@ -449,6 +457,7 @@ def station_management(request):
             "version",
             "has_ever_had_assignment",
         )
+        .annotate(assigned_count=Count("assignments"))
         .prefetch_related(Prefetch(
             "todos",
             queryset=todos,
@@ -601,6 +610,7 @@ def station_detail(request):
     if responsible and responsible.turnus_id != event.turnus_id:
         responsible = None
     checked_count = sum(todo["checked"] for todo in todos)
+    assigned_count = len(assignments)
     projection = {
         "event": _event_summary(event),
         "station": {
@@ -611,6 +621,8 @@ def station_detail(request):
             "meeting_point": station.meeting_point,
             "wishes": station.wishes,
             "has_ever_had_assignment": station.has_ever_had_assignment,
+            "assigned_count": assigned_count,
+            "overbooked_count": max(assigned_count - station.max_kids, 0),
             "content": document,
             "document": station.content_document,
             "is_historical": not active,

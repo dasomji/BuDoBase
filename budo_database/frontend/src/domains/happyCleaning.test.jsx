@@ -513,7 +513,7 @@ describe('Happy Cleaning management', () => {
     expect(screen.queryByLabelText('Name der Station Speisesaal')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Speisesaal öffnen' }));
     expect(screen.getByLabelText('Name der Station Speisesaal')).toHaveValue('Speisesaal');
-    expect(screen.getByLabelText('Kapazität der Station Speisesaal')).toBeDisabled();
+    expect(screen.getByLabelText('Kapazität der Station Speisesaal')).toBeEnabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Bad nach oben' }));
     await waitFor(() => expect(mutate).toHaveBeenCalledWith(
@@ -526,6 +526,20 @@ describe('Happy Cleaning management', () => {
       '/api/happy-cleaning/events/7/stations/10/todos/reorder/',
       expect.objectContaining({ expected_version: 3, todo_ids: [101, 100] }),
     ));
+  });
+
+  it('shows the exact overbooking on a management station card', () => {
+    render(<HappyCleaningManagementPage
+      data={{
+        ...stationsData,
+        stations: stationsData.stations.map(station => station.id === 10
+          ? { ...station, assigned_count: 7, overbooked_count: 3 }
+          : station),
+      }}
+      mutate={vi.fn()}
+    />);
+
+    expect(screen.getByText('3 überbelegt')).toBeInTheDocument();
   });
 
   it('keeps validation visible and expands the affected card after a failed mutation', async () => {

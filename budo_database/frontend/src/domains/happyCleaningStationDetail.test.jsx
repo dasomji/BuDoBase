@@ -195,6 +195,42 @@ describe('Happy Cleaning station detail', () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it('confirms exact overbooking before saving a lower capacity', async () => {
+    vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
+    const mutate = vi.fn().mockResolvedValue({ ok: true });
+    render(<HappyCleaningStationDetailPage data={{
+      ...detailData,
+      station: {
+        ...detailData.station,
+        assigned_count: 4,
+        overbooked_count: 0,
+        can_edit: true,
+        document: { type: 'doc', content: [] },
+      },
+    }} mutate={mutate} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+    fireEvent.change(screen.getByLabelText('Kapazität der Station'), {
+      target: { value: '2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    expect(globalThis.confirm).toHaveBeenCalledWith(
+      'Die Station wäre 2 überbelegt. Kapazität trotzdem speichern?',
+    );
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/7/stations/10/update/',
+      expect.objectContaining({
+        max_kids: 2,
+        overbooking_confirmation: {
+          capacity: 2,
+          assigned_count: 4,
+          station_version: 3,
+        },
+      }),
+    ));
+  });
+
   it('guards dirty Escape and retains the draft when a structural save is stale', async () => {
     const onBack = vi.fn();
     const mutate = vi.fn().mockRejectedValue(Object.assign(new Error('failed'), {

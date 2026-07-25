@@ -402,7 +402,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
         finally:
             reset_assignment_publisher()
 
-    def test_capacity_and_delete_lock_survive_assignment_removal(self):
+    def test_capacity_can_change_but_delete_lock_survives_assignment_removal(self):
         station = HappyCleaningStation.objects.create(
             happy_cleaning=self.event,
             name="Küche",
@@ -438,16 +438,119 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
                 "responsible_profile_id": None,
             },
         )
-        self.assertEqual(capacity.status_code, 409)
-        self.assertEqual(capacity.json()["code"], "capacity_locked")
+        self.assertEqual(capacity.status_code, 200)
+        station.refresh_from_db()
+        self.assertEqual(station.max_kids, 3)
 
         deleted = self.post_json(
             "happy-cleaning-station-delete-api",
             [self.event.id, station.id],
-            {"request_id": "station-delete-locked", "expected_version": 1},
+            {"request_id": "station-delete-locked", "expected_version": 2},
         )
         self.assertEqual(deleted.status_code, 409)
         self.assertEqual(deleted.json()["code"], "station_locked")
+
+    def test_overbooking_requires_confirmation_bound_to_count_and_version(self):
+        station = HappyCleaningStation.objects.create(
+            happy_cleaning=self.event,
+            name="Küche",
+            max_kids=3,
+            meeting_point="Tür",
+            position=1,
+        )
+        for index in range(3):
+            child = Kinder.objects.create(
+                kid_index=f"HC-OVER-{index}",
+                kid_vorname=f"Kind {index}",
+                kid_nachname="Test",
+                turnus=self.turnus,
+            )
+            HappyCleaningAssignment.objects.create(
+                happy_cleaning=self.event,
+                station=station,
+                child=child,
+            )
+        payload = {
+            "request_id": "station-overbook",
+            "expected_version": station.version,
+            "name": station.name,
+            "max_kids": 1,
+            "meeting_point": station.meeting_point,
+            "wishes": "",
+            "responsible_profile_id": None,
+        }
+
+        unconfirmed = self.post_json(
+            "happy-cleaning-station-update-api",
+            [self.event.id, station.id],
+            payload,
+        )
+        self.assertEqual(unconfirmed.status_code, 409)
+        self.assertEqual(
+            unconfirmed.json()["confirmation"],
+            {
+                "capacity": 1,
+                "assigned_count": 3,
+                "station_version": 1,
+                "overbooked_count": 2,
+            },
+        )
+        station.refresh_from_db()
+        self.assertEqual(station.max_kids, 3)
+        self.assertEqual(station.assignments.count(), 3)
+
+        late_child = Kinder.objects.create(
+            kid_index="HC-OVER-LATE",
+            kid_vorname="Spät",
+            kid_nachname="Test",
+            turnus=self.turnus,
+        )
+        late_assignment = HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.event,
+            station=station,
+            child=late_child,
+        )
+        stale_count = self.post_json(
+            "happy-cleaning-station-update-api",
+            [self.event.id, station.id],
+            {
+                **payload,
+                "request_id": "station-overbook-stale-count",
+                "overbooking_confirmation": {
+                    "capacity": 1,
+                    "assigned_count": 3,
+                    "station_version": 1,
+                },
+            },
+        )
+        self.assertEqual(stale_count.status_code, 409)
+        self.assertEqual(stale_count.json()["confirmation"]["assigned_count"], 4)
+        late_assignment.delete()
+
+        confirmed = self.post_json(
+            "happy-cleaning-station-update-api",
+            [self.event.id, station.id],
+            {
+                **payload,
+                "overbooking_confirmation": {
+                    "capacity": 1,
+                    "assigned_count": 3,
+                    "station_version": 1,
+                },
+            },
+        )
+        self.assertEqual(confirmed.status_code, 200, confirmed.content)
+        station.refresh_from_db()
+        self.assertEqual(station.max_kids, 1)
+        self.assertEqual(station.assignments.count(), 3)
+        audit = AuditEvent.objects.get(
+            action="happy_cleaning.station.update",
+            outcome="success",
+            request_id="station-overbook",
+        )
+        self.assertEqual(audit.details["old_capacity"], 3)
+        self.assertEqual(audit.details["new_capacity"], 1)
+        self.assertEqual(audit.details["overbooked_count"], 2)
 
     def test_station_reorder_is_gap_free_and_rejects_stale_or_incomplete_ids(self):
         stations = [
