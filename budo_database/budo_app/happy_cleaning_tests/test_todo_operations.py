@@ -11,6 +11,7 @@ from budo_app.happy_cleaning_assignment_publisher import (
     configure_assignment_publisher,
     reset_assignment_publisher,
 )
+from budo_app.happy_cleaning_station_documents import project_tasks
 from budo_app.models import (
     AuditEvent,
     HappyCleaning,
@@ -207,6 +208,45 @@ class HappyCleaningTodoOperationTests(TransactionTestCase):
             ),
             (0, 1, 0),
         )
+
+    def test_different_items_keep_independent_optimistic_versions_and_document_state(self):
+        second = HappyCleaningTodo.objects.create(
+            station=self.station,
+            text="Boden kehren",
+            position=2,
+            version=5,
+        )
+
+        first_response = self.post(
+            "happy-cleaning-todo-check-api",
+            {"request_id": "different-item-1", "expected_version": 1},
+            args=(self.event.id, self.station.id, self.first_todo.id),
+        )
+        second_response = self.post(
+            "happy-cleaning-todo-check-api",
+            {"request_id": "different-item-2", "expected_version": 5},
+            args=(self.event.id, self.station.id, second.id),
+        )
+
+        self.assertEqual(
+            (first_response.status_code, second_response.status_code),
+            (200, 200),
+        )
+        self.station.refresh_from_db()
+        self.assertEqual(project_tasks(self.station.content_document), [
+            {
+                "id": self.first_todo.id,
+                "text": "Tische wischen",
+                "checked": True,
+                "version": 2,
+            },
+            {
+                "id": second.id,
+                "text": "Boden kehren",
+                "checked": True,
+                "version": 6,
+            },
+        ])
 
     def test_http_authentication_csrf_json_turnus_and_expected_versions(self):
         url_args = (self.event.id, self.station.id, self.first_todo.id)

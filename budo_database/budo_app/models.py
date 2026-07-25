@@ -14,6 +14,10 @@ from .storage_lifecycle import (
     delete_field_file_on_commit,
     delete_storage_object_on_commit,
 )
+from .happy_cleaning_station_documents import (
+    empty_station_document,
+    validate_station_document,
+)
 from .text_cleaning import (
     clean_optional_text,
     DEFAULT_EMPTY_VALUES,
@@ -665,6 +669,10 @@ class HappyCleaningStation(models.Model):
     position = models.PositiveIntegerField()
     version = models.PositiveIntegerField(default=1)
     has_ever_had_assignment = models.BooleanField(default=False)
+    content_document = models.JSONField(
+        default=empty_station_document,
+        validators=[validate_station_document],
+    )
 
     def clean(self):
         super().clean()
