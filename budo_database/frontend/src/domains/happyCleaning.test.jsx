@@ -231,6 +231,66 @@ describe('Happy Cleaning management', () => {
     expect(screen.getByRole('button', { name: 'Station Bad öffnen' })).toHaveFocus();
   });
 
+  it('patches only the target card after copying from an open detail', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        event: { id: 7, display_number: 1, revision: 2 },
+        copy_targets: [{ id: 9, display_number: 2, revision: 4, label: 'Happy Cleaning 2' }],
+        station: {
+          id: 70, version: 1, name: 'Küche', max_kids: 2,
+          meeting_point: 'Gang', wishes: '', content: [], is_historical: false,
+          can_toggle_tasks: true, responsible: null, children: [],
+          todo_checked_count: 0, todo_total_count: 0,
+          todo_progress_percentage: null, todos: [],
+        },
+      }),
+    });
+    const mutate = vi.fn().mockResolvedValue({
+      ok: true,
+      result: 'copied',
+      event: { id: 9, display_number: 2, revision: 5 },
+      affected_stations: [{
+        id: 90, name: 'Küche', max_kids: 2, meeting_point: 'Gang', todos: [],
+      }],
+    });
+    render(<HappyCleaningOverviewPage data={{
+      user_id: 42,
+      active_year: 2026,
+      copy_targets: [
+        { id: 7, display_number: 1, revision: 2, label: 'Happy Cleaning 1' },
+        { id: 9, display_number: 2, revision: 4, label: 'Happy Cleaning 2' },
+      ],
+      years: [{
+        year: 2026, loaded: true, is_active: true,
+        turnuses: [{ id: 1, number: 3, start: '2026-07-01', is_active: true, events: [
+          {
+            id: 7, display_number: 1, revision: 2, can_delete: false,
+            stations: [{ id: 70, name: 'Küche', max_kids: 2, meeting_point: 'Gang', task_item_count: 0 }],
+          },
+          {
+            id: 9, display_number: 2, revision: 4, can_delete: false, stations: [],
+          },
+        ] }],
+      }],
+    }} mutate={mutate} fetchImpl={fetchImpl} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Station Küche öffnen' }));
+    await screen.findByRole('heading', { name: 'Küche' });
+    fireEvent.click(screen.getByRole('button', { name: 'Station kopieren' }));
+    fireEvent.change(screen.getByLabelText('Ziel-Happy-Cleaning'), {
+      target: { value: '9' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Prüfen und kopieren' }));
+
+    await waitFor(() => expect(mutate).toHaveBeenCalled());
+    expect(screen.getByRole('heading', { name: 'Küche' })).toBeInTheDocument();
+    const targetCard = screen.getByRole('heading', {
+      name: '3. Turnus 2026 · Happy Cleaning 2',
+    }).closest('article');
+    expect(within(targetCard).getByRole('button', { name: 'Station Küche öffnen' })).toBeInTheDocument();
+  });
+
   it('creates an active-Turnus station from a local draft and patches the sorted card', async () => {
     const fetchImpl = vi.fn();
     const mutate = vi.fn().mockResolvedValue({

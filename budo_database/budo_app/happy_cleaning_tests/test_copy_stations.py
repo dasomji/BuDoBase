@@ -53,9 +53,7 @@ class StationNameMatcherTests(SimpleTestCase):
                 self.assertFalse(station_names_are_similar(left, right))
 
 
-class BulkStationCopyApiTests(TransactionTestCase):
-    reset_sequences = True
-
+class StationCopyApiFixtures:
     def setUp(self):
         self.active = Turnus.objects.create(
             turnus_nr=1, turnus_beginn=date(2026, 7, 1)
@@ -112,6 +110,10 @@ class BulkStationCopyApiTests(TransactionTestCase):
             payload,
             format="json",
         )
+
+
+class BulkStationCopyApiTests(StationCopyApiFixtures, TransactionTestCase):
+    reset_sequences = True
 
     def test_conflict_free_copy_is_atomic_deep_and_idempotent(self):
         payload = {
@@ -387,5 +389,184 @@ class BulkStationCopyApiTests(TransactionTestCase):
         self.assertFalse(
             HappyCleaningCommandRequest.objects.filter(
                 request_id="audit-failure"
+            ).exists()
+        )
+
+
+class SingleStationCopyApiTests(StationCopyApiFixtures, TransactionTestCase):
+    reset_sequences = True
+
+    def post_single(self, target, source_station, payload):
+        return self.client.post(
+            reverse(
+                "happy-cleaning-single-station-copy-api",
+                args=[target.id, source_station.id],
+            ),
+            payload,
+            format="json",
+        )
+
+    def test_fixed_source_is_derived_server_side_and_cannot_be_expanded(self):
+        other_source = HappyCleaningStation.objects.create(
+            happy_cleaning=self.source,
+            name="Speisesaal",
+            max_kids=8,
+            meeting_point="Tür",
+            position=2,
+        )
+        response = self.post_single(self.target, self.source_station, {
+            "request_id": "single-fixed-source",
+            "expected_revision": 1,
+            "source_event_id": self.target.id,
+            "station_ids": [other_source.id],
+            "source_name": "Private Child",
+            "responsible_name": "Private Carer",
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            list(self.target.stations.values_list("name", flat=True)),
+            ["Küche"],
+        )
+        event = AuditEvent.objects.get(
+            action="happy_cleaning.station.copy", outcome="success",
+        )
+        self.assertEqual(
+            event.details["source_station_ids"],
+            [self.source_station.id],
+        )
+        self.assertNotIn("source_event_id", event.details)
+        self.assertNotIn("station_ids", event.details)
+        self.assertNotIn("Private Child", str(event.details))
+        self.assertNotIn("Private Carer", str(event.details))
+
+    def test_historical_source_copies_without_people_and_replays(self):
+        payload = {
+            "request_id": "single-history",
+            "expected_revision": 1,
+        }
+        response = self.post_single(self.target, self.source_station, payload)
+        self.assertEqual(response.status_code, 200)
+        copied = self.target.stations.get()
+        self.assertIsNone(copied.responsible_profile)
+        self.assertFalse(copied.todos.get().checked)
+        self.assertEqual(copied.todos.get().version, 1)
+        self.assertNotEqual(copied.todos.get().id, self.source_todo.id)
+
+        replay = self.post_single(self.target, self.source_station, payload)
+        self.assertEqual(replay.status_code, 200)
+        self.assertTrue(replay.json()["replayed"])
+        self.assertEqual(self.target.stations.count(), 1)
+
+    def test_single_copy_reuses_conflict_resolution_and_loses_revision_race_safely(self):
+        target_station = HappyCleaningStation.objects.create(
+            happy_cleaning=self.target,
+            name="Küche Nord",
+            max_kids=2,
+            meeting_point="Gang",
+            position=1,
+        )
+        preview = self.post_single(self.target, self.source_station, {
+            "request_id": "single-preview",
+            "expected_revision": 1,
+        })
+        self.assertEqual(preview.status_code, 200)
+        self.assertEqual(preview.json()["result"], "conflicts")
+        self.assertEqual(
+            preview.json()["conflicts"][0]["target_station_id"],
+            target_station.id,
+        )
+
+        stale = self.post_single(self.target, self.source_station, {
+            "request_id": "single-stale",
+            "expected_revision": 99,
+        })
+        self.assertEqual(stale.status_code, 409)
+
+        resolved = self.post_single(self.target, self.source_station, {
+            "request_id": "single-resolve",
+            "expected_revision": preview.json()["target_revision"],
+            "resolutions": [{
+                "source_station_id": self.source_station.id,
+                "target_station_id": target_station.id,
+                "action": "append",
+            }],
+        })
+        self.assertEqual(resolved.status_code, 200)
+        self.assertEqual(resolved.json()["result_counts"]["appended"], 1)
+        self.assertEqual(
+            resolved.json()["affected_stations"][0]["id"],
+            target_station.id,
+        )
+
+    def test_rejects_inactive_target_future_source_and_unknown_station(self):
+        self.client.force_authenticate(user=None)
+        unauthenticated = self.post_single(self.target, self.source_station, {
+            "request_id": "single-unauthenticated",
+            "expected_revision": 1,
+        })
+        self.assertIn(unauthenticated.status_code, {401, 403})
+        outsider = User.objects.create_user("copy-outsider")
+        outsider.profil.turnus = self.historical
+        outsider.profil.save(update_fields=["turnus"])
+        self.client.force_authenticate(outsider)
+        self.assertEqual(
+            self.post_single(self.target, self.source_station, {
+                "request_id": "single-wrong-turnus",
+                "expected_revision": 1,
+            }).status_code,
+            404,
+        )
+        self.client.force_authenticate(self.user)
+        self.assertEqual(
+            self.post_single(self.source, self.source_station, {
+                "request_id": "single-inactive-target",
+                "expected_revision": 1,
+            }).status_code,
+            404,
+        )
+        future_event = HappyCleaning.objects.create(
+            turnus=Turnus.objects.create(
+                turnus_nr=3, turnus_beginn=date(2027, 7, 1),
+            ),
+            display_number=1,
+        )
+        future_station = HappyCleaningStation.objects.create(
+            happy_cleaning=future_event,
+            name="Zukunft",
+            max_kids=2,
+            position=1,
+        )
+        self.assertEqual(
+            self.post_single(self.target, future_station, {
+                "request_id": "single-future-source",
+                "expected_revision": 1,
+            }).status_code,
+            404,
+        )
+        missing = self.client.post(
+            reverse(
+                "happy-cleaning-single-station-copy-api",
+                args=[self.target.id, 999999],
+            ),
+            {"request_id": "single-missing", "expected_revision": 1},
+            format="json",
+        )
+        self.assertEqual(missing.status_code, 404)
+
+    def test_audit_failure_rolls_back_single_copy_and_request(self):
+        with patch(
+            "budo_app.happy_cleaning_commands.audit_success",
+            side_effect=RuntimeError("audit unavailable"),
+        ):
+            with self.assertRaises(RuntimeError):
+                self.post_single(self.target, self.source_station, {
+                    "request_id": "single-audit-failure",
+                    "expected_revision": 1,
+                })
+        self.assertEqual(self.target.stations.count(), 0)
+        self.assertFalse(
+            HappyCleaningCommandRequest.objects.filter(
+                request_id="single-audit-failure",
             ).exists()
         )

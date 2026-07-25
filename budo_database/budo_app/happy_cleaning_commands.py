@@ -1079,21 +1079,21 @@ def _new_todos_and_document(source_station, target_station):
     )
 
 
-def _copy_responsible(source_station, target):
-    responsible = source_station.responsible_profile
-    if responsible and responsible.turnus_id != target.turnus_id:
+def _copy_responsible(source_station, source, target):
+    if source.turnus_id != target.turnus_id:
         return None
+    responsible = source_station.responsible_profile
     return responsible
 
 
-def _create_station_copy(source_station, target, position):
+def _create_station_copy(source_station, source, target, position):
     station = HappyCleaningStation.objects.create(
         happy_cleaning=target,
         name=source_station.name,
         max_kids=source_station.max_kids,
         meeting_point=source_station.meeting_point,
         wishes=source_station.wishes,
-        responsible_profile=_copy_responsible(source_station, target),
+        responsible_profile=_copy_responsible(source_station, source, target),
         position=position,
         version=1,
     )
@@ -1151,6 +1151,42 @@ def copy_stations(
     station_ids,
     resolutions=None,
 ):
+    return _copy_stations(
+        context,
+        event_id,
+        expected_revision,
+        source_event_id=source_event_id,
+        station_ids=station_ids,
+        resolutions=resolutions,
+    )
+
+
+def copy_single_station(
+    context,
+    event_id,
+    expected_revision,
+    source_station_id,
+    resolutions=None,
+):
+    return _copy_stations(
+        context,
+        event_id,
+        expected_revision,
+        source_station_id=source_station_id,
+        resolutions=resolutions,
+    )
+
+
+def _copy_stations(
+    context,
+    event_id,
+    expected_revision,
+    *,
+    source_event_id=None,
+    station_ids=None,
+    resolutions=None,
+    source_station_id=None,
+):
     action = "happy_cleaning.station.copy"
     with transaction.atomic():
         _locked_turnus(context)
@@ -1159,6 +1195,21 @@ def copy_stations(
             return replay, True
         target = _locked_event(context, event_id)
         _require_revision(target, expected_revision)
+        fixed_source_station = None
+        if source_station_id is not None:
+            fixed_source_station = (
+                HappyCleaningStation.objects.filter(pk=source_station_id)
+                .select_related("happy_cleaning__turnus")
+                .first()
+            )
+            if fixed_source_station is None:
+                raise CommandError(
+                    "not_found",
+                    status=404,
+                    audit_outcome="forbidden",
+                    details={"happy_cleaning_id": target.id},
+                )
+            source_event_id = fixed_source_station.happy_cleaning_id
         if source_event_id == target.id:
             raise CommandError(
                 "invalid_selection",
@@ -1184,11 +1235,12 @@ def copy_stations(
             )
         source_stations = list(
             HappyCleaningStation.objects.filter(happy_cleaning=source)
-            .select_related("responsible_profile")
             .prefetch_related("todos")
             .order_by("position", "id")
         )
         selected_by_id = {station.id: station for station in source_stations}
+        if fixed_source_station is not None:
+            station_ids = [source_station_id]
         if any(station_id not in selected_by_id for station_id in station_ids):
             raise CommandError("invalid_selection", status=400)
         selected = [selected_by_id[station_id] for station_id in station_ids]
@@ -1255,6 +1307,7 @@ def copy_stations(
             or 0
         )
         copied = []
+        affected = []
         result_counts = {
             "copied": 0, "overwritten": 0, "appended": 0, "skipped": 0,
             "todos_created": 0,
@@ -1280,7 +1333,7 @@ def copy_stations(
                 station.meeting_point = source_station.meeting_point
                 station.wishes = source_station.wishes
                 station.responsible_profile = _copy_responsible(
-                    source_station, target,
+                    source_station, source, target,
                 )
                 station.version += 1
                 todos, station.content_document = _new_todos_and_document(
@@ -1332,11 +1385,12 @@ def copy_stations(
             else:
                 next_position += 1
                 station, todo_count = _create_station_copy(
-                    source_station, target, next_position,
+                    source_station, source, target, next_position,
                 )
                 copied.append(station)
                 result_counts["copied"] += 1
                 result_counts["todos_created"] += todo_count
+            affected.append(station)
             audit_decisions.append({
                 "source_station_id": source_station.id,
                 "action": resolution,
@@ -1364,4 +1418,8 @@ def copy_stations(
             "event": event_projection(target),
             "result_counts": result_counts,
             "copied_stations": [station_projection(item) for item in copied],
+            "affected_stations": [
+                station_projection(item)
+                for item in {item.id: item for item in affected}.values()
+            ],
         }), False

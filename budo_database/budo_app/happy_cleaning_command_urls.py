@@ -30,6 +30,11 @@ urlpatterns = [
         name="happy-cleaning-station-copy-api",
     ),
     path(
+        "events/<int:event_id>/stations/copy/<int:source_station_id>/",
+        views.single_station_copy,
+        name="happy-cleaning-single-station-copy-api",
+    ),
+    path(
         "events/<int:event_id>/stations/<int:station_id>/update/",
         views.station_update,
         name="happy-cleaning-station-update-api",

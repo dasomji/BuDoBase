@@ -7,6 +7,7 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 
 import './happyCleaningStationDetail.css';
+import { SingleStationCopyDialog } from './happyCleaningCopy';
 
 const StableTaskItem = TaskItem.extend({
   addAttributes() {
@@ -270,12 +271,14 @@ export function HappyCleaningStationDetailPage({
   onDeleted,
   registerNavigationGuard,
   initialEditing = false,
+  onCopySuccess,
 }) {
   const { event, station } = data;
   const [showCompleted, setShowCompleted] = useState(true);
   const [busyTodoIds, setBusyTodoIds] = useState(() => new Set());
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(initialEditing);
+  const [copyOpen, setCopyOpen] = useState(false);
   const writesBlocked = realtimeSync?.enabled && !realtimeSync.writesEnabled;
   const orderedTodos = [...station.todos].sort((left, right) => (
     left.position - right.position || left.id - right.id
@@ -332,6 +335,11 @@ export function HappyCleaningStationDetailPage({
           <Progress station={station} />
         </div>
         {station.can_edit && <button className="button" type="button" onClick={() => setEditing(true)}>Bearbeiten</button>}
+        {station.id != null && (
+          <button className="button" type="button" onClick={() => setCopyOpen(true)}>
+            Station kopieren
+          </button>
+        )}
         <dl className="happy-cleaning-station-facts">
           <div><dt>Max Kinder</dt><dd>{station.max_kids}</dd></div>
           <div><dt>Plätze</dt><dd>{capacityLabel(station)}</dd></div>
@@ -403,6 +411,16 @@ export function HappyCleaningStationDetailPage({
           ))}
         </ol>
       </section>
+      {copyOpen && (
+        <SingleStationCopyDialog
+          source={event}
+          station={station}
+          targets={data.copy_targets || []}
+          mutate={mutate}
+          close={() => setCopyOpen(false)}
+          onSuccess={onCopySuccess}
+        />
+      )}
       </>
       )}
     </Page>

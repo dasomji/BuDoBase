@@ -10,6 +10,9 @@ import {
 
 const detailData = {
   event: { id: 7, display_number: 2, revision: 5 },
+  copy_targets: [
+    { id: 8, display_number: 1, revision: 3, label: 'Happy Cleaning 1' },
+  ],
   station: {
     id: 10,
     version: 3,
@@ -150,6 +153,101 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Station kopieren' })).toBeInTheDocument();
+  });
+
+  it('reuses the fixed-source copy wizard without mutating or closing detail state', async () => {
+    let finish;
+    const mutate = vi.fn(() => new Promise(resolve => { finish = resolve; }));
+    const onBack = vi.fn();
+    const onCopySuccess = vi.fn();
+    render(
+      <HappyCleaningStationDetailPage
+        data={detailData}
+        mutate={mutate}
+        onBack={onBack}
+        onCopySuccess={onCopySuccess}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Station kopieren' }));
+    const dialog = screen.getByRole('dialog', { name: 'Station kopieren' });
+    expect(dialog).toHaveTextContent('Quelle: Speisesaal');
+    expect(screen.queryByLabelText('Alle Stationen auswählen')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Station .* auswählen/)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Ziel-Happy-Cleaning'), {
+      target: { value: '8' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Prüfen und kopieren' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('Stationen werden geprüft');
+    expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/8/stations/copy/10/',
+      {
+        request_id: expect.any(String),
+        expected_revision: 3,
+      },
+    );
+    finish({
+      ok: true,
+      result: 'copied',
+      affected_stations: [{ id: 90, name: 'Speisesaal' }],
+    });
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Station wurde kopiert'));
+    expect(onCopySuccess).toHaveBeenCalledWith(8, expect.objectContaining({
+      affected_stations: [{ id: 90, name: 'Speisesaal' }],
+    }));
+    expect(screen.getByRole('heading', { name: 'Speisesaal' })).toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    expect(screen.queryByRole('dialog', { name: 'Station kopieren' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Speisesaal' })).toBeInTheDocument();
+    expect(onBack).not.toHaveBeenCalled();
+  });
+
+  it('shares bulk validation, conflict actions, responsive classes, and stale errors', async () => {
+    const stale = Object.assign(new Error('stale'), {
+      payload: { code: 'stale', current_version: 4 },
+    });
+    const mutate = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        result: 'conflicts',
+        target_revision: 4,
+        conflicts: [{
+          source_station_id: 10,
+          source_name: 'Speisesaal',
+          source_task_count: 2,
+          target_station_id: 90,
+          target_name: 'Speisesaal groß',
+          target_task_count: 1,
+          overwrite_eligible: true,
+        }],
+      })
+      .mockRejectedValueOnce(stale);
+    render(<HappyCleaningStationDetailPage data={detailData} mutate={mutate} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Station kopieren' }));
+    const submit = screen.getByRole('button', { name: 'Prüfen und kopieren' });
+    expect(submit).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Ziel-Happy-Cleaning'), {
+      target: { value: '8' },
+    });
+    expect(submit).toBeEnabled();
+    fireEvent.click(submit);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Speisesaal → Speisesaal groß');
+    expect(alert.querySelector('.happy-cleaning-conflict-card')).toBeInTheDocument();
+    expect(alert.querySelector('.happy-cleaning-conflict-actions')).toBeInTheDocument();
+    expect(screen.getAllByRole('radio')).toHaveLength(4);
+    fireEvent.click(screen.getByRole('radio', { name: 'Als eigene Station kopieren' }));
+    expect(screen.getByRole('button', { name: 'Auswahl verbindlich kopieren' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut prüfen' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('inzwischen geändert'));
+    expect(screen.getByRole('heading', { name: 'Speisesaal' })).toBeInTheDocument();
   });
 
   it('edits an active station through the restricted document command', async () => {

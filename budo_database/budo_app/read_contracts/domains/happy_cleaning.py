@@ -524,30 +524,36 @@ def station_management(request):
     }
 
 
-def _requested_station(request, event):
+def _requested_station(request, event, *, include_people):
     station_id = request.query_params.get("station_id")
     if not station_id or not str(station_id).isdigit():
         raise Http404
-    station = (
-        HappyCleaningStation.objects.filter(
+    stations = HappyCleaningStation.objects.filter(
             id=int(station_id),
             happy_cleaning_id=event.id,
         )
-        .select_related("responsible_profile")
-        .only(
-            "id",
-            "happy_cleaning_id",
-            "name",
-            "max_kids",
-            "meeting_point",
-            "wishes",
-            "content_document",
+    if include_people:
+        stations = stations.select_related("responsible_profile")
+    station_fields = [
+        "id",
+        "happy_cleaning_id",
+        "name",
+        "max_kids",
+        "meeting_point",
+        "wishes",
+        "content_document",
+        "version",
+    ]
+    if include_people:
+        station_fields.extend([
             "responsible_profile_id",
             "responsible_profile__id",
             "responsible_profile__rufname",
             "responsible_profile__turnus_id",
-            "version",
-        )
+        ])
+    station = (
+        stations
+        .only(*station_fields)
         .first()
     )
     if station is None:
@@ -576,8 +582,8 @@ def _document_projection(document):
 
 def station_detail(request):
     event = _requested_event(request, active_only=False)
-    station = _requested_station(request, event)
     active = event.turnus_id == require_active_turnus_id(request)
+    station = _requested_station(request, event, include_people=active)
     document = _document_projection(station.content_document)
     document_tasks = [
         task
@@ -606,13 +612,27 @@ def station_detail(request):
         )
         .order_by("child__kid_vorname", "child__kid_nachname", "child_id")
     ) if active else []
-    responsible = station.responsible_profile
+    responsible = station.responsible_profile if active else None
     if responsible and responsible.turnus_id != event.turnus_id:
         responsible = None
     checked_count = sum(todo["checked"] for todo in todos)
     assigned_count = len(assignments)
+    copy_targets = HappyCleaning.objects.filter(
+        turnus_id=require_active_turnus_id(request),
+    )
+    if active:
+        copy_targets = copy_targets.exclude(id=event.id)
     projection = {
         "event": _event_summary(event),
+        "copy_targets": [
+            {
+                **_event_summary(target),
+                "label": f"Happy Cleaning {target.display_number}",
+            }
+            for target in copy_targets
+            .only("id", "display_number", "revision")
+            .order_by("display_number", "id")
+        ],
         "station": {
             "id": station.id,
             "version": station.version,

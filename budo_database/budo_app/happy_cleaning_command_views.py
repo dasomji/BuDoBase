@@ -6,6 +6,7 @@ from budo_app.happy_cleaning_commands import (
     CommandError,
     audit_rejection,
     command_context,
+    copy_single_station,
     copy_stations,
     create_station,
     create_todo,
@@ -279,4 +280,23 @@ def station_copy(request, event_id):
         resource_id=event_id,
         resource_label=f"Happy Cleaning #{event_id}",
         operation=operation,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def single_station_copy(request, event_id, source_station_id):
+    return _run_command(
+        request,
+        action="happy_cleaning.station.copy",
+        resource_type="happy_cleaning",
+        resource_id=event_id,
+        resource_label=f"Happy Cleaning #{event_id}",
+        operation=lambda context: copy_single_station(
+            context,
+            event_id,
+            required_positive_integer(request.data, "expected_revision"),
+            source_station_id=source_station_id,
+            resolutions=request.data.get("resolutions"),
+        ),
     )

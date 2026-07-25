@@ -556,6 +556,12 @@ class HappyCleaningContractTests(TestCase):
             "responsible_profiles": [
                 {"id": self.user.profil.id, "name": "Mira"},
             ],
+            "copy_targets": [{
+                "id": self.empty_event.id,
+                "display_number": 2,
+                "revision": 2,
+                "label": "Happy Cleaning 2",
+            }],
         })
         self.assertNotContains(response, "Other Child")
         self.assertNotContains(response, "Private Krankheit")
@@ -673,6 +679,20 @@ class HappyCleaningContractTests(TestCase):
         self.assertFalse(station["can_toggle_tasks"])
         self.assertNotIn("responsible", station)
         self.assertNotIn("children", station)
+        self.assertEqual(response.json()["copy_targets"], [
+            {
+                "id": self.event.id,
+                "display_number": 1,
+                "revision": 7,
+                "label": "Happy Cleaning 1",
+            },
+            {
+                "id": self.empty_event.id,
+                "display_number": 2,
+                "revision": 2,
+                "label": "Happy Cleaning 2",
+            },
+        ])
         serialized = response.content.decode()
         self.assertNotIn("Private Carer", serialized)
         self.assertNotIn("Private Child", serialized)
