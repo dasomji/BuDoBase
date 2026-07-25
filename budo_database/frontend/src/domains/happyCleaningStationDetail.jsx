@@ -58,6 +58,8 @@ function DirtyNavigationDialog({ onContinue, onDiscard, onSave }) {
 
 function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGuard, onBack }) {
   const { event, station } = data;
+  const creating = station.id == null;
+  const commandRequestId = useRef(requestId());
   const [fields, setFields] = useState({
     name: station.name,
     max_kids: String(station.max_kids),
@@ -89,7 +91,11 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
     },
     onUpdate: () => setEditorRevision(value => value + 1),
   });
-  const currentDocument = editor?.getJSON() || initialDocument;
+  const editorDocument = editor?.getJSON() || initialDocument;
+  const currentDocument = {
+    ...editorDocument,
+    content: editorDocument.content || [],
+  };
   useEffect(() => {
     editorContainer.current?.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
       checkbox.disabled = true;
@@ -113,10 +119,14 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
     setError('');
     try {
       const result = await mutate(
-        `/api/happy-cleaning/events/${event.id}/stations/${station.id}/update/`,
+        creating
+          ? `/api/happy-cleaning/events/${event.id}/stations/create/`
+          : `/api/happy-cleaning/events/${event.id}/stations/${station.id}/update/`,
         {
-          request_id: requestId(),
-          expected_version: station.version,
+          request_id: commandRequestId.current,
+          ...(creating
+            ? { expected_revision: event.revision }
+            : { expected_version: station.version }),
           ...fields,
           max_kids: Number(fields.max_kids),
           responsible_profile_id: fields.responsible_profile_id
@@ -188,7 +198,7 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
         {error && <p className="error" role="alert">{error}</p>}
         <div className="react-actions">
           <button className="button" type="submit" disabled={busy}>Speichern</button>
-          {station.can_delete && <button className="button danger" type="button" disabled={busy} onClick={remove}>Station löschen</button>}
+          {!creating && station.can_delete && <button className="button danger" type="button" disabled={busy} onClick={remove}>Station löschen</button>}
         </div>
       </form>
       {pendingNavigation && (
@@ -211,12 +221,13 @@ export function HappyCleaningStationDetailPage({
   refresh,
   onDeleted,
   registerNavigationGuard,
+  initialEditing = false,
 }) {
   const { event, station } = data;
   const [showCompleted, setShowCompleted] = useState(true);
   const [busyTodoIds, setBusyTodoIds] = useState(() => new Set());
   const [error, setError] = useState('');
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
   const writesBlocked = realtimeSync?.enabled && !realtimeSync.writesEnabled;
   const orderedTodos = [...station.todos].sort((left, right) => (
     left.position - right.position || left.id - right.id

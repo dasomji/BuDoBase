@@ -173,8 +173,10 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
             self._url("happy-cleaning-overview", year=2025),
         )
 
-        self.assertQueryCountAtMost(initial_small, 6)
-        self.assertQueryCountAtMost(initial_large, 6)
+        # The active overview includes one bounded query for create-station
+        # responsible-person choices.
+        self.assertQueryCountAtMost(initial_small, 7)
+        self.assertQueryCountAtMost(initial_large, 7)
         self.assertQueryCountAtMost(historical, 6)
         self.assertQueryGrowthAtMost(initial_small, initial_large, 0)
         self.assertEqual(initial_small.response_bytes, initial_large.response_bytes)

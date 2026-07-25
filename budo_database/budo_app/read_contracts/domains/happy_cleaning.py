@@ -145,6 +145,15 @@ def overview(request):
     return {
         "user_id": request.user.id,
         "active_year": active_year,
+        "responsible_profiles": (
+            [
+                {"id": profile.id, "name": profile.rufname}
+                for profile in Profil.objects.filter(turnus_id=active_turnus_id)
+                .only("id", "rufname")
+                .order_by("rufname", "id")
+            ]
+            if requested_year is None else []
+        ),
         "copy_targets": [
             {
                 **_event_summary(event),

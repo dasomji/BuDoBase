@@ -22,6 +22,7 @@ from budo_app.happy_cleaning_commands import (
     update_station,
     update_todo,
 )
+from budo_app.happy_cleaning_station_documents import empty_station_document
 
 
 def _error_response(error):
@@ -117,6 +118,7 @@ def station_create(request, event_id):
             event_id,
             required_positive_integer(request.data, "expected_revision"),
             station_fields(request.data),
+            request.data.get("document", empty_station_document()),
         ),
     )
 

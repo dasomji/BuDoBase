@@ -1,12 +1,136 @@
 import json
 from copy import deepcopy
 from datetime import date
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.test import TransactionTestCase
 from django.urls import reverse
 
-from budo_app.models import HappyCleaning, HappyCleaningStation, HappyCleaningTodo, Turnus
+from budo_app.models import (
+    AuditEvent,
+    HappyCleaning,
+    HappyCleaningStation,
+    HappyCleaningTodo,
+    Turnus,
+)
+
+
+class HappyCleaningStationCreateTests(TransactionTestCase):
+    def setUp(self):
+        self.turnus = Turnus.objects.create(
+            turnus_nr=1, turnus_beginn=date(2026, 7, 1)
+        )
+        self.user = User.objects.create_user(username="station-creator")
+        self.user.profil.turnus = self.turnus
+        self.user.profil.rufname = "Mira"
+        self.user.profil.save(update_fields=["turnus", "rufname"])
+        self.event = HappyCleaning.objects.create(
+            turnus=self.turnus, display_number=1
+        )
+        self.client.force_login(self.user)
+
+    def payload(self, **overrides):
+        return {
+            "request_id": "create-station",
+            "expected_revision": self.event.revision,
+            "name": "Speisesaal",
+            "max_kids": 4,
+            "meeting_point": "Tür",
+            "wishes": "Fenster",
+            "responsible_profile_id": self.user.profil.id,
+            "document": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [{"type": "text", "text": "Hinweis"}],
+                    },
+                    {
+                        "type": "taskList",
+                        "content": [{
+                            "type": "taskItem",
+                            "attrs": {
+                                "id": None,
+                                "checked": True,
+                                "version": None,
+                            },
+                            "content": [{
+                                "type": "paragraph",
+                                "content": [{"type": "text", "text": "Tische"}],
+                            }],
+                        }],
+                    },
+                ],
+            },
+            **overrides,
+        }
+
+    def post(self, payload):
+        return self.client.post(
+            reverse("happy-cleaning-station-create-api", args=[self.event.id]),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+    def test_valid_create_is_atomic_assigns_open_server_tasks_and_replays(self):
+        response = self.post(self.payload())
+        replay = self.post(self.payload())
+
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(replay.status_code, 200, replay.content)
+        self.assertEqual(HappyCleaningStation.objects.count(), 1)
+        station = HappyCleaningStation.objects.get()
+        task = station.todos.get()
+        self.assertEqual((task.version, task.checked, task.text), (1, False, "Tische"))
+        self.assertEqual(
+            station.content_document["content"][1]["content"][0]["attrs"],
+            {"id": task.id, "checked": False, "version": 1},
+        )
+        self.assertEqual(response.json()["station"]["document"], station.content_document)
+        self.assertEqual(replay.json()["station"]["id"], station.id)
+        self.assertTrue(replay.json()["replayed"])
+        self.assertEqual(
+            AuditEvent.objects.filter(
+                request_id="create-station",
+                action="happy_cleaning.station.create",
+                outcome="success",
+            ).count(),
+            1,
+        )
+
+    def test_invalid_document_or_foreign_responsible_rolls_back_without_success_audit(self):
+        foreign_turnus = Turnus.objects.create(
+            turnus_nr=2, turnus_beginn=date(2026, 8, 1)
+        )
+        foreign_user = User.objects.create_user(username="foreign-responsible")
+        foreign_user.profil.turnus = foreign_turnus
+        foreign_user.profil.save(update_fields=["turnus"])
+
+        malformed = self.post(self.payload(
+            request_id="malformed-create",
+            document={"type": "doc", "content": [{"type": "heading"}]},
+        ))
+        forbidden = self.post(self.payload(
+            request_id="foreign-create",
+            responsible_profile_id=foreign_user.profil.id,
+        ))
+
+        self.assertEqual(malformed.status_code, 400)
+        self.assertEqual(forbidden.status_code, 404)
+        self.assertEqual(HappyCleaningStation.objects.count(), 0)
+        self.assertFalse(AuditEvent.objects.filter(outcome="success").exists())
+
+    def test_audit_failure_rolls_back_station_document_and_tasks(self):
+        with mock.patch(
+            "budo_app.happy_cleaning_commands.record_audit_event",
+            side_effect=RuntimeError("audit unavailable"),
+        ):
+            with self.assertRaises(RuntimeError):
+                self.post(self.payload(request_id="audit-failure"))
+
+        self.assertEqual(HappyCleaningStation.objects.count(), 0)
+        self.assertEqual(HappyCleaningTodo.objects.count(), 0)
 
 
 class HappyCleaningStationStructuralEditTests(TransactionTestCase):

@@ -231,6 +231,121 @@ describe('Happy Cleaning management', () => {
     expect(screen.getByRole('button', { name: 'Station Bad öffnen' })).toHaveFocus();
   });
 
+  it('creates an active-Turnus station from a local draft and patches the sorted card', async () => {
+    const fetchImpl = vi.fn();
+    const mutate = vi.fn().mockResolvedValue({
+      ok: true,
+      event: { id: 7, display_number: 1, revision: 3 },
+      station: {
+        id: 73,
+        version: 1,
+        name: 'Abstellraum',
+        max_kids: 3,
+        meeting_point: 'Gang',
+        wishes: '',
+        position: 99,
+        has_ever_had_assignment: false,
+        document: { type: 'doc', content: [] },
+        task_item_count: 0,
+        todos: [],
+        responsible: { id: 4, name: 'Mira' },
+      },
+    });
+    const data = {
+      user_id: 42,
+      active_year: 2026,
+      responsible_profiles: [{ id: 4, name: 'Mira' }],
+      years: [
+        {
+          year: 2026, loaded: true, is_active: true,
+          turnuses: [{
+            id: 1, number: 3, start: '2026-07-01', is_active: true, events: [{
+              id: 7, display_number: 1, revision: 2, can_delete: false,
+              stations: [
+                { id: 70, name: 'Küche', max_kids: 2, meeting_point: 'Gang', task_item_count: 4 },
+              ],
+            }],
+          }],
+        },
+        {
+          year: 2025, loaded: true, is_active: false,
+          turnuses: [{
+            id: 2, number: 2, start: '2025-07-01', is_active: false, events: [{
+              id: 5, display_number: 1, revision: 2, can_delete: false,
+              stations: [],
+            }],
+          }],
+        },
+      ],
+    };
+    const { rerender } = render(
+      <HappyCleaningOverviewPage
+        data={data}
+        mutate={mutate}
+        fetchImpl={fetchImpl}
+      />,
+    );
+
+    expect(screen.getAllByRole('button', { name: 'Station hinzufügen' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Station hinzufügen' }));
+    expect(screen.getByLabelText('Name der Station')).toHaveValue('');
+    expect(screen.getByLabelText('Hauptverantwortlich')).toHaveTextContent('Mira');
+    expect(mutate).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Name der Station'), {
+      target: { value: 'Verwerfen' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Station hinzufügen' }));
+    expect(screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter bearbeiten' }));
+    rerender(
+      <HappyCleaningOverviewPage
+        data={{ ...data, years: data.years.map(group => ({ ...group })) }}
+        mutate={mutate}
+        fetchImpl={fetchImpl}
+      />,
+    );
+    expect(screen.getByLabelText('Name der Station')).toHaveValue('Verwerfen');
+    expect(fetchImpl).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Detail schließen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Verwerfen' }));
+    expect(screen.queryByDisplayValue('Verwerfen')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Station Verwerfen öffnen' })).not.toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Station hinzufügen' }));
+    fireEvent.change(screen.getByLabelText('Name der Station'), {
+      target: { value: 'Abstellraum' },
+    });
+    fireEvent.change(screen.getByLabelText('Kapazität der Station'), {
+      target: { value: '3' },
+    });
+    fireEvent.change(screen.getByLabelText('Treffpunkt der Station'), {
+      target: { value: 'Gang' },
+    });
+    fireEvent.change(screen.getByLabelText('Hauptverantwortlich'), {
+      target: { value: '4' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/7/stations/create/',
+      expect.objectContaining({
+        request_id: expect.any(String),
+        expected_revision: 2,
+        name: 'Abstellraum',
+        max_kids: 3,
+        responsible_profile_id: 4,
+        document: { type: 'doc', content: [] },
+      }),
+    ));
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'Abstellraum' })).toBeInTheDocument();
+    const rows = within(screen.getAllByRole('table')[0]).getAllByRole('row');
+    expect(rows[1]).toHaveTextContent('Abstellraum');
+    expect(rows[2]).toHaveTextContent('Küche');
+  });
+
   it('copies selected overview stations to another active-Turnus Happy Cleaning with visible states', async () => {
     let resolveCopy;
     const mutate = vi.fn(() => new Promise(resolve => { resolveCopy = resolve; }));

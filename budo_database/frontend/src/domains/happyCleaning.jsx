@@ -427,6 +427,90 @@ export function HappyCleaningOverviewPage({
     detailNavigationGuard.current = null;
     closeDetailNow();
   };
+  const createStationDraftNow = event => {
+    const draft = {
+      event,
+      responsible_profiles: data.responsible_profiles || [],
+      station: {
+        id: null,
+        version: 1,
+        name: '',
+        max_kids: 1,
+        meeting_point: '',
+        wishes: '',
+        responsible: null,
+        position: null,
+        has_ever_had_assignment: false,
+        document: { type: 'doc', content: [] },
+        content: [],
+        todos: [],
+        children: [],
+        todo_checked_count: 0,
+        todo_total_count: 0,
+        todo_progress_percentage: null,
+        can_edit: true,
+        can_delete: false,
+        can_toggle_tasks: true,
+        is_historical: false,
+        is_draft: true,
+      },
+    };
+    setSelection({ eventId: event.id, stationId: null });
+    setDetail(draft);
+    setPageState(current => ({ ...current, happyCleaningEventId: event.id }));
+  };
+  const createStationDraft = event => {
+    const destination = () => createStationDraftNow(event);
+    if (detailNavigationGuard.current) detailNavigationGuard.current(destination);
+    else destination();
+  };
+  const savedStationDetail = result => {
+    const station = result.station;
+    const paragraphContent = (station.document?.content || [])
+      .filter(block => block.type === 'paragraph')
+      .map(block => ({
+        type: 'paragraph',
+        text: (block.content || []).map(node => node.text).join(''),
+      }));
+    const patched = {
+      ...station,
+      content: paragraphContent,
+      children: [],
+      todo_checked_count: 0,
+      todo_total_count: station.todos.length,
+      todo_progress_percentage: station.todos.length ? 0 : null,
+      can_edit: true,
+      can_delete: true,
+      can_toggle_tasks: true,
+      is_historical: false,
+    };
+    setYears(current => current.map(group => ({
+      ...group,
+      turnuses: group.turnuses.map(turnus => ({
+        ...turnus,
+        events: turnus.events.map(event => event.id === result.event.id ? {
+          ...event,
+          revision: result.event.revision,
+          stations: [
+            ...(event.stations || []),
+            {
+              id: station.id,
+              name: station.name,
+              max_kids: station.max_kids,
+              meeting_point: station.meeting_point,
+              task_item_count: station.task_item_count,
+            },
+          ],
+        } : event),
+      })),
+    })));
+    setSelection({ eventId: result.event.id, stationId: station.id });
+    setDetail({
+      event: result.event,
+      responsible_profiles: data.responsible_profiles || [],
+      station: patched,
+    });
+  };
   useEffect(() => {
     if (!selection && restoreFocusKey) {
       rowRefs.current.get(restoreFocusKey)?.focus();
@@ -439,7 +523,7 @@ export function HappyCleaningOverviewPage({
     )));
   }, [data.years]);
   useEffect(() => {
-    if (selection) loadDetail(selection);
+    if (selection?.stationId != null) loadDetail(selection);
     // Realtime refresh replaces overview data; refresh the selected detail too.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.years]);
@@ -562,6 +646,16 @@ export function HappyCleaningOverviewPage({
                           rowRefs={rowRefs}
                         />
                         <div className="react-actions">
+                          {turnus.is_active && (
+                            <button
+                              className="button"
+                              type="button"
+                              disabled={busy}
+                              onClick={() => createStationDraft(event)}
+                            >
+                              Station hinzufügen
+                            </button>
+                          )}
                           <button
                             className="button"
                             type="button"
@@ -599,14 +693,17 @@ export function HappyCleaningOverviewPage({
               data={detail}
               mutate={async (...args) => {
                 const result = await mutate(...args);
-                if (!args[0].endsWith('/delete/')) await loadDetail(selection);
+                if (!detail.station.is_draft && !args[0].endsWith('/delete/')) {
+                  await loadDetail(selection);
+                }
                 return result;
               }}
               realtimeSync={realtimeSync}
-              refresh={() => loadDetail(selection)}
               embedded
               onBack={closeDetailNow}
               onDeleted={removeStationLocally}
+              initialEditing={Boolean(detail.station.is_draft)}
+              refresh={detail.station.is_draft ? savedStationDetail : () => loadDetail(selection)}
               registerNavigationGuard={guard => { detailNavigationGuard.current = guard; }}
             />
           )}

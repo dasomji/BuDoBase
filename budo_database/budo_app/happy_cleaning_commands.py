@@ -280,6 +280,7 @@ def event_projection(event):
 
 
 def station_projection(station):
+    todos = list(station.todos.order_by("position", "id"))
     return {
         "id": station.id,
         "version": station.version,
@@ -290,6 +291,16 @@ def station_projection(station):
         "responsible_profile_id": station.responsible_profile_id,
         "position": station.position,
         "has_ever_had_assignment": station.has_ever_had_assignment,
+        "document": station.content_document,
+        "task_item_count": len(todos),
+        "todos": [todo_projection(todo) for todo in todos],
+        "responsible": (
+            {
+                "id": station.responsible_profile.id,
+                "name": station.responsible_profile.rufname,
+            }
+            if station.responsible_profile else None
+        ),
     }
 
 
@@ -535,7 +546,7 @@ def delete_event(context, event_id, expected_revision):
         return response, False
 
 
-def create_station(context, event_id, expected_revision, fields):
+def create_station(context, event_id, expected_revision, fields, document):
     action = "happy_cleaning.station.create"
     with transaction.atomic():
         _locked_turnus(context)
@@ -563,6 +574,14 @@ def create_station(context, event_id, expected_revision, fields):
             responsible_profile=responsible,
             position=position,
         )
+        try:
+            station.content_document = _save_structural_document(station, document)
+        except ValidationError as error:
+            raise CommandError(
+                "validation_error",
+                errors={"document": error.messages},
+            ) from error
+        station.save(update_fields=["content_document"])
         _bump_event(event)
         audit_success(
             context,
