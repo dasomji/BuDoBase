@@ -42,19 +42,6 @@ const detailData = {
 describe('Happy Cleaning station detail', () => {
   afterEach(cleanup);
 
-  it('declares a deep-linkable immutable event/station route', () => {
-    const route = parseRoute('/happy-cleaning/7/stations/10/');
-
-    expect(route).toMatchObject({
-      event_id: '7',
-      station_id: '10',
-      readContractKey: 'happy-cleaning-station-detail',
-    });
-    expect(routeDataRequest(route).url).toBe(
-      '/api/route-data/happy-cleaning-station-detail/?event_id=7&station_id=10',
-    );
-  });
-
   it('shows operational fields, full child names and the ordered checklist only', () => {
     render(<HappyCleaningStationDetailPage data={detailData} mutate={vi.fn()} />);
 

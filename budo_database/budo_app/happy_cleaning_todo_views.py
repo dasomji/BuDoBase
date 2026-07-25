@@ -6,10 +6,8 @@ from budo_app.happy_cleaning_commands import (
     CommandError,
     command_context,
     required_positive_integer,
-    required_text,
 )
 from budo_app.happy_cleaning_todo_commands import (
-    add_todo,
     check_todo,
     rejection_response,
     reopen_todo,
@@ -42,25 +40,6 @@ def _run(request, *, action, resource_type, resource_id, operation, created=Fals
             return Response(payload, status=200 if replayed else error.status)
         return _error_response(error)
     return Response(payload, status=200 if replayed or not created else 201)
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def todo_add(request, event_id, station_id):
-    return _run(
-        request,
-        action="happy_cleaning.todo.create",
-        resource_type="station",
-        resource_id=station_id,
-        created=True,
-        operation=lambda context: add_todo(
-            context,
-            event_id,
-            station_id,
-            required_positive_integer(request.data, "expected_version"),
-            required_text(request.data, "text", 500),
-        ),
-    )
 
 
 def _todo_state_command(request, event_id, station_id, todo_id, *, checked):

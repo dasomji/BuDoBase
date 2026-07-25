@@ -4,11 +4,12 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from budo_app.happy_cleaning_tests.task_fixtures import CanonicalTask
+
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningAssignment,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Kinder,
     Turnus,
 )
@@ -62,9 +63,9 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
             )
         station_rows = list(self.event.stations.all())
         for station in station_rows:
-            current_todos = station.todos.count()
+            current_todos = CanonicalTask.objects.filter(station=station).count()
             for index in range(current_todos, todos_per_station):
-                HappyCleaningTodo.objects.create(
+                CanonicalTask.objects.create(
                     station=station,
                     text=f"Aufgabe {station.position:02d}-{index:02d}",
                     position=index,
@@ -101,14 +102,10 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
                 self.client,
                 self._url("happy-cleaning-assignment", **event_query),
             ),
-            "happy-cleaning-stations": measure_http_get(
-                self.client,
-                self._url("happy-cleaning-stations", **event_query),
-            ),
-            "happy-cleaning-station-detail": measure_http_get(
+            "happy-cleaning-overview-station": measure_http_get(
                 self.client,
                 self._url(
-                    "happy-cleaning-station-detail",
+                    "happy-cleaning-overview-station",
                     **event_query,
                     station_id=first_station.id,
                 ),
@@ -158,7 +155,7 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
                 position=index,
             )
             for todo_index in range(5):
-                HappyCleaningTodo.objects.create(
+                CanonicalTask.objects.create(
                     station=station,
                     text=f"Historische Aufgabe {todo_index}",
                     position=todo_index,

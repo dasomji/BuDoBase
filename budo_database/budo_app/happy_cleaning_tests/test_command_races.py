@@ -9,10 +9,11 @@ from django.db import close_old_connections, connection
 from django.test import Client, TransactionTestCase
 from django.urls import reverse
 
+from budo_app.happy_cleaning_tests.task_fixtures import CanonicalTask
+
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Turnus,
 )
 
@@ -131,7 +132,7 @@ class HappyCleaningManagementRaceTests(TransactionTestCase):
             position=1,
         )
         todos = [
-            HappyCleaningTodo.objects.create(
+            CanonicalTask.objects.create(
                 station=station,
                 text=text,
                 position=position,
@@ -155,7 +156,7 @@ class HappyCleaningManagementRaceTests(TransactionTestCase):
 
         self.assertEqual([status for status, _payload in results], [200, 200])
         self.assertEqual(
-            list(HappyCleaningTodo.objects.filter(station=station).values_list(
+            list(CanonicalTask.objects.filter(station=station).values_list(
                 "checked", "version"
             )),
             [(True, 2), (True, 2)],

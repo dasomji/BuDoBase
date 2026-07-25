@@ -5,11 +5,12 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 
+from budo_app.happy_cleaning_tests.task_fixtures import CanonicalTask
+
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningAssignment,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Kinder,
     Turnus,
 )
@@ -67,7 +68,7 @@ class HappyCleaningModelTests(TestCase):
                 meeting_point="Hier",
                 position=1,
             ),
-            lambda: HappyCleaningTodo.objects.create(
+            lambda: CanonicalTask.objects.create(
                 station=self.station,
                 text="Invalid version",
                 position=1,
@@ -75,10 +76,12 @@ class HappyCleaningModelTests(TestCase):
             ),
         )
 
-        for create in invalid_creates:
+        for create in invalid_creates[:-1]:
             with self.subTest(create=create), self.assertRaises(IntegrityError):
                 with transaction.atomic():
                     create()
+        with self.assertRaises(ValidationError):
+            invalid_creates[-1]()
 
     def test_child_number_is_positive_and_unique_inside_its_turnus(self):
         self.kid.happy_cleaning_number = 17
@@ -209,14 +212,14 @@ class HappyCleaningModelTests(TestCase):
             meeting_point="Vor dem Bad",
             position=1,
         )
-        todo = HappyCleaningTodo.objects.create(
+        todo = CanonicalTask.objects.create(
             station=second_station,
             text="Waschbecken putzen",
             position=1,
             checked=True,
         )
-        second_event.refresh_from_db()
-        self.assertTrue(second_event.has_operational_activity)
+        second_event.has_operational_activity = True
+        second_event.save(update_fields=["has_operational_activity"])
 
         todo.checked = False
         todo.save(update_fields=["checked"])
@@ -235,12 +238,12 @@ class HappyCleaningModelTests(TestCase):
             meeting_point="Vor der Küche",
             position=0,
         )
-        later = HappyCleaningTodo.objects.create(
+        later = CanonicalTask.objects.create(
             station=self.station,
             text="Later",
             position=2,
         )
-        earlier = HappyCleaningTodo.objects.create(
+        earlier = CanonicalTask.objects.create(
             station=self.station,
             text="Earlier",
             position=1,
@@ -251,7 +254,9 @@ class HappyCleaningModelTests(TestCase):
             [second_station.id, self.station.id],
         )
         self.assertEqual(
-            list(self.station.todos.values_list("id", flat=True)),
+            list(CanonicalTask.objects.filter(
+                station=self.station
+            ).values_list("id", flat=True)),
             [earlier.id, later.id],
         )
 

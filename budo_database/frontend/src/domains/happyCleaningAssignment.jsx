@@ -393,9 +393,7 @@ function StationName({ eventId, station, selected, busy, onActivate }) {
   const full = !station.is_excused && station.free_seats === 0;
   const label = `${station.name}${full ? ' 🚫' : ''}`;
   if (!selected) {
-    return station.is_excused
-      ? <span>{label}</span>
-      : <a href={`/happy-cleaning/${eventId}/stations/${station.id}/`}>{label}</a>;
+    return <span>{label}</span>;
   }
   const currentTarget = selected.assigned_station?.id === station.id;
   const fullTarget = full && !currentTarget;

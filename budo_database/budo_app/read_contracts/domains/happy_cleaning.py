@@ -10,7 +10,6 @@ from budo_app.models import (
     HappyCleaning,
     HappyCleaningAssignment,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Kinder,
     Profil,
     Turnus,
@@ -194,11 +193,11 @@ def overview(request):
     }
 
 
-def _todo_progress(todos):
-    if not todos:
+def _todo_progress(document):
+    counts = count_tasks(document)
+    if not counts["total"]:
         return None
-    checked = sum(todo.checked for todo in todos)
-    return checked * 100 // len(todos)
+    return counts["checked"] * 100 // counts["total"]
 
 
 def _assignment_for_child(child):
@@ -268,7 +267,7 @@ def _assignment_station(station, turnus_id):
         "assigned_count": assigned_count,
         "free_seats": max(station.max_kids - assigned_count, 0),
         "overbooked_count": max(assigned_count - station.max_kids, 0),
-        "todo_progress_percentage": _todo_progress(station.route_todos),
+        "todo_progress_percentage": _todo_progress(station.content_document),
         "children": [
             _station_child(assignment) for assignment in assignments
         ],
@@ -326,11 +325,6 @@ def assignment_snapshot(request):
         ))
         .order_by("kid_vorname", "kid_nachname", "id")
     )
-    todos = HappyCleaningTodo.objects.only(
-        "id",
-        "station_id",
-        "checked",
-    ).order_by("position", "id")
     stations = list(
         HappyCleaningStation.objects.filter(happy_cleaning_id=event.id)
         .select_related("responsible_profile")
@@ -348,6 +342,7 @@ def assignment_snapshot(request):
             "position",
             "version",
             "has_ever_had_assignment",
+            "content_document",
         )
         .prefetch_related(
             Prefetch(
@@ -355,7 +350,6 @@ def assignment_snapshot(request):
                 queryset=assignments,
                 to_attr="route_happy_cleaning_assignments",
             ),
-            Prefetch("todos", queryset=todos, to_attr="route_todos"),
         )
     )
     present_total = sum(child.anwesend is True for child in children)
@@ -392,134 +386,6 @@ def assignment_snapshot(request):
                     for assignment in excused_assignments
                 ],
             },
-        ],
-    }
-
-
-def _todo(todo):
-    return {
-        "id": todo.id,
-        "text": todo.text,
-        "position": todo.position,
-        "checked": todo.checked,
-        "version": todo.version,
-    }
-
-
-def _management_station(station, turnus_id):
-    responsible_profile_id = (
-        station.responsible_profile_id
-        if station.responsible_profile
-        and station.responsible_profile.turnus_id == turnus_id
-        else None
-    )
-    return {
-        "id": station.id,
-        "version": station.version,
-        "name": station.name,
-        "max_kids": station.max_kids,
-        "meeting_point": station.meeting_point,
-        "wishes": station.wishes,
-        "responsible_profile_id": responsible_profile_id,
-        "position": station.position,
-        "has_ever_had_assignment": station.has_ever_had_assignment,
-        "assigned_count": station.assigned_count,
-        "overbooked_count": max(station.assigned_count - station.max_kids, 0),
-        "todo_progress_percentage": _todo_progress(station.route_todos),
-        "todos": [_todo(todo) for todo in station.route_todos],
-    }
-
-
-def station_management(request):
-    event = _requested_event(request)
-    todos = HappyCleaningTodo.objects.only(
-        "id",
-        "station_id",
-        "text",
-        "position",
-        "checked",
-        "version",
-    ).order_by("position", "id")
-    stations = (
-        HappyCleaningStation.objects.filter(happy_cleaning_id=event.id)
-        .select_related("responsible_profile")
-        .only(
-            "id",
-            "happy_cleaning_id",
-            "name",
-            "max_kids",
-            "meeting_point",
-            "wishes",
-            "responsible_profile_id",
-            "responsible_profile__id",
-            "responsible_profile__turnus_id",
-            "position",
-            "version",
-            "has_ever_had_assignment",
-        )
-        .annotate(assigned_count=Count("assignments"))
-        .prefetch_related(Prefetch(
-            "todos",
-            queryset=todos,
-            to_attr="route_todos",
-        ))
-    )
-    profiles = Profil.objects.filter(turnus_id=event.turnus_id).only(
-        "id",
-        "rufname",
-    ).order_by("rufname", "id")
-    source_stations = HappyCleaningStation.objects.only(
-        "id",
-        "happy_cleaning_id",
-        "name",
-        "position",
-    ).order_by("position", "id")
-    copy_sources = (
-        HappyCleaning.objects.filter(
-            Q(turnus__turnus_beginn__lt=event.turnus.turnus_beginn)
-            | Q(
-                turnus_id=event.turnus_id,
-                display_number__lt=event.display_number,
-            )
-        )
-        .select_related("turnus")
-        .only(
-            "id",
-            "turnus_id",
-            "turnus__turnus_nr",
-            "turnus__turnus_beginn",
-            "display_number",
-        )
-        .prefetch_related(Prefetch(
-            "stations",
-            queryset=source_stations,
-            to_attr="route_copy_stations",
-        ))
-        .order_by("-turnus__turnus_beginn", "-display_number", "-id")
-    )
-    return {
-        "event": _event_summary(event),
-        "responsible_profiles": [
-            {"id": profile.id, "name": profile.rufname}
-            for profile in profiles
-        ],
-        "copy_sources": [
-            {
-                "id": source.id,
-                "label": (
-                    f"{source.turnus} · Happy Cleaning "
-                    f"{source.display_number}"
-                ),
-                "stations": [
-                    {"id": station.id, "name": station.name}
-                    for station in source.route_copy_stations
-                ],
-            }
-            for source in copy_sources
-        ],
-        "stations": [
-            _management_station(station, event.turnus_id)
-            for station in stations
         ],
     }
 
@@ -760,6 +626,5 @@ CONTRACTS = {
     "happy-cleaning-assignment": assignment_snapshot,
     "happy-cleaning-overview": overview,
     "happy-cleaning-print": print_number_list,
-    "happy-cleaning-station-detail": station_detail,
-    "happy-cleaning-stations": station_management,
+    "happy-cleaning-overview-station": station_detail,
 }

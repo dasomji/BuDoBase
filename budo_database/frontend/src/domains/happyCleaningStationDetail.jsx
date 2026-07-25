@@ -52,7 +52,6 @@ function Progress({ station }) {
     </span>
   );
 }
-
 function DirtyNavigationDialog({ onContinue, onDiscard, onSave }) {
   return (
     <section role="dialog" aria-modal="true" aria-label="Ungespeicherte Änderungen">
@@ -426,21 +425,3 @@ export function HappyCleaningStationDetailPage({
     </Page>
   );
 }
-
-export const happyCleaningStationDetailRoutes = [{
-  pattern: /^\/happy-cleaning\/(\d+)\/stations\/(\d+)$/,
-  page: 'happy-cleaning-station-detail',
-  title: 'Happy Cleaning Station',
-  domain: 'happy-cleaning',
-  readContractKey: 'happy-cleaning-station-detail',
-  params: match => ({ event_id: match[1], station_id: match[2] }),
-  resolveTitle: (_route, data) => data.station?.name || 'Happy Cleaning Station',
-  render: ({ data, mutate, realtimeSync, refresh }) => (
-    <HappyCleaningStationDetailPage
-      data={data}
-      mutate={mutate}
-      realtimeSync={realtimeSync}
-      refresh={refresh}
-    />
-  ),
-}];

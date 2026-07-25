@@ -90,5 +90,7 @@ class HappyCleaningStationDocumentMigrationTests(TransactionTestCase):
         )
 
     def tearDown(self):
-        MigrationExecutor(connection).migrate([self.migrate_to])
+        MigrationExecutor(connection).migrate([
+            ("budo_app", "0081_remove_happy_cleaning_todo")
+        ])
         super().tearDown()

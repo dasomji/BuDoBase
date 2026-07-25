@@ -9,15 +9,12 @@ from budo_app.happy_cleaning_commands import (
     audit_success,
     complete_command,
     complete_focused_command,
-    create_todo,
     event_projection,
     replay_completed_command,
-    todo_projection,
 )
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Profil,
     Turnus,
 )
@@ -60,17 +57,6 @@ def rejection_response(
     return response, False
 
 
-def add_todo(context, event_id, station_id, expected_version, text):
-    """Append an operative todo using the station management invariant."""
-    return create_todo(
-        context,
-        event_id,
-        station_id,
-        expected_version,
-        text,
-    )
-
-
 def _locked_event(context, event_id):
     event = (
         HappyCleaning.objects.select_for_update()
@@ -85,31 +71,6 @@ def _locked_event(context, event_id):
             details={"happy_cleaning_id": event_id},
         )
     return event
-
-
-def _locked_todo(event, station_id, todo_id):
-    todo = (
-        HappyCleaningTodo.objects.select_for_update()
-        .select_related("station")
-        .filter(
-            pk=todo_id,
-            station_id=station_id,
-            station__happy_cleaning=event,
-        )
-        .first()
-    )
-    if todo is None:
-        raise CommandError(
-            "not_found",
-            status=404,
-            audit_outcome="forbidden",
-            details={
-                "happy_cleaning_id": event.id,
-                "station_id": station_id,
-                "todo_id": todo_id,
-            },
-        )
-    return todo
 
 
 def _set_checked(
@@ -148,24 +109,46 @@ def _set_checked(
                     "station_id": station_id,
                 },
             )
-        todo = _locked_todo(event, station.id, todo_id)
-        if todo.version != expected_version:
+        from budo_app.happy_cleaning_station_documents import (
+            mutate_task,
+            project_tasks,
+        )
+        todo = next(
+            (item for item in project_tasks(station.content_document)
+             if item["id"] == todo_id),
+            None,
+        )
+        if todo is None:
+            raise CommandError("not_found", status=404, audit_outcome="forbidden")
+        if todo["version"] != expected_version:
             raise CommandError(
                 "stale",
                 status=409,
-                current_version=todo.version,
+                current_version=todo["version"],
                 audit_outcome="stale",
                 details={
                     "happy_cleaning_id": event.id,
                     "station_id": station.id,
-                    "todo_id": todo.id,
+                    "todo_id": todo["id"],
                     "expected_version": expected_version,
-                    "current_version": todo.version,
+                    "current_version": todo["version"],
                 },
             )
-        todo.checked = checked
-        todo.version += 1
-        todo.save(update_fields=("checked", "version"))
+        station.content_document = mutate_task(
+            station.content_document,
+            todo_id,
+            expected_version=expected_version,
+            checked=checked,
+        )
+        station.save(update_fields=("content_document",))
+        changed = next(
+            item for item in project_tasks(station.content_document)
+            if item["id"] == todo_id
+        )
+        if checked:
+            HappyCleaning.objects.filter(pk=event.pk).update(
+                has_operational_activity=True,
+            )
         HappyCleaning.objects.filter(pk=event.pk).update(
             revision=F("revision") + 1,
         )
@@ -174,21 +157,21 @@ def _set_checked(
             context,
             action=action,
             resource_type="todo",
-            resource_id=todo.id,
-            resource_label=todo.text,
+            resource_id=changed["id"],
+            resource_label=changed["text"],
             details={
                 "happy_cleaning_id": event.id,
                 "station_id": station.id,
-                "todo_id": todo.id,
+                "todo_id": changed["id"],
                 "expected_version": expected_version,
-                "current_version": todo.version,
+                "current_version": changed["version"],
             },
         )
         response = complete_focused_command(context, action, {
             "ok": True,
             "event": event_projection(event),
             "station_version": station.version,
-            "todo": todo_projection(todo),
+            "todo": changed,
         })
         return response, False
 

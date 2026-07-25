@@ -8,8 +8,6 @@ from .happy_cleaning_page_views import (
     assignment_page,
     event_print_number_page,
     print_number_page,
-    station_detail_page,
-    stations_page,
 )
 
 urlpatterns = [
@@ -66,11 +64,6 @@ urlpatterns = [
         name='happy-cleaning-assignment-page',
     ),
     path(
-        'happy-cleaning/<int:event_id>/stations/',
-        stations_page,
-        name='happy-cleaning-stations-page',
-    ),
-    path(
         'happy-cleaning/print/',
         print_number_page,
         name='happy-cleaning-print-page',
@@ -79,11 +72,6 @@ urlpatterns = [
         'happy-cleaning/<int:event_id>/print/',
         event_print_number_page,
         name='happy-cleaning-event-print-page',
-    ),
-    path(
-        'happy-cleaning/<int:event_id>/stations/<int:station_id>/',
-        station_detail_page,
-        name='happy-cleaning-station-detail-page',
     ),
     path('happy-cleaning/', views.happy_cleaning, name='happy_cleaning'),
     path('kindergesamtzahl/', views.kindergesamtzahl, name='kindergesamtzahl'),

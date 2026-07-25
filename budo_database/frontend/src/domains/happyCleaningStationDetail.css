@@ -1,7 +1,6 @@
 .happy-cleaning-station-detail-page {
   display: grid;
   gap: 1rem;
-  padding-bottom: 5.5rem;
 }
 
 .happy-cleaning-station-detail-card {
@@ -11,8 +10,7 @@
 
 .happy-cleaning-station-detail-heading,
 .happy-cleaning-checklist-heading,
-.happy-cleaning-detail-todos li,
-.bottom-composer form {
+.happy-cleaning-detail-todos li {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -70,33 +68,6 @@
   pointer-events: none;
 }
 
-.bottom-composer {
-  position: fixed;
-  z-index: 20;
-  inset: auto 0 0;
-  padding: .75rem max(1rem, calc((100vw - 54rem) / 2));
-  background: var(--background-color, white);
-  border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  box-shadow: 0 -.25rem 1rem rgb(0 0 0 / .1);
-}
-
-.bottom-composer input {
-  flex: 1;
-  min-width: 0;
-  min-height: 2.75rem;
-}
-
-.bottom-composer button {
-  min-height: 2.75rem;
-  min-width: 7rem;
-}
-
-.bottom-composer [role="alert"],
-.bottom-composer [role="status"] {
-  display: block;
-  margin: .35rem 0 0;
-}
-
 @media (max-width: 600px) {
   .happy-cleaning-station-detail-heading,
   .happy-cleaning-checklist-heading,
@@ -108,9 +79,5 @@
   .happy-cleaning-station-facts div {
     grid-template-columns: 1fr;
     gap: .15rem;
-  }
-
-  .bottom-composer {
-    padding-inline: .65rem;
   }
 }

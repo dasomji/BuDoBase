@@ -10,13 +10,14 @@ from budo_app.happy_cleaning_assignment_publisher import (
     configure_assignment_publisher,
     reset_assignment_publisher,
 )
+from budo_app.happy_cleaning_tests.task_fixtures import CanonicalTask
+
 from budo_app.models import (
     AuditEvent,
     HappyCleaning,
     HappyCleaningAssignment,
     HappyCleaningCommandRequest,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Kinder,
     Turnus,
 )
@@ -607,82 +608,6 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
             outcome="stale",
         ).exists())
 
-    def test_todo_create_update_reorder_and_delete_preserve_checked_state(self):
-        station = HappyCleaningStation.objects.create(
-            happy_cleaning=self.event,
-            name="Küche",
-            max_kids=2,
-            meeting_point="Tür",
-            position=1,
-        )
-        first = self.post_json(
-            "happy-cleaning-todo-create-api",
-            [self.event.id, station.id],
-            {
-                "request_id": "todo-create-1",
-                "expected_version": 1,
-                "text": "Boden kehren",
-            },
-        )
-        self.assertEqual(first.status_code, 201)
-        second = self.post_json(
-            "happy-cleaning-todo-create-api",
-            [self.event.id, station.id],
-            {
-                "request_id": "todo-create-2",
-                "expected_version": 2,
-                "text": "Tische wischen",
-            },
-        )
-        first_id = first.json()["todo"]["id"]
-        second_id = second.json()["todo"]["id"]
-        HappyCleaningTodo.objects.filter(pk=first_id).update(checked=True)
-
-        updated = self.post_json(
-            "happy-cleaning-todo-update-api",
-            [self.event.id, station.id, first_id],
-            {
-                "request_id": "todo-update-1",
-                "expected_version": 1,
-                "text": "Boden gründlich kehren",
-            },
-        )
-        self.assertEqual(updated.status_code, 200)
-        todo = HappyCleaningTodo.objects.get(pk=first_id)
-        self.assertTrue(todo.checked)
-        self.assertEqual(todo.text, "Boden gründlich kehren")
-
-        station.refresh_from_db()
-        reordered = self.post_json(
-            "happy-cleaning-todo-reorder-api",
-            [self.event.id, station.id],
-            {
-                "request_id": "todo-reorder-1",
-                "expected_version": station.version,
-                "todo_ids": [second_id, first_id],
-            },
-        )
-        self.assertEqual(reordered.status_code, 200)
-        self.assertEqual(
-            list(HappyCleaningTodo.objects.filter(station=station).values_list(
-                "id", "position", "checked",
-            )),
-            [(second_id, 1, False), (first_id, 2, True)],
-        )
-
-        second_version = HappyCleaningTodo.objects.get(pk=second_id).version
-        deleted = self.post_json(
-            "happy-cleaning-todo-delete-api",
-            [self.event.id, station.id, second_id],
-            {
-                "request_id": "todo-delete-1",
-                "expected_version": second_version,
-            },
-        )
-        self.assertEqual(deleted.status_code, 200)
-        remaining = HappyCleaningTodo.objects.get(pk=first_id)
-        self.assertEqual(remaining.position, 1)
-
     def test_copy_deep_copies_selected_or_all(self):
         source_event = HappyCleaning.objects.create(
             turnus=self.other_turnus,
@@ -705,7 +630,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
             meeting_point="Quelle B",
             position=2,
         )
-        source_todo = HappyCleaningTodo.objects.create(
+        source_todo = CanonicalTask.objects.create(
             station=source_a,
             text="Alles putzen",
             position=1,
@@ -744,13 +669,13 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
         self.assertEqual(copied.status_code, 200)
         target = list(HappyCleaningStation.objects.filter(
             happy_cleaning=self.event,
-        ).prefetch_related("todos"))
+        ))
         self.assertEqual([item.name for item in target], ["Abstellraum", "Küche", "Bad"])
         copied_a = target[1]
         self.assertIsNone(copied_a.responsible_profile)
         self.assertEqual(copied_a.position, 2)
         self.assertEqual(copied_a.assignments.count(), 0)
-        copied_todo = copied_a.todos.get()
+        copied_todo = CanonicalTask.objects.filter(station=copied_a).get()
         self.assertNotEqual(copied_todo.id, source_todo.id)
         self.assertEqual((copied_todo.text, copied_todo.checked, copied_todo.version), (
             "Alles putzen", False, 1,

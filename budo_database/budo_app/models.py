@@ -703,16 +703,6 @@ class HappyCleaningStation(models.Model):
             )
         return super().save(*args, **kwargs)
 
-    def sync_content_document_from_todos(self):
-        from .happy_cleaning_station_documents import document_from_todos
-
-        self.content_document = document_from_todos(
-            self.todos.order_by("position", "id").values(
-                "id", "text", "checked", "version"
-            )
-        )
-        self.save(update_fields=["content_document"])
-
     def __str__(self):
         return self.name
 
@@ -730,48 +720,6 @@ class HappyCleaningStation(models.Model):
             models.UniqueConstraint(
                 fields=("happy_cleaning", "position"),
                 name="hc_station_event_position_uniq",
-            ),
-        ]
-
-
-class HappyCleaningTodo(models.Model):
-    station = models.ForeignKey(
-        HappyCleaningStation,
-        on_delete=models.CASCADE,
-        related_name="todos",
-    )
-    text = models.CharField(max_length=500)
-    position = models.PositiveIntegerField()
-    checked = models.BooleanField(default=False)
-    version = models.PositiveIntegerField(default=1)
-
-    def save(self, *args, **kwargs):
-        with transaction.atomic():
-            result = super().save(*args, **kwargs)
-            self.station.sync_content_document_from_todos()
-            if self.checked:
-                HappyCleaning.objects.filter(
-                    pk=self.station.happy_cleaning_id,
-                ).update(has_operational_activity=True)
-            return result
-
-    def delete(self, *args, **kwargs):
-        with transaction.atomic():
-            station = self.station
-            result = super().delete(*args, **kwargs)
-            station.sync_content_document_from_todos()
-            return result
-
-    class Meta:
-        ordering = ("position", "id")
-        constraints = [
-            models.CheckConstraint(
-                condition=models.Q(version__gt=0),
-                name="hc_todo_version_positive",
-            ),
-            models.UniqueConstraint(
-                fields=("station", "position"),
-                name="hc_todo_station_position_uniq",
             ),
         ]
 

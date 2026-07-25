@@ -18,6 +18,8 @@ from budo_app.happy_cleaning_assignment_publisher import (
 )
 from budo_app.happy_cleaning_station_matching import station_names_are_similar
 from budo_app.happy_cleaning_station_documents import (
+    count_tasks,
+    project_tasks,
     validate_station_document,
     validate_structural_edit_document,
 )
@@ -25,7 +27,6 @@ from budo_app.models import (
     HappyCleaning,
     HappyCleaningCommandRequest,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Profil,
     Turnus,
 )
@@ -280,7 +281,7 @@ def event_projection(event):
 
 
 def station_projection(station):
-    todos = list(station.todos.order_by("position", "id"))
+    todos = project_tasks(station.content_document)
     assigned_count = station.assignments.count()
     return {
         "id": station.id,
@@ -296,7 +297,7 @@ def station_projection(station):
         "overbooked_count": max(assigned_count - station.max_kids, 0),
         "document": station.content_document,
         "task_item_count": len(todos),
-        "todos": [todo_projection(todo) for todo in todos],
+        "todos": todos,
         "responsible": (
             {
                 "id": station.responsible_profile.id,
@@ -304,16 +305,6 @@ def station_projection(station):
             }
             if station.responsible_profile else None
         ),
-    }
-
-
-def todo_projection(todo):
-    return {
-        "id": todo.id,
-        "version": todo.version,
-        "text": todo.text,
-        "position": todo.position,
-        "checked": todo.checked,
     }
 
 
@@ -387,10 +378,10 @@ def _locked_station(event, station_id):
 
 
 def _locked_todo(station, todo_id):
-    todo = (
-        HappyCleaningTodo.objects.select_for_update()
-        .filter(pk=todo_id, station=station)
-        .first()
+    todo = next(
+        (todo for todo in project_tasks(station.content_document)
+         if todo["id"] == todo_id),
+        None,
     )
     if todo is None:
         raise CommandError(
@@ -435,17 +426,6 @@ def _normalize_stations(event, ordered_ids):
     queryset.update(position=F("position") + offset)
     for position, station_id in enumerate(ordered_ids, start=1):
         queryset.filter(pk=station_id).update(
-            position=position,
-            version=F("version") + 1,
-        )
-
-
-def _normalize_todos(station, ordered_ids):
-    queryset = HappyCleaningTodo.objects.filter(station=station)
-    offset = (queryset.aggregate(value=Max("position"))["value"] or 0) + len(ordered_ids) + 1
-    queryset.update(position=F("position") + offset)
-    for position, todo_id in enumerate(ordered_ids, start=1):
-        queryset.filter(pk=todo_id).update(
             position=position,
             version=F("version") + 1,
         )
@@ -612,12 +592,24 @@ def _task_text_from_document_node(task):
     )
 
 
+TASK_ID_STATION_MULTIPLIER = 1_000_000
+
+
+def _next_station_task_identity(station):
+    """Allocate a JS-safe identity in a station-owned integer namespace."""
+    base = station.id * TASK_ID_STATION_MULTIPLIER
+    return max(
+        (
+            task["id"] for task in project_tasks(station.content_document)
+            if base <= task["id"] < base + TASK_ID_STATION_MULTIPLIER
+        ),
+        default=base,
+    ) + 1
+
+
 def _save_structural_document(station, submitted):
     validate_structural_edit_document(submitted)
-    current = {
-        todo.id: todo
-        for todo in HappyCleaningTodo.objects.select_for_update().filter(station=station)
-    }
+    current = {todo["id"]: todo for todo in project_tasks(station.content_document)}
     submitted_ids = {
         task["attrs"]["id"]
         for block in submitted["content"]
@@ -627,51 +619,27 @@ def _save_structural_document(station, submitted):
     }
     if not submitted_ids.issubset(current):
         raise ValidationError("A task identity does not belong to this station.")
-    position_offset = len(current) + sum(
-        len(block["content"])
-        for block in submitted["content"]
-        if block["type"] == "taskList"
-    ) + 1
-    HappyCleaningTodo.objects.filter(station=station).update(
-        position=F("position") + position_offset
-    )
     document = deepcopy(submitted)
-    position = 0
-    retained = set()
+    identity = _next_station_task_identity(station)
     for block in document["content"]:
         if block["type"] != "taskList":
             continue
         for task in block["content"]:
-            position += 1
-            identity = task["attrs"]["id"]
+            task_identity = task["attrs"]["id"]
             text = _task_text_from_document_node(task)
-            if identity is None:
-                todo = HappyCleaningTodo.objects.create(
-                    station=station,
-                    text=text,
-                    position=position,
-                    checked=False,
-                )
+            if task_identity is None:
+                attrs = {"id": identity, "checked": False, "version": 1}
+                identity += 1
             else:
-                todo = current[identity]
-                retained.add(identity)
-                todo.text = text
-                todo.position = position
-                todo.version += 1
-                todo.save(update_fields=["text", "position", "version"])
-            task["attrs"] = {
-                "id": todo.id,
-                "checked": todo.checked,
-                "version": todo.version,
-            }
-    HappyCleaningTodo.objects.filter(station=station).exclude(
-        id__in=retained | {
-            task["attrs"]["id"]
-            for block in document["content"]
-            if block["type"] == "taskList"
-            for task in block["content"]
-        }
-    ).delete()
+                todo = current[task_identity]
+                attrs = {
+                    "id": task_identity,
+                    "checked": todo["checked"],
+                    "version": todo["version"] + (
+                        text != todo["text"]
+                    ),
+                }
+            task["attrs"] = attrs
     validate_station_document(document)
     return document
 
@@ -856,226 +824,27 @@ def reorder_stations(context, event_id, expected_revision, station_ids):
         }), False
 
 
-def create_todo(context, event_id, station_id, expected_version, text):
-    action = "happy_cleaning.todo.create"
-    with transaction.atomic():
-        _locked_turnus(context)
-        replay = replay_completed_command(context, action)
-        if replay is not None:
-            return replay, True
-        event = _locked_event(context, event_id)
-        station = _locked_station(event, station_id)
-        _require_version(
-            station,
-            expected_version,
-            detail_id=station.id,
-            detail_name="station_id",
-        )
-        position = (
-            HappyCleaningTodo.objects.filter(station=station)
-            .aggregate(value=Max("position"))["value"]
-            or 0
-        ) + 1
-        todo = HappyCleaningTodo.objects.create(
-            station=station,
-            text=text,
-            position=position,
-        )
-        station.version += 1
-        station.save(update_fields=["version"])
-        _bump_event(event)
-        audit_success(
-            context,
-            action=action,
-            resource_type="todo",
-            resource_id=todo.id,
-            resource_label=todo.text,
-            details={
-                "happy_cleaning_id": event.id,
-                "station_id": station.id,
-                "todo_id": todo.id,
-            },
-        )
-        return complete_focused_command(context, action, {
-            "ok": True,
-            "event": event_projection(event),
-            "station_version": station.version,
-            "todo": todo_projection(todo),
-        }), False
-
-
-def update_todo(context, event_id, station_id, todo_id, expected_version, text):
-    action = "happy_cleaning.todo.update"
-    with transaction.atomic():
-        _locked_turnus(context)
-        replay = replay_completed_command(context, action)
-        if replay is not None:
-            return replay, True
-        event = _locked_event(context, event_id)
-        station = _locked_station(event, station_id)
-        todo = _locked_todo(station, todo_id)
-        _require_version(
-            todo,
-            expected_version,
-            detail_id=todo.id,
-            detail_name="todo_id",
-        )
-        todo.text = text
-        todo.version += 1
-        todo.save(update_fields=["text", "version"])
-        station.version += 1
-        station.save(update_fields=["version"])
-        _bump_event(event)
-        audit_success(
-            context,
-            action=action,
-            resource_type="todo",
-            resource_id=todo.id,
-            resource_label=todo.text,
-            details={
-                "happy_cleaning_id": event.id,
-                "station_id": station.id,
-                "todo_id": todo.id,
-                "changed_fields": ["text"],
-            },
-        )
-        return complete_focused_command(context, action, {
-            "ok": True,
-            "event": event_projection(event),
-            "station_version": station.version,
-            "todo": todo_projection(todo),
-        }), False
-
-
-def reorder_todos(context, event_id, station_id, expected_version, todo_ids):
-    action = "happy_cleaning.todo.reorder"
-    with transaction.atomic():
-        _locked_turnus(context)
-        replay = replay_completed_command(context, action)
-        if replay is not None:
-            return replay, True
-        event = _locked_event(context, event_id)
-        station = _locked_station(event, station_id)
-        _require_version(
-            station,
-            expected_version,
-            detail_id=station.id,
-            detail_name="station_id",
-        )
-        current_ids = list(
-            HappyCleaningTodo.objects.select_for_update()
-            .filter(station=station)
-            .order_by("position", "id")
-            .values_list("id", flat=True)
-        )
-        if len(current_ids) != len(todo_ids) or set(current_ids) != set(todo_ids):
-            raise CommandError("invalid_order", status=400)
-        _normalize_todos(station, todo_ids)
-        station.version += 1
-        station.sync_content_document_from_todos()
-        station.save(update_fields=["version"])
-        _bump_event(event)
-        audit_success(
-            context,
-            action=action,
-            resource_type="station",
-            resource_id=station.id,
-            resource_label=station.name,
-            details={
-                "happy_cleaning_id": event.id,
-                "station_id": station.id,
-            },
-        )
-        return complete_focused_command(context, action, {
-            "ok": True,
-            "event": event_projection(event),
-            "station_version": station.version,
-            "todo_ids": todo_ids,
-        }), False
-
-
-def delete_todo(context, event_id, station_id, todo_id, expected_version):
-    action = "happy_cleaning.todo.delete"
-    with transaction.atomic():
-        _locked_turnus(context)
-        replay = replay_completed_command(context, action)
-        if replay is not None:
-            return replay, True
-        event = _locked_event(context, event_id)
-        station = _locked_station(event, station_id)
-        todo = _locked_todo(station, todo_id)
-        _require_version(
-            todo,
-            expected_version,
-            detail_id=todo.id,
-            detail_name="todo_id",
-        )
-        label = todo.text
-        todo.delete()
-        remaining_ids = list(
-            HappyCleaningTodo.objects.filter(station=station)
-            .order_by("position", "id")
-            .values_list("id", flat=True)
-        )
-        _normalize_todos(station, remaining_ids)
-        station.version += 1
-        station.sync_content_document_from_todos()
-        station.save(update_fields=["version"])
-        _bump_event(event)
-        audit_success(
-            context,
-            action=action,
-            resource_type="todo",
-            resource_id=todo_id,
-            resource_label=label,
-            details={
-                "happy_cleaning_id": event.id,
-                "station_id": station.id,
-                "todo_id": todo_id,
-            },
-        )
-        return complete_focused_command(context, action, {
-            "ok": True,
-            "event": event_projection(event),
-            "station_version": station.version,
-            "deleted_todo_id": todo_id,
-        }), False
-
-
-def _copy_source_document(document, todo_id_map):
+def _copy_source_document(document, first_identity=1):
     copied = deepcopy(document)
+    identity = first_identity
     for node in copied["content"]:
         if node["type"] != "taskList":
             continue
         for task in node["content"]:
             task["attrs"] = {
-                "id": todo_id_map[task["attrs"]["id"]],
+                "id": identity,
                 "checked": False,
                 "version": 1,
             }
+            identity += 1
     validate_station_document(copied)
     return copied
 
 
-def _new_todos_and_document(source_station, target_station):
-    source_todos = list(source_station.todos.all())
-    copied_todos = HappyCleaningTodo.objects.bulk_create([
-        HappyCleaningTodo(
-            station=target_station,
-            text=todo.text,
-            position=position,
-            checked=False,
-            version=1,
-        )
-        for position, todo in enumerate(source_todos, start=1)
-    ])
-    todo_id_map = {
-        source_todo.id: copied_todo.id
-        for source_todo, copied_todo in zip(source_todos, copied_todos)
-    }
-    return copied_todos, _copy_source_document(
-        source_station.content_document,
-        todo_id_map,
+def _copied_document(source_station, target_station):
+    first_identity = _next_station_task_identity(target_station)
+    return _copy_source_document(
+        source_station.content_document, first_identity,
     )
 
 
@@ -1097,11 +866,9 @@ def _create_station_copy(source_station, source, target, position):
         position=position,
         version=1,
     )
-    todos, station.content_document = _new_todos_and_document(
-        source_station, station,
-    )
+    station.content_document = _copied_document(source_station, station)
     station.save(update_fields=["content_document"])
-    return station, len(todos)
+    return station, count_tasks(station.content_document)["total"]
 
 
 def _turnus_copy_label(source, source_station):
@@ -1235,7 +1002,6 @@ def _copy_stations(
             )
         source_stations = list(
             HappyCleaningStation.objects.filter(happy_cleaning=source)
-            .prefetch_related("todos")
             .order_by("position", "id")
         )
         selected_by_id = {station.id: station for station in source_stations}
@@ -1252,10 +1018,10 @@ def _copy_stations(
         conflicts = [{
             "source_station_id": source_station.id,
             "source_name": source_station.name,
-            "source_task_count": source_station.todos.count(),
+            "source_task_count": count_tasks(source_station.content_document)["total"],
             "target_station_id": target_station.id,
             "target_name": target_station.name,
-            "target_task_count": target_station.todos.count(),
+            "target_task_count": count_tasks(target_station.content_document)["total"],
             "overwrite_eligible": not target_station.has_ever_had_assignment,
             "overwrite_disabled_reason": (
                 None if not target_station.has_ever_had_assignment
@@ -1327,7 +1093,6 @@ def _copy_stations(
                 continue
             if resolution == "overwrite":
                 station = target_by_id[target_station_id]
-                station.todos.all().delete()
                 station.name = source_station.name
                 station.max_kids = source_station.max_kids
                 station.meeting_point = source_station.meeting_point
@@ -1336,7 +1101,7 @@ def _copy_stations(
                     source_station, source, target,
                 )
                 station.version += 1
-                todos, station.content_document = _new_todos_and_document(
+                station.content_document = _copied_document(
                     source_station, station,
                 )
                 station.save(update_fields=[
@@ -1344,27 +1109,13 @@ def _copy_stations(
                     "responsible_profile", "content_document", "version",
                 ])
                 result_counts["overwritten"] += 1
-                result_counts["todos_created"] += len(todos)
+                result_counts["todos_created"] += count_tasks(
+                    station.content_document
+                )["total"]
             elif resolution == "append":
                 station = target_by_id[target_station_id]
-                existing_count = station.todos.count()
-                source_todos = list(source_station.todos.all())
-                copied_todos = HappyCleaningTodo.objects.bulk_create([
-                    HappyCleaningTodo(
-                        station=station,
-                        text=todo.text,
-                        position=existing_count + position,
-                        checked=False,
-                        version=1,
-                    )
-                    for position, todo in enumerate(source_todos, start=1)
-                ])
-                todo_map = {
-                    old.id: new.id
-                    for old, new in zip(source_todos, copied_todos)
-                }
-                appended = _copy_source_document(
-                    source_station.content_document, todo_map,
+                appended = _copied_document(
+                    source_station, station,
                 )
                 station.content_document = {
                     "type": "doc",
@@ -1381,7 +1132,7 @@ def _copy_stations(
                 station.version += 1
                 station.save(update_fields=["content_document", "version"])
                 result_counts["appended"] += 1
-                result_counts["todos_created"] += len(copied_todos)
+                result_counts["todos_created"] += count_tasks(appended)["total"]
             else:
                 next_position += 1
                 station, todo_count = _create_station_copy(

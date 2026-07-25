@@ -10,12 +10,13 @@ from budo_app.happy_cleaning_station_matching import (
     normalize_station_name,
     station_names_are_similar,
 )
+from budo_app.happy_cleaning_tests.task_fixtures import CanonicalTask
+
 from budo_app.models import (
     AuditEvent,
     HappyCleaning,
     HappyCleaningCommandRequest,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Turnus,
 )
 
@@ -88,7 +89,7 @@ class StationCopyApiFixtures:
             responsible_profile=self.old_responsible.profil,
             position=1,
         )
-        self.source_todo = HappyCleaningTodo.objects.create(
+        self.source_todo = CanonicalTask.objects.create(
             station=self.source_station,
             text="Boden wischen",
             position=1,
@@ -131,7 +132,7 @@ class BulkStationCopyApiTests(StationCopyApiFixtures, TransactionTestCase):
             ("Küche", 5, "Hof", "Fenster"),
         )
         self.assertIsNone(copied.responsible_profile)
-        copied_todo = copied.todos.get()
+        copied_todo = CanonicalTask.objects.filter(station=copied).get()
         self.assertNotEqual(copied_todo.id, self.source_todo.id)
         self.assertEqual(
             (copied_todo.text, copied_todo.checked, copied_todo.version),
@@ -197,7 +198,7 @@ class BulkStationCopyApiTests(StationCopyApiFixtures, TransactionTestCase):
             responsible_profile=self.active_responsible.profil,
             position=1,
         )
-        target_todo = HappyCleaningTodo.objects.create(
+        target_todo = CanonicalTask.objects.create(
             station=target_station,
             text="Bestehend",
             position=1,
@@ -231,7 +232,7 @@ class BulkStationCopyApiTests(StationCopyApiFixtures, TransactionTestCase):
             (9, "Ziel", "Behalten", self.active_responsible.profil.id),
         )
         self.assertEqual((target_todo.checked, target_todo.version), (True, 4))
-        appended = target_station.todos.exclude(pk=target_todo.id).get()
+        appended = CanonicalTask.objects.filter(station=target_station).exclude(pk=target_todo.id).get()
         self.assertEqual((appended.checked, appended.version), (False, 1))
         self.assertEqual(
             target_station.content_document["content"][-3]["content"][0]["text"],
@@ -262,7 +263,7 @@ class BulkStationCopyApiTests(StationCopyApiFixtures, TransactionTestCase):
         self.assertEqual((target_station.name, target_station.position), ("Küche", 7))
         self.assertIsNone(target_station.responsible_profile)
         self.assertEqual(
-            (target_station.todos.get().checked, target_station.todos.get().version),
+            (CanonicalTask.objects.filter(station=target_station).get().checked, CanonicalTask.objects.filter(station=target_station).get().version),
             (False, 1),
         )
 
@@ -449,9 +450,9 @@ class SingleStationCopyApiTests(StationCopyApiFixtures, TransactionTestCase):
         self.assertEqual(response.status_code, 200)
         copied = self.target.stations.get()
         self.assertIsNone(copied.responsible_profile)
-        self.assertFalse(copied.todos.get().checked)
-        self.assertEqual(copied.todos.get().version, 1)
-        self.assertNotEqual(copied.todos.get().id, self.source_todo.id)
+        self.assertFalse(CanonicalTask.objects.filter(station=copied).get().checked)
+        self.assertEqual(CanonicalTask.objects.filter(station=copied).get().version, 1)
+        self.assertNotEqual(CanonicalTask.objects.filter(station=copied).get().id, self.source_todo.id)
 
         replay = self.post_single(self.target, self.source_station, payload)
         self.assertEqual(replay.status_code, 200)

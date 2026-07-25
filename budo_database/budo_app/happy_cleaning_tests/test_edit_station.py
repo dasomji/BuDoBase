@@ -7,11 +7,12 @@ from django.contrib.auth.models import User
 from django.test import TransactionTestCase
 from django.urls import reverse
 
+from budo_app.happy_cleaning_tests.task_fixtures import CanonicalTask
+
 from budo_app.models import (
     AuditEvent,
     HappyCleaning,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Turnus,
 )
 
@@ -81,7 +82,7 @@ class HappyCleaningStationCreateTests(TransactionTestCase):
         self.assertEqual(replay.status_code, 200, replay.content)
         self.assertEqual(HappyCleaningStation.objects.count(), 1)
         station = HappyCleaningStation.objects.get()
-        task = station.todos.get()
+        task = CanonicalTask.objects.filter(station=station).get()
         self.assertEqual((task.version, task.checked, task.text), (1, False, "Tische"))
         self.assertEqual(
             station.content_document["content"][1]["content"][0]["attrs"],
@@ -130,7 +131,7 @@ class HappyCleaningStationCreateTests(TransactionTestCase):
                 self.post(self.payload(request_id="audit-failure"))
 
         self.assertEqual(HappyCleaningStation.objects.count(), 0)
-        self.assertEqual(HappyCleaningTodo.objects.count(), 0)
+        self.assertEqual(CanonicalTask.objects.count(), 0)
 
 
 class HappyCleaningStationStructuralEditTests(TransactionTestCase):
@@ -148,10 +149,10 @@ class HappyCleaningStationStructuralEditTests(TransactionTestCase):
             wishes="",
             position=1,
         )
-        self.first = HappyCleaningTodo.objects.create(
+        self.first = CanonicalTask.objects.create(
             station=self.station, text="Tische", position=1, checked=False
         )
-        self.second = HappyCleaningTodo.objects.create(
+        self.second = CanonicalTask.objects.create(
             station=self.station, text="Boden", position=2, checked=True, version=3
         )
         self.client.force_login(self.user)
@@ -223,11 +224,13 @@ class HappyCleaningStationStructuralEditTests(TransactionTestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.station.refresh_from_db()
         self.second.refresh_from_db()
-        tasks = list(self.station.todos.order_by("position"))
+        tasks = list(CanonicalTask.objects.filter(
+            station=self.station
+        ).order_by("position"))
         self.assertEqual(self.station.name, "Großer Speisesaal")
         self.assertEqual(self.second.checked, False)
         self.assertEqual(self.second.version, 5)
-        self.assertFalse(HappyCleaningTodo.objects.filter(pk=self.first.id).exists())
+        self.assertFalse(CanonicalTask.objects.filter(pk=self.first.id).exists())
         self.assertEqual(tasks[1].text, "Fenster")
         self.assertFalse(tasks[1].checked)
         self.assertNotIn(self.first.id, [task.id for task in tasks])

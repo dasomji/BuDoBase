@@ -4,11 +4,12 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from budo_app.happy_cleaning_tests.task_fixtures import CanonicalTask
+
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningAssignment,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Kinder,
     Turnus,
 )
@@ -66,14 +67,14 @@ class HappyCleaningContractTests(TestCase):
             position=2,
             version=2,
         )
-        self.checked_todo = HappyCleaningTodo.objects.create(
+        self.checked_todo = CanonicalTask.objects.create(
             station=self.station,
             text="Tische wischen",
             position=1,
             checked=True,
             version=3,
         )
-        self.open_todo = HappyCleaningTodo.objects.create(
+        self.open_todo = CanonicalTask.objects.create(
             station=self.station,
             text="Boden kehren",
             position=2,
@@ -402,73 +403,20 @@ class HappyCleaningContractTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertNotContains(response, "Other Child", status_code=404)
 
-    def test_station_management_returns_editable_station_and_todo_projection(self):
-        HappyCleaningStation.objects.filter(pk=self.empty_station.pk).update(
-            responsible_profile=self.other_profile,
+    def test_retired_management_and_detail_pages_return_not_found(self):
+        self.assertEqual(
+            self.client.get(
+                f"/happy-cleaning/{self.event.id}/stations/"
+            ).status_code,
+            404,
         )
-
-        response = self.client.get(self.url(
-            "happy-cleaning-stations",
-            event_id=self.event.id,
-        ))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {
-            "event": {"id": self.event.id, "display_number": 1, "revision": 7},
-            "responsible_profiles": [
-                {"id": self.user.profil.id, "name": "Mira"},
-            ],
-            "copy_sources": [],
-            "stations": [
-                {
-                    "id": self.station.id,
-                    "version": 4,
-                    "name": "Speisesaal",
-                    "max_kids": 3,
-                    "meeting_point": "Vor dem Speisesaal",
-                    "wishes": "Fenster nicht vergessen",
-                    "responsible_profile_id": self.user.profil.id,
-                    "position": 1,
-                    "has_ever_had_assignment": True,
-                    "assigned_count": 2,
-                    "overbooked_count": 0,
-                    "todo_progress_percentage": 50,
-                    "todos": [
-                        {
-                            "id": self.checked_todo.id,
-                            "text": "Tische wischen",
-                            "position": 1,
-                            "checked": True,
-                            "version": 3,
-                        },
-                        {
-                            "id": self.open_todo.id,
-                            "text": "Boden kehren",
-                            "position": 2,
-                            "checked": False,
-                            "version": 1,
-                        },
-                    ],
-                },
-                {
-                    "id": self.empty_station.id,
-                    "version": 2,
-                    "name": "Küche",
-                    "max_kids": 2,
-                    "meeting_point": "Vor der Küche",
-                    "wishes": "",
-                    "responsible_profile_id": None,
-                    "position": 2,
-                    "has_ever_had_assignment": False,
-                    "assigned_count": 0,
-                    "overbooked_count": 0,
-                    "todo_progress_percentage": None,
-                    "todos": [],
-                },
-            ],
-        })
-        self.assertNotContains(response, "Other carer")
-
+        self.assertEqual(
+            self.client.get(
+                f"/happy-cleaning/{self.event.id}/stations/"
+                f"{self.station.id}/"
+            ).status_code,
+            404,
+        )
     def test_station_detail_returns_operational_fields_with_versions(self):
         HappyCleaningAssignment.objects.bulk_create([
             HappyCleaningAssignment(
@@ -480,7 +428,7 @@ class HappyCleaningContractTests(TestCase):
         ])
 
         response = self.client.get(self.url(
-            "happy-cleaning-station-detail",
+            "happy-cleaning-overview-station",
             event_id=self.event.id,
             station_id=self.station.id,
         ))
@@ -577,7 +525,7 @@ class HappyCleaningContractTests(TestCase):
             "happy-cleaning-overview",
         )).json()
         detail = self.client.get(self.url(
-            "happy-cleaning-station-detail",
+            "happy-cleaning-overview-station",
             event_id=self.event.id,
             station_id=self.station.id,
         )).json()
@@ -649,7 +597,7 @@ class HappyCleaningContractTests(TestCase):
         )
 
         response = self.client.get(self.url(
-            "happy-cleaning-station-detail",
+            "happy-cleaning-overview-station",
             event_id=historical_event.id,
             station_id=historical_station.id,
         ))
@@ -707,7 +655,7 @@ class HappyCleaningContractTests(TestCase):
         )
 
         response = self.client.get(self.url(
-            "happy-cleaning-station-detail",
+            "happy-cleaning-overview-station",
             event_id=self.event.id,
             station_id=other_station.id,
         ))

@@ -44,24 +44,4 @@ urlpatterns = [
         views.station_delete,
         name="happy-cleaning-station-delete-api",
     ),
-    path(
-        "events/<int:event_id>/stations/<int:station_id>/todos/create/",
-        views.todo_create,
-        name="happy-cleaning-todo-create-api",
-    ),
-    path(
-        "events/<int:event_id>/stations/<int:station_id>/todos/reorder/",
-        views.todo_reorder,
-        name="happy-cleaning-todo-reorder-api",
-    ),
-    path(
-        "events/<int:event_id>/stations/<int:station_id>/todos/<int:todo_id>/update/",
-        views.todo_update,
-        name="happy-cleaning-todo-update-api",
-    ),
-    path(
-        "events/<int:event_id>/stations/<int:station_id>/todos/<int:todo_id>/delete/",
-        views.todo_delete,
-        name="happy-cleaning-todo-delete-api",
-    ),
 ]

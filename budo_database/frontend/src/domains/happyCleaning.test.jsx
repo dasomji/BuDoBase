@@ -69,14 +69,7 @@ describe('Happy Cleaning management', () => {
       domain: 'happy-cleaning',
       readContractKey: 'happy-cleaning-overview',
     });
-    expect(management).toMatchObject({
-      page: 'happy-cleaning-stations',
-      event_id: '7',
-      readContractKey: 'happy-cleaning-stations',
-    });
-    expect(routeDataRequest(management).url).toBe(
-      '/api/route-data/happy-cleaning-stations/?event_id=7',
-    );
+    expect(management.page).toBe('not-found');
     expect(print).toMatchObject({
       page: 'happy-cleaning-print',
       readContractKey: 'happy-cleaning-print',
@@ -561,107 +554,6 @@ describe('Happy Cleaning management', () => {
       '/api/route-data/happy-cleaning-overview/?year=2024',
       { credentials: 'same-origin' },
     ));
-  });
-
-  it('renders compact expandable cards, progress, forms, and accessible ordering', async () => {
-    const mutate = vi.fn().mockResolvedValue({ ok: true });
-    render(<HappyCleaningManagementPage data={stationsData} mutate={mutate} />);
-
-    expect(screen.queryByRole('link', { name: 'Zur Übersicht' })).not.toBeInTheDocument();
-    expect(screen.getByText('50%')).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Name der Station Speisesaal')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Speisesaal öffnen' }));
-    expect(screen.getByLabelText('Name der Station Speisesaal')).toHaveValue('Speisesaal');
-    expect(screen.getByLabelText('Kapazität der Station Speisesaal')).toBeEnabled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Bad nach oben' }));
-    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
-      '/api/happy-cleaning/events/7/stations/reorder/',
-      expect.objectContaining({ expected_revision: 5, station_ids: [11, 10] }),
-    ));
-
-    fireEvent.click(screen.getByRole('button', { name: 'Aufgabe Boden nach oben' }));
-    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
-      '/api/happy-cleaning/events/7/stations/10/todos/reorder/',
-      expect.objectContaining({ expected_version: 3, todo_ids: [101, 100] }),
-    ));
-  });
-
-  it('shows the exact overbooking on a management station card', () => {
-    render(<HappyCleaningManagementPage
-      data={{
-        ...stationsData,
-        stations: stationsData.stations.map(station => station.id === 10
-          ? { ...station, assigned_count: 7, overbooked_count: 3 }
-          : station),
-      }}
-      mutate={vi.fn()}
-    />);
-
-    expect(screen.getByText('3 überbelegt')).toBeInTheDocument();
-  });
-
-  it('keeps validation visible and expands the affected card after a failed mutation', async () => {
-    const error = new Error('validation');
-    error.payload = { errors: { name: ['This field is required.'] } };
-    const mutate = vi.fn().mockRejectedValue(error);
-    render(<HappyCleaningManagementPage data={stationsData} mutate={mutate} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Speisesaal öffnen' }));
-    fireEvent.change(screen.getByLabelText('Name der Station Speisesaal'), { target: { value: '' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Station Speisesaal speichern' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('This field is required.');
-    expect(screen.getByLabelText('Name der Station Speisesaal')).toBeInTheDocument();
-  });
-
-  it('copies all stations selected from the management source', async () => {
-    const mutate = vi.fn().mockResolvedValue({ ok: true, result: 'copied' });
-    render(<HappyCleaningManagementPage data={stationsData} mutate={mutate} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Stationen kopieren' }));
-    fireEvent.change(screen.getByLabelText('Quell-Happy-Cleaning'), { target: { value: '3' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Alle Stationen kopieren' }));
-
-    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
-      '/api/happy-cleaning/events/7/stations/copy/',
-      expect.objectContaining({
-        source_event_id: 3,
-        station_ids: [30, 31],
-      }),
-    ));
-  });
-
-  it('keeps the authoritative conflict preview open from management', async () => {
-    const mutate = vi.fn().mockResolvedValue({
-      ok: true,
-      result: 'conflicts',
-      target_revision: 5,
-      conflicts: [{
-        source_station_id: 30,
-        source_name: 'Speisesaal',
-        target_station_id: 10,
-        target_name: 'Speisesaal groß',
-      }],
-    });
-    render(<HappyCleaningManagementPage data={stationsData} mutate={mutate} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Stationen kopieren' }));
-    fireEvent.change(screen.getByLabelText('Quell-Happy-Cleaning'), { target: { value: '3' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Alle Stationen kopieren' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Speisesaal → Speisesaal groß',
-    );
-    expect(screen.getByRole('dialog', { name: 'Stationen kopieren' })).toBeInTheDocument();
-  });
-
-  it('renders clear empty states', () => {
-    const { unmount } = render(<HappyCleaningOverviewPage data={{
-      user_id: 1, active_year: 2026, years: [],
-    }} mutate={vi.fn()} />);
-    expect(screen.getByText('Noch kein Happy Cleaning angelegt.')).toBeInTheDocument();
-    unmount();
-    render(<HappyCleaningManagementPage data={{ ...stationsData, stations: [] }} mutate={vi.fn()} />);
-    expect(screen.getByText('Noch keine Station angelegt.')).toBeInTheDocument();
   });
 
   it('renders only the printable fields for each group', () => {

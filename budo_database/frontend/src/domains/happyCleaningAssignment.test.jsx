@@ -251,9 +251,7 @@ describe('Happy Cleaning assignment', () => {
     expect(table).toHaveClass('data-table');
     expect(within(table).getByRole('row', { name: /Station Wünsche/ })).toHaveClass('table-header');
     expect(within(table).getByRole('columnheader', { name: 'Wünsche' })).toBeInTheDocument();
-    expect(within(table).getByRole('link', { name: 'Speisesaal' })).toHaveAttribute(
-      'href', '/happy-cleaning/7/stations/10/',
-    );
+    expect(within(table).getByRole('rowheader', { name: 'Speisesaal' })).toBeInTheDocument();
     expect(within(table).getByText('Fenster')).toBeInTheDocument();
     expect(within(table).getByText('Vor dem Saal')).toBeInTheDocument();
     expect(within(table).getByText('Mira')).toBeInTheDocument();
@@ -627,18 +625,13 @@ describe('Happy Cleaning assignment', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('Ada Lovelace wurde nach Bad verschoben.');
   });
 
-  it('marks full stations before a child is selected while keeping their detail links', () => {
+  it('marks full stations before a child is selected without legacy detail links', () => {
     setViewport(false);
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
 
-    expect(screen.getByRole('link', { name: 'Bad 🚫' })).toHaveAttribute(
-      'href',
-      '/happy-cleaning/7/stations/11/',
-    );
-    expect(screen.getByRole('link', { name: 'Speisesaal' })).toHaveAttribute(
-      'href',
-      '/happy-cleaning/7/stations/10/',
-    );
+    expect(screen.getByRole('rowheader', { name: 'Bad 🚫' })).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: 'Speisesaal' })).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('selects a child pill for the normal child-detail flow without removing it', () => {

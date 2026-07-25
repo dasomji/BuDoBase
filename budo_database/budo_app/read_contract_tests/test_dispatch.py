@@ -39,8 +39,7 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "birthdays",
     "happy-cleaning-overview",
     "happy-cleaning-assignment",
-    "happy-cleaning-stations",
-    "happy-cleaning-station-detail",
+    "happy-cleaning-overview-station",
     "happy-cleaning-print",
 )
 
