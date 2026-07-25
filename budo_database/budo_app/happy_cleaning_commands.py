@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+from copy import deepcopy
 from typing import Mapping
 
 from django.db import transaction
-from django.db.models import F, Max, Q
+from django.db.models import F, Max
 
 from budo_app.audit import (
     AuditEventData,
@@ -14,6 +15,8 @@ from budo_app.audit import (
 from budo_app.happy_cleaning_assignment_publisher import (
     publish_assignment_invalidation_on_commit,
 )
+from budo_app.happy_cleaning_station_matching import station_names_are_similar
+from budo_app.happy_cleaning_station_documents import validate_station_document
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningCommandRequest,
@@ -908,17 +911,19 @@ def delete_todo(context, event_id, station_id, todo_id, expected_version):
         }), False
 
 
-def _copy_source_event(target):
-    return (
-        HappyCleaning.objects.filter(
-            Q(turnus__turnus_beginn__lt=target.turnus.turnus_beginn)
-            | Q(
-                turnus=target.turnus,
-                display_number__lt=target.display_number,
-            )
-        )
-        .select_related("turnus")
-    )
+def _copy_source_document(document, todo_id_map):
+    copied = deepcopy(document)
+    for node in copied["content"]:
+        if node["type"] != "taskList":
+            continue
+        for task in node["content"]:
+            task["attrs"] = {
+                "id": todo_id_map[task["attrs"]["id"]],
+                "checked": False,
+                "version": 1,
+            }
+    validate_station_document(copied)
+    return copied
 
 
 def copy_stations(
@@ -926,10 +931,7 @@ def copy_stations(
     event_id,
     expected_revision,
     source_event_id,
-    *,
-    copy_all,
     station_ids,
-    duplicate_strategy,
 ):
     action = "happy_cleaning.station.copy"
     with transaction.atomic():
@@ -939,8 +941,20 @@ def copy_stations(
             return replay, True
         target = _locked_event(context, event_id)
         _require_revision(target, expected_revision)
-        source = _copy_source_event(target).filter(pk=source_event_id).first()
-        if source is None:
+        if source_event_id == target.id:
+            raise CommandError(
+                "invalid_selection",
+                errors={"source_event_id": ["Source and target must differ."]},
+            )
+        source = (
+            HappyCleaning.objects.filter(pk=source_event_id)
+            .select_related("turnus")
+            .first()
+        )
+        if source is None or (
+            source.turnus_id != target.turnus_id
+            and source.turnus.turnus_beginn >= target.turnus.turnus_beginn
+        ):
             raise CommandError(
                 "not_found",
                 status=404,
@@ -956,36 +970,32 @@ def copy_stations(
             .prefetch_related("todos")
             .order_by("position", "id")
         )
-        if copy_all:
-            selected = source_stations
-        else:
-            selected_by_id = {station.id: station for station in source_stations}
-            if station_ids is None or any(
-                station_id not in selected_by_id for station_id in station_ids
-            ):
-                raise CommandError("invalid_selection", status=400)
-            selected = [selected_by_id[station_id] for station_id in station_ids]
-        existing_names = {
-            name.strip().casefold(): name
-            for name in HappyCleaningStation.objects.filter(
-                happy_cleaning=target,
-            ).values_list("name", flat=True)
-        }
-        duplicates = sorted({
-            station.name for station in selected
-            if station.name.strip().casefold() in existing_names
-        }, key=str.casefold)
-        if duplicates and duplicate_strategy not in {"copy", "skip"}:
-            raise CommandError(
-                "duplicate_names",
-                status=409,
-                extra={"duplicate_names": duplicates},
-            )
-        if duplicate_strategy == "skip":
-            selected = [
-                station for station in selected
-                if station.name.strip().casefold() not in existing_names
-            ]
+        selected_by_id = {station.id: station for station in source_stations}
+        if any(station_id not in selected_by_id for station_id in station_ids):
+            raise CommandError("invalid_selection", status=400)
+        selected = [selected_by_id[station_id] for station_id in station_ids]
+        target_stations = list(
+            HappyCleaningStation.objects.select_for_update()
+            .filter(happy_cleaning=target)
+            .order_by("position", "id")
+        )
+        conflicts = [{
+            "source_station_id": source_station.id,
+            "source_name": source_station.name,
+            "target_station_id": target_station.id,
+            "target_name": target_station.name,
+        } for source_station in selected for target_station in target_stations
+          if station_names_are_similar(source_station.name, target_station.name)]
+        if conflicts:
+            return complete_command(context, action, {
+                "ok": True,
+                "result": "conflicts",
+                "target_event_id": target.id,
+                "target_revision": target.revision,
+                "source_event_id": source.id,
+                "station_ids": [station.id for station in selected],
+                "conflicts": conflicts,
+            }), False
         next_position = (
             HappyCleaningStation.objects.filter(happy_cleaning=target)
             .aggregate(value=Max("position"))["value"]
@@ -1005,8 +1015,10 @@ def copy_stations(
                 wishes=source_station.wishes,
                 responsible_profile=responsible,
                 position=next_position,
+                version=1,
             )
-            HappyCleaningTodo.objects.bulk_create([
+            source_todos = list(source_station.todos.all())
+            copied_todos = HappyCleaningTodo.objects.bulk_create([
                 HappyCleaningTodo(
                     station=station,
                     text=todo.text,
@@ -1014,12 +1026,17 @@ def copy_stations(
                     checked=False,
                     version=1,
                 )
-                for position, todo in enumerate(
-                    source_station.todos.all(),
-                    start=1,
-                )
+                for position, todo in enumerate(source_todos, start=1)
             ])
-            station.sync_content_document_from_todos()
+            todo_id_map = {
+                source_todo.id: copied_todo.id
+                for source_todo, copied_todo in zip(source_todos, copied_todos)
+            }
+            station.content_document = _copy_source_document(
+                source_station.content_document,
+                todo_id_map,
+            )
+            station.save(update_fields=["content_document"])
             copied.append(station)
         _bump_event(target)
         audit_success(
@@ -1036,6 +1053,7 @@ def copy_stations(
         )
         return complete_command(context, action, {
             "ok": True,
+            "result": "copied",
             "event": event_projection(target),
             "copied_stations": [station_projection(item) for item in copied],
         }), False

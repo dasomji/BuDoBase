@@ -379,7 +379,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
                 turnus=self.other_turnus,
                 display_number=1,
             )
-            HappyCleaningStation.objects.create(
+            source_station = HappyCleaningStation.objects.create(
                 happy_cleaning=source,
                 name="Quelle",
                 max_kids=2,
@@ -394,7 +394,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
                     "request_id": "station-copy-without-invalidation",
                     "expected_revision": self.event.revision,
                     "source_event_id": source.id,
-                    "copy_all": True,
+                    "station_ids": [source_station.id],
                 },
             )
             self.assertEqual(copied.status_code, 200)
@@ -580,7 +580,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
         remaining = HappyCleaningTodo.objects.get(pk=first_id)
         self.assertEqual(remaining.position, 1)
 
-    def test_copy_deep_copies_selected_or_all_with_explicit_duplicate_policy(self):
+    def test_copy_deep_copies_selected_or_all(self):
         source_event = HappyCleaning.objects.create(
             turnus=self.other_turnus,
             display_number=1,
@@ -611,7 +611,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
         )
         existing = HappyCleaningStation.objects.create(
             happy_cleaning=self.event,
-            name="Küche",
+            name="Abstellraum",
             max_kids=1,
             meeting_point="Ziel",
             position=1,
@@ -630,31 +630,19 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
             "request_id": "copy-1",
             "expected_revision": 1,
             "source_event_id": source_event.id,
-            "copy_all": True,
+            "station_ids": [source_a.id, source_b.id],
         }
-
-        warning = self.post_json(
-            "happy-cleaning-station-copy-api",
-            url_args,
-            base,
-        )
-        self.assertEqual(warning.status_code, 409)
-        self.assertEqual(warning.json(), {
-            "ok": False,
-            "code": "duplicate_names",
-            "duplicate_names": ["Küche"],
-        })
 
         copied = self.post_json(
             "happy-cleaning-station-copy-api",
             url_args,
-            {**base, "duplicate_strategy": "copy"},
+            base,
         )
         self.assertEqual(copied.status_code, 200)
         target = list(HappyCleaningStation.objects.filter(
             happy_cleaning=self.event,
         ).prefetch_related("todos"))
-        self.assertEqual([item.name for item in target], ["Küche", "Küche", "Bad"])
+        self.assertEqual([item.name for item in target], ["Abstellraum", "Küche", "Bad"])
         copied_a = target[1]
         self.assertIsNone(copied_a.responsible_profile)
         self.assertEqual(copied_a.position, 2)

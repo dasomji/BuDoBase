@@ -198,6 +198,16 @@ class HappyCleaningContractTests(TestCase):
         payload = response.json()
         self.assertEqual(payload["user_id"], self.user.id)
         self.assertEqual(payload["active_year"], 2026)
+        self.assertEqual(
+            [
+                (target["id"], target["display_number"], target["revision"])
+                for target in payload["copy_targets"]
+            ],
+            [
+                (self.event.id, 1, self.event.revision),
+                (self.empty_event.id, 2, self.empty_event.revision),
+            ],
+        )
         self.assertEqual([group["year"] for group in payload["years"]], [2026, 2025, 2024])
         active = payload["years"][0]
         self.assertTrue(active["loaded"])

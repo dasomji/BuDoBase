@@ -145,6 +145,14 @@ def overview(request):
     return {
         "user_id": request.user.id,
         "active_year": active_year,
+        "copy_targets": [
+            {
+                **_event_summary(event),
+                "label": f"Happy Cleaning {event.display_number}",
+            }
+            for event in events
+            if event.turnus_id == active_turnus_id
+        ],
         "years": [
             {
                 "year": year,

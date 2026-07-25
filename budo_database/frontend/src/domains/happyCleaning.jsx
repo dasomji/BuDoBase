@@ -185,6 +185,109 @@ const readOverviewPreference = (key, activeYear) => {
   return { openYears: [activeYear], sort: { key: 'name', direction: 'asc' } };
 };
 
+function OverviewCopyDialog({ source, targets, mutate, close }) {
+  const [stationIds, setStationIds] = useState([]);
+  const [targetId, setTargetId] = useState('');
+  const [state, setState] = useState({ kind: 'ready' });
+  const availableTargets = targets.filter(target => target.id !== source.id);
+  const selectedAll = source.stations.length > 0
+    && stationIds.length === source.stations.length;
+  const toggle = stationId => setStationIds(current => (
+    current.includes(stationId)
+      ? current.filter(id => id !== stationId)
+      : [...current, stationId]
+  ));
+  const submit = async () => {
+    const target = availableTargets.find(item => String(item.id) === targetId);
+    if (!target) return;
+    setState({ kind: 'busy' });
+    try {
+      const result = await mutate(
+        `/api/happy-cleaning/events/${target.id}/stations/copy/`,
+        {
+          request_id: requestId(),
+          expected_revision: target.revision,
+          source_event_id: source.id,
+          station_ids: stationIds,
+        },
+      );
+      if (result.result === 'conflicts') setState({ kind: 'conflicts', result });
+      else setState({
+        kind: 'success',
+        count: result.copied_stations?.length ?? stationIds.length,
+      });
+    } catch (caught) {
+      setState({ kind: 'error', message: errorMessage(caught) });
+    }
+  };
+  return (
+    <section className="card happy-cleaning-copy" role="dialog" aria-modal="true" aria-label="Stationen kopieren">
+      <h2>Stationen kopieren</h2>
+      <p>Quelle: Happy Cleaning {source.display_number}</p>
+      <label>
+        <input
+          type="checkbox"
+          aria-label="Alle Stationen auswählen"
+          checked={selectedAll}
+          onChange={() => setStationIds(selectedAll ? [] : source.stations.map(station => station.id))}
+        />
+        Alle auswählen
+      </label>
+      <div>
+        {source.stations.map(station => (
+          <label key={station.id}>
+            <input
+              type="checkbox"
+              aria-label={`Station ${station.name} auswählen`}
+              checked={stationIds.includes(station.id)}
+              onChange={() => toggle(station.id)}
+            />
+            {station.name}
+          </label>
+        ))}
+      </div>
+      <label>
+        Ziel-Happy-Cleaning
+        <select aria-label="Ziel-Happy-Cleaning" value={targetId} onChange={event => setTargetId(event.target.value)}>
+          <option value="">Bitte wählen</option>
+          {availableTargets.map(target => (
+            <option key={target.id} value={target.id}>{target.label}</option>
+          ))}
+        </select>
+      </label>
+      {state.kind === 'busy' && (
+        <p role="status">
+          <span className="happy-cleaning-copy-spinner" aria-hidden="true" />
+          Stationen werden geprüft…
+        </p>
+      )}
+      {state.kind === 'success' && <p role="status">{state.count} Stationen wurden kopiert.</p>}
+      {state.kind === 'conflicts' && (
+        <div role="alert">
+          <p>Ähnliche Stationen gefunden (Zielversion {state.result.target_revision}):</p>
+          <ul>{state.result.conflicts.map(conflict => (
+            <li key={`${conflict.source_station_id}:${conflict.target_station_id}`}>
+              {conflict.source_name} → {conflict.target_name}
+            </li>
+          ))}</ul>
+        </div>
+      )}
+      {state.kind === 'error' && <p className="error" role="alert">{state.message}</p>}
+      <div className="react-actions">
+        <button
+          className="button"
+          type="button"
+          disabled={state.kind === 'busy' || !stationIds.length || !targetId}
+          onClick={submit}
+        >
+          {state.kind === 'conflicts' || state.kind === 'error' ? 'Erneut prüfen' : 'Prüfen und kopieren'}
+        </button>
+        <button className="button" type="button" disabled={state.kind === 'busy'} onClick={close}>Schließen</button>
+      </div>
+    </section>
+  );
+}
+
 export function HappyCleaningOverviewPage({
   data,
   mutate,
@@ -195,6 +298,7 @@ export function HappyCleaningOverviewPage({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [copySource, setCopySource] = useState(null);
   const storageKey = `happy-cleaning-overview:${data.user_id}`;
   const [preference, setPreference] = useState(
     () => readOverviewPreference(storageKey, data.active_year),
@@ -340,6 +444,14 @@ export function HappyCleaningOverviewPage({
           onConfirm={() => remove(deleteCandidate)}
         />
       )}
+      {copySource && (
+        <OverviewCopyDialog
+          source={copySource}
+          targets={data.copy_targets || []}
+          mutate={mutate}
+          close={() => setCopySource(null)}
+        />
+      )}
       {error && <p className="error" role="alert">{error}</p>}
       {!eventCount && <p>Noch kein Happy Cleaning angelegt.</p>}
       <div className="happy-cleaning-years">
@@ -368,6 +480,15 @@ export function HappyCleaningOverviewPage({
                           rowRefs={rowRefs}
                         />
                         <div className="react-actions">
+                          <button
+                            className="button"
+                            type="button"
+                            disabled={busy || !event.stations.length}
+                            aria-label={`Stationen aus Happy Cleaning ${event.display_number} kopieren`}
+                            onClick={() => setCopySource(event)}
+                          >
+                            Stationen kopieren
+                          </button>
                           {event.can_delete && (
                             <button className="button danger" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
                               Löschen
@@ -658,30 +779,28 @@ function NewStationForm({ event, profiles, busy, perform }) {
 function CopyDialog({ data, busy, perform, close }) {
   const [sourceId, setSourceId] = useState('');
   const [stationId, setStationId] = useState('');
-  const [duplicateNames, setDuplicateNames] = useState([]);
-  const [pending, setPending] = useState(null);
-  const copy = async (duplicateStrategy, copyAll = true) => {
-    const base = pending || {
+  const [conflictResult, setConflictResult] = useState(null);
+  const copy = async (copyAll = true) => {
+    const selectedStationIds = copyAll
+      ? (source?.stations || []).map(station => station.id)
+      : [Number(stationId)];
+    const payload = {
       request_id: requestId(),
       expected_revision: data.event.revision,
       source_event_id: Number(sourceId),
-      ...(copyAll
-        ? { copy_all: true }
-        : { station_ids: [Number(stationId)] }),
+      station_ids: selectedStationIds,
     };
     try {
       const result = await perform(
         `/api/happy-cleaning/events/${data.event.id}/stations/copy/`,
-        { ...base, duplicate_strategy: duplicateStrategy },
+        payload,
         null,
         true,
       );
-      if (result) close();
-    } catch (error) {
-      if (error?.payload?.code === 'duplicate_names') {
-        setPending(base);
-        setDuplicateNames(error.payload.duplicate_names || []);
-      }
+      if (result?.result === 'conflicts') setConflictResult(result);
+      else if (result) close();
+    } catch {
+      // The management page owns transport and validation error presentation.
     }
   };
   const source = data.copy_sources.find(item => String(item.id) === sourceId);
@@ -698,16 +817,19 @@ function CopyDialog({ data, busy, perform, close }) {
           {source.stations.map(station => <option key={station.id} value={station.id}>{station.name}</option>)}
         </select></label>
       )}
-      {duplicateNames.length > 0 && (
+      {conflictResult && (
         <div role="alert">
-          <p>Doppelte Stationsnamen: {duplicateNames.join(', ')}</p>
-          <button className="button" type="button" onClick={() => copy('copy')}>Doppelte trotzdem kopieren</button>
-          <button className="button" type="button" onClick={() => copy('skip')}>Doppelte überspringen</button>
+          <p>Ähnliche Stationen gefunden (Zielversion {conflictResult.target_revision}):</p>
+          <ul>{conflictResult.conflicts.map(conflict => (
+            <li key={`${conflict.source_station_id}:${conflict.target_station_id}`}>
+              {conflict.source_name} → {conflict.target_name}
+            </li>
+          ))}</ul>
         </div>
       )}
       <div className="react-actions">
-        <button className="button" type="button" disabled={busy || !sourceId} onClick={() => copy(undefined)}>Alle Stationen kopieren</button>
-        <button className="button" type="button" disabled={busy || !stationId} onClick={() => copy(undefined, false)}>Ausgewählte Station kopieren</button>
+        <button className="button" type="button" disabled={busy || !sourceId} onClick={() => copy()}>Alle Stationen kopieren</button>
+        <button className="button" type="button" disabled={busy || !stationId} onClick={() => copy(false)}>Ausgewählte Station kopieren</button>
         <button className="button" type="button" onClick={close}>Abbrechen</button>
       </div>
     </section>

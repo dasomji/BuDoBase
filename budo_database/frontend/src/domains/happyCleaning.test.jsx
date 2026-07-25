@@ -231,6 +231,80 @@ describe('Happy Cleaning management', () => {
     expect(screen.getByRole('button', { name: 'Station Bad öffnen' })).toHaveFocus();
   });
 
+  it('copies selected overview stations to another active-Turnus Happy Cleaning with visible states', async () => {
+    let resolveCopy;
+    const mutate = vi.fn(() => new Promise(resolve => { resolveCopy = resolve; }));
+    const data = {
+      user_id: 42,
+      active_year: 2025,
+      copy_targets: [
+        { id: 7, display_number: 1, revision: 2, label: 'Happy Cleaning 1' },
+        { id: 9, display_number: 2, revision: 4, label: 'Happy Cleaning 2' },
+      ],
+      years: [{
+        year: 2025, loaded: true, is_active: false,
+        turnuses: [{ id: 3, number: 4, start: '2025-08-01', is_active: false, events: [{
+          id: 5, display_number: 1, revision: 2, can_delete: false,
+          stations: [
+            { id: 50, name: 'Küche', max_kids: 8, meeting_point: 'Altbau', task_item_count: 1 },
+            { id: 51, name: 'Bad', max_kids: 4, meeting_point: 'Gang', task_item_count: 2 },
+          ],
+        }] }],
+      }],
+    };
+    render(<HappyCleaningOverviewPage data={data} mutate={mutate} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stationen aus Happy Cleaning 1 kopieren' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Stationen kopieren' }));
+    expect(dialog.getByRole('option', { name: 'Happy Cleaning 1' })).toBeInTheDocument();
+    fireEvent.click(dialog.getByLabelText('Alle Stationen auswählen'));
+    expect(dialog.getByLabelText('Station Küche auswählen')).toBeChecked();
+    expect(dialog.getByLabelText('Station Bad auswählen')).toBeChecked();
+    fireEvent.change(dialog.getByLabelText('Ziel-Happy-Cleaning'), { target: { value: '9' } });
+    fireEvent.click(dialog.getByRole('button', { name: 'Prüfen und kopieren' }));
+    expect(dialog.getByRole('status')).toHaveTextContent('Stationen werden geprüft');
+    expect(dialog.getByRole('status').querySelector('.happy-cleaning-copy-spinner')).toBeInTheDocument();
+    expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/9/stations/copy/',
+      expect.objectContaining({
+        expected_revision: 4,
+        source_event_id: 5,
+        station_ids: [50, 51],
+      }),
+    );
+    resolveCopy({ ok: true, result: 'copied', copied_stations: [{ id: 100 }, { id: 101 }] });
+    await waitFor(() => expect(dialog.getByRole('status')).toHaveTextContent('2 Stationen wurden kopiert'));
+  });
+
+  it('keeps copy conflicts and errors in the overview dialog', async () => {
+    const conflict = {
+      ok: true, result: 'conflicts', target_revision: 4,
+      conflicts: [{ source_station_id: 50, source_name: 'Bad', target_station_id: 90, target_name: 'Bad Kinder' }],
+    };
+    const failed = new Error('network down');
+    const mutate = vi.fn().mockResolvedValueOnce(conflict).mockRejectedValueOnce(failed);
+    const data = {
+      user_id: 42, active_year: 2026,
+      copy_targets: [{ id: 9, display_number: 2, revision: 4, label: 'Happy Cleaning 2' }],
+      years: [{ year: 2026, loaded: true, is_active: true, turnuses: [{
+        id: 1, number: 1, start: '2026-07-01', is_active: true, events: [{
+          id: 7, display_number: 1, revision: 2, can_delete: false,
+          stations: [{ id: 50, name: 'Bad', max_kids: 4, meeting_point: 'Gang', task_item_count: 2 }],
+        }],
+      }] }],
+    };
+    render(<HappyCleaningOverviewPage data={data} mutate={mutate} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Stationen aus Happy Cleaning 1 kopieren' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Stationen kopieren' }));
+    fireEvent.click(dialog.getByLabelText('Station Bad auswählen'));
+    fireEvent.change(dialog.getByLabelText('Ziel-Happy-Cleaning'), { target: { value: '9' } });
+    fireEvent.click(dialog.getByRole('button', { name: 'Prüfen und kopieren' }));
+    expect(await dialog.findByRole('alert')).toHaveTextContent('Bad → Bad Kinder');
+    expect(dialog.getByText(/Zielversion 4/)).toBeInTheDocument();
+    fireEvent.click(dialog.getByRole('button', { name: 'Erneut prüfen' }));
+    expect(await dialog.findByRole('alert')).toHaveTextContent('network down');
+  });
+
   it('creates Happy Cleaning from the header action', async () => {
     const mutate = vi.fn().mockResolvedValue({ ok: true });
     render(<HappyCleaningCreateButton mutate={mutate} />);
@@ -307,27 +381,44 @@ describe('Happy Cleaning management', () => {
     expect(screen.getByLabelText('Name der Station Speisesaal')).toBeInTheDocument();
   });
 
-  it('requires an explicit copy decision when duplicate station names are returned', async () => {
-    const duplicate = new Error('duplicate');
-    duplicate.payload = { code: 'duplicate_names', duplicate_names: ['Speisesaal'] };
-    const mutate = vi.fn()
-      .mockRejectedValueOnce(duplicate)
-      .mockResolvedValueOnce({ ok: true });
+  it('copies all stations selected from the management source', async () => {
+    const mutate = vi.fn().mockResolvedValue({ ok: true, result: 'copied' });
     render(<HappyCleaningManagementPage data={stationsData} mutate={mutate} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Stationen kopieren' }));
     fireEvent.change(screen.getByLabelText('Quell-Happy-Cleaning'), { target: { value: '3' } });
     fireEvent.click(screen.getByRole('button', { name: 'Alle Stationen kopieren' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Doppelte trotzdem kopieren' }));
 
-    await waitFor(() => expect(mutate).toHaveBeenLastCalledWith(
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
       '/api/happy-cleaning/events/7/stations/copy/',
       expect.objectContaining({
         source_event_id: 3,
-        copy_all: true,
-        duplicate_strategy: 'copy',
+        station_ids: [30, 31],
       }),
     ));
+  });
+
+  it('keeps the authoritative conflict preview open from management', async () => {
+    const mutate = vi.fn().mockResolvedValue({
+      ok: true,
+      result: 'conflicts',
+      target_revision: 5,
+      conflicts: [{
+        source_station_id: 30,
+        source_name: 'Speisesaal',
+        target_station_id: 10,
+        target_name: 'Speisesaal groß',
+      }],
+    });
+    render(<HappyCleaningManagementPage data={stationsData} mutate={mutate} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Stationen kopieren' }));
+    fireEvent.change(screen.getByLabelText('Quell-Happy-Cleaning'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Alle Stationen kopieren' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Speisesaal → Speisesaal groß',
+    );
+    expect(screen.getByRole('dialog', { name: 'Stationen kopieren' })).toBeInTheDocument();
   });
 
   it('renders clear empty states', () => {

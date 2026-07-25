@@ -1369,6 +1369,30 @@ input[name="amount"]::placeholder {
   gap: var(--s-padding);
 }
 
+.happy-cleaning-copy-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: var(--xs-padding);
+  vertical-align: -0.15em;
+  border: 0.15em solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: happy-cleaning-copy-spin 0.7s linear infinite;
+}
+
+@keyframes happy-cleaning-copy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .happy-cleaning-copy-spinner {
+    animation: none;
+  }
+}
+
 .happy-cleaning-delete-backdrop {
   position: fixed;
   inset: 0;

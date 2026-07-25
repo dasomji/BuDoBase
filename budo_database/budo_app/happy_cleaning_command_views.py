@@ -258,18 +258,13 @@ def todo_reorder(request, event_id, station_id):
 @permission_classes([IsAuthenticated])
 def station_copy(request, event_id):
     def operation(context):
-        copy_all = request.data.get("copy_all") is True
-        station_ids = request.data.get("station_ids")
-        if not copy_all:
-            station_ids = required_id_list(request.data, "station_ids")
+        station_ids = required_id_list(request.data, "station_ids")
         return copy_stations(
             context,
             event_id,
             required_positive_integer(request.data, "expected_revision"),
             required_positive_integer(request.data, "source_event_id"),
-            copy_all=copy_all,
             station_ids=station_ids,
-            duplicate_strategy=request.data.get("duplicate_strategy"),
         )
 
     return _run_command(
