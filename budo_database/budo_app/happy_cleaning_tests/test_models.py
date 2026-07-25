@@ -254,3 +254,12 @@ class HappyCleaningModelTests(TestCase):
             list(self.station.todos.values_list("id", flat=True)),
             [earlier.id, later.id],
         )
+
+    def test_station_rejects_malformed_content_documents_on_save(self):
+        self.station.content_document = {
+            "type": "doc",
+            "content": [{"type": "heading"}],
+        }
+
+        with self.assertRaises(ValidationError):
+            self.station.save(update_fields=["content_document"])

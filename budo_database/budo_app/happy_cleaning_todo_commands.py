@@ -12,7 +12,6 @@ from budo_app.happy_cleaning_commands import (
     create_todo,
     event_projection,
     replay_completed_command,
-    sync_station_document,
     todo_projection,
 )
 from budo_app.models import (
@@ -167,7 +166,6 @@ def _set_checked(
         todo.checked = checked
         todo.version += 1
         todo.save(update_fields=("checked", "version"))
-        sync_station_document(station)
         HappyCleaning.objects.filter(pk=event.pk).update(
             revision=F("revision") + 1,
         )

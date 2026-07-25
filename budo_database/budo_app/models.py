@@ -689,6 +689,7 @@ class HappyCleaningStation(models.Model):
             })
 
     def save(self, *args, **kwargs):
+        validate_station_document(self.content_document)
         if (
             self.pk
             and not self.has_ever_had_assignment
@@ -701,6 +702,16 @@ class HappyCleaningStation(models.Model):
                 "Station assignment markers cannot be reset."
             )
         return super().save(*args, **kwargs)
+
+    def sync_content_document_from_todos(self):
+        from .happy_cleaning_station_documents import document_from_todos
+
+        self.content_document = document_from_todos(
+            self.todos.order_by("position", "id").values(
+                "id", "text", "checked", "version"
+            )
+        )
+        self.save(update_fields=["content_document"])
 
     def __str__(self):
         return self.name
@@ -737,10 +748,18 @@ class HappyCleaningTodo(models.Model):
     def save(self, *args, **kwargs):
         with transaction.atomic():
             result = super().save(*args, **kwargs)
+            self.station.sync_content_document_from_todos()
             if self.checked:
                 HappyCleaning.objects.filter(
                     pk=self.station.happy_cleaning_id,
                 ).update(has_operational_activity=True)
+            return result
+
+    def delete(self, *args, **kwargs):
+        with transaction.atomic():
+            station = self.station
+            result = super().delete(*args, **kwargs)
+            station.sync_content_document_from_todos()
             return result
 
     class Meta:

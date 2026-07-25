@@ -3,6 +3,30 @@ from django.db import migrations, models
 import budo_app.happy_cleaning_station_documents
 
 
+def document_from_legacy_todos(todos):
+    tasks = []
+    for todo in todos:
+        paragraph_content = (
+            [{"type": "text", "text": todo["text"]}]
+            if todo["text"]
+            else []
+        )
+        tasks.append({
+            "type": "taskItem",
+            "attrs": {
+                "id": todo["id"],
+                "checked": todo["checked"],
+                "version": todo["version"],
+            },
+            "content": [{
+                "type": "paragraph",
+                "content": paragraph_content,
+            }],
+        })
+    content = [{"type": "taskList", "content": tasks}] if tasks else []
+    return {"type": "doc", "content": content}
+
+
 def backfill_station_documents(apps, schema_editor):
     Station = apps.get_model("budo_app", "HappyCleaningStation")
     Todo = apps.get_model("budo_app", "HappyCleaningTodo")
@@ -10,9 +34,7 @@ def backfill_station_documents(apps, schema_editor):
         todos = Todo.objects.filter(station_id=station.pk).order_by(
             "position", "id"
         ).values("id", "text", "checked", "version")
-        station.content_document = (
-            budo_app.happy_cleaning_station_documents.document_from_todos(todos)
-        )
+        station.content_document = document_from_legacy_todos(todos)
         station.save(update_fields=["content_document"])
 
 

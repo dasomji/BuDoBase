@@ -14,7 +14,6 @@ from budo_app.audit import (
 from budo_app.happy_cleaning_assignment_publisher import (
     publish_assignment_invalidation_on_commit,
 )
-from budo_app.happy_cleaning_station_documents import document_from_todos
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningCommandRequest,
@@ -431,16 +430,6 @@ def _normalize_todos(station, ordered_ids):
         )
 
 
-def sync_station_document(station):
-    """Project the additive document from the authoritative legacy rows."""
-    station.content_document = document_from_todos(
-        HappyCleaningTodo.objects.filter(station=station)
-        .order_by("position", "id")
-        .values("id", "text", "checked", "version")
-    )
-    station.save(update_fields=["content_document"])
-
-
 def create_event(context):
     action = "happy_cleaning.event.create"
     with transaction.atomic():
@@ -759,7 +748,6 @@ def create_todo(context, event_id, station_id, expected_version, text):
             position=position,
         )
         station.version += 1
-        sync_station_document(station)
         station.save(update_fields=["version"])
         _bump_event(event)
         audit_success(
@@ -802,7 +790,6 @@ def update_todo(context, event_id, station_id, todo_id, expected_version, text):
         todo.version += 1
         todo.save(update_fields=["text", "version"])
         station.version += 1
-        sync_station_document(station)
         station.save(update_fields=["version"])
         _bump_event(event)
         audit_success(
@@ -851,7 +838,7 @@ def reorder_todos(context, event_id, station_id, expected_version, todo_ids):
             raise CommandError("invalid_order", status=400)
         _normalize_todos(station, todo_ids)
         station.version += 1
-        sync_station_document(station)
+        station.sync_content_document_from_todos()
         station.save(update_fields=["version"])
         _bump_event(event)
         audit_success(
@@ -898,7 +885,7 @@ def delete_todo(context, event_id, station_id, todo_id, expected_version):
         )
         _normalize_todos(station, remaining_ids)
         station.version += 1
-        sync_station_document(station)
+        station.sync_content_document_from_todos()
         station.save(update_fields=["version"])
         _bump_event(event)
         audit_success(
@@ -1032,7 +1019,7 @@ def copy_stations(
                     start=1,
                 )
             ])
-            sync_station_document(station)
+            station.sync_content_document_from_todos()
             copied.append(station)
         _bump_event(target)
         audit_success(

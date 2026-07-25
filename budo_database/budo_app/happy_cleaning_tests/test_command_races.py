@@ -9,7 +9,12 @@ from django.db import close_old_connections, connection
 from django.test import Client, TransactionTestCase
 from django.urls import reverse
 
-from budo_app.models import HappyCleaning, HappyCleaningStation, Turnus
+from budo_app.models import (
+    HappyCleaning,
+    HappyCleaningStation,
+    HappyCleaningTodo,
+    Turnus,
+)
 
 
 @skipUnless(
@@ -41,7 +46,7 @@ class HappyCleaningManagementRaceTests(TransactionTestCase):
                 client.force_login(self.users[index])
                 barrier.wait(timeout=10)
                 response = client.post(
-                    url,
+                    url[index] if isinstance(url, list) else url,
                     data=json.dumps(payloads[index]),
                     content_type="application/json",
                 )
@@ -112,4 +117,46 @@ class HappyCleaningManagementRaceTests(TransactionTestCase):
                 happy_cleaning=event,
             ).values_list("position", flat=True)),
             [1, 2, 3],
+        )
+
+    def test_concurrent_updates_to_different_todos_both_succeed(self):
+        event = HappyCleaning.objects.create(
+            turnus=self.turnus, display_number=1, revision=1
+        )
+        station = HappyCleaningStation.objects.create(
+            happy_cleaning=event,
+            name="Speisesaal",
+            max_kids=2,
+            meeting_point="Tür",
+            position=1,
+        )
+        todos = [
+            HappyCleaningTodo.objects.create(
+                station=station,
+                text=text,
+                position=position,
+            )
+            for position, text in enumerate(("Tische", "Boden"), start=1)
+        ]
+
+        results = self.concurrent_posts(
+            [
+                reverse(
+                    "happy-cleaning-todo-check-api",
+                    args=(event.id, station.id, todo.id),
+                )
+                for todo in todos
+            ],
+            [
+                {"request_id": f"race-todo-{todo.id}", "expected_version": 1}
+                for todo in todos
+            ],
+        )
+
+        self.assertEqual([status for status, _payload in results], [200, 200])
+        self.assertEqual(
+            list(HappyCleaningTodo.objects.filter(station=station).values_list(
+                "checked", "version"
+            )),
+            [(True, 2), (True, 2)],
         )
