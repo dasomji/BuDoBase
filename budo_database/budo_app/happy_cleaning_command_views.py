@@ -136,6 +136,7 @@ def station_update(request, event_id, station_id):
             station_id,
             required_positive_integer(request.data, "expected_version"),
             station_fields(request.data),
+            request.data.get("document"),
         ),
     )
 

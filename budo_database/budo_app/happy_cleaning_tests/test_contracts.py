@@ -487,6 +487,7 @@ class HappyCleaningContractTests(TestCase):
                 "max_kids": 3,
                 "meeting_point": "Vor dem Speisesaal",
                 "wishes": "Fenster nicht vergessen",
+                "has_ever_had_assignment": True,
                 "content": [{
                     "type": "task_list",
                     "items": [
@@ -504,7 +505,10 @@ class HappyCleaningContractTests(TestCase):
                         },
                     ],
                 }],
+                "document": self.station.content_document,
                 "is_historical": False,
+                "can_edit": True,
+                "can_delete": False,
                 "can_toggle_tasks": True,
                 "responsible": {"id": self.user.profil.id, "name": "Mira"},
                 "todo_checked_count": 1,
@@ -539,6 +543,9 @@ class HappyCleaningContractTests(TestCase):
                     },
                 ],
             },
+            "responsible_profiles": [
+                {"id": self.user.profil.id, "name": "Mira"},
+            ],
         })
         self.assertNotContains(response, "Other Child")
         self.assertNotContains(response, "Private Krankheit")

@@ -332,6 +332,7 @@ def assignment_snapshot(request):
             "responsible_profile__turnus_id",
             "position",
             "version",
+            "has_ever_had_assignment",
         )
         .prefetch_related(
             Prefetch(
@@ -600,8 +601,12 @@ def station_detail(request):
             "max_kids": station.max_kids,
             "meeting_point": station.meeting_point,
             "wishes": station.wishes,
+            "has_ever_had_assignment": station.has_ever_had_assignment,
             "content": document,
+            "document": station.content_document,
             "is_historical": not active,
+            "can_edit": active,
+            "can_delete": active and not station.has_ever_had_assignment,
             "can_toggle_tasks": active,
             "todo_checked_count": checked_count,
             "todo_total_count": len(todos),
@@ -626,6 +631,12 @@ def station_detail(request):
                     "assignment_version": assignment.version,
                 }
                 for assignment in assignments
+        ]
+        projection["responsible_profiles"] = [
+            {"id": profile.id, "name": profile.rufname}
+            for profile in Profil.objects.filter(turnus_id=event.turnus_id)
+            .only("id", "rufname")
+            .order_by("rufname", "id")
         ]
     return projection
 

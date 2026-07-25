@@ -149,6 +149,106 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.queryByText('Mira')).not.toBeInTheDocument();
     expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+  });
+
+  it('edits an active station through the restricted document command', async () => {
+    const mutate = vi.fn().mockResolvedValue({ ok: true });
+    const refresh = vi.fn().mockResolvedValue();
+    render(<HappyCleaningStationDetailPage data={{
+      ...detailData,
+      responsible_profiles: [{ id: 4, name: 'Mira' }],
+      station: {
+        ...detailData.station,
+        can_edit: true,
+        can_delete: true,
+        document: {
+          type: 'doc',
+          content: [{
+            type: 'taskList',
+            content: [{
+              type: 'taskItem',
+              attrs: { id: 100, checked: true, version: 2 },
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Tische wischen' }] }],
+            }],
+          }],
+        },
+      },
+    }} mutate={mutate} refresh={refresh} onBack={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+    expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
+    expect(await screen.findByRole('checkbox', {
+      name: 'Aufgabenstatus wird beim Bearbeiten nicht geändert',
+    })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Name der Station'), { target: { value: 'Saal' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/7/stations/10/update/',
+      expect.objectContaining({
+        expected_version: 3,
+        name: 'Saal',
+        document: expect.objectContaining({ type: 'doc' }),
+      }),
+    ));
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it('guards dirty Escape and retains the draft when a structural save is stale', async () => {
+    const onBack = vi.fn();
+    const mutate = vi.fn().mockRejectedValue(Object.assign(new Error('failed'), {
+      payload: { code: 'stale', current_version: 4 },
+    }));
+    render(<HappyCleaningStationDetailPage data={{
+      ...detailData,
+      station: {
+        ...detailData.station,
+        can_edit: true,
+        document: { type: 'doc', content: [] },
+      },
+    }} mutate={mutate} onBack={onBack} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+    fireEvent.change(screen.getByLabelText('Name der Station'), { target: { value: 'Entwurf' } });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter bearbeiten' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Detail schließen' }));
+    expect(screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter bearbeiten' }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern und weiter' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('inzwischen geändert');
+    expect(screen.getByLabelText('Name der Station')).toHaveValue('Entwurf');
+    expect(onBack).not.toHaveBeenCalled();
+  });
+
+  it('confirms an eligible delete and delegates local removal without refresh', async () => {
+    vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
+    const mutate = vi.fn().mockResolvedValue({ ok: true });
+    const onDeleted = vi.fn();
+    render(<HappyCleaningStationDetailPage data={{
+      ...detailData,
+      station: {
+        ...detailData.station,
+        can_edit: true,
+        can_delete: true,
+        document: { type: 'doc', content: [] },
+      },
+    }} mutate={mutate} onDeleted={onDeleted} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Station löschen' }));
+
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/7/stations/10/delete/',
+      expect.objectContaining({ expected_version: 3 }),
+      true,
+      false,
+    ));
+    expect(onDeleted).toHaveBeenCalledWith(10);
   });
 
   it('renders the zero state as a dash and converges when remote data is rerendered', () => {

@@ -126,7 +126,7 @@ function AppContent({
     search_index: bootstrap?.search_index,
     turnus: routeState.data.turnus ?? bootstrap?.turnus,
   } : bootstrap;
-  const mutate = async (url, payload, json = true) => {
+  const mutate = async (url, payload, json = true, refreshAfter = true) => {
     if (realtimeSync.enabled && !realtimeSync.writesEnabled) {
       const error = new Error('Realtime reconciliation required before writing');
       error.payload = { code: 'sync_unavailable' };
@@ -149,7 +149,7 @@ function AppContent({
     }
     let responsePayload = {};
     try { responsePayload = await response.json(); } catch { responsePayload = {}; }
-    await refreshRoute({ preserveData: true });
+    if (refreshAfter) await refreshRoute({ preserveData: true });
     return responsePayload;
   };
 

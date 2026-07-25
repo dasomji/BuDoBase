@@ -1,7 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { EditorContent, useEditor } from '@tiptap/react';
+import Document from '@tiptap/extension-document';
+import Paragraph from '@tiptap/extension-paragraph';
+import Text from '@tiptap/extension-text';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 
 import './happyCleaningStationDetail.css';
 
+const StableTaskItem = TaskItem.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      id: { default: null },
+      version: { default: null },
+    };
+  },
+});
 
 const requestId = () => globalThis.crypto?.randomUUID?.()
   || `happy-cleaning-todo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -30,6 +45,163 @@ function Progress({ station }) {
   );
 }
 
+function DirtyNavigationDialog({ onContinue, onDiscard, onSave }) {
+  return (
+    <section role="dialog" aria-modal="true" aria-label="Ungespeicherte Änderungen">
+      <p>Es gibt ungespeicherte Änderungen.</p>
+      <button type="button" onClick={onContinue}>Weiter bearbeiten</button>
+      <button type="button" onClick={onDiscard}>Verwerfen</button>
+      <button type="button" onClick={onSave}>Speichern und weiter</button>
+    </section>
+  );
+}
+
+function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGuard, onBack }) {
+  const { event, station } = data;
+  const [fields, setFields] = useState({
+    name: station.name,
+    max_kids: String(station.max_kids),
+    meeting_point: station.meeting_point,
+    wishes: station.wishes,
+    responsible_profile_id: station.responsible?.id ? String(station.responsible.id) : '',
+  });
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [editorRevision, setEditorRevision] = useState(0);
+  const editorContainer = useRef(null);
+  const initialDocument = useMemo(() => station.document || { type: 'doc', content: [] }, [station.document]);
+  const editor = useEditor({
+    extensions: [
+      Document,
+      Paragraph,
+      Text,
+      TaskList,
+      StableTaskItem.configure({ nested: false }),
+    ],
+    content: initialDocument,
+    editorProps: {
+      attributes: { 'aria-label': 'Stationsinhalt' },
+      handleDOMEvents: {
+        click: (_view, event) => event.target instanceof HTMLInputElement
+          && event.target.type === 'checkbox',
+      },
+    },
+    onUpdate: () => setEditorRevision(value => value + 1),
+  });
+  const currentDocument = editor?.getJSON() || initialDocument;
+  useEffect(() => {
+    editorContainer.current?.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+      checkbox.disabled = true;
+      checkbox.tabIndex = -1;
+      checkbox.setAttribute('aria-label', 'Aufgabenstatus wird beim Bearbeiten nicht geändert');
+    });
+  }, [editor, editorRevision]);
+  const dirty = JSON.stringify({
+    ...fields,
+    document: currentDocument,
+  }) !== JSON.stringify({
+    name: station.name,
+    max_kids: String(station.max_kids),
+    meeting_point: station.meeting_point,
+    wishes: station.wishes,
+    responsible_profile_id: station.responsible?.id ? String(station.responsible.id) : '',
+    document: initialDocument,
+  });
+  const save = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const result = await mutate(
+        `/api/happy-cleaning/events/${event.id}/stations/${station.id}/update/`,
+        {
+          request_id: requestId(),
+          expected_version: station.version,
+          ...fields,
+          max_kids: Number(fields.max_kids),
+          responsible_profile_id: fields.responsible_profile_id
+            ? Number(fields.responsible_profile_id)
+            : null,
+          document: currentDocument,
+        },
+      );
+      await onSaved?.(result);
+      return true;
+    } catch (caught) {
+      setError(errorMessage(caught));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+  const navigate = destination => {
+    if (!destination) return;
+    if (!dirty) destination();
+    else setPendingNavigation(() => destination);
+  };
+  useEffect(() => {
+    registerNavigationGuard?.(navigate);
+    return () => registerNavigationGuard?.(null);
+  }, [registerNavigationGuard, dirty, editorRevision]);
+  useEffect(() => {
+    const keydown = event => {
+      if (event.key === 'Escape') navigate(onBack);
+    };
+    document.addEventListener('keydown', keydown);
+    return () => document.removeEventListener('keydown', keydown);
+  });
+  const remove = async () => {
+    if (!globalThis.confirm?.(`Station ${station.name} wirklich löschen?`)) return;
+    setBusy(true);
+    setError('');
+    try {
+      await mutate(
+        `/api/happy-cleaning/events/${event.id}/stations/${station.id}/delete/`,
+        { request_id: requestId(), expected_version: station.version },
+        true,
+        false,
+      );
+      onDeleted?.(station.id);
+    } catch (caught) {
+      setError(errorMessage(caught));
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <div className="react-actions">
+        <button type="button" className="button" onClick={() => navigate(onBack)}>Zur Liste</button>
+        <button type="button" className="button" aria-label="Detail schließen" onClick={() => navigate(onBack)}>×</button>
+      </div>
+      <form className="form-grid" onSubmit={async event_ => { event_.preventDefault(); await save(); }}>
+        <label>Name<input aria-label="Name der Station" value={fields.name} onChange={event_ => setFields(value => ({ ...value, name: event_.target.value }))} /></label>
+        <label>Kapazität<input aria-label="Kapazität der Station" type="number" min="1" disabled={station.has_ever_had_assignment} value={fields.max_kids} onChange={event_ => setFields(value => ({ ...value, max_kids: event_.target.value }))} /></label>
+        <label>Treffpunkt<input aria-label="Treffpunkt der Station" value={fields.meeting_point} onChange={event_ => setFields(value => ({ ...value, meeting_point: event_.target.value }))} /></label>
+        <label>Wünsche<textarea aria-label="Wünsche der Station" value={fields.wishes} onChange={event_ => setFields(value => ({ ...value, wishes: event_.target.value }))} /></label>
+        <label>Hauptverantwortlich<select aria-label="Hauptverantwortlich" value={fields.responsible_profile_id} onChange={event_ => setFields(value => ({ ...value, responsible_profile_id: event_.target.value }))}>
+          <option value="">Niemand</option>
+          {(data.responsible_profiles || []).map(profile => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
+        </select></label>
+        <div className="happy-cleaning-minimal-editor" ref={editorContainer}>
+          <EditorContent editor={editor} />
+        </div>
+        {error && <p className="error" role="alert">{error}</p>}
+        <div className="react-actions">
+          <button className="button" type="submit" disabled={busy}>Speichern</button>
+          {station.can_delete && <button className="button danger" type="button" disabled={busy} onClick={remove}>Station löschen</button>}
+        </div>
+      </form>
+      {pendingNavigation && (
+        <DirtyNavigationDialog
+          onContinue={() => setPendingNavigation(null)}
+          onDiscard={() => pendingNavigation()}
+          onSave={async () => { if (await save()) pendingNavigation(); }}
+        />
+      )}
+    </>
+  );
+}
+
 export function HappyCleaningStationDetailPage({
   data,
   mutate,
@@ -37,11 +209,14 @@ export function HappyCleaningStationDetailPage({
   embedded = false,
   onBack,
   refresh,
+  onDeleted,
+  registerNavigationGuard,
 }) {
   const { event, station } = data;
   const [showCompleted, setShowCompleted] = useState(true);
   const [busyTodoIds, setBusyTodoIds] = useState(() => new Set());
   const [error, setError] = useState('');
+  const [editing, setEditing] = useState(false);
   const writesBlocked = realtimeSync?.enabled && !realtimeSync.writesEnabled;
   const orderedTodos = [...station.todos].sort((left, right) => (
     left.position - right.position || left.id - right.id
@@ -77,12 +252,27 @@ export function HappyCleaningStationDetailPage({
   const Page = embedded ? 'section' : 'main';
   return (
     <Page className="happy-cleaning-station-detail-page" id={embedded ? undefined : 'body-container'}>
+      {editing ? (
+        <StationEditor
+          data={data}
+          mutate={mutate}
+          onSaved={async result => {
+            await refresh?.(result);
+            setEditing(false);
+          }}
+          onDeleted={onDeleted}
+          registerNavigationGuard={registerNavigationGuard}
+          onBack={onBack}
+        />
+      ) : (
+      <>
       {onBack && <button className="button happy-cleaning-detail-back" type="button" onClick={onBack}>Zur Liste</button>}
       <section className="card happy-cleaning-station-detail-card">
         <div className="happy-cleaning-station-detail-heading">
           <h1>{station.name}</h1>
           <Progress station={station} />
         </div>
+        {station.can_edit && <button className="button" type="button" onClick={() => setEditing(true)}>Bearbeiten</button>}
         <dl className="happy-cleaning-station-facts">
           <div><dt>Max Kinder</dt><dd>{station.max_kids}</dd></div>
           <div><dt>Treffpunkt</dt><dd>{station.meeting_point || '—'}</dd></div>
@@ -153,6 +343,8 @@ export function HappyCleaningStationDetailPage({
           ))}
         </ol>
       </section>
+      </>
+      )}
     </Page>
   );
 }

@@ -308,6 +308,7 @@ export function HappyCleaningOverviewPage({
   const loadingYearRequests = useRef(new Set());
   const detailRequestId = useRef(0);
   const rowRefs = useRef(new Map());
+  const detailNavigationGuard = useRef(null);
   const [selection, setSelection] = useState(null);
   const [restoreFocusKey, setRestoreFocusKey] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -330,20 +331,39 @@ export function HappyCleaningOverviewPage({
       if (request === detailRequestId.current) setDetailLoading(false);
     }
   }, [fetchImpl]);
-  const selectStation = (event, station) => {
+  const selectStationNow = (event, station) => {
     const selected = { eventId: event.id, stationId: station.id };
     setSelection(selected);
     setDetail(null);
     setPageState(current => ({ ...current, happyCleaningEventId: event.id }));
     loadDetail(selected);
   };
-  const closeDetail = () => {
+  const selectStation = (event, station) => {
+    const destination = () => selectStationNow(event, station);
+    if (detailNavigationGuard.current) detailNavigationGuard.current(destination);
+    else destination();
+  };
+  const closeDetailNow = () => {
     const key = selection && `${selection.eventId}:${selection.stationId}`;
     detailRequestId.current += 1;
     setRestoreFocusKey(key);
     setSelection(null);
     setDetail(null);
     setPageState(current => ({ ...current, happyCleaningEventId: null }));
+  };
+  const removeStationLocally = stationId => {
+    setYears(current => current.map(group => ({
+      ...group,
+      turnuses: group.turnuses.map(turnus => ({
+        ...turnus,
+        events: turnus.events.map(event => ({
+          ...event,
+          stations: event.stations?.filter(station => station.id !== stationId),
+        })),
+      })),
+    })));
+    detailNavigationGuard.current = null;
+    closeDetailNow();
   };
   useEffect(() => {
     if (!selection && restoreFocusKey) {
@@ -517,13 +537,15 @@ export function HappyCleaningOverviewPage({
               data={detail}
               mutate={async (...args) => {
                 const result = await mutate(...args);
-                await loadDetail(selection);
+                if (!args[0].endsWith('/delete/')) await loadDetail(selection);
                 return result;
               }}
               realtimeSync={realtimeSync}
               refresh={() => loadDetail(selection)}
               embedded
-              onBack={closeDetail}
+              onBack={closeDetailNow}
+              onDeleted={removeStationLocally}
+              registerNavigationGuard={guard => { detailNavigationGuard.current = guard; }}
             />
           )}
         </aside>

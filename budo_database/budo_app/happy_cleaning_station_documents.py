@@ -87,6 +87,52 @@ def validate_station_document(document):
             raise ValidationError("Unsupported station document node.")
 
 
+def validate_structural_edit_document(document):
+    """Validate the small TipTap schema accepted before server IDs are assigned."""
+    _require_keys(document, {"type", "content"})
+    if document.get("type") != "doc" or not isinstance(document.get("content"), list):
+        raise ValidationError("The station document must be a TipTap doc.")
+    identities = set()
+    for node in document["content"]:
+        if not isinstance(node, dict):
+            raise ValidationError("Malformed station document node.")
+        if node.get("type") == "paragraph":
+            _validate_paragraph(node)
+            continue
+        if node.get("type") != "taskList":
+            raise ValidationError("Unsupported station document node.")
+        _require_keys(node, {"type", "content"})
+        if not isinstance(node.get("content"), list):
+            raise ValidationError("Task-list content must be a list.")
+        for task in node["content"]:
+            _require_keys(task, {"type", "attrs", "content"})
+            attrs = task.get("attrs")
+            if task.get("type") != "taskItem" or not isinstance(attrs, dict):
+                raise ValidationError("Malformed task item.")
+            _require_keys(attrs, {"id", "checked", "version"})
+            identity = attrs.get("id")
+            if identity is not None and (
+                isinstance(identity, bool)
+                or not isinstance(identity, int)
+                or identity <= 0
+                or identity in identities
+            ):
+                raise ValidationError("Task identity is invalid.")
+            if identity is not None:
+                identities.add(identity)
+            if attrs.get("checked") is not None and not isinstance(attrs["checked"], bool):
+                raise ValidationError("Task checked state is invalid.")
+            version = attrs.get("version")
+            if version is not None and (
+                isinstance(version, bool) or not isinstance(version, int) or version <= 0
+            ):
+                raise ValidationError("Task version is invalid.")
+            content = task.get("content")
+            if not isinstance(content, list) or len(content) != 1:
+                raise ValidationError("A task item must contain one paragraph.")
+            _validate_paragraph(content[0])
+
+
 def _paragraph(text):
     content = [] if not text else [{"type": "text", "text": text}]
     return {"type": "paragraph", "content": content}

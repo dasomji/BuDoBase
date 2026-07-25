@@ -4,6 +4,7 @@ from typing import Mapping
 
 from django.db import transaction
 from django.db.models import F, Max
+from django.core.exceptions import ValidationError
 
 from budo_app.audit import (
     AuditEventData,
@@ -16,7 +17,10 @@ from budo_app.happy_cleaning_assignment_publisher import (
     publish_assignment_invalidation_on_commit,
 )
 from budo_app.happy_cleaning_station_matching import station_names_are_similar
-from budo_app.happy_cleaning_station_documents import validate_station_document
+from budo_app.happy_cleaning_station_documents import (
+    validate_station_document,
+    validate_structural_edit_document,
+)
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningCommandRequest,
@@ -579,7 +583,78 @@ def create_station(context, event_id, expected_revision, fields):
         }), False
 
 
-def update_station(context, event_id, station_id, expected_version, fields):
+def _task_text_from_document_node(task):
+    return "".join(
+        child["text"]
+        for child in task["content"][0].get("content", [])
+    )
+
+
+def _save_structural_document(station, submitted):
+    validate_structural_edit_document(submitted)
+    current = {
+        todo.id: todo
+        for todo in HappyCleaningTodo.objects.select_for_update().filter(station=station)
+    }
+    submitted_ids = {
+        task["attrs"]["id"]
+        for block in submitted["content"]
+        if block["type"] == "taskList"
+        for task in block["content"]
+        if task["attrs"]["id"] is not None
+    }
+    if not submitted_ids.issubset(current):
+        raise ValidationError("A task identity does not belong to this station.")
+    position_offset = len(current) + sum(
+        len(block["content"])
+        for block in submitted["content"]
+        if block["type"] == "taskList"
+    ) + 1
+    HappyCleaningTodo.objects.filter(station=station).update(
+        position=F("position") + position_offset
+    )
+    document = deepcopy(submitted)
+    position = 0
+    retained = set()
+    for block in document["content"]:
+        if block["type"] != "taskList":
+            continue
+        for task in block["content"]:
+            position += 1
+            identity = task["attrs"]["id"]
+            text = _task_text_from_document_node(task)
+            if identity is None:
+                todo = HappyCleaningTodo.objects.create(
+                    station=station,
+                    text=text,
+                    position=position,
+                    checked=False,
+                )
+            else:
+                todo = current[identity]
+                retained.add(identity)
+                todo.text = text
+                todo.position = position
+                todo.version += 1
+                todo.save(update_fields=["text", "position", "version"])
+            task["attrs"] = {
+                "id": todo.id,
+                "checked": todo.checked,
+                "version": todo.version,
+            }
+    HappyCleaningTodo.objects.filter(station=station).exclude(
+        id__in=retained | {
+            task["attrs"]["id"]
+            for block in document["content"]
+            if block["type"] == "taskList"
+            for task in block["content"]
+        }
+    ).delete()
+    validate_station_document(document)
+    return document
+
+
+def update_station(context, event_id, station_id, expected_version, fields, document=None):
     action = "happy_cleaning.station.update"
     with transaction.atomic():
         _locked_turnus(context)
@@ -615,6 +690,14 @@ def update_station(context, event_id, station_id, expected_version, fields):
                 else fields[name]
             )
         ]
+        if document is not None:
+            try:
+                station.content_document = _save_structural_document(station, document)
+            except ValidationError as error:
+                raise CommandError(
+                    "validation_error",
+                    errors={"document": error.messages},
+                ) from error
         station.name = fields["name"]
         station.max_kids = fields["max_kids"]
         station.meeting_point = fields["meeting_point"]
@@ -623,7 +706,7 @@ def update_station(context, event_id, station_id, expected_version, fields):
         station.version += 1
         station.save(update_fields=[
             "name", "max_kids", "meeting_point", "wishes",
-            "responsible_profile", "version",
+            "responsible_profile", "content_document", "version",
         ])
         _bump_event(event)
         audit_success(

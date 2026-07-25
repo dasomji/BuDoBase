@@ -54,6 +54,22 @@
   opacity: .72;
 }
 
+.happy-cleaning-minimal-editor {
+  min-height: 10rem;
+  padding: .75rem;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-radius: .35rem;
+}
+
+.happy-cleaning-minimal-editor .tiptap {
+  min-height: 8rem;
+  outline: none;
+}
+
+.happy-cleaning-minimal-editor input[type="checkbox"] {
+  pointer-events: none;
+}
+
 .bottom-composer {
   position: fixed;
   z-index: 20;
