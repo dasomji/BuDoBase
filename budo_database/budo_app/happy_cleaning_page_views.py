@@ -1,5 +1,5 @@
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_GET
 
@@ -30,9 +30,17 @@ def stations_page(request, event_id):
 
 @require_GET
 @login_required
-def print_number_page(request, event_id):
-    _event_in_active_turnus_or_404(request, event_id)
+def print_number_page(request):
+    if request.user.profil.turnus_id is None:
+        raise Http404
     return HttpResponse("<html><body></body></html>")
+
+
+@require_GET
+@login_required
+def event_print_number_page(request, event_id):
+    _event_in_active_turnus_or_404(request, event_id)
+    return HttpResponseRedirect("/happy-cleaning/print/")
 
 
 @require_GET

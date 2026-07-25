@@ -1,7 +1,9 @@
+import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Card, GlobalSearch, RestForm, SearchTable } from './components';
+import { Card, GlobalSearch, Messages, RestForm, SearchTable } from './components';
+import { Toaster } from './components/ui/toast';
 
 describe('reusable components', () => {
   afterEach(() => {
@@ -16,6 +18,32 @@ describe('reusable components', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     }));
+  });
+
+  it('publishes Django messages as typed toasts only once', async () => {
+    const messages = [
+      { text: 'Willkommen zurück!', tags: 'success account' },
+      { text: 'Speichern fehlgeschlagen.', tags: 'error' },
+    ];
+    const toastTree = items => (
+      <StrictMode>
+        <Toaster timeout={0}>
+          <Messages items={items} />
+        </Toaster>
+      </StrictMode>
+    );
+    const view = render(toastTree(messages));
+
+    const success = await screen.findByText('Willkommen zurück!', { selector: '.app-toast-description' });
+    const error = await screen.findByText('Speichern fehlgeschlagen.', { selector: '.app-toast-description' });
+    expect(success.closest('.app-toast')).toHaveAttribute('data-type', 'success');
+    expect(error.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    expect(document.querySelector('.messages')).not.toBeInTheDocument();
+
+    view.rerender(toastTree(messages.map(message => ({ ...message }))));
+
+    expect(screen.getAllByText('Willkommen zurück!', { selector: '.app-toast-description' })).toHaveLength(1);
+    expect(screen.getAllByText('Speichern fehlgeschlagen.', { selector: '.app-toast-description' })).toHaveLength(1);
   });
 
   it('toggles card details accessibly', () => {

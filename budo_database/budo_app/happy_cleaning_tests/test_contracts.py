@@ -119,6 +119,13 @@ class HappyCleaningContractTests(TestCase):
             child=self.absent_kid,
             version=2,
         )
+        self.numberless_assignment = HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.event,
+            station=None,
+            target_kind=HappyCleaningAssignment.TargetKind.EXCUSED,
+            child=self.numberless_kid,
+            version=7,
+        )
         self.other_kid = Kinder.objects.create(
             kid_index="OTHER-1",
             kid_vorname="Other",
@@ -173,7 +180,18 @@ class HappyCleaningContractTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {
             "event": {"id": self.event.id, "display_number": 1, "revision": 7},
-            "summary": {"assigned_present": 1, "present_total": 2},
+            "summary": {"assigned_present": 2, "present_total": 2},
+            "number_batch": {
+                "available": True,
+                "children": [
+                    {
+                        "id": self.numberless_kid.id,
+                        "full_name": "Grace Hopper",
+                        "number": 1,
+                        "expected_version": 1,
+                    },
+                ],
+            },
             "children": [
                 {
                     "id": self.numbered_kid.id,
@@ -199,8 +217,12 @@ class HappyCleaningContractTests(TestCase):
                     "number_version": 1,
                     "present": True,
                     "absence_location": None,
-                    "assigned_station": None,
-                    "assignment_version": None,
+                    "assigned_station": {
+                        "id": "excused",
+                        "name": "Entschuldigt",
+                        "is_excused": True,
+                    },
+                    "assignment_version": 7,
                 },
                 {
                     "id": self.absent_kid.id,
@@ -235,6 +257,7 @@ class HappyCleaningContractTests(TestCase):
                             "id": self.numbered_kid.id,
                             "full_name": "Ada Lovelace",
                             "short_name": "Ada Lo",
+                            "number": 7,
                             "present": True,
                             "assignment_version": 6,
                         },
@@ -242,6 +265,7 @@ class HappyCleaningContractTests(TestCase):
                             "id": self.absent_kid.id,
                             "full_name": "Linus Torvalds",
                             "short_name": "Linus To",
+                            "number": 3,
                             "present": False,
                             "assignment_version": 2,
                         },
@@ -259,6 +283,21 @@ class HappyCleaningContractTests(TestCase):
                     "free_seats": 2,
                     "todo_progress_percentage": None,
                     "children": [],
+                },
+                {
+                    "id": "excused",
+                    "name": "Entschuldigt",
+                    "is_excused": True,
+                    "children": [
+                        {
+                            "id": self.numberless_kid.id,
+                            "full_name": "Grace Hopper",
+                            "short_name": "Grace Ho",
+                            "number": None,
+                            "present": True,
+                            "assignment_version": 7,
+                        },
+                    ],
                 },
             ],
         })
@@ -450,14 +489,12 @@ class HappyCleaningContractTests(TestCase):
             happy_cleaning_number=9,
         )
 
-        response = self.client.get(self.url(
-            "happy-cleaning-print",
-            event_id=self.event.id,
-        ))
+        response = self.client.get(self.url("happy-cleaning-print"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {
-            "event": {"id": self.event.id, "display_number": 1, "revision": 7},
+            "number_batch_event_id": self.event.id,
+            "number_batch": {"available": False, "children": []},
             "present_numbered": [
                 {"id": lower_number.id, "full_name": "Zoe Alpha", "number": 2},
                 {"id": self.numbered_kid.id, "full_name": "Ada Lovelace", "number": 7},

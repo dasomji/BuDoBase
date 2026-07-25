@@ -10,7 +10,10 @@ from django.test import TransactionTestCase, skipUnlessDBFeature
 from budo_app.happy_cleaning_assignment_commands import (
     AssignmentCommandError,
     assign_child,
+    assign_excused_child,
+    assign_missing_numbers,
     move_child,
+    move_child_to_excused,
     remove_child,
     set_child_number,
 )
@@ -167,6 +170,105 @@ class HappyCleaningPostgreSQLRaceTests(TransactionTestCase):
         self.assertEqual(assignments.count(), 1)
         self.assertIn(assignments.get().station_id, (self.target_a.id, self.target_b.id))
         self.assertCountEqual([result[0] for result in results], ["ok", "stale"])
+
+    def test_normal_and_excused_targets_competing_for_one_child_keep_one_assignment(self):
+        results = self.race(
+            lambda: assign_child(
+                self.context(0, "normal-target"),
+                self.event.id,
+                self.children[0].id,
+                self.target_a.id,
+            ),
+            lambda: assign_excused_child(
+                self.context(1, "excused-target"),
+                self.event.id,
+                self.children[0].id,
+            ),
+        )
+
+        assignment = HappyCleaningAssignment.objects.get(
+            happy_cleaning=self.event,
+            child=self.children[0],
+        )
+        self.assertCountEqual([result[0] for result in results], ["ok", "stale"])
+        self.assertTrue(
+            assignment.is_excused or assignment.station_id == self.target_a.id
+        )
+
+    def test_station_and_excused_moves_competing_keep_one_valid_target(self):
+        assignment = HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.event,
+            station=self.station,
+            child=self.children[0],
+            version=20,
+        )
+        results = self.race(
+            lambda: move_child(
+                self.context(0, "move-station"),
+                self.event.id,
+                self.children[0].id,
+                self.target_a.id,
+                20,
+            ),
+            lambda: move_child_to_excused(
+                self.context(1, "move-excused"),
+                self.event.id,
+                self.children[0].id,
+                20,
+            ),
+        )
+
+        assignment.refresh_from_db()
+        self.assertCountEqual([result[0] for result in results], ["ok", "stale"])
+        self.assertTrue(
+            (assignment.is_excused and assignment.station_id is None)
+            or (
+                not assignment.is_excused
+                and assignment.station_id == self.target_a.id
+            )
+        )
+
+    def test_batch_and_single_number_writes_avoid_deadlock_and_are_atomic(self):
+        Kinder.objects.filter(pk__in=[child.id for child in self.children]).update(
+            anwesend=True,
+        )
+        Kinder.objects.filter(pk__in=[child.id for child in self.children[:2]]).update(
+            happy_cleaning_number=None,
+        )
+        for child in self.children:
+            HappyCleaningAssignment.objects.create(
+                happy_cleaning=self.event,
+                station=None,
+                target_kind=HappyCleaningAssignment.TargetKind.EXCUSED,
+                child=child,
+                version=20,
+            )
+        expected = [
+            {"child_id": self.children[0].id, "number": 1, "expected_version": 1},
+            {"child_id": self.children[1].id, "number": 2, "expected_version": 1},
+        ]
+
+        results = self.race(
+            lambda: assign_missing_numbers(
+                self.context(0, "number-batch"),
+                self.event.id,
+                expected,
+            ),
+            lambda: set_child_number(
+                self.context(1, "number-single"),
+                self.children[0].id,
+                42,
+                1,
+            ),
+        )
+
+        self.assertCountEqual([result[0] for result in results], ["ok", "stale"])
+        current = list(
+            Kinder.objects.filter(pk__in=[child.id for child in self.children[:2]])
+            .order_by("id")
+            .values_list("happy_cleaning_number", flat=True)
+        )
+        self.assertIn(current, ([1, 2], [42, None]))
 
     def test_two_children_competing_for_one_number_preserve_uniqueness(self):
         Kinder.objects.filter(pk__in=[child.id for child in self.children[:2]]).update(

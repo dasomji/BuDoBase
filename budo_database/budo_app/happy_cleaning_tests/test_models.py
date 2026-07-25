@@ -132,6 +132,33 @@ class HappyCleaningModelTests(TestCase):
         with self.assertRaises(ValidationError):
             assignment.full_clean()
 
+    def test_assignment_target_is_exactly_one_station_or_excused(self):
+        excused = HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.event,
+            station=None,
+            target_kind=HappyCleaningAssignment.TargetKind.EXCUSED,
+            child=self.kid,
+        )
+        self.assertTrue(excused.is_excused)
+
+        invalid_targets = (
+            HappyCleaningAssignment(
+                happy_cleaning=self.event,
+                station=None,
+                target_kind=HappyCleaningAssignment.TargetKind.STATION,
+                child=self.kid,
+            ),
+            HappyCleaningAssignment(
+                happy_cleaning=self.event,
+                station=self.station,
+                target_kind=HappyCleaningAssignment.TargetKind.EXCUSED,
+                child=self.kid,
+            ),
+        )
+        for assignment in invalid_targets:
+            with self.subTest(target=assignment.target_kind), self.assertRaises(ValidationError):
+                assignment.full_clean()
+
     def test_one_assignment_per_event_and_child_is_database_enforced(self):
         HappyCleaningAssignment.objects.create(
             happy_cleaning=self.event,

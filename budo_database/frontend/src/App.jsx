@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppSidebar, ApplicationShell } from './app-sidebar';
 import { Header, Messages } from './components';
+import { Toaster } from './components/ui/toast';
 import {
   loadBootstrap,
   loadRouteData,
@@ -18,7 +19,7 @@ function ErrorState({ title, error }) {
 
 const browserNavigate = path => window.location.assign(path);
 
-export default function App({
+function AppContent({
   fetchImpl = fetch,
   navigate = browserNavigate,
 }) {
@@ -172,10 +173,24 @@ export default function App({
   if (route.standalone) return content;
   return (
     <ApplicationShell
-      sidebar={data.authenticated ? <AppSidebar /> : null}
+      sidebar={data.authenticated ? (
+        <AppSidebar happyCleaningEvents={
+          route.page === 'happy-cleaning-overview'
+            ? data.events
+            : data.happy_cleaning_events
+        } />
+      ) : null}
       header={<Header title={resolveRouteHeaderTitle(route, data, title)} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data, { pageState, setPageState, mutate }) : null} />}
     >
       {content}
     </ApplicationShell>
+  );
+}
+
+export default function App(props) {
+  return (
+    <Toaster>
+      <AppContent {...props} />
+    </Toaster>
   );
 }

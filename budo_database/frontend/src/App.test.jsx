@@ -32,6 +32,21 @@ describe('application loading', () => {
     expect(fetchImpl).toHaveBeenCalledWith('/api/bootstrap/', { credentials: 'same-origin' });
   });
 
+  it('shows bootstrap messages in the global toast viewport', async () => {
+    window.history.pushState({}, '', '/login/');
+    const fetchImpl = vi.fn().mockResolvedValue(response({
+      authenticated: false,
+      csrf_token: 'token',
+      messages: [{ text: 'Hi Ada, welcome back!', tags: 'success' }],
+    }));
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByText('Hi Ada, welcome back!')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Benachrichtigungen' })).toBeInTheDocument();
+    expect(document.querySelector('.messages')).not.toBeInTheDocument();
+  });
+
   it('does not request protected route data before authentication is known', async () => {
     window.history.pushState({}, '', '/all_kids');
     let resolveBootstrap;
@@ -57,6 +72,32 @@ describe('application loading', () => {
     await waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
     expect(fetchImpl.mock.calls[1][0]).toBe('/api/route-data/kids-directory/');
     resolveRoute(response({ authenticated: true, kids: [], messages: [] }));
+  });
+
+  it('builds the Happy Cleaning sidebar from the active-Turnus bootstrap', async () => {
+    window.history.pushState({}, '', '/all_kids');
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({
+        authenticated: true,
+        csrf_token: 'token',
+        messages: [],
+        profile: { id: 1, rufname: 'Ada' },
+        turnus: { id: 2, label: 'T2' },
+        permissions: {},
+        search_index: { kids: [], focuses: [], places: [] },
+        happy_cleaning_events: [
+          { id: 7, display_number: 1 },
+          { id: 9, display_number: 2 },
+        ],
+      }))
+      .mockResolvedValueOnce(response({ kids: [] }));
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByRole('link', { name: 'Happy Cleaning 2' })).toHaveAttribute(
+      'href',
+      '/happy-cleaning/9/assignment/',
+    );
   });
 
   it('redirects an unauthenticated protected route without loading route data', async () => {

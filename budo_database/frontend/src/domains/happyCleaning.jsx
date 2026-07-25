@@ -1,6 +1,10 @@
 import { useState } from 'react';
+import { Printer } from 'lucide-react';
 
-import { HappyCleaningAssignmentPage } from './happyCleaningAssignment';
+import {
+  HappyCleaningAssignmentPage,
+  HappyCleaningNumberBatchAction,
+} from './happyCleaningAssignment';
 import { happyCleaningStationDetailRoutes } from './happyCleaningStationDetail';
 
 
@@ -127,9 +131,6 @@ export function HappyCleaningOverviewPage({ data, mutate }) {
               <a className="button" href={`/happy-cleaning/${event.id}/stations/`} aria-label={`Stationen für Happy Cleaning ${event.display_number}`}>
                 Stationen
               </a>
-              <a className="button" href={`/happy-cleaning/${event.id}/print/`} aria-label={`Nummernliste für Happy Cleaning ${event.display_number} drucken`}>
-                Nummernliste
-              </a>
               {event.can_delete && (
                 <button className="button danger" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
                   Löschen
@@ -143,10 +144,11 @@ export function HappyCleaningOverviewPage({ data, mutate }) {
   );
 }
 
-function PrintSection({ id, title, columns, rows }) {
+function PrintSection({ id, title, columns, rows, children }) {
   return (
     <section className="happy-cleaning-print-section" aria-labelledby={id}>
       <h2 id={id}>{title}</h2>
+      {children}
       {!rows.length
         ? <p className="happy-cleaning-print-empty">Keine Kinder in diesem Abschnitt.</p>
         : (
@@ -173,18 +175,45 @@ function PrintSection({ id, title, columns, rows }) {
   );
 }
 
-export function HappyCleaningPrintPage({ data }) {
+function HappyCleaningPrintAction() {
+  return (
+    <button
+      aria-label="Drucken"
+      className="button mobile-icon-action"
+      type="button"
+      onClick={() => window.print()}
+    >
+      <span className="desktop-action-label">Drucken</span>
+      <Printer className="mobile-action-label" size={20} aria-hidden="true" />
+    </button>
+  );
+}
+
+export function HappyCleaningPrintPage({ data, mutate, refresh, realtimeSync }) {
+  const writeBlocked = Boolean(realtimeSync?.enabled && !realtimeSync.writesEnabled);
   return (
     <main className="happy-cleaning-print-page" id="body-container">
-      <div className="happy-cleaning-print-actions react-actions" aria-label="Druckaktionen">
-        <a className="button" href="/happy-cleaning/">Zur Übersicht</a>
-        <button className="button" type="button" onClick={() => window.print()}>
-          Nummernliste drucken
-        </button>
-      </div>
       <header className="happy-cleaning-print-title">
-        <h1>Happy Cleaning {data.event.display_number} · Nummernliste</h1>
+        <h1>Happy Cleaning · Nummernliste</h1>
       </header>
+      <PrintSection
+        id="happy-cleaning-present-numberless"
+        title="Anwesend ohne Nummer"
+        columns={[{ key: 'full_name', label: 'Name' }]}
+        rows={data.present_numberless}
+      >
+        {data.number_batch?.available && (
+          <div className="happy-cleaning-numberless-actions react-actions">
+            <HappyCleaningNumberBatchAction
+              eventId={data.number_batch_event_id}
+              numberBatch={data.number_batch}
+              mutate={mutate}
+              refresh={refresh}
+              disabled={writeBlocked}
+            />
+          </div>
+        )}
+      </PrintSection>
       <PrintSection
         id="happy-cleaning-present-numbered"
         title="Anwesend mit Nummer"
@@ -193,12 +222,6 @@ export function HappyCleaningPrintPage({ data }) {
           { key: 'full_name', label: 'Name' },
         ]}
         rows={data.present_numbered}
-      />
-      <PrintSection
-        id="happy-cleaning-present-numberless"
-        title="Anwesend ohne Nummer"
-        columns={[{ key: 'full_name', label: 'Name' }]}
-        rows={data.present_numberless}
       />
       <PrintSection
         id="happy-cleaning-absent"
@@ -211,11 +234,6 @@ export function HappyCleaningPrintPage({ data }) {
             render: child => child.number ?? '—',
           },
           { key: 'full_name', label: 'Name' },
-          {
-            key: 'absence_location',
-            label: 'Abwesenheitsort',
-            render: child => child.absence_location || 'Nicht angegeben',
-          },
         ]}
         rows={data.absent}
       />
@@ -509,14 +527,20 @@ export const happyCleaningRoutes = [
     render: ({ data, mutate, refresh, realtimeSync }) => <HappyCleaningAssignmentPage data={data} mutate={mutate} refresh={refresh} realtimeSync={realtimeSync} />,
   },
   {
-    pattern: /^\/happy-cleaning\/(\d+)\/print$/,
+    pattern: /^\/happy-cleaning\/print$/,
     page: 'happy-cleaning-print',
-    title: 'Happy Cleaning Nummernliste',
+    title: 'Nummernliste · Happy Cleaning',
     domain: 'happy-cleaning',
     readContractKey: 'happy-cleaning-print',
-    params: match => ({ event_id: match[1] }),
-    resolveTitle: (_route, data) => `Nummernliste · Happy Cleaning ${data.event?.display_number || ''}`.trim(),
-    render: ({ data }) => <HappyCleaningPrintPage data={data} />,
+    headerAction: () => <HappyCleaningPrintAction />,
+    render: ({ data, mutate, refresh, realtimeSync }) => (
+      <HappyCleaningPrintPage
+        data={data}
+        mutate={mutate}
+        refresh={refresh}
+        realtimeSync={realtimeSync}
+      />
+    ),
   },
   ...happyCleaningStationDetailRoutes,
   {

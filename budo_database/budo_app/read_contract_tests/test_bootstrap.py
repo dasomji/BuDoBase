@@ -6,6 +6,7 @@ from django.urls import reverse
 
 from budo_app.models import (
     Auslagerorte,
+    HappyCleaning,
     Kinder,
     Schwerpunkte,
     Schwerpunktzeit,
@@ -61,6 +62,18 @@ class BootstrapContractTests(TestCase):
             schwerpunktzeit=other_focus_time,
         )
         self.place = Auslagerorte.objects.create(name="Ötscher Hütte")
+        self.second_happy_cleaning = HappyCleaning.objects.create(
+            turnus=self.turnus,
+            display_number=2,
+        )
+        self.first_happy_cleaning = HappyCleaning.objects.create(
+            turnus=self.turnus,
+            display_number=1,
+        )
+        HappyCleaning.objects.create(
+            turnus=self.other_turnus,
+            display_number=1,
+        )
 
     def test_public_bootstrap_returns_only_public_shell_state(self):
         response = self.client.get(reverse("bootstrap-api"))
@@ -100,6 +113,10 @@ class BootstrapContractTests(TestCase):
             "focuses": [{"id": self.focus.id, "name": "Überleben"}],
             "places": [{"id": self.place.id, "name": "Ötscher Hütte"}],
         })
+        self.assertEqual(payload["happy_cleaning_events"], [
+            {"id": self.first_happy_cleaning.id, "display_number": 1},
+            {"id": self.second_happy_cleaning.id, "display_number": 2},
+        ])
         self.assertEqual(
             set(payload["permissions"]),
             {

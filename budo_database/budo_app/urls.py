@@ -6,6 +6,7 @@ from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail, Schwerpun
 from .first_aid_media import attachment_media
 from .happy_cleaning_page_views import (
     assignment_page,
+    event_print_number_page,
     print_number_page,
     station_detail_page,
     stations_page,
@@ -70,9 +71,14 @@ urlpatterns = [
         name='happy-cleaning-stations-page',
     ),
     path(
-        'happy-cleaning/<int:event_id>/print/',
+        'happy-cleaning/print/',
         print_number_page,
         name='happy-cleaning-print-page',
+    ),
+    path(
+        'happy-cleaning/<int:event_id>/print/',
+        event_print_number_page,
+        name='happy-cleaning-event-print-page',
     ),
     path(
         'happy-cleaning/<int:event_id>/stations/<int:station_id>/',
