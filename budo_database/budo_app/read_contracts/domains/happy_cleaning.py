@@ -5,7 +5,7 @@ from budo_app.happy_cleaning_number_batch import (
     first_happy_cleaning_complete,
     number_batch_projection,
 )
-from budo_app.happy_cleaning_station_documents import count_tasks
+from budo_app.happy_cleaning_station_documents import count_tasks, project_tasks
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningAssignment,
@@ -29,15 +29,15 @@ def _event_summary(event):
     }
 
 
-def _requested_event(request):
+def _requested_event(request, *, active_only=True):
     event_id = request.query_params.get("event_id")
     if not event_id or not str(event_id).isdigit():
         raise Http404
+    filters = {"id": int(event_id)}
+    if active_only:
+        filters["turnus_id"] = require_active_turnus_id(request)
     event = (
-        HappyCleaning.objects.filter(
-            id=int(event_id),
-            turnus_id=require_active_turnus_id(request),
-        )
+        HappyCleaning.objects.filter(**filters)
         .only(
             "id",
             "turnus_id",
@@ -50,8 +50,6 @@ def _requested_event(request):
     if event is None:
         raise Http404
     return event
-
-
 def overview(request):
     active_turnus_id = require_active_turnus_id(request)
     active_turnus = (
@@ -513,8 +511,10 @@ def _requested_station(request, event):
             "id",
             "happy_cleaning_id",
             "name",
+            "max_kids",
             "meeting_point",
             "wishes",
+            "content_document",
             "responsible_profile_id",
             "responsible_profile__id",
             "responsible_profile__rufname",
@@ -528,14 +528,40 @@ def _requested_station(request, event):
     return station
 
 
+def _document_projection(document):
+    tasks = iter(project_tasks(document))
+    blocks = []
+    for node in document.get("content", []):
+        if node.get("type") == "paragraph":
+            blocks.append({
+                "type": "paragraph",
+                "text": "".join(
+                    child["text"] for child in node.get("content", [])
+                ),
+            })
+        elif node.get("type") == "taskList":
+            blocks.append({
+                "type": "task_list",
+                "items": [next(tasks) for _item in node.get("content", [])],
+            })
+    return blocks
+
+
 def station_detail(request):
-    event = _requested_event(request)
+    event = _requested_event(request, active_only=False)
     station = _requested_station(request, event)
-    todos = list(
-        HappyCleaningTodo.objects.filter(station_id=station.id)
-        .only("id", "station_id", "text", "position", "checked", "version")
-        .order_by("position", "id")
-    )
+    active = event.turnus_id == require_active_turnus_id(request)
+    document = _document_projection(station.content_document)
+    document_tasks = [
+        task
+        for block in document
+        if block["type"] == "task_list"
+        for task in block["items"]
+    ]
+    todos = [
+        {**task, "position": position}
+        for position, task in enumerate(document_tasks, start=1)
+    ]
     assignments = list(
         HappyCleaningAssignment.objects.filter(
             happy_cleaning_id=event.id,
@@ -552,27 +578,37 @@ def station_detail(request):
             "child__kid_nachname",
         )
         .order_by("child__kid_vorname", "child__kid_nachname", "child_id")
-    )
+    ) if active else []
     responsible = station.responsible_profile
     if responsible and responsible.turnus_id != event.turnus_id:
         responsible = None
-    checked_count = sum(todo.checked for todo in todos)
-    return {
+    checked_count = sum(todo["checked"] for todo in todos)
+    projection = {
         "event": _event_summary(event),
         "station": {
             "id": station.id,
             "version": station.version,
             "name": station.name,
+            "max_kids": station.max_kids,
             "meeting_point": station.meeting_point,
             "wishes": station.wishes,
-            "responsible": (
-                {"id": responsible.id, "name": responsible.rufname}
-                if responsible else None
-            ),
+            "content": document,
+            "is_historical": not active,
+            "can_toggle_tasks": active,
             "todo_checked_count": checked_count,
             "todo_total_count": len(todos),
-            "todo_progress_percentage": _todo_progress(todos),
-            "children": [
+            "todo_progress_percentage": (
+                round(checked_count * 100 / len(todos)) if todos else None
+            ),
+            "todos": todos,
+        },
+    }
+    if active:
+        projection["station"]["responsible"] = (
+            {"id": responsible.id, "name": responsible.rufname}
+            if responsible else None
+        )
+        projection["station"]["children"] = [
                 {
                     "id": assignment.child_id,
                     "full_name": kid_full_name(
@@ -582,10 +618,8 @@ def station_detail(request):
                     "assignment_version": assignment.version,
                 }
                 for assignment in assignments
-            ],
-            "todos": [_todo(todo) for todo in todos],
-        },
-    }
+        ]
+    return projection
 
 
 def _print_name(child):

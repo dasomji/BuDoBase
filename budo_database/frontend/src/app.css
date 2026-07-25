@@ -1298,6 +1298,59 @@ input[name="amount"]::placeholder {
   text-align: left;
 }
 
+.happy-cleaning-station-row-button {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.happy-cleaning-overview-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
+  gap: 0;
+  transition: grid-template-columns 240ms ease-in-out;
+}
+
+.happy-cleaning-overview-split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--m-padding);
+}
+
+.happy-cleaning-overview-list,
+.happy-cleaning-overview-detail {
+  min-width: 0;
+}
+
+.happy-cleaning-overview-detail .happy-cleaning-station-detail-card {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .happy-cleaning-overview-layout,
+  .happy-cleaning-overview-split {
+    display: block;
+  }
+
+  .happy-cleaning-overview-split .happy-cleaning-overview-list {
+    display: none;
+  }
+
+  .happy-cleaning-overview-detail {
+    position: fixed;
+    z-index: 15;
+    inset: 0;
+    overflow-y: auto;
+    padding: var(--m-padding);
+    background: var(--background-color, white);
+  }
+}
+
 .happy-cleaning-empty-stations {
   margin-bottom: 0;
 }

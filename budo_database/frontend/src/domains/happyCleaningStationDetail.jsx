@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-import { BottomComposer } from '../BottomComposer';
 import './happyCleaningStationDetail.css';
 
 
@@ -31,10 +30,17 @@ function Progress({ station }) {
   );
 }
 
-export function HappyCleaningStationDetailPage({ data, mutate, realtimeSync }) {
+export function HappyCleaningStationDetailPage({
+  data,
+  mutate,
+  realtimeSync,
+  embedded = false,
+  onBack,
+  refresh,
+}) {
   const { event, station } = data;
   const [showCompleted, setShowCompleted] = useState(true);
-  const [busyTodoId, setBusyTodoId] = useState(null);
+  const [busyTodoIds, setBusyTodoIds] = useState(() => new Set());
   const [error, setError] = useState('');
   const writesBlocked = realtimeSync?.enabled && !realtimeSync.writesEnabled;
   const orderedTodos = [...station.todos].sort((left, right) => (
@@ -45,7 +51,7 @@ export function HappyCleaningStationDetailPage({ data, mutate, realtimeSync }) {
     : orderedTodos.filter(todo => !todo.checked);
 
   const setTodoState = async todo => {
-    setBusyTodoId(todo.id);
+    setBusyTodoIds(current => new Set(current).add(todo.id));
     setError('');
     const operation = todo.checked ? 'reopen' : 'check';
     try {
@@ -58,41 +64,52 @@ export function HappyCleaningStationDetailPage({ data, mutate, realtimeSync }) {
       );
     } catch (caught) {
       setError(errorMessage(caught));
+      if (caught?.payload?.code === 'stale') await refresh?.();
     } finally {
-      setBusyTodoId(null);
+      setBusyTodoIds(current => {
+        const next = new Set(current);
+        next.delete(todo.id);
+        return next;
+      });
     }
   };
 
-  const addTodo = text => mutate(
-    `/api/happy-cleaning/events/${event.id}/stations/${station.id}/todos/add/`,
-    {
-      request_id: requestId(),
-      expected_version: station.version,
-      text,
-    },
-  );
-
+  const Page = embedded ? 'section' : 'main';
   return (
-    <main className="happy-cleaning-station-detail-page" id="body-container">
+    <Page className="happy-cleaning-station-detail-page" id={embedded ? undefined : 'body-container'}>
+      {onBack && <button className="button happy-cleaning-detail-back" type="button" onClick={onBack}>Zur Liste</button>}
       <section className="card happy-cleaning-station-detail-card">
         <div className="happy-cleaning-station-detail-heading">
           <h1>{station.name}</h1>
           <Progress station={station} />
         </div>
         <dl className="happy-cleaning-station-facts">
+          <div><dt>Max Kinder</dt><dd>{station.max_kids}</dd></div>
           <div><dt>Treffpunkt</dt><dd>{station.meeting_point || '—'}</dd></div>
           <div><dt>Wünsche</dt><dd>{station.wishes || '—'}</dd></div>
           {station.responsible && (
             <div><dt>Hauptverantwortlich</dt><dd>{station.responsible.name}</dd></div>
           )}
         </dl>
+        {station.content?.some(block => block.type === 'paragraph') && (
+          <section aria-labelledby={`station-content-${station.id}`}>
+            <h2 id={`station-content-${station.id}`}>Inhalt</h2>
+            {station.content
+              .filter(block => block.type === 'paragraph')
+              .map((block, index) => <p key={index}>{block.text || '\u00a0'}</p>)}
+          </section>
+        )}
 
-        <h2>Eingeteilte Kinder</h2>
-        {!station.children.length && <p>Noch keine Kinder eingeteilt.</p>}
-        {station.children.length > 0 && (
-          <ul className="happy-cleaning-detail-children">
-            {station.children.map(child => <li key={child.id}>{child.full_name}</li>)}
-          </ul>
+        {station.children && (
+          <>
+            <h2>Eingeteilte Kinder</h2>
+            {!station.children.length && <p>Noch keine Kinder eingeteilt.</p>}
+            {station.children.length > 0 && (
+              <ul className="happy-cleaning-detail-children">
+                {station.children.map(child => <li key={child.id}>{child.full_name}</li>)}
+              </ul>
+            )}
+          </>
         )}
 
         <div className="happy-cleaning-checklist-heading">
@@ -119,31 +136,24 @@ export function HappyCleaningStationDetailPage({ data, mutate, realtimeSync }) {
               className={todo.checked ? 'completed' : ''}
             >
               <span>{todo.text}</span>
-              <button
-                className="button"
-                type="button"
-                disabled={writesBlocked || busyTodoId !== null}
-                aria-label={todo.checked
-                  ? `${todo.text} wieder öffnen`
-                  : `${todo.text} erledigen`}
-                onClick={() => setTodoState(todo)}
-              >
-                {todo.checked ? 'Wieder öffnen' : 'Erledigt'}
-              </button>
+              {station.can_toggle_tasks && (
+                <button
+                  className="button"
+                  type="button"
+                  disabled={writesBlocked || busyTodoIds.has(todo.id)}
+                  aria-label={todo.checked
+                    ? `${todo.text} wieder öffnen`
+                    : `${todo.text} erledigen`}
+                  onClick={() => setTodoState(todo)}
+                >
+                  {todo.checked ? 'Wieder öffnen' : 'Erledigt'}
+                </button>
+              )}
             </li>
           ))}
         </ol>
       </section>
-
-      <BottomComposer
-        label="Neue Aufgabe"
-        placeholder="Aufgabe hinzufügen…"
-        submitLabel="Aufgabe hinzufügen"
-        onSubmit={addTodo}
-        disabled={writesBlocked}
-        errorText={errorMessage}
-      />
-    </main>
+    </Page>
   );
 }
 
@@ -155,11 +165,12 @@ export const happyCleaningStationDetailRoutes = [{
   readContractKey: 'happy-cleaning-station-detail',
   params: match => ({ event_id: match[1], station_id: match[2] }),
   resolveTitle: (_route, data) => data.station?.name || 'Happy Cleaning Station',
-  render: ({ data, mutate, realtimeSync }) => (
+  render: ({ data, mutate, realtimeSync, refresh }) => (
     <HappyCleaningStationDetailPage
       data={data}
       mutate={mutate}
       realtimeSync={realtimeSync}
+      refresh={refresh}
     />
   ),
 }];

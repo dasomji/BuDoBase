@@ -13,6 +13,11 @@ import { isPublicRoute, parseRoute, renderRoute, resolveRouteHeaderTitle, resolv
 
 export { parseRoute } from './routes';
 
+const findHappyCleaningOverviewEvent = (data, eventId) => data?.years
+  ?.flatMap(group => group.turnuses)
+  .flatMap(turnus => turnus.events)
+  .find(event => event.id === eventId);
+
 function ErrorState({ title, error }) {
   return <div className="react-error"><div className="card"><h1>{title}</h1><p>{error.message}</p></div></div>;
 }
@@ -94,15 +99,20 @@ function AppContent({
     }
   }, [bootstrap, navigate, route, routeState.authenticationRequired]);
 
+  const realtimeEventId = route.event_id || pageState.happyCleaningEventId;
+  const overviewRealtimeEvent = findHappyCleaningOverviewEvent(
+    routeState.data,
+    realtimeEventId,
+  );
   const realtimeSync = useHappyCleaningSync({
     enabled: Boolean(
       bootstrap?.authenticated
       && route.domain === 'happy-cleaning'
-      && route.event_id
-      && routeState.data?.event
+      && realtimeEventId
+      && (routeState.data?.event || overviewRealtimeEvent)
     ),
-    eventId: route.event_id,
-    revision: routeState.data?.event?.revision,
+    eventId: realtimeEventId,
+    revision: routeState.data?.event?.revision ?? overviewRealtimeEvent?.revision,
     refresh: () => refreshRoute({ propagateError: true, preserveData: true }),
   });
 

@@ -14,8 +14,12 @@ const detailData = {
     id: 10,
     version: 3,
     name: 'Speisesaal',
+    max_kids: 4,
     meeting_point: 'Vor dem Saal',
     wishes: 'Fenster nicht vergessen',
+    content: [{ type: 'paragraph', text: 'Fenster öffnen' }],
+    is_historical: false,
+    can_toggle_tasks: true,
     responsible: { id: 4, name: 'Mira' },
     todo_checked_count: 1,
     todo_total_count: 2,
@@ -53,7 +57,9 @@ describe('Happy Cleaning station detail', () => {
 
     expect(screen.getByRole('heading', { name: 'Speisesaal' })).toBeInTheDocument();
     expect(screen.getByText('Vor dem Saal')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
     expect(screen.getByText('Fenster nicht vergessen')).toBeInTheDocument();
+    expect(screen.getByText('Fenster öffnen')).toBeInTheDocument();
     expect(screen.getByText('Mira')).toBeInTheDocument();
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
     expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
@@ -88,31 +94,61 @@ describe('Happy Cleaning station detail', () => {
     ));
   });
 
-  it('adds at the bottom with the station version and maps errors into composer retry', async () => {
+  it('refreshes a stale task conflict so the same item can be retried', async () => {
     const stale = new Error('Update failed');
-    stale.payload = { code: 'stale' };
+    stale.payload = { code: 'stale', current_version: 2 };
+    const mutate = vi.fn().mockRejectedValue(stale);
+    const refresh = vi.fn().mockResolvedValue();
+    render(
+      <HappyCleaningStationDetailPage
+        data={detailData}
+        mutate={mutate}
+        refresh={refresh}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Boden kehren erledigen' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('erneut versuchen');
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: 'Boden kehren erledigen' })).toBeEnabled();
+  });
+
+  it('allows independent task items to be changed concurrently', async () => {
+    let finishFirst;
     const mutate = vi.fn()
-      .mockRejectedValueOnce(stale)
+      .mockImplementationOnce(() => new Promise(resolve => { finishFirst = resolve; }))
       .mockResolvedValueOnce({ ok: true });
     render(<HappyCleaningStationDetailPage data={detailData} mutate={mutate} />);
 
-    const input = screen.getByRole('textbox', { name: 'Neue Aufgabe' });
-    fireEvent.change(input, { target: { value: 'Müll rausbringen' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Aufgabe hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Boden kehren erledigen' }));
+    expect(screen.getByRole('button', { name: 'Boden kehren erledigen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Tische wischen wieder öffnen' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Tische wischen wieder öffnen' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('inzwischen geändert');
-    expect(input).toHaveValue('Müll rausbringen');
-    expect(mutate).toHaveBeenLastCalledWith(
-      '/api/happy-cleaning/events/7/stations/10/todos/add/',
-      expect.objectContaining({
-        expected_version: 3,
-        request_id: expect.any(String),
-        text: 'Müll rausbringen',
-      }),
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
-    await waitFor(() => expect(input).toHaveValue(''));
-    expect(input).toHaveFocus();
+    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(2));
+    finishFirst({ ok: true });
+  });
+
+  it('keeps historical details read-only and does not render redacted people', () => {
+    const historical = {
+      event: detailData.event,
+      station: {
+        ...detailData.station,
+        is_historical: true,
+        can_toggle_tasks: false,
+      },
+    };
+    delete historical.station.responsible;
+    delete historical.station.children;
+    render(<HappyCleaningStationDetailPage data={historical} mutate={vi.fn()} />);
+
+    expect(screen.getByText('Tische wischen')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /erledigen|wieder öffnen/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('Eingeteilte Kinder')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mira')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
   it('renders the zero state as a dash and converges when remote data is rerendered', () => {

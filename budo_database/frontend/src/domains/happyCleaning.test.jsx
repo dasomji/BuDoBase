@@ -176,6 +176,61 @@ describe('Happy Cleaning management', () => {
     expect(mutate.mock.calls[0][1]).toMatchObject({ expected_revision: 4 });
   });
 
+  it('opens and switches station detail locally, restores focus, and keeps the URL', async () => {
+    const originalPath = window.location.pathname;
+    const fetchImpl = vi.fn().mockImplementation(async url => ({
+      ok: true,
+      json: async () => ({
+        event: { id: Number(new URL(url, 'https://example.test').searchParams.get('event_id')), revision: 2 },
+        station: {
+          id: Number(new URL(url, 'https://example.test').searchParams.get('station_id')),
+          version: 1,
+          name: url.includes('station_id=71') ? 'Bad' : 'Küche',
+          max_kids: 5,
+          meeting_point: 'Hof',
+          wishes: '',
+          content: [],
+          is_historical: false,
+          can_toggle_tasks: true,
+          responsible: null,
+          children: [],
+          todo_checked_count: 0,
+          todo_total_count: 0,
+          todo_progress_percentage: null,
+          todos: [],
+        },
+      }),
+    }));
+    render(<HappyCleaningOverviewPage data={{
+      user_id: 42,
+      active_year: 2026,
+      years: [{
+        year: 2026, loaded: true, is_active: true,
+        turnuses: [{ id: 1, number: 3, start: '2026-07-01', is_active: true, events: [{
+          id: 7, display_number: 1, revision: 2, can_delete: false,
+          stations: [
+            { id: 70, name: 'Küche', max_kids: 2, meeting_point: 'Gang', task_item_count: 4 },
+            { id: 71, name: 'Bad', max_kids: 5, meeting_point: 'Hof', task_item_count: 1 },
+          ],
+        }] }],
+      }],
+    }} mutate={vi.fn()} fetchImpl={fetchImpl} />);
+
+    const kitchen = screen.getByRole('button', { name: 'Station Küche öffnen' });
+    fireEvent.click(kitchen);
+    expect(await screen.findByRole('heading', { name: 'Küche' })).toBeInTheDocument();
+    expect(document.querySelector('.happy-cleaning-overview-split')).toBeInTheDocument();
+    expect(window.location.pathname).toBe(originalPath);
+
+    fireEvent.click(screen.getByRole('row', { name: 'Station Bad' }));
+    expect(await screen.findByRole('heading', { name: 'Bad' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe(originalPath);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zur Liste' }));
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Bad' })).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Station Bad öffnen' })).toHaveFocus();
+  });
+
   it('creates Happy Cleaning from the header action', async () => {
     const mutate = vi.fn().mockResolvedValue({ ok: true });
     render(<HappyCleaningCreateButton mutate={mutate} />);

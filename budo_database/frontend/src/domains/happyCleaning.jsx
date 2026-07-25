@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Printer } from 'lucide-react';
 
 import {
   HappyCleaningAssignmentPage,
   HappyCleaningNumberBatchAction,
 } from './happyCleaningAssignment';
-import { happyCleaningStationDetailRoutes } from './happyCleaningStationDetail';
+import {
+  HappyCleaningStationDetailPage,
+  happyCleaningStationDetailRoutes,
+} from './happyCleaningStationDetail';
 
 
 const requestId = () => globalThis.crypto?.randomUUID?.()
@@ -105,7 +108,7 @@ const compareStationValues = (left, right, key) => {
   });
 };
 
-function StationSummaryTable({ stations, sort, onSort }) {
+function StationSummaryTable({ event, stations, sort, onSort, onSelect, selection, rowRefs }) {
   const sorted = useMemo(() => stations
     .map((station, index) => ({ station, index }))
     .sort((left, right) => {
@@ -133,8 +136,33 @@ function StationSummaryTable({ stations, sort, onSort }) {
         </thead>
         <tbody>
           {sorted.map(station => (
-            <tr key={station.id}>
-              <td>{station.name}</td>
+            <tr
+              key={station.id}
+              tabIndex={0}
+              aria-label={`Station ${station.name}`}
+              aria-selected={selection?.eventId === event.id && selection.stationId === station.id}
+              onClick={() => onSelect(event, station)}
+              onKeyDown={key => {
+                if (key.key === 'Enter' || key.key === ' ') {
+                  key.preventDefault();
+                  onSelect(event, station);
+                }
+              }}
+            >
+              <td><button
+                className="happy-cleaning-station-row-button"
+                type="button"
+                ref={node => {
+                  const key = `${event.id}:${station.id}`;
+                  if (node) rowRefs.current.set(key, node);
+                  else rowRefs.current.delete(key);
+                }}
+                aria-label={`Station ${station.name} öffnen`}
+                onClick={click => {
+                  click.stopPropagation();
+                  onSelect(event, station);
+                }}
+              >{station.name}</button></td>
               <td>{station.max_kids}</td>
               <td>{station.meeting_point}</td>
               <td>{station.task_item_count}</td>
@@ -157,7 +185,13 @@ const readOverviewPreference = (key, activeYear) => {
   return { openYears: [activeYear], sort: { key: 'name', direction: 'asc' } };
 };
 
-export function HappyCleaningOverviewPage({ data, mutate, fetchImpl = fetch }) {
+export function HappyCleaningOverviewPage({
+  data,
+  mutate,
+  fetchImpl = fetch,
+  setPageState = () => {},
+  realtimeSync,
+}) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
@@ -168,10 +202,60 @@ export function HappyCleaningOverviewPage({ data, mutate, fetchImpl = fetch }) {
   const [years, setYears] = useState(data.years);
   const [loadingYears, setLoadingYears] = useState([]);
   const loadingYearRequests = useRef(new Set());
+  const detailRequestId = useRef(0);
+  const rowRefs = useRef(new Map());
+  const [selection, setSelection] = useState(null);
+  const [restoreFocusKey, setRestoreFocusKey] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const loadDetail = useCallback(async selected => {
+    const request = ++detailRequestId.current;
+    setDetailLoading(true);
+    setError('');
+    try {
+      const response = await fetchImpl(
+        `/api/route-data/happy-cleaning-station-detail/?event_id=${selected.eventId}&station_id=${selected.stationId}`,
+        { credentials: 'same-origin' },
+      );
+      if (!response.ok) throw new Error(`Station konnte nicht geladen werden (${response.status})`);
+      const payload = await response.json();
+      if (request === detailRequestId.current) setDetail(payload);
+    } catch (caught) {
+      if (request === detailRequestId.current) setError(caught.message);
+    } finally {
+      if (request === detailRequestId.current) setDetailLoading(false);
+    }
+  }, [fetchImpl]);
+  const selectStation = (event, station) => {
+    const selected = { eventId: event.id, stationId: station.id };
+    setSelection(selected);
+    setDetail(null);
+    setPageState(current => ({ ...current, happyCleaningEventId: event.id }));
+    loadDetail(selected);
+  };
+  const closeDetail = () => {
+    const key = selection && `${selection.eventId}:${selection.stationId}`;
+    detailRequestId.current += 1;
+    setRestoreFocusKey(key);
+    setSelection(null);
+    setDetail(null);
+    setPageState(current => ({ ...current, happyCleaningEventId: null }));
+  };
+  useEffect(() => {
+    if (!selection && restoreFocusKey) {
+      rowRefs.current.get(restoreFocusKey)?.focus();
+      setRestoreFocusKey(null);
+    }
+  }, [restoreFocusKey, selection]);
   useEffect(() => {
     setYears(current => data.years.map(group => (
       group.loaded ? group : current.find(item => item.year === group.year && item.loaded) || group
     )));
+  }, [data.years]);
+  useEffect(() => {
+    if (selection) loadDetail(selection);
+    // Realtime refresh replaces overview data; refresh the selected detail too.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.years]);
   useEffect(() => {
     try {
@@ -247,8 +331,8 @@ export function HappyCleaningOverviewPage({ data, mutate, fetchImpl = fetch }) {
       (subtotal, turnus) => subtotal + turnus.events.length, 0,
     ), 0,
   );
-  return (
-    <main className="happy-cleaning-page" id="body-container">
+  const overview = (
+    <div className="happy-cleaning-overview-list">
       {deleteCandidate && (
         <DeleteConfirmationDialog
           event={deleteCandidate}
@@ -274,7 +358,15 @@ export function HappyCleaningOverviewPage({ data, mutate, fetchImpl = fetch }) {
                     {group.loaded && group.turnuses.flatMap(turnus => turnus.events.map(event => (
                       <article className="card happy-cleaning-event" key={event.id}>
                         <h3>{turnus.number}. Turnus {group.year} · Happy Cleaning {event.display_number}</h3>
-                        <StationSummaryTable stations={event.stations} sort={preference.sort} onSort={changeSort} />
+                        <StationSummaryTable
+                          event={event}
+                          stations={event.stations}
+                          sort={preference.sort}
+                          onSort={changeSort}
+                          onSelect={selectStation}
+                          selection={selection}
+                          rowRefs={rowRefs}
+                        />
                         <div className="react-actions">
                           {event.can_delete && (
                             <button className="button danger" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
@@ -291,6 +383,30 @@ export function HappyCleaningOverviewPage({ data, mutate, fetchImpl = fetch }) {
           );
         })}
       </div>
+    </div>
+  );
+  return (
+    <main className={`happy-cleaning-page happy-cleaning-overview-layout ${selection ? 'happy-cleaning-overview-split' : ''}`} id="body-container">
+      {overview}
+      {selection && (
+        <aside className="happy-cleaning-overview-detail" aria-live="polite">
+          {detailLoading && !detail && <p role="status">Station wird geladen…</p>}
+          {detail && (
+            <HappyCleaningStationDetailPage
+              data={detail}
+              mutate={async (...args) => {
+                const result = await mutate(...args);
+                await loadDetail(selection);
+                return result;
+              }}
+              realtimeSync={realtimeSync}
+              refresh={() => loadDetail(selection)}
+              embedded
+              onBack={closeDetail}
+            />
+          )}
+        </aside>
+      )}
     </main>
   );
 }
@@ -665,7 +781,15 @@ export const happyCleaningRoutes = [
     domain: 'happy-cleaning',
     readContractKey: 'happy-cleaning-overview',
     headerAction: (_data, { mutate }) => <HappyCleaningCreateButton mutate={mutate} />,
-    render: ({ data, mutate, fetchImpl }) => <HappyCleaningOverviewPage data={data} mutate={mutate} fetchImpl={fetchImpl} />,
+    render: ({ data, mutate, fetchImpl, setPageState, realtimeSync }) => (
+      <HappyCleaningOverviewPage
+        data={data}
+        mutate={mutate}
+        fetchImpl={fetchImpl}
+        setPageState={setPageState}
+        realtimeSync={realtimeSync}
+      />
+    ),
   },
   {
     pattern: /^\/happy-cleaning\/(\d+)\/assignment$/,
