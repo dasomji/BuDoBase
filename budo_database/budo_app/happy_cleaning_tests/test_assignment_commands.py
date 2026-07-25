@@ -198,6 +198,229 @@ class HappyCleaningAssignmentCommandTests(TransactionTestCase):
         self.assertIsNone(cleared.json()["child"]["number"])
         self.assertEqual(cleared.json()["child"]["number_version"], 2)
 
+    def test_excused_is_the_only_numberless_assignment_target_and_can_be_moved_or_removed(self):
+        numberless = Kinder.objects.create(
+            kid_index="HC-NUMBERLESS",
+            kid_vorname="Katherine",
+            kid_nachname="Johnson",
+            turnus=self.turnus,
+            anwesend=True,
+        )
+        rejected = self.post(
+            "happy-cleaning-assignment-assign-api",
+            {
+                "request_id": "numberless-normal",
+                "child_id": numberless.id,
+                "station_id": self.station.id,
+            },
+            args=(self.event.id,),
+        )
+        self.assertEqual(rejected.status_code, 409)
+        self.assertEqual(rejected.json()["code"], "number_required")
+
+        excused = self.post(
+            "happy-cleaning-assignment-excuse-api",
+            {"request_id": "excuse-1", "child_id": numberless.id},
+            args=(self.event.id,),
+        )
+        self.assertEqual(excused.status_code, 200)
+        self.assertEqual(excused.json()["assignment"]["station"], {
+            "id": "excused",
+            "name": "Entschuldigt",
+            "is_excused": True,
+        })
+        assignment = HappyCleaningAssignment.objects.get(
+            happy_cleaning=self.event,
+            child=numberless,
+        )
+        self.assertTrue(assignment.is_excused)
+        self.assertIsNone(assignment.station_id)
+
+        removed = self.post(
+            "happy-cleaning-assignment-remove-api",
+            {
+                "request_id": "remove-excused",
+                "expected_version": excused.json()["assignment"]["version"],
+            },
+            args=(self.event.id, numberless.id),
+        )
+        self.assertEqual(removed.status_code, 200)
+        self.assertFalse(HappyCleaningAssignment.objects.filter(pk=assignment.id).exists())
+        remove_audit = AuditEvent.objects.get(
+            action="happy_cleaning.assignment.remove",
+            request_id="remove-excused",
+        )
+        self.assertEqual(remove_audit.details["previous_station_id"], "excused")
+        self.assertIsNone(remove_audit.details["new_station_id"])
+
+        normal = HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.event,
+            station=self.station,
+            child=self.child,
+            version=self.event.revision,
+        )
+        moved = self.post(
+            "happy-cleaning-assignment-move-to-excused-api",
+            {
+                "request_id": "move-to-excused",
+                "expected_version": normal.version,
+            },
+            args=(self.event.id, self.child.id),
+        )
+        self.assertEqual(moved.status_code, 200)
+        normal.refresh_from_db()
+        self.assertTrue(normal.is_excused)
+        self.assertIsNone(normal.station_id)
+
+        moved_back = self.post(
+            "happy-cleaning-assignment-move-api",
+            {
+                "request_id": "move-from-excused",
+                "station_id": self.target.id,
+                "expected_version": moved.json()["assignment"]["version"],
+            },
+            args=(self.event.id, self.child.id),
+        )
+        self.assertEqual(moved_back.status_code, 200)
+        normal.refresh_from_db()
+        self.assertFalse(normal.is_excused)
+        self.assertEqual(normal.station_id, self.target.id)
+        move_audit = AuditEvent.objects.get(
+            action="happy_cleaning.assignment.move",
+            request_id="move-from-excused",
+        )
+        self.assertEqual(move_audit.details["previous_station_id"], "excused")
+        self.assertEqual(move_audit.details["new_station_id"], self.target.id)
+
+    def test_batch_number_assignment_requires_completed_hc1_and_extends_the_pool_atomically(self):
+        self.child.anwesend = True
+        self.child.save(update_fields=("anwesend",))
+        missing = [
+            Kinder.objects.create(
+                kid_index=f"HC-MISSING-{index}",
+                kid_vorname=name,
+                kid_nachname="Numberless",
+                turnus=self.turnus,
+                anwesend=True,
+            )
+            for index, name in enumerate(("Alan", "Katherine"), start=1)
+        ]
+        for number in (1, 2, 3):
+            Kinder.objects.create(
+                kid_index=f"HC-ABSENT-{number}",
+                kid_vorname=f"Absent {number}",
+                turnus=self.turnus,
+                anwesend=False,
+                happy_cleaning_number=number,
+            )
+
+        locked = self.post(
+            "happy-cleaning-child-number-batch-api",
+            {
+                "request_id": "batch-locked",
+                "assignments": [
+                    {"child_id": missing[0].id, "number": 4, "expected_version": 1},
+                    {"child_id": missing[1].id, "number": 5, "expected_version": 1},
+                ],
+            },
+            args=(self.event.id,),
+        )
+        self.assertEqual(locked.status_code, 409)
+        self.assertEqual(locked.json()["code"], "batch_locked")
+
+        HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.event,
+            station=self.station,
+            child=self.child,
+            version=self.event.revision,
+        )
+        for child in missing:
+            HappyCleaningAssignment.objects.create(
+                happy_cleaning=self.event,
+                station=None,
+                target_kind=HappyCleaningAssignment.TargetKind.EXCUSED,
+                child=child,
+                version=self.event.revision,
+            )
+
+        payload = {
+            "request_id": "batch-numbers",
+            "assignments": [
+                {"child_id": missing[0].id, "number": 4, "expected_version": 1},
+                {"child_id": missing[1].id, "number": 5, "expected_version": 1},
+            ],
+        }
+        assigned = self.post(
+            "happy-cleaning-child-number-batch-api",
+            payload,
+            args=(self.event.id,),
+        )
+        replayed = self.post(
+            "happy-cleaning-child-number-batch-api",
+            payload,
+            args=(self.event.id,),
+        )
+
+        self.assertEqual(assigned.status_code, 200)
+        self.assertFalse(assigned.json()["replayed"])
+        self.assertTrue(replayed.json()["replayed"])
+        self.assertEqual(
+            [(child["id"], child["number"], child["number_version"])
+             for child in assigned.json()["children"]],
+            [(missing[0].id, 4, 2), (missing[1].id, 5, 2)],
+        )
+        for child, number in zip(missing, (4, 5), strict=True):
+            child.refresh_from_db()
+            self.assertEqual(child.happy_cleaning_number, number)
+            self.assertEqual(child.happy_cleaning_number_version, 2)
+        batch_audit = AuditEvent.objects.get(
+            action="happy_cleaning.child_number.batch_assign",
+            request_id="batch-numbers",
+        )
+        self.assertEqual(batch_audit.details["result_count"], 2)
+
+    def test_batch_number_assignment_rejects_stale_suggestions_without_partial_writes(self):
+        self.child.anwesend = True
+        self.child.save(update_fields=("anwesend",))
+        missing = Kinder.objects.create(
+            kid_index="HC-STALE-BATCH",
+            kid_vorname="Dorothy",
+            kid_nachname="Vaughan",
+            turnus=self.turnus,
+            anwesend=True,
+        )
+        HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.event,
+            station=self.station,
+            child=self.child,
+            version=self.event.revision,
+        )
+        HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.event,
+            station=None,
+            target_kind=HappyCleaningAssignment.TargetKind.EXCUSED,
+            child=missing,
+            version=self.event.revision,
+        )
+
+        stale = self.post(
+            "happy-cleaning-child-number-batch-api",
+            {
+                "request_id": "batch-stale",
+                "assignments": [
+                    {"child_id": missing.id, "number": 2, "expected_version": 99},
+                ],
+            },
+            args=(self.event.id,),
+        )
+
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(stale.json()["code"], "stale")
+        self.assertTrue(stale.json()["number_batch"]["available"])
+        missing.refresh_from_db()
+        self.assertIsNone(missing.happy_cleaning_number)
+        self.assertEqual(missing.happy_cleaning_number_version, 1)
+
     def test_assign_move_and_remove_are_atomic_versioned_and_mark_activity(self):
         assigned = self.post(
             "happy-cleaning-assignment-assign-api",

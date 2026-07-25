@@ -51,9 +51,16 @@ export const sidebarItems = [
     label: 'Einteilungen',
     icon: ListChecks,
     children: [
-      { label: 'Happy Cleaning', href: '/happy-cleaning/' },
       { label: 'SWP 1', href: '/swp-einteilung-w1' },
       { label: 'SWP 2', href: '/swp-einteilung-w2' },
+    ],
+  },
+  {
+    label: 'Happy Cleaning',
+    icon: Sparkles,
+    children: [
+      { label: 'Übersicht', href: '/happy-cleaning/' },
+      { label: 'Nummernliste', href: '/happy-cleaning/print/' },
     ],
   },
   { label: 'SWPs', href: '/swp-dashboard/', icon: Sparkles },
@@ -78,9 +85,13 @@ function normalizedPath(value) {
   return value.replace(/\/+$/, '');
 }
 
-function isCurrent(href) {
+function isCurrent(href, activePrefix) {
   if (/^https?:/.test(href)) return false;
-  return normalizedPath(window.location.pathname) === normalizedPath(href);
+  const pathname = normalizedPath(window.location.pathname);
+  if (pathname === normalizedPath(href)) return true;
+  if (!activePrefix) return false;
+  const prefix = normalizedPath(activePrefix);
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
 function NavigationLink({ item, sub = false }) {
@@ -96,12 +107,12 @@ function NavigationLink({ item, sub = false }) {
     </a>
   );
   if (sub) {
-    return <SidebarMenuSubButton render={link} isActive={isCurrent(item.href)} />;
+    return <SidebarMenuSubButton render={link} isActive={isCurrent(item.href, item.activePrefix)} />;
   }
   return (
     <SidebarMenuButton
       render={link}
-      isActive={isCurrent(item.href)}
+      isActive={isCurrent(item.href, item.activePrefix)}
       tooltip={item.label}
     />
   );
@@ -136,7 +147,7 @@ function NavigationGroup({ item, index }) {
   const { state, setOpen: setSidebarOpen } = useSidebar();
   const Icon = item.icon;
   const id = `sidebar-group-${index}`;
-  const active = item.children.some(child => isCurrent(child.href));
+  const active = item.children.some(child => isCurrent(child.href, child.activePrefix));
   const setGroupOpen = value => {
     setOpen(current => {
       const next = typeof value === 'function' ? value(current) : value;
@@ -178,7 +189,28 @@ function NavigationGroup({ item, index }) {
   );
 }
 
-export function AppSidebar() {
+function withHappyCleaningEvents(events) {
+  const eventItems = [...events]
+    .sort((left, right) => (
+      left.display_number - right.display_number || left.id - right.id
+    ))
+    .map(event => ({
+      label: `Happy Cleaning ${event.display_number}`,
+      href: `/happy-cleaning/${event.id}/assignment/`,
+      activePrefix: `/happy-cleaning/${event.id}`,
+    }));
+  return sidebarItems.map(item => (
+    item.label === 'Happy Cleaning'
+      ? {
+        ...item,
+        children: [item.children[0], ...eventItems, item.children[1]],
+      }
+      : item
+  ));
+}
+
+export function AppSidebar({ happyCleaningEvents = [] }) {
+  const items = withHappyCleaningEvents(happyCleaningEvents);
   return (
     <Sidebar side="left" collapsible="icon" className="app-sidebar">
       <SidebarHeader>
@@ -200,7 +232,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <nav aria-label="Hauptnavigation">
               <SidebarMenu>
-                {sidebarItems.map((item, index) => item.children ? (
+                {items.map((item, index) => item.children ? (
                   <NavigationGroup item={item} index={index} key={item.label} />
                 ) : (
                   <SidebarMenuItem key={item.href}>

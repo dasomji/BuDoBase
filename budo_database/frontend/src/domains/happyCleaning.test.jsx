@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { routeDataRequest } from '../dataLoader';
-import { parseRoute } from '../routes';
+import { parseRoute, resolveRouteTitle, routeHeaderAction } from '../routes';
 import {
   HappyCleaningCreateButton,
   HappyCleaningManagementPage,
@@ -59,9 +59,9 @@ describe('Happy Cleaning management', () => {
     vi.restoreAllMocks();
   });
 
-  it('owns refreshable overview and management routes with immutable event IDs', () => {
+  it('owns refreshable event management and one Turnus-wide number-list route', () => {
     const overview = parseRoute('/happy-cleaning/');
-    const print = parseRoute('/happy-cleaning/7/print/');
+    const print = parseRoute('/happy-cleaning/print/');
     const management = parseRoute('/happy-cleaning/7/stations/');
     expect(overview).toMatchObject({
       page: 'happy-cleaning-overview',
@@ -78,11 +78,14 @@ describe('Happy Cleaning management', () => {
     );
     expect(print).toMatchObject({
       page: 'happy-cleaning-print',
-      event_id: '7',
       readContractKey: 'happy-cleaning-print',
     });
+    expect(print).not.toHaveProperty('event_id');
     expect(routeDataRequest(print).url).toBe(
-      '/api/route-data/happy-cleaning-print/?event_id=7',
+      '/api/route-data/happy-cleaning-print/',
+    );
+    expect(resolveRouteTitle(print, { authenticated: true })).toBe(
+      'Nummernliste · Happy Cleaning',
     );
   });
 
@@ -99,9 +102,7 @@ describe('Happy Cleaning management', () => {
     expect(screen.getByRole('link', { name: 'Stationen für Happy Cleaning 2' })).toHaveAttribute(
       'href', '/happy-cleaning/9/stations/',
     );
-    expect(screen.getByRole('link', { name: 'Nummernliste für Happy Cleaning 1 drucken' })).toHaveAttribute(
-      'href', '/happy-cleaning/7/print/',
-    );
+    expect(screen.queryByRole('link', { name: /Nummernliste für Happy Cleaning/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Happy Cleaning 1 löschen' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Happy Cleaning hinzufügen' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Happy Cleaning 2 löschen' }));
@@ -201,9 +202,9 @@ describe('Happy Cleaning management', () => {
     expect(screen.getByText('Noch keine Station angelegt.')).toBeInTheDocument();
   });
 
-  it('renders the printable allow-listed groups in projection order', () => {
+  it('renders only the printable fields for each group', () => {
     render(<HappyCleaningPrintPage data={{
-      event: { id: 7, display_number: 2, revision: 5 },
+      number_batch_event_id: 7,
       present_numbered: [
         { id: 2, full_name: 'Zoe Alpha', number: 2, illness: 'Private Krankheit' },
         { id: 1, full_name: 'Ada Lovelace', number: 7, anmelder_email: 'private@example.test' },
@@ -218,6 +219,7 @@ describe('Happy Cleaning management', () => {
       ],
     }} />);
 
+    expect(screen.getByRole('heading', { name: 'Happy Cleaning · Nummernliste', level: 1 })).toBeInTheDocument();
     const numbered = within(screen.getByRole('table', { name: 'Anwesend mit Nummer' }));
     const numberless = within(screen.getByRole('table', { name: 'Anwesend ohne Nummer' }));
     const absent = within(screen.getByRole('table', { name: 'Abwesend' }));
@@ -240,28 +242,76 @@ describe('Happy Cleaning management', () => {
     expect(absent.getAllByRole('columnheader').map(cell => cell.textContent)).toEqual([
       'Nummer',
       'Name',
-      'Abwesenheitsort',
     ]);
     expect(absent.getAllByRole('row').slice(1).map(row => (
       within(row).getAllByRole('cell').map(cell => cell.textContent)
     ))).toEqual([
-      ['9', 'Barbara Able', 'Krankenhaus'],
-      ['3', 'Linus Torvalds', 'Sallingstadt'],
+      ['9', 'Barbara Able'],
+      ['3', 'Linus Torvalds'],
     ]);
     expect(screen.queryByText(/Private Krankheit|private@example\.test|Private Notiz/)).not.toBeInTheDocument();
   });
 
-  it('keeps empty sections titled and offers a working print action', () => {
-    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+  it('offers the same fixed batch-number dialog on the number list after HC1 is complete', async () => {
+    const mutate = vi.fn().mockResolvedValue({ ok: true });
     render(<HappyCleaningPrintPage data={{
-      event: { id: 7, display_number: 2, revision: 5 },
+      number_batch_event_id: 7,
+      number_batch: {
+        available: true,
+        children: [
+          { id: 4, full_name: 'Grace Hopper', number: 3, expected_version: 1 },
+        ],
+      },
+      present_numbered: [],
+      present_numberless: [{ id: 4, full_name: 'Grace Hopper' }],
+      absent: [],
+    }} mutate={mutate} />);
+
+    const batchButton = screen.getByRole('button', { name: 'Kindern ohne Nummern, Nummern zuteilen' });
+    expect(screen.getByRole('region', { name: 'Anwesend ohne Nummer' })).toContainElement(batchButton);
+    expect([...document.querySelectorAll('.happy-cleaning-print-section > h2')].map(heading => heading.textContent)).toEqual([
+      'Anwesend ohne Nummer',
+      'Anwesend mit Nummer',
+      'Abwesend',
+    ]);
+
+    fireEvent.click(batchButton);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('list', { name: 'Vorgeschlagene Nummern' })).toHaveTextContent('Grace Hopper3');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Bestätigen' }));
+
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/7/numbers/assign-missing/',
+      expect.objectContaining({
+        assignments: [{ child_id: 4, number: 3, expected_version: 1 }],
+      }),
+    ));
+  });
+
+  it('keeps empty sections titled without duplicating navigation actions in the page', () => {
+    render(<HappyCleaningPrintPage data={{
+      number_batch_event_id: 7,
       present_numbered: [],
       present_numberless: [],
       absent: [],
     }} />);
 
     expect(screen.getAllByText('Keine Kinder in diesem Abschnitt.')).toHaveLength(3);
-    fireEvent.click(screen.getByRole('button', { name: 'Nummernliste drucken' }));
+    expect(screen.queryByRole('link', { name: 'Zur Übersicht' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Drucken' })).not.toBeInTheDocument();
+  });
+
+  it('provides a compact print-icon header action with the label Drucken', () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    render(routeHeaderAction(parseRoute('/happy-cleaning/print/'), {}));
+
+    const printButton = screen.getByRole('button', { name: 'Drucken' });
+    expect(printButton).toHaveClass('mobile-icon-action');
+    expect(printButton.querySelector('.desktop-action-label')).toHaveTextContent('Drucken');
+    expect(printButton.querySelector('.lucide-printer')).toBeInTheDocument();
+    expect(printButton).not.toHaveTextContent('Nummernliste');
+
+    fireEvent.click(printButton);
     expect(print).toHaveBeenCalledOnce();
   });
 });

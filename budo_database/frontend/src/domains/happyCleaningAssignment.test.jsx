@@ -1,14 +1,19 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { Toaster } from '../components/ui/toast';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute } from '../routes';
 import { HappyCleaningAssignmentPage } from './happyCleaningAssignment';
 
+const render = ui => testingLibraryRender(ui, {
+  wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
+});
 
 const assignmentData = {
   event: { id: 7, display_number: 2, revision: 5 },
   summary: { assigned_present: 1, present_total: 2 },
+  number_batch: { available: false, children: [] },
   children: [
     {
       id: 1,
@@ -59,7 +64,7 @@ const assignmentData = {
       assigned_count: 1,
       free_seats: 1,
       todo_progress_percentage: 50,
-      children: [{ id: 1, full_name: 'Ada Lovelace', short_name: 'Ada Lo', present: true, assignment_version: 6 }],
+      children: [{ id: 1, full_name: 'Ada Lovelace', short_name: 'Ada Lo', number: 7, present: true, assignment_version: 6 }],
     },
     {
       id: 11,
@@ -72,7 +77,13 @@ const assignmentData = {
       assigned_count: 1,
       free_seats: 0,
       todo_progress_percentage: null,
-      children: [{ id: 3, full_name: 'Linus Torvalds', short_name: 'Linus To', present: false, assignment_version: 4 }],
+      children: [{ id: 3, full_name: 'Linus Torvalds', short_name: 'Linus To', number: 3, present: false, assignment_version: 4 }],
+    },
+    {
+      id: 'excused',
+      name: 'Entschuldigt',
+      is_excused: true,
+      children: [],
     },
   ],
 };
@@ -80,7 +91,7 @@ const assignmentData = {
 const setViewport = mobile => {
   window.matchMedia = vi.fn().mockReturnValue({
     matches: mobile,
-    media: '(max-width: 759px)',
+    media: '(max-width: 639px)',
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   });
@@ -107,6 +118,16 @@ describe('Happy Cleaning assignment', () => {
     );
   });
 
+  it('shows the Carlos placeholder card before a child is selected', () => {
+    setViewport(false);
+    render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
+
+    const placeholder = screen.getByRole('region', { name: 'Platzhalter Kind' });
+    expect(within(placeholder).getByRole('heading', { name: 'Carlos' })).toBeInTheDocument();
+    expect(within(placeholder).getByText('Nummer').nextElementSibling).toHaveTextContent('∞');
+    expect(within(placeholder).getByText('Station').nextElementSibling).toHaveTextContent('überall und nirgends');
+  });
+
   it('searches all Turnus children with an accessible desktop keyboard interaction', () => {
     setViewport(false);
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
@@ -117,7 +138,7 @@ describe('Happy Cleaning assignment', () => {
     expect(search).toHaveAttribute('aria-expanded', 'true');
     expect(search).toHaveAttribute('aria-controls', 'happy-cleaning-child-results');
     const option = screen.getByRole('option', { name: /Ada Lovelace/ });
-    expect(option).toHaveTextContent('Nummer 7');
+    expect(option).toHaveTextContent('#7');
     expect(option).toHaveTextContent('Speisesaal');
     expect(option).toHaveTextContent('Anwesend');
 
@@ -126,8 +147,13 @@ describe('Happy Cleaning assignment', () => {
     fireEvent.keyDown(search, { key: 'Enter' });
 
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Kind suchen' })).toHaveValue('Ada Lovelace');
+    const heading = screen.getByRole('heading', { name: 'Ada Lovelace' });
+    const controls = heading.closest('.happy-cleaning-assignment-controls');
+    const selectedSearch = screen.getByRole('combobox', { name: 'Kind suchen' });
+    expect(controls).toContainElement(selectedSearch);
+    expect(controls.children).toHaveLength(2);
+    expect(selectedSearch).toHaveValue('Ada Lovelace');
+    expect(screen.queryByText('Auf Stationsnamen klicken, um Ada Lovelace einzuteilen.')).not.toBeInTheDocument();
   });
 
   it('scrolls keyboard options into view and closes results with Escape without moving focus', () => {
@@ -162,32 +188,47 @@ describe('Happy Cleaning assignment', () => {
 
     fireEvent.click(option);
 
-    expect(screen.getByRole('heading', { name: 'Linus Torvalds' })).toBeInTheDocument();
-    expect(screen.getByText('Abwesend · Sallingstadt')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Linus Torvalds ❌' })).toBeInTheDocument();
+    expect(screen.queryByText('Anwesenheit')).not.toBeInTheDocument();
+    expect(screen.queryByText('Abwesend · Sallingstadt')).not.toBeInTheDocument();
     expect(screen.getByText('Nummer').nextElementSibling).toHaveTextContent('3');
   });
 
-  it('counts only present children and selects from the present unassigned list', () => {
+  it('opens present unassigned children in a closable dialog and selects one', async () => {
     setViewport(false);
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '1 von 2 anwesenden Kindern eingeteilt' }));
+    const counterInfo = screen.getByText('Eingeteilt: 1/2');
+    expect(counterInfo).toHaveClass('happy-cleaning-counter-info');
+    const counter = screen.getByRole('button', { name: 'Nicht eingeteilte Kinder anzeigen' });
+    expect(counter.closest('.happy-cleaning-counter-row')).toContainElement(counterInfo);
+    fireEvent.click(counter);
 
-    const list = screen.getByRole('list', { name: 'Anwesende nicht eingeteilte Kinder' });
+    let dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('heading', { level: 2, name: 'Anwesende nicht eingeteilte Kinder' })).toBeInTheDocument();
+    const list = within(dialog).getByRole('list', { name: 'Anwesende nicht eingeteilte Kinder' });
     expect(list).toHaveTextContent('Grace Hopper');
     expect(list).not.toHaveTextContent('Ada Lovelace');
     expect(list).not.toHaveTextContent('Linus Torvalds');
+    const close = within(dialog).getByRole('button', { name: 'Dialog schließen' });
+    expect(close.querySelector('.lucide-x')).toBeInTheDocument();
+    fireEvent.click(close);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Grace Hopper auswählen' }));
+    fireEvent.click(counter);
+    dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Grace Hopper auswählen' }));
     expect(screen.getByRole('heading', { name: 'Grace Hopper' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Kind suchen' })).toHaveValue('Grace Hopper');
   });
 
-  it('renders the complete desktop station table and compact mobile cards', () => {
+  it('renders the complete tablet table and a reduced mobile table with station-detail dialogs', () => {
     setViewport(false);
     const desktop = render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
 
     const table = screen.getByRole('table', { name: 'Happy Cleaning Stationen' });
+    expect(table).toHaveClass('data-table');
+    expect(within(table).getByRole('row', { name: /Station Wünsche/ })).toHaveClass('table-header');
     expect(within(table).getByRole('columnheader', { name: 'Wünsche' })).toBeInTheDocument();
     expect(within(table).getByRole('link', { name: 'Speisesaal' })).toHaveAttribute(
       'href', '/happy-cleaning/7/stations/10/',
@@ -198,19 +239,214 @@ describe('Happy Cleaning assignment', () => {
     expect(within(table).getByText('1 / 2 frei')).toBeInTheDocument();
     expect(within(table).getByText('50%')).toBeInTheDocument();
     expect(within(table).getAllByText('—').length).toBeGreaterThan(0);
-    expect(within(table).getByRole('button', { name: 'Ada Lovelace aus Speisesaal entfernen' })).toHaveTextContent('Ada Lo');
+    const childButton = within(table).getByRole('button', { name: 'Ada Lovelace auswählen' });
+    expect(childButton).toHaveTextContent('Ada Lo');
+    expect(childButton).toHaveAttribute('title', 'Ada Lovelace #7');
+
+    const hideChildren = within(table).getByRole('button', { name: 'Kindernamen verbergen' });
+    expect(hideChildren.querySelector('.lucide-eye')).toBeInTheDocument();
+    fireEvent.click(hideChildren);
+
+    expect(table).toHaveClass('happy-cleaning-children-hidden');
+    expect(within(table).getByRole('button', { name: 'Kindernamen anzeigen' }).querySelector('.lucide-eye-off')).toBeInTheDocument();
+    const diningHallRow = within(table).getByRole('rowheader', { name: 'Speisesaal' }).closest('tr');
+    expect(diningHallRow.querySelector('.happy-cleaning-assigned-count')).toHaveTextContent('1');
+    expect(diningHallRow.querySelector('.happy-cleaning-assigned-count')).toHaveAccessibleName('1 eingeteiltes Kind');
+    expect(childButton).toBeInTheDocument();
 
     desktop.unmount();
     setViewport(true);
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
 
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    const card = screen.getByRole('article', { name: 'Station Speisesaal' });
-    expect(card).toHaveTextContent('Wünsche');
-    expect(card).toHaveTextContent('Fenster');
-    expect(card).toHaveTextContent('Treffpunkt');
-    expect(card).toHaveTextContent('Vor dem Saal');
-    expect(card).toHaveTextContent('Mira');
+    const mobileTable = screen.getByRole('table', { name: 'Happy Cleaning Stationen' });
+    expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 639px)');
+    expect(mobileTable).toHaveClass('happy-cleaning-mobile-table');
+    expect(within(mobileTable).getByRole('columnheader', { name: 'SWP' })).toBeInTheDocument();
+    expect(within(mobileTable).getByRole('columnheader', { name: 'Plätze' })).toBeInTheDocument();
+    expect(within(mobileTable).getByRole('columnheader', { name: 'Details' })).toBeInTheDocument();
+    expect(within(mobileTable).getByRole('columnheader', { name: 'Wünsche' })).toHaveClass('happy-cleaning-desktop-column');
+    const detailsTrigger = within(mobileTable).getByRole('button', { name: 'Details zu Speisesaal anzeigen' });
+    expect(detailsTrigger.querySelector('.lucide-eye')).toBeInTheDocument();
+    fireEvent.click(detailsTrigger);
+
+    const stationDialog = screen.getByRole('dialog');
+    expect(within(stationDialog).getByRole('heading', { name: 'Speisesaal' })).toBeInTheDocument();
+    expect(stationDialog).toHaveTextContent('Wünsche');
+    expect(stationDialog).toHaveTextContent('Fenster');
+    expect(stationDialog).toHaveTextContent('Treffpunkt');
+    expect(stationDialog).toHaveTextContent('Vor dem Saal');
+    expect(stationDialog).toHaveTextContent('Mira');
+    expect(stationDialog).toHaveTextContent('1 / 2 frei');
+    expect(stationDialog).toHaveTextContent('50%');
+    expect(within(stationDialog).getByRole('button', { name: 'Ada Lovelace auswählen' })).toBeInTheDocument();
+  });
+
+  it('assigns a numberless child to the built-in Entschuldigt target', async () => {
+    setViewport(false);
+    const mutate = vi.fn().mockResolvedValue({ ok: true });
+    render(<HappyCleaningAssignmentPage data={assignmentData} mutate={mutate} />);
+
+    const table = screen.getByRole('table', { name: 'Happy Cleaning Stationen' });
+    const excusedRow = within(table).getByRole('rowheader', { name: 'Entschuldigt' }).closest('tr');
+    expect(excusedRow).not.toHaveTextContent(/Wünsche|Treffpunkt|Verantwortlich|Plätze|Aufgaben/);
+    expect(within(excusedRow).queryByRole('link', { name: 'Entschuldigt' })).not.toBeInTheDocument();
+    expect(within(excusedRow).queryByRole('button', { name: /Details/ })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Kind suchen' }), { target: { value: 'Grace' } });
+    fireEvent.click(screen.getByRole('option', { name: /Grace Hopper/ }));
+
+    expect(screen.getByRole('button', { name: 'Grace Hopper Speisesaal zuweisen' })).toBeDisabled();
+    const excuse = screen.getByRole('button', { name: 'Grace Hopper Entschuldigt zuweisen' });
+    expect(excuse).toBeEnabled();
+    fireEvent.click(excuse);
+
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/7/assignments/excuse/',
+      expect.objectContaining({ child_id: 2 }),
+    ));
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Grace Hopper wurde als Entschuldigt eingeteilt.');
+  });
+
+  it('moves children between a station and Entschuldigt through the target-specific commands', async () => {
+    setViewport(false);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const moveToExcused = vi.fn().mockResolvedValue({ ok: true });
+    const normalAssignment = render(
+      <HappyCleaningAssignmentPage data={assignmentData} mutate={moveToExcused} />,
+    );
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Kind suchen' }), { target: { value: 'Ada' } });
+    fireEvent.click(screen.getByRole('option', { name: /Ada Lovelace/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ada Lovelace Entschuldigt zuweisen' }));
+
+    expect(confirm).toHaveBeenCalledWith(
+      'Ada Lovelace von Speisesaal nach Entschuldigt verschieben?',
+    );
+    await waitFor(() => expect(moveToExcused).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/7/assignments/1/excuse/',
+      expect.objectContaining({ expected_version: 6 }),
+    ));
+    normalAssignment.unmount();
+
+    const excusedData = {
+      ...assignmentData,
+      children: assignmentData.children.map(child => child.id === 2
+        ? {
+          ...child,
+          number: 8,
+          assigned_station: { id: 'excused', name: 'Entschuldigt', is_excused: true },
+          assignment_version: 9,
+        }
+        : child),
+      stations: assignmentData.stations.map(station => station.is_excused
+        ? {
+          ...station,
+          children: [{
+            id: 2,
+            full_name: 'Grace Hopper',
+            short_name: 'Grace Ho',
+            number: 8,
+            present: true,
+            assignment_version: 9,
+          }],
+        }
+        : station),
+    };
+    const moveToStation = vi.fn().mockResolvedValue({ ok: true });
+    render(<HappyCleaningAssignmentPage data={excusedData} mutate={moveToStation} />);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Kind suchen' }), { target: { value: 'Grace' } });
+    fireEvent.click(screen.getByRole('option', { name: /Grace Hopper/ }));
+    expect(screen.getByRole('button', { name: 'Grace Hopper Entschuldigt zuweisen' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Grace Hopper Speisesaal zuweisen' }));
+
+    expect(confirm).toHaveBeenLastCalledWith(
+      'Grace Hopper von Entschuldigt nach Speisesaal verschieben?',
+    );
+    await waitFor(() => expect(moveToStation).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/7/assignments/2/move/',
+      expect.objectContaining({ station_id: 10, expected_version: 9 }),
+    ));
+  });
+
+  it('shows fixed missing-number suggestions beside the completed counter and confirms them as one batch', async () => {
+    setViewport(false);
+    const data = {
+      ...assignmentData,
+      summary: { assigned_present: 2, present_total: 2 },
+      number_batch: {
+        available: true,
+        children: [
+          { id: 2, full_name: 'Grace Hopper', number: 2, expected_version: 1 },
+          { id: 4, full_name: 'Katherine Johnson', number: 4, expected_version: 3 },
+        ],
+      },
+    };
+    const mutate = vi.fn().mockResolvedValue({ ok: true });
+    render(<HappyCleaningAssignmentPage data={data} mutate={mutate} />);
+
+    const batch = screen.getByRole('button', { name: 'Kindern ohne Nummern, Nummern zuteilen' });
+    expect(batch.closest('.happy-cleaning-counter-row')).toContainElement(
+      screen.getByRole('button', { name: 'Nicht eingeteilte Kinder anzeigen' }),
+    );
+    fireEvent.click(batch);
+
+    let dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: 'Nummern zuteilen' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('list', { name: 'Vorgeschlagene Nummern' })).toHaveTextContent('Grace Hopper2');
+    expect(within(dialog).getByRole('list', { name: 'Vorgeschlagene Nummern' })).toHaveTextContent('Katherine Johnson4');
+    expect(within(dialog).queryByRole('spinbutton')).not.toBeInTheDocument();
+    const actions = within(dialog).getByRole('group', { name: 'Dialogaktionen' });
+    expect(actions).toHaveClass('happy-cleaning-batch-actions');
+    fireEvent.click(within(actions).getByRole('button', { name: 'Abbrechen' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    fireEvent.click(batch);
+    dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Bestätigen' }));
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/7/numbers/assign-missing/',
+      {
+        request_id: expect.any(String),
+        assignments: [
+          { child_id: 2, number: 2, expected_version: 1 },
+          { child_id: 4, number: 4, expected_version: 3 },
+        ],
+      },
+    ));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('refreshes stale batch state when another writer assigned every number', async () => {
+    setViewport(false);
+    const data = {
+      ...assignmentData,
+      number_batch: {
+        available: true,
+        children: [
+          { id: 2, full_name: 'Grace Hopper', number: 2, expected_version: 1 },
+        ],
+      },
+    };
+    const error = new Error('nothing left to assign');
+    error.payload = { code: 'nothing_to_assign' };
+    const mutate = vi.fn().mockRejectedValue(error);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    render(
+      <HappyCleaningAssignmentPage
+        data={data}
+        mutate={mutate}
+        refresh={refresh}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Kindern ohne Nummern, Nummern zuteilen' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bestätigen' }));
+
+    await waitFor(() => expect(refresh).toHaveBeenCalledWith({ preserveData: true }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Es sind keine Nummern mehr zuzuteilen. Die Daten wurden neu geladen.',
+    );
   });
 
   it('gates station assignment on a versioned number entry', async () => {
@@ -222,9 +458,17 @@ describe('Happy Cleaning assignment', () => {
     fireEvent.change(search, { target: { value: 'Grace' } });
     fireEvent.click(screen.getByRole('option', { name: /Grace Hopper/ }));
 
-    expect(screen.getByText('Vor der Einteilung braucht Grace Hopper eine Nummer.')).toBeInTheDocument();
+    const details = screen.getByRole('region', { name: 'Ausgewähltes Kind' });
+    const numberDetails = within(details).getByText('Nummer').nextElementSibling;
+    const stationDetails = within(details).getByText('Station').nextElementSibling;
+    const numberInput = screen.getByRole('spinbutton', { name: 'Happy Cleaning Nummer für Grace Hopper' });
+    expect(numberDetails).toContainElement(numberInput);
+    expect(stationDetails).toHaveTextContent('Kann erst eingeteilt werden, wenn eine Nummer eingetragen wurde');
+    expect(screen.queryByText('Noch keine Nummer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Happy Cleaning Nummer für Grace Hopper')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Auf Stationsnamen klicken, um Grace Hopper/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Grace Hopper Speisesaal zuweisen' })).toBeDisabled();
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Happy Cleaning Nummer für Grace Hopper' }), { target: { value: '8' } });
+    fireEvent.change(numberInput, { target: { value: '8' } });
     fireEvent.click(screen.getByRole('button', { name: 'Nummer speichern' }));
 
     await waitFor(() => expect(mutate).toHaveBeenCalledWith(
@@ -248,23 +492,56 @@ describe('Happy Cleaning assignment', () => {
         { number: 11, free: true, child: null },
       ],
     };
-    const mutate = vi.fn().mockRejectedValue(duplicate);
+    const mutate = vi.fn()
+      .mockRejectedValueOnce(duplicate)
+      .mockRejectedValueOnce(duplicate)
+      .mockResolvedValueOnce({ ok: true });
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={mutate} />);
 
     const search = screen.getByRole('combobox', { name: 'Kind suchen' });
     fireEvent.change(search, { target: { value: 'Ada' } });
     fireEvent.keyDown(search, { key: 'ArrowDown' });
     fireEvent.keyDown(search, { key: 'Enter' });
-    const number = screen.getByRole('spinbutton', { name: 'Happy Cleaning Nummer für Ada Lovelace' });
+    const details = screen.getByRole('region', { name: 'Ausgewähltes Kind' });
+    const numberDetails = within(details).getByText('Nummer').nextElementSibling;
+    expect(numberDetails).toHaveTextContent('7');
+    expect(within(numberDetails).queryByRole('spinbutton')).not.toBeInTheDocument();
+    fireEvent.click(within(numberDetails).getByRole('button', { name: 'Nummer für Ada Lovelace bearbeiten' }));
+    let number = screen.getByRole('spinbutton', { name: 'Happy Cleaning Nummer für Ada Lovelace' });
+    expect(numberDetails).toContainElement(number);
+    expect(number).toHaveValue(7);
+    expect(screen.getByRole('button', { name: 'Nummer aktualisieren' })).toBeInTheDocument();
+    fireEvent.change(number, { target: { value: '8' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(screen.queryByRole('spinbutton', { name: 'Happy Cleaning Nummer für Ada Lovelace' })).not.toBeInTheDocument();
+
+    fireEvent.click(within(numberDetails).getByRole('button', { name: 'Nummer für Ada Lovelace bearbeiten' }));
+    number = screen.getByRole('spinbutton', { name: 'Happy Cleaning Nummer für Ada Lovelace' });
     expect(number).toHaveValue(7);
     fireEvent.change(number, { target: { value: '8' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Nummer speichern' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nummer aktualisieren' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nummer 8 ist bereits vergeben.');
-    const neighborhood = screen.getByRole('list', { name: 'Nummern rund um 8' });
-    expect(neighborhood).toHaveTextContent('5 frei');
-    expect(neighborhood).toHaveTextContent('8 Alan Turing');
-    expect(neighborhood).toHaveTextContent('11 frei');
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('heading', { level: 2, name: 'Nummer 8 ist bereits vergeben.' })).toBeInTheDocument();
+    expect(within(dialog).getByText('Klicke auf eine freie Zahl zum zuweisen')).toBeInTheDocument();
+    const neighborhood = within(dialog).getByRole('list', { name: 'Freie Nummer auswählen' });
+    expect(within(neighborhood).getAllByRole('listitem')).toHaveLength(7);
+    expect(within(neighborhood).getAllByRole('button', { name: /als Nummer zuweisen/ })).toHaveLength(5);
+    expect(within(neighborhood).queryByRole('button', { name: '8 als Nummer zuweisen' })).not.toBeInTheDocument();
+    expect(neighborhood).toHaveTextContent('8Alan Turing');
+    const close = within(dialog).getByRole('button', { name: 'Dialog schließen' });
+    expect(close.querySelector('.lucide-x')).toBeInTheDocument();
+    fireEvent.click(close);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nummer aktualisieren' }));
+    const reopenedDialog = await screen.findByRole('dialog');
+    fireEvent.click(within(reopenedDialog).getByRole('button', { name: '5 als Nummer zuweisen' }));
+    await waitFor(() => expect(mutate).toHaveBeenLastCalledWith(
+      '/api/happy-cleaning/children/1/number/',
+      expect.objectContaining({ number: 5, expected_version: 2 }),
+    ));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument();
   });
 
@@ -288,7 +565,8 @@ describe('Happy Cleaning assignment', () => {
       '/api/happy-cleaning/events/7/assignments/assign/',
       expect.objectContaining({ child_id: 2, station_id: 10 }),
     ));
-    expect(await screen.findByRole('status')).toHaveTextContent('Grace Hopper wurde Speisesaal zugeteilt.');
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Grace Hopper wurde Speisesaal zugeteilt.');
+    expect(screen.getByRole('region', { name: 'Benachrichtigungen' })).toHaveClass('app-toast-viewport');
     expect(screen.queryByRole('heading', { name: 'Grace Hopper' })).not.toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Kind suchen' })).toHaveValue('');
     expect(screen.getByRole('combobox', { name: 'Kind suchen' })).toHaveFocus();
@@ -325,7 +603,7 @@ describe('Happy Cleaning assignment', () => {
       '/api/happy-cleaning/events/7/assignments/1/move/',
       expect.objectContaining({ station_id: 11, expected_version: 6 }),
     ));
-    expect(screen.getByRole('status')).toHaveTextContent('Ada Lovelace wurde nach Bad verschoben.');
+    expect(screen.getByRole('dialog')).toHaveTextContent('Ada Lovelace wurde nach Bad verschoben.');
   });
 
   it('marks full stations before a child is selected while keeping their detail links', () => {
@@ -342,21 +620,19 @@ describe('Happy Cleaning assignment', () => {
     );
   });
 
-  it('confirms pill removal with the assignment version', async () => {
+  it('selects a child pill for the normal child-detail flow without removing it', () => {
     setViewport(false);
-    const mutate = vi.fn().mockResolvedValue({ ok: true });
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const mutate = vi.fn();
+    const confirm = vi.spyOn(window, 'confirm');
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={mutate} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ada Lovelace aus Speisesaal entfernen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ada Lovelace auswählen' }));
 
-    expect(confirm).toHaveBeenCalledWith('Ada Lovelace aus Speisesaal entfernen?');
-    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
-      '/api/happy-cleaning/events/7/assignments/1/remove/',
-      expect.objectContaining({ expected_version: 6 }),
-    ));
-    expect(screen.getByRole('status')).toHaveTextContent('Ada Lovelace wurde aus Speisesaal entfernt.');
-    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Kind suchen' })).toHaveFocus());
+    expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Kind suchen' })).toHaveValue('Ada Lovelace');
+    expect(within(screen.getByRole('region', { name: 'Ausgewähltes Kind' })).getByText('Station').nextElementSibling).toHaveTextContent('Speisesaal');
+    expect(confirm).not.toHaveBeenCalled();
+    expect(mutate).not.toHaveBeenCalled();
   });
 
   it('retains selection and reconciles the focused snapshot after a station conflict', async () => {
@@ -390,10 +666,12 @@ describe('Happy Cleaning assignment', () => {
     />);
     fireEvent.change(screen.getByRole('combobox', { name: 'Kind suchen' }), { target: { value: 'Ada' } });
     fireEvent.click(screen.getByRole('option', { name: /Ada Lovelace/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nummer für Ada Lovelace bearbeiten' }));
 
     expect(screen.getByRole('spinbutton', { name: 'Happy Cleaning Nummer für Ada Lovelace' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Nummer speichern' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Ada Lovelace aus Speisesaal entfernen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Nummer aktualisieren' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Abbrechen' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Ada Lovelace auswählen' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Ada Lovelace Bad zuweisen' })).toBeDisabled();
   });
 
@@ -415,8 +693,11 @@ describe('Happy Cleaning assignment', () => {
     };
     rerender(<HappyCleaningAssignmentPage data={refreshed} mutate={vi.fn()} />);
 
+    const details = screen.getByLabelText('Ausgewähltes Kind');
+    expect(within(details).getByText('Nummer').nextElementSibling).toHaveTextContent('9');
+    fireEvent.click(screen.getByRole('button', { name: 'Nummer für Ada Lovelace bearbeiten' }));
     expect(screen.getByRole('spinbutton', { name: 'Happy Cleaning Nummer für Ada Lovelace' })).toHaveValue(9);
-    expect(within(screen.getByLabelText('Ausgewähltes Kind')).getByText('Station').nextElementSibling).toHaveTextContent('Bad');
+    expect(within(details).getByText('Station').nextElementSibling).toHaveTextContent('Bad');
     expect(screen.getByRole('table', { name: 'Happy Cleaning Stationen' })).toHaveTextContent('100%');
   });
 });

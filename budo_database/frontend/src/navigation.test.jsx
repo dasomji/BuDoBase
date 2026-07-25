@@ -13,24 +13,54 @@ describe('application sidebar navigation', () => {
 
   it('renders the requested navigation hierarchy and profile footer', () => {
     window.history.pushState({}, '', '/all_kids');
-    render(<ApplicationShell sidebar={<AppSidebar />} header={<div>Header</div>}><div>Inhalt</div></ApplicationShell>);
+    render(<ApplicationShell sidebar={<AppSidebar happyCleaningEvents={[
+      { id: 7, display_number: 1 },
+      { id: 9, display_number: 2 },
+    ]} />} header={<div>Header</div>}><div>Inhalt</div></ApplicationShell>);
 
     const navigation = screen.getByRole('navigation', { name: 'Hauptnavigation' });
     const lists = within(navigation).getByRole('button', { name: 'Listen' });
     const allocations = within(navigation).getByRole('button', { name: 'Einteilungen' });
+    const happyCleaning = within(navigation).getByRole('button', { name: 'Happy Cleaning' });
     const orga = within(navigation).getByRole('button', { name: 'Orgi' });
+    const allocationsMenu = document.getElementById(allocations.getAttribute('aria-controls'));
+    const happyCleaningMenu = document.getElementById(happyCleaning.getAttribute('aria-controls'));
 
     expect(lists).toHaveAttribute('aria-expanded', 'true');
     expect(allocations).toHaveAttribute('aria-expanded', 'true');
+    expect(happyCleaning).toHaveAttribute('aria-expanded', 'true');
     expect(orga).toHaveAttribute('aria-expanded', 'true');
     expect(within(navigation).getByRole('link', { name: 'Team' })).toHaveAttribute('href', '/team/');
     expect(within(navigation).getByRole('link', { name: 'Alle Kinder' })).toHaveAttribute('href', '/all_kids');
-    expect(within(navigation).getByRole('link', { name: 'Happy Cleaning' })).toHaveAttribute('href', '/happy-cleaning/');
+    expect(within(allocationsMenu).queryByRole('link', { name: 'Happy Cleaning' })).not.toBeInTheDocument();
+    expect(within(happyCleaningMenu).getAllByRole('link').map(link => link.textContent)).toEqual([
+      'Übersicht',
+      'Happy Cleaning 1',
+      'Happy Cleaning 2',
+      'Nummernliste',
+    ]);
+    expect(within(happyCleaningMenu).getByRole('link', { name: 'Übersicht' })).toHaveAttribute('href', '/happy-cleaning/');
+    expect(within(happyCleaningMenu).getByRole('link', { name: 'Happy Cleaning 1' })).toHaveAttribute('href', '/happy-cleaning/7/assignment/');
+    expect(within(happyCleaningMenu).getByRole('link', { name: 'Nummernliste' })).toHaveAttribute('href', '/happy-cleaning/print/');
     expect(within(navigation).getByRole('link', { name: 'SWP 1' })).toHaveAttribute('href', '/swp-einteilung-w1');
     expect(within(navigation).getByRole('link', { name: 'Spiele' })).toHaveAttribute('target', '_blank');
     expect(within(navigation).getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin/');
     expect(screen.getByRole('link', { name: 'Profil' })).toHaveAttribute('href', '/profil/');
     expect(within(navigation).getByRole('link', { name: 'Alle Kinder' })).toHaveAttribute('data-active');
+  });
+
+  it('marks an event item active throughout that Happy Cleaning event', () => {
+    window.history.pushState({}, '', '/happy-cleaning/9/stations/');
+    render(<ApplicationShell sidebar={<AppSidebar happyCleaningEvents={[
+      { id: 7, display_number: 1 },
+      { id: 9, display_number: 2 },
+    ]} />} header={<div>Header</div>}><div>Inhalt</div></ApplicationShell>);
+
+    const group = screen.getByRole('button', { name: 'Happy Cleaning' });
+    const item = screen.getByRole('link', { name: 'Happy Cleaning 2' });
+
+    expect(group).toHaveAttribute('data-active');
+    expect(item).toHaveAttribute('data-active');
   });
 
   it('collapses nested navigation groups accessibly', () => {

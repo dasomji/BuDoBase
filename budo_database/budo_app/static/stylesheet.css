@@ -731,19 +731,19 @@ button:hover,
   border-radius: var(--corner-rad);
 }
 
-#kids-table {
+.data-table {
   border-radius: var(--corner-rad);
   /* overflow: hidden; It's super important that the overflow is not hidden, otherwise sticky elements don't work!*/
 }
 
 .table-header th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-table-header);
   background-color: var(--dark-blue);
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
-  position: sticky;
-  top: 0;
-  z-index: var(--z-table-header);
 }
 
 .table-header th::after {
@@ -751,51 +751,51 @@ button:hover,
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 100%;
-  border-bottom: 1px solid #8f8f8f;
   z-index: 3;
   box-sizing: border-box;
+  width: 100%;
+  border-bottom: 1px solid #8f8f8f;
 }
 
-#kids-table td,
-#kids-table th,
+.data-table td,
+.data-table th,
 .meal-table td,
 .meal-table th {
   padding: var(--s-padding);
   vertical-align: top;
 }
 
-#kids-table td.headcol {
+.data-table td.headcol {
   position: sticky;
   left: 0;
   z-index: var(--z-headcol);
   background-color: var(--dark-blue);
 }
 
-#kids-table th.headcol {
-  z-index: var(--z-th-headcol);
+.data-table th.headcol {
   left: 0;
   top: 0;
+  z-index: var(--z-th-headcol);
   background-color: var(--dark-blue);
 }
 
 .meal-table tr,
-#kids-table tr {
-  background-color: var(--bg-blue);
+.data-table tr {
   border-bottom: 1px solid #8f8f8f;
+  background-color: var(--bg-blue);
   padding: var(--m-padding);
 }
 
 .meal-table tr:last-of-type,
-#kids-table tr:last-of-type {
+.data-table tr:last-of-type {
   border-bottom: none;
 }
 
-#kids-table a {
+.data-table a {
   text-decoration: none;
 }
 
-#kids-table a:hover {
+.data-table a:hover {
   border-radius: var(--corner-rad);
   box-shadow: #8f8f8f;
 }

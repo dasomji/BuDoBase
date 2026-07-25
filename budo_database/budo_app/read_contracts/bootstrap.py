@@ -4,7 +4,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from budo_app.models import Auslagerorte, Kinder, Profil, Schwerpunkte
+from budo_app.models import (
+    Auslagerorte,
+    HappyCleaning,
+    Kinder,
+    Profil,
+    Schwerpunkte,
+)
 from budo_app.read_contracts.common import kid_full_name
 
 
@@ -24,6 +30,16 @@ def _permissions(user):
         "view_auditevent": user.has_perm("budo_app.view_auditevent"),
         "export_auditevent": user.has_perm("budo_app.export_auditevent"),
     }
+
+
+def _happy_cleaning_events(turnus):
+    if turnus is None:
+        return []
+    return list(
+        HappyCleaning.objects.filter(turnus=turnus)
+        .values("id", "display_number")
+        .order_by("display_number", "id")
+    )
 
 
 def _search_index(turnus):
@@ -96,6 +112,7 @@ def bootstrap(request):
             ),
             "permissions": _permissions(request.user),
             "search_index": _search_index(turnus),
+            "happy_cleaning_events": _happy_cleaning_events(turnus),
         }
     )
     return Response(payload)

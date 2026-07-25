@@ -13,13 +13,16 @@ from budo_app.happy_cleaning_commands import (
     complete_command,
     replay_completed_command,
 )
+from budo_app.happy_cleaning_number_batch import (
+    BATCH_NUMBER_ACTION,
+    number_batch_projection,
+)
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningAssignment,
     HappyCleaningStation,
     Kinder,
     Profil,
-    Turnus,
 )
 from budo_app.read_contracts.common import kid_full_name
 
@@ -53,12 +56,21 @@ def _assignment_projection(assignment, child_id):
             "station": None,
             "version": None,
         }
-    return {
-        "child_id": child_id,
-        "station": {
+    station = (
+        {
+            "id": "excused",
+            "name": "Entschuldigt",
+            "is_excused": True,
+        }
+        if assignment.is_excused
+        else {
             "id": assignment.station_id,
             "name": assignment.station.name,
-        },
+        }
+    )
+    return {
+        "child_id": child_id,
+        "station": station,
         "version": assignment.version,
     }
 
@@ -264,7 +276,7 @@ def set_child_number(context, child_id, number, expected_version):
 
 def _assignment_for_update(event_id, child_id):
     return (
-        HappyCleaningAssignment.objects.select_for_update()
+        HappyCleaningAssignment.objects.select_for_update(of=("self",))
         .select_related("station")
         .filter(happy_cleaning_id=event_id, child_id=child_id)
         .first()
@@ -371,6 +383,75 @@ def assign_child(context, event_id, child_id, station_id):
         return response, False
 
 
+def assign_excused_child(context, event_id, child_id):
+    action = "happy_cleaning.assignment.excuse"
+    with transaction.atomic():
+        _lock_actor(context)
+        replay = replay_completed_command(context, action)
+        if replay is not None:
+            return replay, True
+        event = _event_for_context(context, event_id)
+        child = (
+            Kinder.objects.select_for_update()
+            .filter(pk=child_id, turnus_id=context.turnus.id)
+            .first()
+        )
+        if child is None:
+            raise AssignmentCommandError(
+                "not_found",
+                status=404,
+                audit_outcome="forbidden",
+                details={"happy_cleaning_id": event.id, "child_id": child_id},
+            )
+        current = _assignment_for_update(event.id, child.id)
+        if current is not None:
+            _conflict(
+                "stale",
+                projection={"assignment": _assignment_projection(current, child.id)},
+                outcome="stale",
+                details={
+                    "happy_cleaning_id": event.id,
+                    "child_id": child.id,
+                    "current_version": current.version,
+                },
+                current_version=current.version,
+            )
+        revision = _increment_event_revision(event)
+        assignment = HappyCleaningAssignment.objects.create(
+            happy_cleaning=event,
+            station=None,
+            target_kind=HappyCleaningAssignment.TargetKind.EXCUSED,
+            child=child,
+            version=revision,
+        )
+        audit_success(
+            context,
+            action=action,
+            resource_type="happy_cleaning_assignment",
+            resource_id=assignment.id,
+            resource_label=kid_full_name(child.kid_vorname, child.kid_nachname),
+            details={
+                "happy_cleaning_id": event.id,
+                "child_id": child.id,
+                "previous_station_id": None,
+                "new_station_id": "excused",
+                "current_version": assignment.version,
+            },
+        )
+        response = complete_command(context, action, {
+            "ok": True,
+            "assignment": _assignment_projection(assignment, child.id),
+            "event_revision": revision,
+        })
+        publish_assignment_invalidation_on_commit({
+            "kind": "assignment",
+            "happy_cleaning_id": event.id,
+            "revision": revision,
+            "request_id": context.request_id,
+        })
+        return response, False
+
+
 def _current_assignment_before_station_locks(event, child_id):
     return (
         HappyCleaningAssignment.objects.filter(
@@ -448,8 +529,18 @@ def move_child(context, event_id, child_id, station_id, expected_version):
                     "current_version": current_version,
                 },
             )
-        previous_station_id = assignment.station_id
-        if previous_station_id != target.id:
+        previous_station_id = (
+            "excused" if assignment.is_excused else assignment.station_id
+        )
+        target_changed = assignment.is_excused or assignment.station_id != target.id
+        if child.happy_cleaning_number is None:
+            _conflict(
+                "number_required",
+                projection={"child": _child_projection(child)},
+                outcome=None,
+                details={},
+            )
+        if target_changed:
             if target.assignments.count() >= target.max_kids:
                 _conflict(
                     "station_full",
@@ -469,8 +560,9 @@ def move_child(context, event_id, child_id, station_id, expected_version):
                 )
             revision = _increment_event_revision(event)
             assignment.station = target
+            assignment.target_kind = HappyCleaningAssignment.TargetKind.STATION
             assignment.version = revision
-            assignment.save(update_fields=("station", "version"))
+            assignment.save(update_fields=("station", "target_kind", "version"))
         else:
             revision = event.revision
         audit_success(
@@ -494,7 +586,102 @@ def move_child(context, event_id, child_id, station_id, expected_version):
             "station": _station_projection(target),
             "event_revision": revision,
         })
-        if previous_station_id != target.id:
+        if target_changed:
+            publish_assignment_invalidation_on_commit({
+                "kind": "assignment",
+                "happy_cleaning_id": event.id,
+                "revision": revision,
+                "request_id": context.request_id,
+            })
+        return response, False
+
+
+def move_child_to_excused(context, event_id, child_id, expected_version):
+    action = "happy_cleaning.assignment.move_to_excused"
+    with transaction.atomic():
+        _lock_actor(context)
+        replay = replay_completed_command(context, action)
+        if replay is not None:
+            return replay, True
+        event = _event_for_context(context, event_id)
+        observed = _current_assignment_before_station_locks(event, child_id)
+        if observed is None:
+            _conflict(
+                "stale",
+                projection={"assignment": _assignment_projection(None, child_id)},
+                outcome="stale",
+                current_version=0,
+                details={
+                    "happy_cleaning_id": event.id,
+                    "child_id": child_id,
+                    "expected_version": expected_version,
+                    "current_version": 0,
+                },
+            )
+        if observed.station_id is not None:
+            HappyCleaningStation.objects.select_for_update().get(
+                pk=observed.station_id,
+                happy_cleaning_id=event.id,
+            )
+        child = (
+            Kinder.objects.select_for_update()
+            .filter(pk=child_id, turnus_id=context.turnus.id)
+            .first()
+        )
+        if child is None:
+            raise AssignmentCommandError(
+                "not_found",
+                status=404,
+                audit_outcome="forbidden",
+                details={"happy_cleaning_id": event.id, "child_id": child_id},
+            )
+        assignment = _assignment_for_update(event.id, child.id)
+        if assignment is None or assignment.version != expected_version:
+            current_version = assignment.version if assignment else 0
+            _conflict(
+                "stale",
+                projection={"assignment": _assignment_projection(assignment, child.id)},
+                outcome="stale",
+                current_version=current_version,
+                details={
+                    "happy_cleaning_id": event.id,
+                    "child_id": child.id,
+                    "expected_version": expected_version,
+                    "current_version": current_version,
+                },
+            )
+        previous_station_id = (
+            "excused" if assignment.is_excused else assignment.station_id
+        )
+        if not assignment.is_excused:
+            revision = _increment_event_revision(event)
+            assignment.station = None
+            assignment.target_kind = HappyCleaningAssignment.TargetKind.EXCUSED
+            assignment.version = revision
+            assignment.save(update_fields=("station", "target_kind", "version"))
+        else:
+            revision = event.revision
+        audit_success(
+            context,
+            action=action,
+            resource_type="happy_cleaning_assignment",
+            resource_id=assignment.id,
+            resource_label=kid_full_name(child.kid_vorname, child.kid_nachname),
+            details={
+                "happy_cleaning_id": event.id,
+                "child_id": child.id,
+                "previous_station_id": previous_station_id,
+                "new_station_id": "excused",
+                "expected_version": expected_version,
+                "current_version": assignment.version,
+            },
+        )
+        response = complete_command(context, action, {
+            "ok": True,
+            "assignment": _assignment_projection(assignment, child.id),
+            "event_revision": revision,
+        })
+        if previous_station_id != "excused":
             publish_assignment_invalidation_on_commit({
                 "kind": "assignment",
                 "happy_cleaning_id": event.id,
@@ -526,10 +713,11 @@ def remove_child(context, event_id, child_id, expected_version):
                     "current_version": 0,
                 },
             )
-        HappyCleaningStation.objects.select_for_update().get(
-            pk=observed.station_id,
-            happy_cleaning_id=event.id,
-        )
+        if observed.station_id is not None:
+            HappyCleaningStation.objects.select_for_update().get(
+                pk=observed.station_id,
+                happy_cleaning_id=event.id,
+            )
         child = (
             Kinder.objects.select_for_update()
             .filter(pk=child_id, turnus_id=context.turnus.id)
@@ -558,7 +746,9 @@ def remove_child(context, event_id, child_id, expected_version):
                 },
             )
         assignment_id = assignment.id
-        previous_station_id = assignment.station_id
+        previous_station_id = (
+            "excused" if assignment.is_excused else assignment.station_id
+        )
         label = kid_full_name(child.kid_vorname, child.kid_nachname)
         assignment.delete()
         revision = _increment_event_revision(event)
@@ -588,6 +778,134 @@ def remove_child(context, event_id, child_id, expected_version):
             "revision": revision,
             "request_id": context.request_id,
         })
+        return response, False
+
+
+def assign_missing_numbers(context, event_id, requested_assignments):
+    with transaction.atomic():
+        _lock_actor(context)
+        replay = replay_completed_command(context, BATCH_NUMBER_ACTION)
+        if replay is not None:
+            return replay, True
+        event = _event_for_context(context, event_id)
+        children = list(
+            Kinder.objects.select_for_update()
+            .filter(turnus_id=context.turnus.id)
+            .only(
+                "id",
+                "kid_vorname",
+                "kid_nachname",
+                "happy_cleaning_number",
+                "happy_cleaning_number_version",
+                "anwesend",
+            )
+            .order_by("kid_vorname", "kid_nachname", "id")
+        )
+        first_event = (
+            HappyCleaning.objects.select_for_update()
+            .filter(turnus_id=context.turnus.id, display_number=1)
+            .first()
+        )
+        present_ids = {
+            child.id for child in children if child.anwesend is True
+        }
+        assigned_ids = set()
+        if first_event is not None:
+            assigned_ids = set(
+                HappyCleaningAssignment.objects.select_for_update()
+                .filter(
+                    happy_cleaning_id=first_event.id,
+                    child_id__in=present_ids,
+                    child__turnus_id=context.turnus.id,
+                )
+                .values_list("child_id", flat=True)
+            )
+        unlocked = (
+            first_event is not None
+            and present_ids.issubset(assigned_ids)
+        )
+        projection = number_batch_projection(children, unlocked=unlocked)
+        if not unlocked:
+            _conflict(
+                "batch_locked",
+                projection={"number_batch": projection},
+                outcome=None,
+                details={"happy_cleaning_id": event.id},
+            )
+        if not projection["available"]:
+            _conflict(
+                "nothing_to_assign",
+                projection={"number_batch": projection},
+                outcome=None,
+                details={"happy_cleaning_id": event.id},
+            )
+        expected = [
+            {
+                "child_id": item["id"],
+                "number": item["number"],
+                "expected_version": item["expected_version"],
+            }
+            for item in projection["children"]
+        ]
+        if requested_assignments != expected:
+            _conflict(
+                "stale",
+                projection={"number_batch": projection},
+                outcome="stale",
+                details={"happy_cleaning_id": event.id},
+            )
+
+        children_by_id = {child.id: child for child in children}
+        changed = []
+        try:
+            with transaction.atomic():
+                for item in expected:
+                    child = children_by_id[item["child_id"]]
+                    child.happy_cleaning_number = item["number"]
+                    child.happy_cleaning_number_version += 1
+                    child.save(update_fields=(
+                        "happy_cleaning_number",
+                        "happy_cleaning_number_version",
+                    ))
+                    changed.append(child)
+        except IntegrityError:
+            for child in children:
+                child.refresh_from_db(fields=(
+                    "happy_cleaning_number",
+                    "happy_cleaning_number_version",
+                    "anwesend",
+                ))
+            current = number_batch_projection(children, unlocked=True)
+            _conflict(
+                "stale",
+                projection={"number_batch": current},
+                outcome="stale",
+                details={"happy_cleaning_id": event.id},
+            )
+
+        event_revisions = _increment_turnus_event_revisions(context.turnus.id)
+        audit_success(
+            context,
+            action=BATCH_NUMBER_ACTION,
+            resource_type="happy_cleaning",
+            resource_id=event.id,
+            resource_label=f"Happy Cleaning {event.display_number}",
+            details={
+                "happy_cleaning_id": event.id,
+                "result_count": len(expected),
+            },
+        )
+        response = complete_command(context, BATCH_NUMBER_ACTION, {
+            "ok": True,
+            "children": [_child_projection(child) for child in changed],
+        })
+        for happy_cleaning_id, revision in event_revisions:
+            publish_assignment_invalidation_on_commit({
+                "kind": "child_number",
+                "happy_cleaning_id": happy_cleaning_id,
+                "revision": revision,
+                "request_id": context.request_id,
+            })
         return response, False
 
 

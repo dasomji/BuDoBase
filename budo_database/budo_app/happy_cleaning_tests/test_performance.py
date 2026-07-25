@@ -115,7 +115,7 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
             ),
             "happy-cleaning-print": measure_http_get(
                 self.client,
-                self._url("happy-cleaning-print", **event_query),
+                self._url("happy-cleaning-print"),
             ),
         }
 

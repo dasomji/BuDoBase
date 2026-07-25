@@ -4,6 +4,7 @@ import { SearchIcon } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useToastManager } from '@/components/ui/toast';
 
 export function findById(items, id) {
   return items.find(item => Number(item.id) === Number(id));
@@ -242,7 +243,7 @@ export function SearchTable({ columns, rows, showFilter = false, id = 'kids-tabl
         </div>
       )}
       <div className="table-container">
-        <table id={id}>
+        <table className="data-table" id={id}>
           <thead><tr className="table-header">{columns.map((column, index) => {
             const direction = sort?.key === column.key ? sort.direction : undefined;
             const nextDirection = direction === 'ascending' ? 'absteigend' : direction === 'descending' ? 'aufsteigend' : '';
@@ -367,7 +368,30 @@ export function MapCard({ places = [], headerAction = null }) {
   return <Card title="Karte" id="swp-map" className="transparent" headerAction={headerAction}><div className="react-map interactive-map" id="map" ref={element}>{!locations.length && <p>Keine Koordinaten verfügbar.</p>}</div></Card>;
 }
 
+const MESSAGE_LEVELS = ['error', 'warning', 'success', 'info'];
+
+const messageLevel = tags => {
+  const tagSet = new Set((tags || '').split(/\s+/));
+  return MESSAGE_LEVELS.find(level => tagSet.has(level)) || 'info';
+};
+
 export function Messages({ items = [] }) {
-  if (!items.length) return null;
-  return <ul className="messages">{items.map((message, index) => <li className={message.tags} key={`${message.text}-${index}`}>{message.text}</li>)}</ul>;
+  const toastManager = useToastManager();
+  const published = useRef(new Set());
+
+  useEffect(() => {
+    items.forEach((message, index) => {
+      const key = `${message.tags || ''}\u0000${message.text}\u0000${index}`;
+      if (published.current.has(key)) return;
+      published.current.add(key);
+      const type = messageLevel(message.tags);
+      toastManager.add({
+        description: message.text,
+        type,
+        priority: type === 'error' ? 'high' : 'low',
+      });
+    });
+  }, [items, toastManager]);
+
+  return null;
 }

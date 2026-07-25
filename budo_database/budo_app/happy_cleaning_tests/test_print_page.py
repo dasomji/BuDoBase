@@ -43,41 +43,56 @@ class HappyCleaningPrintPageTests(TestCase):
         self.client.force_login(self.user)
 
         overview = self.client.post(reverse("happy_cleaning"))
-        printable = self.client.post(reverse(
-            "happy-cleaning-print-page",
-            args=(self.event.id,),
-        ))
+        printable = self.client.post(reverse("happy-cleaning-print-page"))
 
         self.assertEqual(overview.status_code, 405)
         self.assertEqual(printable.status_code, 405)
 
     def test_print_page_requires_authentication(self):
-        response = self.client.get(reverse(
-            "happy-cleaning-print-page",
-            args=(self.event.id,),
-        ))
+        response = self.client.get(reverse("happy-cleaning-print-page"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/login/", response["Location"])
 
-    def test_active_turnus_print_deep_link_renders_a_print_enabled_react_shell(self):
+    def test_print_page_requires_an_active_turnus(self):
+        self.user.profil.turnus = None
+        self.user.profil.save(update_fields=("turnus",))
         self.client.force_login(self.user)
 
-        response = self.client.get(reverse(
-            "happy-cleaning-print-page",
-            args=(self.event.id,),
-        ))
+        response = self.client.get(reverse("happy-cleaning-print-page"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_turnus_print_page_renders_a_print_enabled_react_shell(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("happy-cleaning-print-page"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "/static/frontend/app.js")
         self.assertContains(response, 'data-react-print-page="true"')
 
+    def test_active_event_print_deep_link_redirects_to_turnus_number_list(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse(
+            "happy-cleaning-event-print-page",
+            args=(self.event.id,),
+        ))
+
+        self.assertRedirects(
+            response,
+            reverse("happy-cleaning-print-page"),
+            fetch_redirect_response=False,
+        )
+
     def test_foreign_turnus_print_deep_link_is_not_found_without_event_details(self):
         self.client.force_login(self.user)
 
-        response = self.client.get(
-            f"/happy-cleaning/{self.other_event.id}/print/",
-        )
+        response = self.client.get(reverse(
+            "happy-cleaning-event-print-page",
+            args=(self.other_event.id,),
+        ))
 
         self.assertEqual(response.status_code, 404)
         self.assertNotIn(str(self.other_turnus).encode(), response.content)

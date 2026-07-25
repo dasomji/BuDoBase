@@ -750,6 +750,10 @@ class HappyCleaningTodo(models.Model):
 
 
 class HappyCleaningAssignment(models.Model):
+    class TargetKind(models.TextChoices):
+        STATION = "station", "Station"
+        EXCUSED = "excused", "Entschuldigt"
+
     happy_cleaning = models.ForeignKey(
         HappyCleaning,
         on_delete=models.CASCADE,
@@ -759,6 +763,13 @@ class HappyCleaningAssignment(models.Model):
         HappyCleaningStation,
         on_delete=models.CASCADE,
         related_name="assignments",
+        null=True,
+        blank=True,
+    )
+    target_kind = models.CharField(
+        max_length=16,
+        choices=TargetKind.choices,
+        default=TargetKind.STATION,
     )
     child = models.ForeignKey(
         Kinder,
@@ -767,10 +778,18 @@ class HappyCleaningAssignment(models.Model):
     )
     version = models.PositiveIntegerField(default=1)
 
+    @property
+    def is_excused(self):
+        return self.target_kind == self.TargetKind.EXCUSED
+
     def clean(self):
         super().clean()
         errors = {}
-        if (
+        if self.is_excused and self.station_id is not None:
+            errors["station"] = "An excused assignment cannot have a station."
+        elif not self.is_excused and self.station_id is None:
+            errors["station"] = "A station assignment requires a station."
+        elif (
             self.station_id
             and self.happy_cleaning_id
             and self.station.happy_cleaning_id != self.happy_cleaning_id
@@ -793,9 +812,10 @@ class HappyCleaningAssignment(models.Model):
         self.clean()
         with transaction.atomic():
             result = super().save(*args, **kwargs)
-            HappyCleaningStation.objects.filter(pk=self.station_id).update(
-                has_ever_had_assignment=True,
-            )
+            if self.station_id is not None:
+                HappyCleaningStation.objects.filter(pk=self.station_id).update(
+                    has_ever_had_assignment=True,
+                )
             HappyCleaning.objects.filter(pk=self.happy_cleaning_id).update(
                 has_operational_activity=True,
             )
@@ -807,6 +827,19 @@ class HappyCleaningAssignment(models.Model):
             models.CheckConstraint(
                 condition=models.Q(version__gt=0),
                 name="hc_assignment_version_positive",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        target_kind="station",
+                        station__isnull=False,
+                    )
+                    | models.Q(
+                        target_kind="excused",
+                        station__isnull=True,
+                    )
+                ),
+                name="hc_assignment_target_valid",
             ),
             models.UniqueConstraint(
                 fields=("happy_cleaning", "child"),

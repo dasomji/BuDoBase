@@ -1,6 +1,10 @@
 from django.db.models import Prefetch, Q
 from django.http import Http404
 
+from budo_app.happy_cleaning_number_batch import (
+    first_happy_cleaning_complete,
+    number_batch_projection,
+)
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningAssignment,
@@ -78,6 +82,18 @@ def _assignment_for_child(child):
     return assignments[0] if assignments else None
 
 
+def _assignment_target(assignment):
+    if assignment is None:
+        return None
+    if assignment.is_excused:
+        return {
+            "id": "excused",
+            "name": "Entschuldigt",
+            "is_excused": True,
+        }
+    return {"id": assignment.station_id, "name": assignment.station.name}
+
+
 def _assignment_child(child):
     assignment = _assignment_for_child(child)
     return {
@@ -89,10 +105,7 @@ def _assignment_child(child):
         "number_version": child.happy_cleaning_number_version,
         "present": child.anwesend,
         "absence_location": child.wo if child.anwesend is False else None,
-        "assigned_station": (
-            {"id": assignment.station_id, "name": assignment.station.name}
-            if assignment else None
-        ),
+        "assigned_station": _assignment_target(assignment),
         "assignment_version": assignment.version if assignment else None,
     }
 
@@ -105,6 +118,7 @@ def _station_child(assignment):
         "short_name": (
             f"{child.kid_vorname} {child.kid_nachname[:2]}".strip()
         ),
+        "number": child.happy_cleaning_number,
         "present": child.anwesend,
         "assignment_version": assignment.version,
     }
@@ -141,13 +155,22 @@ def assignment_snapshot(request):
     assignments = (
         HappyCleaningAssignment.objects.filter(
             happy_cleaning_id=event.id,
-            station__happy_cleaning_id=event.id,
             child__turnus_id=event.turnus_id,
+        ).filter(
+            Q(
+                target_kind=HappyCleaningAssignment.TargetKind.STATION,
+                station__happy_cleaning_id=event.id,
+            )
+            | Q(
+                target_kind=HappyCleaningAssignment.TargetKind.EXCUSED,
+                station__isnull=True,
+            )
         )
         .select_related("station", "child")
         .only(
             "id",
             "version",
+            "target_kind",
             "station_id",
             "station__id",
             "station__name",
@@ -155,6 +178,7 @@ def assignment_snapshot(request):
             "child__id",
             "child__kid_vorname",
             "child__kid_nachname",
+            "child__happy_cleaning_number",
             "child__anwesend",
         )
         .order_by("child__kid_vorname", "child__kid_nachname", "child_id")
@@ -213,16 +237,35 @@ def assignment_snapshot(request):
         child.anwesend is True and _assignment_for_child(child) is not None
         for child in children
     )
+    unlocked = first_happy_cleaning_complete(event.turnus_id, children)
+    excused_assignments = [
+        assignment
+        for child in children
+        for assignment in child.route_happy_cleaning_assignments
+        if assignment.is_excused
+    ]
     return {
         "event": _event_summary(event),
         "summary": {
             "assigned_present": assigned_present,
             "present_total": present_total,
         },
+        "number_batch": number_batch_projection(children, unlocked=unlocked),
         "children": [_assignment_child(child) for child in children],
         "stations": [
-            _assignment_station(station, event.turnus_id)
-            for station in stations
+            *(
+                _assignment_station(station, event.turnus_id)
+                for station in stations
+            ),
+            {
+                "id": "excused",
+                "name": "Entschuldigt",
+                "is_excused": True,
+                "children": [
+                    _station_child(assignment)
+                    for assignment in excused_assignments
+                ],
+            },
         ],
     }
 
@@ -446,13 +489,19 @@ def _print_name(child):
 
 
 def print_number_list(request):
-    event = _requested_event(request)
+    turnus_id = require_active_turnus_id(request)
+    number_batch_event_id = (
+        HappyCleaning.objects.filter(turnus_id=turnus_id, display_number=1)
+        .values_list("id", flat=True)
+        .first()
+    )
     children = list(
-        Kinder.objects.filter(turnus_id=event.turnus_id).only(
+        Kinder.objects.filter(turnus_id=turnus_id).only(
             "id",
             "kid_vorname",
             "kid_nachname",
             "happy_cleaning_number",
+            "happy_cleaning_number_version",
             "anwesend",
             "wo",
         )
@@ -481,8 +530,10 @@ def print_number_list(request):
         (child for child in children if child.anwesend is not True),
         key=lambda child: (_print_name(child).casefold(), child.id),
     )
+    unlocked = first_happy_cleaning_complete(turnus_id, children)
     return {
-        "event": _event_summary(event),
+        "number_batch_event_id": number_batch_event_id,
+        "number_batch": number_batch_projection(children, unlocked=unlocked),
         "present_numbered": [
             {
                 "id": child.id,
