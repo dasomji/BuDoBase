@@ -1,3 +1,5 @@
+import { Printer } from 'lucide-react';
+
 import { Card, Column, Columns, FieldList } from '../components';
 import { Button } from '../components/ui/button';
 import { linkKid } from './shared';
@@ -206,8 +208,14 @@ export const kitchenRoutes = [{
   domain: 'kitchen',
   readContractKey: 'kitchen',
   headerAction: () => (
-    <Button className="kitchen-print-button" type="button" onClick={() => window.print()}>
-      Drucken
+    <Button
+      aria-label="Drucken"
+      className="kitchen-print-button mobile-icon-action"
+      type="button"
+      onClick={() => window.print()}
+    >
+      <span className="desktop-action-label">Drucken</span>
+      <Printer className="mobile-action-label" aria-hidden="true" />
     </Button>
   ),
   render: ({ data }) => <KitchenPage data={data} />,

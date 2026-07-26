@@ -1,4 +1,7 @@
+import { EyeIcon, EyeOffIcon } from 'lucide-react';
+
 import { Card, Column, SearchTable } from '../components';
+import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
 import { displayOrPlaceholder, linkKid } from './shared';
 
@@ -159,17 +162,23 @@ export const allocationRoutes = [{
   readContractKey: 'allocation',
   params: match => ({ week: match[1], title: `SWP-Einteilung Woche ${match[1]}` }),
   headerAction: (_data, { pageState = {}, setPageState }) => (
-    <button
-      className="button"
+    <Button
+      className="mobile-icon-action"
       type="button"
+      aria-label={pageState.showAllocationKids === false ? 'Kinder anzeigen' : 'Kinder ausblenden'}
       aria-pressed={pageState.showAllocationKids !== false}
       onClick={() => setPageState?.(current => ({
         ...current,
         showAllocationKids: current.showAllocationKids === false,
       }))}
     >
-      {pageState.showAllocationKids === false ? 'Kinder anzeigen' : 'Kinder ausblenden'}
-    </button>
+      <span className="desktop-action-label">
+        {pageState.showAllocationKids === false ? 'Kinder anzeigen' : 'Kinder ausblenden'}
+      </span>
+      {pageState.showAllocationKids === false
+        ? <EyeIcon className="mobile-action-label" aria-hidden="true" />
+        : <EyeOffIcon className="mobile-action-label" aria-hidden="true" />}
+    </Button>
   ),
   render: ({ route, data, mutate, pageState = {} }) => (
     <AllocationPage

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer } from 'lucide-react';
+import { PlusIcon, Printer } from 'lucide-react';
 
 import { Card } from '../components';
 import { Button } from '../components/ui/button';
@@ -96,16 +96,16 @@ export function HappyCleaningCreateButton({ mutate }) {
   };
   return (
     <>
-      <button
-        className="button mobile-icon-action"
+      <Button
+        className="mobile-icon-action"
         type="button"
         aria-label="Happy Cleaning hinzufügen"
         disabled={busy}
         onClick={create}
       >
         <span className="desktop-action-label">Happy Cleaning hinzufügen</span>
-        <span className="mobile-action-label" aria-hidden="true">+</span>
-      </button>
+        <PlusIcon className="mobile-action-label" aria-hidden="true" />
+      </Button>
     </>
   );
 }
