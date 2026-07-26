@@ -5,8 +5,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
-
 :where(
   a[href],
   button:not(:disabled),
@@ -408,13 +406,14 @@
 
 #interaction-bar form .money-withdraw,
 #interaction-bar form .money-withdraw:hover {
-  background-color: #4caf50;
+  background-color: var(--success);
+  color: var(--success-foreground);
 }
 
 #interaction-bar form .money-topup,
 #interaction-bar form .money-topup:hover {
-  background-color: #d9534f;
-  color: white;
+  background-color: var(--destructive);
+  color: var(--destructive-foreground);
 }
 
 @media (max-width: 600px) {
@@ -1655,7 +1654,7 @@ input[name="amount"]::placeholder {
 
 .happy-cleaning-child-results [role="option"].selected,
 .happy-cleaning-child-results [role="option"]:hover {
-  background: var(--light-blue);
+  background: var(--secondary);
 }
 
 .happy-cleaning-counter-row {
@@ -2567,6 +2566,36 @@ input[name="amount"]::placeholder {
   }
 }
 
+@theme static {
+  --color-background: #ffffff;
+  --color-foreground: #373737;
+  --color-card: rgb(222 240 255 / 70%);
+  --color-card-foreground: #373737;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #373737;
+  --color-primary: #ffdd9b;
+  --color-primary-hover: #e6c78b;
+  --color-primary-foreground: #373737;
+  --color-secondary: #a9cfef;
+  --color-secondary-hover: #8fb8d9;
+  --color-secondary-foreground: #373737;
+  --color-muted: rgb(183 220 255 / 34%);
+  --color-muted-foreground: #5f6368;
+  --color-accent: rgb(179 202 217 / 95%);
+  --color-accent-foreground: #373737;
+  --color-success: #4caf50;
+  --color-success-foreground: #373737;
+  --color-destructive: #d9534f;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #dddddd;
+  --color-input: #dddddd;
+  --color-ring: #737373;
+  --color-surface: rgb(222 240 255 / 70%);
+  --color-surface-solid: #def0ff;
+  --color-surface-subtle: rgb(183 220 255 / 34%);
+  --color-surface-header: rgb(179 202 217 / 95%);
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: 'Roboto', sans-serif;
@@ -2583,24 +2612,6 @@ input[name="amount"]::placeholder {
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -2611,24 +2622,37 @@ input[name="amount"]::placeholder {
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+  --card: var(--color-card);
+  --card-foreground: var(--color-card-foreground);
+  --popover: var(--color-popover);
+  --popover-foreground: var(--color-popover-foreground);
+  --primary: var(--color-primary);
+  --primary-hover: var(--color-primary-hover);
+  --primary-foreground: var(--color-primary-foreground);
+  --secondary: var(--color-secondary);
+  --secondary-hover: var(--color-secondary-hover);
+  --secondary-foreground: var(--color-secondary-foreground);
+  --muted: var(--color-muted);
+  --muted-foreground: var(--color-muted-foreground);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-foreground);
+  --success: var(--color-success);
+  --success-foreground: var(--color-success-foreground);
+  --destructive: var(--color-destructive);
+  --destructive-foreground: var(--color-destructive-foreground);
+  --border: var(--color-border);
+  --input: var(--color-input);
+  --ring: var(--color-ring);
+  --text-color: var(--color-foreground);
+  --blue: var(--color-surface-subtle);
+  --dark-blue: var(--color-surface-header);
+  --bg-blue: var(--color-surface);
+  --bg-blue__solid: var(--color-surface-solid);
+  --grey: var(--color-border);
+  --button-color: var(--color-primary);
+  --light-blue: var(--color-secondary);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -2643,40 +2667,6 @@ input[name="amount"]::placeholder {
   --sidebar-accent-foreground: var(--text-color);
   --sidebar-border: rgba(55, 55, 55, 0.18);
   --sidebar-ring: #737373;
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
