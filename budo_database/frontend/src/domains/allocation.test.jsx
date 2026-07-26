@@ -72,7 +72,6 @@ describe('allocation page', () => {
 
     const card = screen.getByRole('heading', { name: 'Wald: 3' }).closest('.card');
     expect(card.parentElement).toHaveAccessibleName('SWP-Übersicht');
-    expect(card.parentElement.parentElement).toHaveClass('table-sticky-controls');
     expect(within(card.parentElement.parentElement).getByRole('searchbox', { name: 'Kinder filtern' })).toBeInTheDocument();
     const stats = within(card).getByLabelText('Statistik Wald');
     expect(stats).toHaveTextContent('Ø Alter: 12,5');

@@ -83,8 +83,8 @@ function AuditTable({ events }) {
     <TableScroll stickyHeader>
       <Table>
         <TableHeader><TableRow>
-          <TableHead>Zeit</TableHead><TableHead>Akteur:in</TableHead><TableHead>Aktion</TableHead><TableHead>Ergebnis</TableHead>
-          <TableHead>Ressource</TableHead><TableHead>IP</TableHead><TableHead>User-Agent</TableHead><TableHead>Details</TableHead>
+          <TableHead scope="col">Zeit</TableHead><TableHead scope="col">Akteur:in</TableHead><TableHead scope="col">Aktion</TableHead><TableHead scope="col">Ergebnis</TableHead>
+          <TableHead scope="col">Ressource</TableHead><TableHead scope="col">IP</TableHead><TableHead scope="col">User-Agent</TableHead><TableHead scope="col">Details</TableHead>
         </TableRow></TableHeader>
         <TableBody>{events.map(event => (
           <TableRow key={event.id}>

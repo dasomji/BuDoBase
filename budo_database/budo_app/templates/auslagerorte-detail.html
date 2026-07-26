@@ -21,7 +21,7 @@
   <div class="detail-column" id="left-column">
     <div class="card" id="ort-detail-info">
       <div class="info-header-container">
-        <h2>{{ ort }}</h2>{% include "components/openicon.html" %}
+        <h2>{{ ort }}</h2>
       </div>
       <div class="card-info-container">
         {% if ort.name %}<p><span class="label">Name</span>: {{ ort.name }}</p>{% endif %}
@@ -48,7 +48,7 @@
     </div>
     <div class="card" id="auslagernotizen">
       <div class="info-header-container">
-        <h2>Kommentare</h2>{% include "components/openicon.html" %}
+        <h2>Kommentare</h2>
       </div>
       <div class="card-info-container">
         <ul>
@@ -67,7 +67,6 @@
       <div class="info-header-container">
         <h2>Bilder</h2>
 
-        {% include "components/openicon.html" %}
       </div>
       <div class="card-info-container">
         <div class="gallery-container">

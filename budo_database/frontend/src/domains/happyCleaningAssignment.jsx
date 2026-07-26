@@ -183,7 +183,6 @@ export function HappyCleaningNumberBatchAction({
   mutate,
   refresh,
   disabled = false,
-  designSystem = false,
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -231,80 +230,51 @@ export function HappyCleaningNumberBatchAction({
 
   return (
     <Dialog.Root open={open} onOpenChange={changeOpen}>
-      {designSystem
-        ? (
-          <Dialog.Trigger
-            render={<Button className="h-auto max-w-full py-2 text-center whitespace-normal" variant="secondary" />}
-            disabled={disabled}
-          >
-            Kindern ohne Nummern, Nummern zuteilen
-          </Dialog.Trigger>
-        )
-        : (
-          <Dialog.Trigger
-            className="button happy-cleaning-batch-trigger"
-            disabled={disabled}
-          >
-            Kindern ohne Nummern, Nummern zuteilen
-          </Dialog.Trigger>
-        )}
+      <Dialog.Trigger
+        render={<Button className="h-auto max-w-full py-2 text-center whitespace-normal" variant="secondary" />}
+        disabled={disabled}
+      >
+        Kindern ohne Nummern, Nummern zuteilen
+      </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Backdrop className={designSystem ? dialogBackdropClass : 'happy-cleaning-dialog-backdrop'} />
-        <Dialog.Viewport className={designSystem ? dialogViewportClass : 'happy-cleaning-dialog-viewport'}>
-          <Dialog.Popup className={designSystem ? dialogPopupClass : 'card happy-cleaning-number-dialog happy-cleaning-batch-dialog'}>
-            <Dialog.Title className={designSystem ? 'mr-10 text-xl font-semibold' : undefined}>Nummern zuteilen</Dialog.Title>
+        <Dialog.Backdrop className={dialogBackdropClass} />
+        <Dialog.Viewport className={dialogViewportClass}>
+          <Dialog.Popup className={dialogPopupClass}>
+            <Dialog.Title className="mr-10 text-xl font-semibold">Nummern zuteilen</Dialog.Title>
             <Dialog.Description>
               Die vorgeschlagenen Nummern werden gemeinsam zugeteilt.
             </Dialog.Description>
-            {designSystem
-              ? (
-                <Dialog.Close
-                  className={dialogCloseClass}
-                  render={<Button variant="ghost" size="icon" />}
-                  aria-label="Dialog schließen"
-                  disabled={busy}
-                >
-                  <X size={20} aria-hidden="true" />
-                </Dialog.Close>
-              )
-              : (
-                <Dialog.Close className="happy-cleaning-dialog-close" aria-label="Dialog schließen" disabled={busy}>
-                  <X size={20} aria-hidden="true" />
-                </Dialog.Close>
-              )}
+            <Dialog.Close
+              className={dialogCloseClass}
+              render={<Button variant="ghost" size="icon" />}
+              aria-label="Dialog schließen"
+              disabled={busy}
+            >
+              <X size={20} aria-hidden="true" />
+            </Dialog.Close>
             <ul
-              className={designSystem ? 'my-4 grid list-none gap-1 p-0' : 'happy-cleaning-batch-list'}
+              className="my-4 grid list-none gap-1 p-0"
               aria-label="Vorgeschlagene Nummern"
             >
               {numberBatch.children.map(child => (
                 <li
-                  className={designSystem ? 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-white/55 p-2' : undefined}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-white/55 p-2"
                   key={child.id}
                 >
                   <span>{child.full_name}</span>
-                  <strong className={designSystem ? 'min-w-[2ch] text-right tabular-nums' : undefined}>{child.number}</strong>
+                  <strong className="min-w-[2ch] text-right tabular-nums">{child.number}</strong>
                 </li>
               ))}
             </ul>
             <div
-              className={designSystem ? 'mt-4 flex flex-wrap justify-end gap-2' : 'happy-cleaning-batch-actions'}
+              className="mt-4 flex flex-wrap justify-end gap-2"
               role="group"
               aria-label="Dialogaktionen"
             >
-              {designSystem
-                ? <Dialog.Close render={<Button variant="secondary" />} disabled={busy}>Abbrechen</Dialog.Close>
-                : <Dialog.Close className="button" disabled={busy}>Abbrechen</Dialog.Close>}
-              {designSystem
-                ? (
-                  <Button type="button" disabled={busy || disabled} onClick={confirm}>
-                    {busy ? 'Wird zugeteilt…' : 'Bestätigen'}
-                  </Button>
-                )
-                : (
-                  <button className="button" type="button" disabled={busy || disabled} onClick={confirm}>
-                    {busy ? 'Wird zugeteilt…' : 'Bestätigen'}
-                  </button>
-                )}
+              <Dialog.Close render={<Button variant="secondary" />} disabled={busy}>Abbrechen</Dialog.Close>
+              <Button type="button" disabled={busy || disabled} onClick={confirm}>
+                {busy ? 'Wird zugeteilt…' : 'Bestätigen'}
+              </Button>
             </div>
           </Dialog.Popup>
         </Dialog.Viewport>
@@ -776,7 +746,6 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
                 mutate={mutate}
                 refresh={refresh}
                 disabled={writeBusy}
-                designSystem
               />
             )}
           />

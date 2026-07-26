@@ -92,9 +92,10 @@ unit tests.
 - Screen and print output share React data and business logic, reducing drift.
 - Wide tables scroll inside their own boundary and may hide explicitly
   low-priority columns on mobile.
-- Existing pages and CSS remain temporarily mixed while the migration is
-  completed. Legacy aliases, selectors, and old breakpoints must not be copied
-  into new work.
+- The final contract step removed the legacy stylesheet, its cascade layer,
+  dead UI assets, and old responsive breakpoints. Compatibility aliases remain
+  only for the shared stylesheet rules that still consume them; new work uses
+  semantic tokens directly.
 - A bespoke print document still needs manual print-preview evidence because
   paper pagination and browser layout are not unit-test behavior.
 

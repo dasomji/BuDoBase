@@ -73,7 +73,7 @@ function WeekMealPlan({ focuses }) {
         aria-label={`Menüplan Tag ${day} horizontal scrollen`}
       >
         <Table className="meal-table min-w-[36rem]" aria-label={`Menüplan Tag ${day}`}>
-          <TableHeader><TableRow><TableHead>Essen</TableHead><TableHead>Box</TableHead><TableHead>BuDo</TableHead><TableHead>Warm</TableHead><TableHead>Kochportionen</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead scope="col">Essen</TableHead><TableHead scope="col">Box</TableHead><TableHead scope="col">BuDo</TableHead><TableHead scope="col">Warm</TableHead><TableHead scope="col">Kochportionen</TableHead></TableRow></TableHeader>
           <TableBody>{mealTypes.map(([type, label]) => {
             const cookingFocuses = matchingFocuses(day, type, ['budo', 'warm']);
             const portions = cookingFocuses

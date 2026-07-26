@@ -7,7 +7,6 @@ BuDo Kid Info
 {% endblock %}
 
 {% block extrahead %}
-<script src="{% static 'js/pfand-controls.js' %}"></script>
 {% endblock %}
 
 {% block headertitle %}
@@ -35,7 +34,7 @@ BuDo Kid Info
     <div class="detail-column" id="left-column">
         <div class="card" id="kinderinfos">
             <div class="info-header-container">
-                <h2>{{ Kinder.kid_vorname }} {{Kinder.kid_nachname}} </h2> {% include "components/openicon.html" %}
+                <h2>{{ Kinder.kid_vorname }} {{Kinder.kid_nachname}} </h2>
             </div>
             <div class="card-info-container">
                 <p><span class="label">Geschlecht</span>: {{Kinder.sex}} </p>
@@ -51,7 +50,7 @@ BuDo Kid Info
 
         <div id="budo-container" class="card">
             <div class="info-header-container">
-                <h2>BuDo</h2> {% include "components/openicon.html" %}
+                <h2>BuDo</h2>
             </div>
             <div class="card-info-container">
                 <p><span class="label">Turnus</span>: {{Kinder.turnus}}</p>
@@ -66,7 +65,7 @@ BuDo Kid Info
     <div class="detail-column" id="center-column">
         <div class="card" id="health_info">
             <div class="info-header-container">
-                <h2>Gesundheitsinfos</h2> {% include "components/openicon.html" %}
+                <h2>Gesundheitsinfos</h2>
             </div>
             <div class="card-info-container">
                 <p><span class="label">Sozialversicherungsnummer</span>: {{Kinder.sozialversicherungsnr}}</p>
@@ -82,7 +81,7 @@ BuDo Kid Info
 
         <div class="card" id="family_info">
             <div class="info-header-container">
-                <h2>Familie</h2> {% include "components/openicon.html" %}
+                <h2>Familie</h2>
             </div>
             <div class="card-info-container">
                 <p><span class="label">Organisation</span>: {{Kinder.anmelde_organisation}}</p>
@@ -100,7 +99,7 @@ BuDo Kid Info
     <div class="detail-column" id="right-column">
         <div class="card" id="notizen">
             <div class="info-header-container">
-                <h2>Notizen</h2> {% include "components/openicon.html" %}
+                <h2>Notizen</h2>
             </div>
             <div class="card-info-container">
                 <p><span class="label">Anmerkungen (Buchung)</span>:
@@ -128,7 +127,6 @@ BuDo Kid Info
                         🚨{% endif %}
                     </span>
                 </h2>
-                {% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
                 <ul>
@@ -149,17 +147,8 @@ BuDo Kid Info
                         {{Kinder.pfand}}
                     </span>
                 </h2>
-                {% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
-                <div class="pfand-controls">
-                    <button class="button pfand-btn" id="increase-pfand" data-kid-id="{{Kinder.id}}" data-action="increase">
-                        + Pfand
-                    </button>
-                    <button class="button pfand-btn" id="decrease-pfand" data-kid-id="{{Kinder.id}}" data-action="decrease">
-                        - Pfand
-                    </button>
-                </div>
             </div>
         </div>
     </div>

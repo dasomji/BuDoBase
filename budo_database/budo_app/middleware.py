@@ -18,8 +18,15 @@ class ReactFrontendMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         content_type = response.get("Content-Type", "")
+        react_page_request = (
+            request.method == "GET"
+            or (
+                request.method == "POST"
+                and request.path in {"/login/", "/register/"}
+            )
+        )
         should_render_react = (
-            request.method in {"GET", "POST"}
+            react_page_request
             and response.status_code == 200
             and content_type.startswith("text/html")
             and not request.path.startswith(self.excluded_prefixes)

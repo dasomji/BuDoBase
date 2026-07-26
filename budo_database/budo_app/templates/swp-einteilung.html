@@ -5,9 +5,7 @@
 SWP-Einteilung Woche {{ week_number }}
 {% endblock %}
 {% block extrahead %}
-<script src="{% static 'js/zugabreise-toggle.js' %}"></script>
 <script src="{% static 'js/filtertable.js' %}"></script>
-<script src="{% static 'js/edit-freunde.js' %}"></script>
 <script src="{% static 'js/swp-choice.js' %}"></script>
 {% endblock %}
 
@@ -95,13 +93,4 @@ SWP-Einteilung Woche {{ week_number }}
   </div>
 </div>
 
-<!-- Modal for editing Abreise-Notiz -->
-<div id="freundeModal" class="modal">
-  <div class="modal-content">
-    <span class="close">&times;</span>
-    <h2>Freunde bearbeiten</h2>
-    <textarea id="freundeInput" rows="4" cols="50"></textarea>
-    <button id="saveFreundeBtn">Speichern</button>
-  </div>
-</div>
 {% endblock %}

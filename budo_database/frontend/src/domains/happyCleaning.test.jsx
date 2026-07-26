@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -152,18 +149,23 @@ describe('Happy Cleaning management', () => {
     expect(activeYearToggle.querySelector('.icon')).toHaveTextContent('−');
     expect(screen.getByRole('button', { name: '2025 öffnen' })).toHaveAttribute('aria-expanded', 'false');
 
-    const eventHeading = screen.getByRole('heading', {
+    expect(screen.getByRole('heading', {
       level: 2,
       name: '3. Turnus 2026 · Happy Cleaning 1',
+    })).toBeInTheDocument();
+    const eventToggle = screen.getByRole('button', {
+      name: '3. Turnus 2026 · Happy Cleaning 1 schließen',
     });
-    const eventCard = eventHeading.closest('article');
-    const eventToggle = eventHeading.closest('.card-toggle');
-    expect(eventCard).toHaveClass('card');
+    const controlledContent = document.getElementById(eventToggle.getAttribute('aria-controls'));
     expect(eventToggle).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.click(eventHeading);
-    expect(eventToggle).toHaveAttribute('aria-expanded', 'false');
-    expect(eventCard.querySelector('.card-info-container')).toHaveAttribute('inert');
+    expect(controlledContent).toHaveAttribute('aria-hidden', 'false');
     fireEvent.click(eventToggle);
+    const closedEventToggle = screen.getByRole('button', {
+      name: '3. Turnus 2026 · Happy Cleaning 1 öffnen',
+    });
+    expect(closedEventToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(controlledContent).toHaveAttribute('inert');
+    fireEvent.click(closedEventToggle);
 
     const activeTable = screen.getAllByRole('table')[0];
     expect(activeTable).toHaveAttribute('data-slot', 'table');
@@ -324,13 +326,6 @@ describe('Happy Cleaning management', () => {
     expect(stations[0]).toHaveTextContent('☒Tische wischen');
     expect(stations[1]).toHaveTextContent('Keine Aufgaben hinterlegt.');
 
-    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
-    expect(css).toMatch(/@page happy-cleaning-todos\s*\{[^}]*margin:\s*0;/s);
-    expect(css).toMatch(/body:has\(> \.happy-cleaning-todo-print-pages\) > \*:not\(\.happy-cleaning-todo-print-pages\)\s*\{[^}]*display:\s*none !important;/s);
-    expect(css).toMatch(/\.happy-cleaning-todo-print-station\s*\{[^}]*page:\s*happy-cleaning-todos;[^}]*break-before:\s*page;[^}]*break-after:\s*page;[^}]*page-break-before:\s*always;[^}]*page-break-after:\s*always;/s);
-    expect(css).toMatch(/\.happy-cleaning-todo-print-station:first-child\s*\{[^}]*break-before:\s*auto;[^}]*page-break-before:\s*auto;/s);
-    expect(css).toMatch(/\.happy-cleaning-todo-print-station:last-child\s*\{[^}]*break-after:\s*auto;[^}]*page-break-after:\s*auto;/s);
-    expect(css).toMatch(/\.happy-cleaning-todo-print-station li::marker\s*\{[^}]*content:\s*"";/s);
   });
 
   it('opens and switches station detail locally, restores focus, and keeps the URL', async () => {
@@ -848,27 +843,6 @@ describe('Happy Cleaning management', () => {
       ['3', 'Linus Torvalds'],
     ]);
     expect(screen.queryByText(/Private Krankheit|private@example\.test|Private Notiz/)).not.toBeInTheDocument();
-  });
-
-  it('retains the established number-list print treatment', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
-    const printStyles = css.slice(css.indexOf('@media print'));
-
-    expect(printStyles).toMatch(
-      /\.happy-cleaning-print-page#body-container\s*\{[\s\S]*?background-image:\s*radial-gradient\(/,
-    );
-    expect(printStyles).toMatch(
-      /\.happy-cleaning-print-title h1\s*\{[^}]*font-size:\s*2\.4rem;[^}]*font-weight:\s*700;/s,
-    );
-    expect(printStyles).toMatch(
-      /\.happy-cleaning-print-section h2\s*\{[^}]*font-size:\s*1\.35rem;[^}]*font-weight:\s*700;/s,
-    );
-    expect(printStyles).toMatch(
-      /\.happy-cleaning-print-table\s*\{[^}]*font-size:\s*11pt !important;/s,
-    );
-    expect(printStyles).toMatch(
-      /\.happy-cleaning-print-table th,[\s\S]*?\.happy-cleaning-print-table td\s*\{[^}]*padding:\s*1\.5mm 2mm !important;/s,
-    );
   });
 
   it('offers the same fixed batch-number dialog on the number list after HC1 is complete', async () => {

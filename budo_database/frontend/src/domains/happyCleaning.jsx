@@ -159,7 +159,7 @@ const renderTodoPrintNode = (node, key) => {
 
 function HappyCleaningTodoPrintPages({ data }) {
   return createPortal(
-    <div className="happy-cleaning-todo-print-pages hidden" aria-label={`To-Dos für Happy Cleaning ${data.event.display_number}`}>
+    <div className="happy-cleaning-todo-print-pages hidden print:block" aria-label={`To-Dos für Happy Cleaning ${data.event.display_number}`}>
       {data.stations.map(station => {
         const content = station.document?.content || [];
         return (

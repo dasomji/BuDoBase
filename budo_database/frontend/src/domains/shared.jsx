@@ -47,7 +47,7 @@ export function formatKidBirthday(kid) {
 }
 
 export function MealTable({ focus }) {
-  return <TableScroll><Table><TableHeader><TableRow><TableHead /><TableHead>Frühstück</TableHead><TableHead>Mittagessen</TableHead><TableHead>Abendessen</TableHead></TableRow></TableHeader><TableBody>{Object.entries(focus.meals).map(([day, meals]) => <TableRow key={day}><TableHead scope="row">Tag {day}</TableHead><TableCell>{displayOrPlaceholder(meals.breakfast)}</TableCell><TableCell>{displayOrPlaceholder(meals.lunch)}</TableCell><TableCell>{displayOrPlaceholder(meals.dinner)}</TableCell></TableRow>)}</TableBody></Table></TableScroll>;
+  return <TableScroll><Table><TableHeader><TableRow><TableHead scope="col" /><TableHead scope="col">Frühstück</TableHead><TableHead scope="col">Mittagessen</TableHead><TableHead scope="col">Abendessen</TableHead></TableRow></TableHeader><TableBody>{Object.entries(focus.meals).map(([day, meals]) => <TableRow key={day}><TableHead scope="row">Tag {day}</TableHead><TableCell>{displayOrPlaceholder(meals.breakfast)}</TableCell><TableCell>{displayOrPlaceholder(meals.lunch)}</TableCell><TableCell>{displayOrPlaceholder(meals.dinner)}</TableCell></TableRow>)}</TableBody></Table></TableScroll>;
 }
 
 export function NotFoundPage() {

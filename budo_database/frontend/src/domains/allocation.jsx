@@ -165,8 +165,8 @@ export function AllocationPage({ data, week, mutate, showKids = true }) {
     </div>
   );
   return (
-    <main className="allocation-page flex min-w-0 flex-col [&_.table-sticky-controls]:sticky [&_.table-sticky-controls]:top-[var(--app-header-height,0px)] [&_.table-sticky-controls]:z-5" id="body-container">
-      <Column id="right-column" className="allocation-table-column min-w-0 w-full min-[901px]:flex min-[901px]:min-h-[calc(100svh-var(--app-header-height,0px))] min-[901px]:flex-col min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:h-0 min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:min-h-[50vh] min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:max-h-none min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:flex-1 min-[901px]:[&_[data-slot=table]]:min-h-[50vh]">
+    <main className="allocation-page flex min-w-0 flex-col min-[901px]:h-[calc(100svh-var(--app-header-height,0px))] min-[901px]:min-h-0 min-[901px]:flex-none min-[901px]:overflow-hidden" id="body-container">
+      <Column id="right-column" className="allocation-table-column min-w-0 w-full min-[901px]:flex min-[901px]:h-full min-[901px]:min-h-0 min-[901px]:flex-none min-[901px]:flex-col min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:h-0 min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:min-h-[50vh] min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:max-h-none min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:flex-1 min-[901px]:[&_[data-slot=table]]:min-h-[50vh]">
         <DataTable columns={columns} rows={rows} showFilter beforeFilter={overview} stickyHeader stickyFirstColumn verticalScroll />
       </Column>
       <section className="allocation-print-pages" aria-label="SWP-Listen">

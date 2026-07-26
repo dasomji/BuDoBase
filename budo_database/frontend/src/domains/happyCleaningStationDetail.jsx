@@ -483,11 +483,11 @@ export function HappyCleaningStationDetailPage({
           <>
             <dl className="happy-cleaning-station-facts grid gap-2.5">
               {station.responsible && (
-                <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[600px]:grid-cols-1 max-[600px]:gap-0.5"><dt className="font-medium">Hauptverantwortlich</dt><dd className="m-0">{station.responsible.name}</dd></div>
+                <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[900px]:grid-cols-1 max-[900px]:gap-0.5"><dt className="font-medium">Hauptverantwortlich</dt><dd className="m-0">{station.responsible.name}</dd></div>
               )}
-              <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[600px]:grid-cols-1 max-[600px]:gap-0.5"><dt className="font-medium">Max Kinder</dt><dd className="m-0">{station.max_kids}</dd></div>
-              <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[600px]:grid-cols-1 max-[600px]:gap-0.5"><dt className="font-medium">Treffpunkt</dt><dd className="m-0">{station.meeting_point || '—'}</dd></div>
-              <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[600px]:grid-cols-1 max-[600px]:gap-0.5"><dt className="font-medium">Wünsche</dt><dd className="m-0">{station.wishes || '—'}</dd></div>
+              <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[900px]:grid-cols-1 max-[900px]:gap-0.5"><dt className="font-medium">Max Kinder</dt><dd className="m-0">{station.max_kids}</dd></div>
+              <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[900px]:grid-cols-1 max-[900px]:gap-0.5"><dt className="font-medium">Treffpunkt</dt><dd className="m-0">{station.meeting_point || '—'}</dd></div>
+              <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[900px]:grid-cols-1 max-[900px]:gap-0.5"><dt className="font-medium">Wünsche</dt><dd className="m-0">{station.wishes || '—'}</dd></div>
             </dl>
             <section aria-labelledby={`station-tasks-${station.id}`}>
               <h2 className="py-2 [padding-top:12px]" id={`station-tasks-${station.id}`}>Aufgaben</h2>

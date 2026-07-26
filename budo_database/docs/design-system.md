@@ -4,9 +4,9 @@ This guide is the contract for new and migrated React UI. It documents the
 shared APIs shipped in `frontend/src` and the decisions recorded in
 [the design-system ADR](adr/2026-07-26-frontend-design-system.md).
 
-The frontend is still being migrated away from legacy global CSS. Existing
-legacy markup is not precedent for new work. Prefer Tailwind utilities and the
-shared components described here.
+The legacy global stylesheet has been removed. Prefer Tailwind utilities and
+the shared components described here; server-rendered compatibility markup is
+not precedent for new work.
 
 ## Source locations
 
@@ -315,9 +315,6 @@ express the same boundary as `max-[900px]:...` and `min-[901px]:...`.
 Do not use Tailwind's `sm`, `md`, or `lg` variants to switch the application's
 mobile/desktop behavior. The shipped source currently exposes no named custom
 Tailwind mobile variant.
-
-Some legacy rules still contain older thresholds while migration is in
-progress. They are cleanup targets, not permitted alternatives for new work.
 
 ## Printing
 

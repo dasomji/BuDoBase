@@ -21,14 +21,13 @@
     {% for week, week_data in meal_counts.items %}
     <div class="card transparent meal-card" id="db-{{ week }}">
       <div class="info-header-container">
-        <h2>Menüplan Woche {% if week == "w1" %}1{% else %}2{% endif %}</h2>{% include "components/openicon.html" %}
+        <h2>Menüplan Woche {% if week == "w1" %}1{% else %}2{% endif %}</h2>
       </div>
       <div class="card-info-container meal-container table-container">
         {% for day, meals in week_data.items %}
         <div class="card transparent meal-card" id="card-{{ week }}-{{day}}">
           <div class="info-header-container">
             <h2>Tag {{ day }}</h2>
-            {% include "components/openicon.html" %}
           </div>
           <div class="card-info-container">
             <div class="meal-container">
@@ -148,7 +147,7 @@
   <div class="detail-column normal-column" id="right-column">
     <div class="card closed-card" id="db-essen">
       <div class="info-header-container">
-        <h2>Essen & Allergien</h2>{% include "components/openicon.html" %}
+        <h2>Essen & Allergien</h2>
       </div>
       <div class="card-info-container">
         {% for kid in kids %}
@@ -167,7 +166,7 @@
     </div>
     <div class="card" id="db-team">
       <div class="info-header-container">
-        <h2>Team</h2>{% include "components/openicon.html" %}
+        <h2>Team</h2>
       </div>
       <div class="card-info-container">
         {% for teamer in team %}
@@ -185,7 +184,6 @@
     <div class="card transparent meal-card" id="db-{{ week }}">
       <div class="info-header-container">
         <h2>Schwerpunktinfos Woche {% if week == "w1" %}1{% else %}2{% endif %}</h2>
-        {% include "components/openicon.html" %}
       </div>
       <div class="card-info-container meal-container table-container">
         <div class="schwerpunkt-container">
@@ -197,7 +195,6 @@
                 <h2>{{ swp.swp_name }}</h2>
                 <p>{{ swp.ort}}</p>
               </div>
-              {% include "components/openicon.html" %}
             </div>
             <div class="card-info-container">
               <div class="card-table-container">

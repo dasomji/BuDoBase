@@ -1,6 +1,8 @@
 import { createContext, useContext, useMemo, useRef, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 
+import { Button } from '../components/ui/button';
+
 const GalleryContext = createContext(null);
 const SWIPE_THRESHOLD = 60;
 
@@ -25,15 +27,15 @@ export function FirstAidGalleryTrigger({ photo, childName, entryId, ordinal, chi
 
   if (!gallery) {
     return (
-      <button className="max-w-full shrink-0 border-0 bg-transparent p-0" type="button" aria-label={label}>
+      <Button className="h-auto max-w-full shrink-0 border-0 bg-transparent p-0" variant="ghost" type="button" aria-label={label}>
         {children}
-      </button>
+      </Button>
     );
   }
 
   return (
     <Dialog.Trigger
-      className="max-w-full shrink-0 border-0 bg-transparent p-0"
+      render={<Button className="h-auto max-w-full shrink-0 border-0 bg-transparent p-0" variant="ghost" />}
       id={`first-aid-photo-${photo.id}`}
       type="button"
       aria-label={label}
@@ -92,17 +94,19 @@ function GalleryDialog({ inventory, selectedId, select }) {
           <Dialog.Description className="col-span-full m-0 px-10 text-center text-[#eee]">
             {current.alt}; Bild {currentIndex + 1} von {inventory.length}
           </Dialog.Description>
-          <Dialog.Close className="absolute top-2 right-2 grid size-11 place-items-center rounded-full border border-white/45 bg-black/55 text-3xl leading-none text-white" aria-label="Galerie schließen">
+          <Dialog.Close render={<Button className="absolute top-2 right-2 size-11 border-white/45 bg-black/55 text-3xl leading-none text-white" variant="ghost" size="icon" />} aria-label="Galerie schließen">
             <span aria-hidden="true">×</span>
           </Dialog.Close>
-          <button
-            className="grid size-11 place-items-center rounded-full border border-white/45 bg-black/55 text-3xl leading-none text-white"
+          <Button
+            className="size-11 border-white/45 bg-black/55 text-3xl leading-none text-white"
+            variant="ghost"
+            size="icon"
             type="button"
             aria-label="Vorheriges Foto"
             onClick={() => move(-1)}
           >
             <span aria-hidden="true">‹</span>
-          </button>
+          </Button>
           <div className="grid min-h-0 min-w-0 place-items-center">
             <img
               className="block h-auto max-h-[calc(100dvh-12rem)] w-auto max-w-full touch-pan-y object-contain select-none"
@@ -115,14 +119,16 @@ function GalleryDialog({ inventory, selectedId, select }) {
               draggable="false"
             />
           </div>
-          <button
-            className="grid size-11 place-items-center rounded-full border border-white/45 bg-black/55 text-3xl leading-none text-white"
+          <Button
+            className="size-11 border-white/45 bg-black/55 text-3xl leading-none text-white"
+            variant="ghost"
+            size="icon"
             type="button"
             aria-label="Nächstes Foto"
             onClick={() => move(1)}
           >
             <span aria-hidden="true">›</span>
-          </button>
+          </Button>
         </Dialog.Popup>
       </Dialog.Viewport>
     </Dialog.Portal>

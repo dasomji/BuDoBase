@@ -1,6 +1,10 @@
 from datetime import date
+from pathlib import Path
 
 from django.contrib.auth.models import Permission, User
+from django.contrib.staticfiles import finders
+from django.template import TemplateDoesNotExist
+from django.template.loader import get_template
 from django.test import TestCase
 from django.urls import reverse
 
@@ -9,6 +13,90 @@ from .models import Geld, Kinder, Turnus
 
 
 class ReactShellTests(TestCase):
+    def test_design_system_bundle_has_no_legacy_stylesheet_or_cascade_layer(self):
+        project_root = Path(__file__).resolve().parent.parent
+        source = (project_root / "frontend/src/app.css").read_text()
+        frontend_sources = "\n".join(
+            path.read_text()
+            for suffix in ("*.js", "*.jsx", "*.css")
+            for path in (project_root / "frontend/src").rglob(suffix)
+        )
+        built_css = (project_root / "budo_app/static/frontend/app.css").read_text()
+
+        self.assertNotIn("stylesheet.css", source)
+        self.assertNotIn("layer(legacy)", source)
+        self.assertNotRegex(source, r"@layer[^;{]*\blegacy\b")
+        self.assertIsNone(finders.find("stylesheet.css"))
+        self.assertNotIn("display: grid !important", source)
+        self.assertNotIn("display: flex !important", source)
+        self.assertNotIn("width: max-content !important", source)
+        self.assertNotIn("Layered !important declarations", source)
+        self.assertNotRegex(
+            source,
+            r"@media[^{]*(?:600|640|760|761|768|1024)px",
+        )
+        self.assertNotRegex(
+            frontend_sources,
+            r"(?:^|[:\s\"'])(?:sm|md|lg|xl|2xl):(?=[a-z[])",
+        )
+        self.assertNotRegex(
+            frontend_sources,
+            r"(?:min|max)-\[(?!(?:900|901)px)\d+px\]:",
+        )
+        self.assertNotRegex(
+            built_css,
+            r"@media[^{]*(?:width\s*[<>]=?\s*(?:40rem|48rem)|"
+            r"(?:600|640|768|1024)px)",
+        )
+
+    def test_named_legacy_ui_assets_are_removed_after_their_references(self):
+        project_root = Path(__file__).resolve().parent.parent
+        legacy_static = (
+            "js/card_functionality.js",
+            "js/edit-freunde.js",
+            "js/edit-notiz.js",
+            "js/header.js",
+            "js/pfand-controls.js",
+            "js/zugabreise-toggle.js",
+            "js/zuganreise-toggle.js",
+        )
+        legacy_templates = (
+            "check_in_kid.html",
+            "components/card.html",
+            "components/ja_nein_switch.html",
+            "components/openicon.html",
+            "components/pin_overlay.html",
+            "main.html",
+        )
+        template_sources = "\n".join(
+            path.read_text()
+            for template_root in (
+                project_root / "budo_app/templates",
+                project_root / "users/templates",
+            )
+            for path in template_root.rglob("*.html")
+        )
+
+        for asset in legacy_static:
+            self.assertIsNone(finders.find(asset), asset)
+            self.assertNotIn(asset, template_sources)
+        for template_name in legacy_templates:
+            with self.assertRaises(TemplateDoesNotExist, msg=template_name):
+                get_template(template_name)
+            self.assertNotIn(template_name, template_sources)
+        self.assertNotIn('id="mySidebar"', template_sources)
+        self.assertNotIn('class="number-pad"', template_sources)
+        self.assertNotIn('class="pfand-controls"', template_sources)
+        self.assertNotIn('class="modal"', template_sources)
+
+    def test_deploy_collects_static_and_generated_directory_is_ignored(self):
+        project_root = Path(__file__).resolve().parent.parent
+        railway = (project_root / "railway.json").read_text()
+        gitignore = (project_root / ".gitignore").read_text().splitlines()
+
+        self.assertIn("python manage.py collectstatic --noinput", railway)
+        self.assertIn("staticfiles/", gitignore)
+
     def test_template_page_uses_the_react_mount_for_screen_and_print(self):
         response = self.client.get(reverse("login"))
 

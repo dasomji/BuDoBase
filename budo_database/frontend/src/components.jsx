@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { SearchIcon } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
   Table,
@@ -196,6 +196,7 @@ export function Card({
   onExpandedChange,
 }) {
   const mobile = useIsMobile();
+  const contentId = useId();
   const [internallyClosed, setInternallyClosed] = useState(initiallyClosed || mobile);
   const controlled = expanded !== undefined;
   const closed = controlled ? !expanded : internallyClosed;
@@ -215,6 +216,7 @@ export function Card({
         role="button"
         tabIndex={0}
         aria-expanded={!closed}
+        aria-controls={contentId}
         aria-label={`${title} ${closed ? 'öffnen' : 'schließen'}`}
         onClick={toggle}
         onKeyDown={event => {
@@ -240,7 +242,7 @@ export function Card({
           </span>
         )}
       </div>
-      <div className="card-info-container" aria-hidden={closed} inert={closed || undefined}>
+      <div className="card-info-container" id={contentId} aria-hidden={closed} inert={closed || undefined}>
         <div className="card-info-content">{children}</div>
       </div>
     </Container>
@@ -332,7 +334,7 @@ export function DataTable({
           <TableHeader><TableRow className="table-header">{columns.map(column => {
             const direction = sort?.key === column.key ? sort.direction : undefined;
             const nextDirection = direction === 'ascending' ? 'absteigend' : direction === 'descending' ? 'aufsteigend' : '';
-            return <TableHead key={column.key} data-priority={column.priority} aria-sort={direction}>{column.sortable === false ? column.label : <button className="table-sort-button" type="button" aria-label={`${column.label}${nextDirection ? ` ${nextDirection}` : ''} sortieren`} onClick={() => sortBy(column.key)}><span>{column.label}</span>{direction && <span className="sort-indicator" aria-hidden="true">{direction === 'ascending' ? '▲' : '▼'}</span>}</button>}</TableHead>;
+            return <TableHead key={column.key} scope="col" data-priority={column.priority} aria-sort={direction}>{column.sortable === false ? column.label : <button className="table-sort-button" type="button" aria-label={`${column.label}${nextDirection ? ` ${nextDirection}` : ''} sortieren`} onClick={() => sortBy(column.key)}><span>{column.label}</span>{direction && <span className="sort-indicator" aria-hidden="true">{direction === 'ascending' ? '▲' : '▼'}</span>}</button>}</TableHead>;
           })}</TableRow></TableHeader>
           <TableBody>
             {visibleRows.map(row => <TableRow className="table_row" key={row.id}>{columns.map(column => <TableCell className={column.className || 'text-cell'} data-priority={column.priority} key={column.key}>{column.render ? column.render(row) : row[column.key]}</TableCell>)}</TableRow>)}
@@ -416,7 +418,7 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
         }
         return <label key={field.name}>{field.label}<input name={field.name} type={field.type || 'text'} defaultValue={field.type === 'file' ? undefined : field.value ?? ''} required={field.required} multiple={field.multiple} accept={field.accept} min={field.min} step={field.step} /></label>;
       })}
-      <div className="form-buttons">{children}<input className="button" type="submit" value={submit} disabled={submitting} /></div>
+      <div className="form-buttons">{children}<input className={buttonVariants()} type="submit" value={submit} disabled={submitting} /></div>
     </>
   );
   if (method.toLowerCase() === 'post') {

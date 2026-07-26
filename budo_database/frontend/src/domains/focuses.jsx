@@ -116,13 +116,13 @@ export function MealsPage({ data, id }) {
   const indexedMeals = new Map(entries.map((meal, index) => [`${meal.day}-${meal.type}`, { meal, index }]));
   return (
     <Columns>
-      <Column id="single-column" className="w-full max-w-5xl">
-        <Card title="Wann esst ihr wo?">
-          <RestForm target={`/swpmeals/${focus.id}`} token={data.csrf_token} className="form-grid">
+      <Column id="single-column" className="min-w-0 w-full max-w-5xl">
+        <Card title="Wann esst ihr wo?" className="min-w-0">
+          <RestForm target={`/swpmeals/${focus.id}`} token={data.csrf_token} className="form-grid min-w-0">
             <input type="hidden" name="form-TOTAL_FORMS" value={entries.length} />
             <input type="hidden" name="form-INITIAL_FORMS" value={entries.length} />
-            <TableScroll>
-              <Table className="min-w-[40rem]">
+            <TableScroll className="min-w-0 max-w-full">
+              <Table className="min-w-full min-[901px]:min-w-[40rem]">
                 <TableHeader>
                   <TableRow>
                     <TableHead scope="col">Tag</TableHead>
@@ -141,7 +141,7 @@ export function MealsPage({ data, id }) {
                         <TableCell key={type}>
                           <input type="hidden" name={`form-${index}-id`} value={meal.id} />
                           <label className="sr-only" htmlFor={fieldId}>Tag {day} · {label}</label>
-                          <select className="w-full min-w-36 rounded-lg border-2 border-white bg-white p-1 font-light" id={fieldId} name={`form-${index}-meal_choice`} defaultValue={meal.choice}>
+                          <select className="w-full min-w-0 rounded-lg border-2 border-white bg-white p-1 font-light min-[901px]:min-w-36" id={fieldId} name={`form-${index}-meal_choice`} defaultValue={meal.choice}>
                             {data.meal_choices.map(choice => (
                               <option value={choice.value} key={choice.value}>{choice.label}</option>
                             ))}

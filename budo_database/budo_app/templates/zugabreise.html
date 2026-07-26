@@ -5,9 +5,7 @@
 BuDo Kids Alle Kinder meiner Mama
 {% endblock %}
 {% block extrahead %}
-<script src=" {% static 'js/zugabreise-toggle.js' %}"></script>
 <script src="{% static 'js/filtertable.js' %}"></script>
-<script src="{% static 'js/edit-notiz.js' %}"></script>
 {% endblock %}
 
 {% block headertitle %}
@@ -41,7 +39,7 @@ BuDo Kids Alle Kinder meiner Mama
         <td class="text-cell zug-toggle" id="zugabreise-toggle-{{ x.id }}"
           data-kidname="{{x.kid_vorname}} {{x.kid_nachname}}" data-id="{{ x.id }}"
           data-url="{% url 'toggle_zug_abreise' %}">
-          {% include "components/ja_nein_switch.html" with bool=x.zug_abreise %}
+          {% if x.zug_abreise %}Ja{% else %}Nein{% endif %}
         </td>
         <td class="text-cell">
           <span id="notiz-abreise-{{ x.id }}">{{ x.notiz_abreise }}</span>
@@ -60,13 +58,4 @@ BuDo Kids Alle Kinder meiner Mama
   </div>
 </div>
 
-<!-- Modal for editing Abreise-Notiz -->
-<div id="notizModal" class="modal">
-  <div class="modal-content">
-    <span class="close">&times;</span>
-    <h2>Edit Abreise-Notiz</h2>
-    <textarea id="notizInput" rows="4" cols="50"></textarea>
-    <button id="saveNotizBtn">Speichern</button>
-  </div>
-</div>
 {% endblock %}

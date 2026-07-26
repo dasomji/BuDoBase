@@ -9,7 +9,7 @@
     <div class="detail-column" id="left-column">
         <div class="card" id="db-profil">
             <div class="info-header-container">
-                <h2>Mein Profil</h2>{% include "components/openicon.html" %}
+                <h2>Mein Profil</h2>
             </div>
             <div class="card-info-container">
                 <p><span class="label">Rolle</span>: {{profil.get_rolle}} </p>
@@ -32,7 +32,7 @@
         </div>
         <div class="card" id="db-team">
             <div class="info-header-container">
-                <h2>Team</h2>{% include "components/openicon.html" %}
+                <h2>Team</h2>
             </div>
             <div class="card-info-container">
                 {% for teamer in team %}
@@ -50,7 +50,7 @@
         </div>
         <div class="card" id="db-finanzübersicht">
             <div class="info-header-container">
-                <h2>Finanzen</h2>{% include "components/openicon.html" %}
+                <h2>Finanzen</h2>
             </div>
             <div class="card-info-container">
                 <p><span class="label">Taschengeld eingezahlt:</span>: {{ geld_eingezahlt|floatformat:2 }}</p>
@@ -62,7 +62,7 @@
     <div class="detail-column" id="center-column">
         <div class="card" id="db-kinderübersicht">
             <div class="info-header-container">
-                <h2>Kinder: {{eingecheckte_kids}}</h2>{% include "components/openicon.html" %}
+                <h2>Kinder: {{eingecheckte_kids}}</h2>
             </div>
             <div class="card-info-container">
                 <p><span class="label">Eingecheckt</span>: {{eingecheckte_kids}}/{{anzahl_kids}} </p>
@@ -75,7 +75,7 @@
         </div>
         <div class="card" id="db-spezial">
             <div class="info-header-container">
-                <h2>Speziallisten</h2>{% include "components/openicon.html" %}
+                <h2>Speziallisten</h2>
             </div>
             <div class="card-info-container">
                 <p id="db-serienbrief"><a href="/serienbrief">Serienbrief</a></p>
@@ -95,7 +95,7 @@
         </div>
         <div class="card" id="db-notizen">
             <div class="info-header-container">
-                <h2>Notizen</h2>{% include "components/openicon.html" %}
+                <h2>Notizen</h2>
             </div>
             <div class="card-info-container">
                 <ul>
@@ -112,7 +112,7 @@
         </div>
         <div class="card" id="db-geld">
             <div class="info-header-container">
-                <h2>Taschengeld-Transaktionen</h2>{% include "components/openicon.html" %}
+                <h2>Taschengeld-Transaktionen</h2>
             </div>
             <div class="card-info-container">
                 <ul>
@@ -131,7 +131,7 @@
     <div class="detail-column" id="right-column">
         <div class="card closed-card" id="db-ersties">
             <div class="info-header-container">
-                <h2>Erstes Mal im BuDO: {{ersties_count}}/{{anzahl_kids}} </h2>{% include "components/openicon.html" %}
+                <h2>Erstes Mal im BuDO: {{ersties_count}}/{{anzahl_kids}} </h2>
             </div>
             <div class="card-info-container">
                 {% for kid in ersties %}
@@ -152,7 +152,7 @@
         </div>
         <div class="card closed-card" id="db-einwöchig">
             <div class="info-header-container">
-                <h2>Einwöchige: {{einwöchige_count}}</h2>{% include "components/openicon.html" %}
+                <h2>Einwöchige: {{einwöchige_count}}</h2>
             </div>
             <div class="card-info-container">
                 {% for kid in einwöchige %}
@@ -173,7 +173,7 @@
         </div>
         <div class="card closed-card" id="db-gesundheit">
             <div class="info-header-container">
-                <h2>Gesundheitliches</h2>{% include "components/openicon.html" %}
+                <h2>Gesundheitliches</h2>
             </div>
             <div class="card-info-container">
                 {% for kid in kids_attention %}
@@ -197,7 +197,7 @@
         </div>
         <div class="card closed-card" id="db-essen">
             <div class="info-header-container">
-                <h2>Essen & Allergien</h2>{% include "components/openicon.html" %}
+                <h2>Essen & Allergien</h2>
             </div>
             <div class="card-info-container">
                 {% for kid in kids %}
@@ -216,7 +216,7 @@
         </div>
         <div class="card" id="db-geburtstagskinder">
             <div class="info-header-container">
-                <h2>Geburtstagskinder: {{geburtstagskinder|length}}</h2>{% include "components/openicon.html" %}
+                <h2>Geburtstagskinder: {{geburtstagskinder|length}}</h2>
             </div>
             <div class="card-info-container">
                 {% for kid in geburtstagskinder %}
@@ -227,7 +227,7 @@
         </div>
         <div class="card" id="db-sechzehner">
             <div class="info-header-container">
-                <h2>Verabschiedungsliste: {{goodbyes|length}}</h2>{% include "components/openicon.html" %}
+                <h2>Verabschiedungsliste: {{goodbyes|length}}</h2>
             </div>
             <div class="card-info-container">
                 {% for kid in goodbyes %}

@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -325,15 +322,6 @@ describe('Kinder pages', () => {
     expect(fetchImpl.mock.calls.some(([url]) => url.startsWith('/api/app-data/'))).toBe(false);
   });
 
-  it('keeps interaction textareas to two through four lines and right-aligns Pfand actions', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
-
-    expect(css).toMatch(/\.interaction-textarea\s*\{[^}]*field-sizing:\s*content;[^}]*min-height:\s*2lh;[^}]*max-height:\s*4lh;[^}]*overflow-y:\s*auto;/s);
-    expect(css).toMatch(/#pfand \.card-info-container\s*\{[^}]*padding-top:\s*0;/s);
-    expect(css).toMatch(/#pfand \.deposit-actions\s*\{[^}]*justify-content:\s*flex-end;[^}]*margin-top:\s*0;/s);
-    expect(css).toMatch(/@media \(max-width: 600px\)[\s\S]*#interaction-bar form:has\(\.interaction-send-button\)\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;/);
-    expect(css).toMatch(/\.interaction-textarea\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;/s);
-  });
 });
 
 describe('Kinder date formatting', () => {

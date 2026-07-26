@@ -16,41 +16,14 @@
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
   <script src="{% static 'js/csrf.js' %}"></script>
-  <script src="{% static 'js/card_functionality.js' %}"></script>
-  <script src=" {% static 'js/header.js' %}"></script>
   {% block extrahead %}{% endblock %}
   {% comment %}
   <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" />
   {% endcomment %}
-  <link rel="stylesheet" href="{% static 'stylesheet.css' %}" />
   {% block header %} {% endblock %}
 </head>
 
 <body>
-  <!-- Menubar Content -->
-  <!-- Mobile menue -->
-  <div id="sidebar-container">
-    <div class="" id="mySidebar">
-      <button onclick="closeNav()" class="closebtn">&times;</button>
-      <div id="mobile-menu-content">
-        <div id="menu-user-info">
-          <a href="/profil">User: {{ request.user }}</a>
-          <a href="/logout">Ausloggen</a>
-        </div>
-        <p>-------------</p>
-        {% include 'navbar.html' %}
-        <p>-------------</p>
-        <div id="mobile-menu-content-2">
-          <a href="/zugabreise">Zugabreise</a>
-          <a href="/zuganreise">Zuganreise</a>
-          <a href="/budo_familien">Budo-Familien</a>
-          <a href="/spezial_familien">Spezialfamilien</a>
-        </div>
-      </div>
-    </div>
-    <div id="sidebar-close-area" onclick="closeNav()"></div>
-  </div>
-
   <!-- Desktop Menu -->
   <div class="" id="headermenu">
     <div class="" id="header-content">
@@ -76,7 +49,6 @@
         {% include 'navbar.html' %}
       </div>
       <div id="headerbutton">{% block headerbutton %} {% endblock %}</div>
-      <button id="menu-button" class="button" onclick="openNav()">☰</button>
       {% endif %}
     </div>
   </div>
