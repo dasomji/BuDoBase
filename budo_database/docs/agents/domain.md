@@ -6,6 +6,7 @@ This is a single-context repository. Engineering skills should consume its domai
 
 - Read `CONTEXT.md` at the repository root when it exists.
 - Read ADRs under `docs/adr/` that touch the area being changed.
+- For frontend or UI work, read `docs/design-system.md` and its linked design-system ADR.
 - If either location does not exist, proceed silently. Domain-modeling workflows create them lazily when terminology or decisions are resolved.
 
 ## Use the glossary vocabulary
@@ -17,3 +18,7 @@ If a needed concept is absent, first reconsider whether the project already uses
 ## Flag ADR conflicts
 
 If proposed work contradicts an existing ADR, identify the conflict explicitly instead of silently overriding the earlier decision.
+
+## Frontend system
+
+`docs/design-system.md` is the agent-facing contract for frontend tokens, shared components, responsive behavior, tables, and printing. Treat older page-specific CSS and component patterns as migration context, not as alternatives to that guide.
