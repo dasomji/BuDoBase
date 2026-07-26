@@ -1,7 +1,7 @@
 # Happy Cleaning integrated hardening evidence (#87)
 
-Captured on 2026-07-25 from commit baseline `61ff487` plus the #87
-hardening changes.
+Captured on 2026-07-26 from commit baseline `61ff487` plus the #87
+hardening and integration changes.
 
 ## Performance budgets
 
@@ -56,14 +56,22 @@ These contracts live in
 Chrome was connected to a migrated, isolated SQLite database served by
 Django's ASGI development server. The fixture contains active and historical
 Turni, two copy targets, an exactly overbooked station, and canonical document
-tasks. The retained browser session could not be authenticated as that fixture
-user reliably: the bounded login attempt navigated away from the inspected
-target, and the resulting capture was correctly rejected during visual
-inspection because it showed the login page.
+tasks. The authenticated captures were visually inspected after capture:
 
-No screenshot is presented as product evidence for this run. Responsive and
-workflow states are covered by the automated DOM and accessibility tests
-above; they were not replaced with synthetic screenshots.
+| Screenshot | Viewport | Evidence |
+| --- | --- | --- |
+| [`desktop-split-overbooked.png`](desktop-split-overbooked.png) | 1280 × 937 | The overview and local detail remain visible in the 50/50 desktop split. The selected Speisesaal shows the exact `1 überbelegt` state, assigned children, task progress, and station actions. |
+| [`mobile-fullscreen-overbooked.png`](mobile-fullscreen-overbooked.png) | 390 × 844 | The same station occupies the mobile content area below the fixed application header. `Zur Liste`, the station title, exact overbooking state, children, and tasks remain visible without being covered by the header. |
+| [`mobile-stacked-conflict.png`](mobile-stacked-conflict.png) | 390 × 844 | A station-copy preview shows the target, unresolved-group count, source-to-target candidate, and stacked overwrite/append/separate/skip choices. Target-dependent choices are disabled until a candidate is selected and no destructive choice is preselected. |
+| [`desktop-minimal-editor.png`](desktop-minimal-editor.png) | 1280 × 937 | The local desktop editor keeps the overview in context and exposes only station metadata, responsible-person selection, stable task rows, save, and guarded navigation controls; no rich-text toolbar is present. |
+
+Together these captures cover the required responsive split/full-screen
+layouts, exact overbooking communication, copy-conflict decision surface, and
+minimal station editor. The automated interaction evidence above covers
+create/edit/delete eligibility, conflict-free copy success, multi-candidate
+selection, append provenance, separate/skip behavior, keyboard focus
+restoration, and dirty-navigation decisions that are temporal or
+authorization-dependent and cannot be established by a single still image.
 
 ## Environment qualification
 
