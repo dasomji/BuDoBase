@@ -1658,168 +1658,6 @@ input[name="amount"]::placeholder {
   flex: 1;
 }
 
-.happy-cleaning-assignment {
-  width: min(96rem, 100%);
-}
-
-.happy-cleaning-assignment-controls {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  flex: 0 0 100%;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: var(--m-padding);
-  margin: 30px 0 var(--m-padding);
-}
-
-.happy-cleaning-assignment-searchbar {
-  position: relative;
-  z-index: calc(var(--z-table-header) + 1);
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  grid-column: 1;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--xs-padding);
-}
-
-.happy-cleaning-assignment-controls > .happy-cleaning-selected-child {
-  width: 100%;
-  min-width: 0;
-  grid-column: 2;
-}
-
-.happy-cleaning-child-search {
-  position: relative;
-  width: 100%;
-  min-width: 0;
-}
-
-.happy-cleaning-child-search > input {
-  width: 100%;
-  border: 2px solid white;
-  border-radius: var(--corner-rad);
-  background: white;
-  color: var(--text-color);
-  padding: var(--s-padding);
-}
-
-.happy-cleaning-child-results {
-  position: absolute;
-  top: calc(100% + 0.25rem);
-  right: 0;
-  left: 0;
-  z-index: calc(var(--z-table-header) + 1);
-  max-height: min(60vh, 28rem);
-  overflow-y: auto;
-  border-radius: var(--corner-rad);
-  background: white;
-  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.25);
-}
-
-.happy-cleaning-child-results [role="option"] {
-  display: grid;
-  width: 100%;
-  grid-template-columns: minmax(10rem, 1fr) minmax(20rem, 2fr);
-  gap: var(--s-padding);
-  border: 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 0;
-  background: white;
-  color: var(--text-color);
-  padding: var(--s-padding);
-  text-align: left;
-}
-
-.happy-cleaning-child-results [role="option"] > span {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(7rem, 1fr));
-  gap: var(--s-padding);
-}
-
-.happy-cleaning-child-results [role="option"].selected,
-.happy-cleaning-child-results [role="option"]:hover {
-  background: var(--secondary);
-}
-
-.happy-cleaning-counter-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--xs-padding);
-}
-
-.happy-cleaning-counter-info {
-  border-radius: var(--corner-rad);
-  background: var(--dark-blue);
-  padding: 0.45rem var(--s-padding);
-  font-weight: 500;
-}
-
-.happy-cleaning-selected-child {
-  margin: 0;
-  padding: var(--m-padding);
-}
-
-.happy-cleaning-selected-child dl {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--s-padding);
-}
-
-.happy-cleaning-selected-child dl div {
-  min-width: 0;
-}
-
-.happy-cleaning-selected-child dt {
-  font-weight: 600;
-}
-
-.happy-cleaning-selected-child dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.happy-cleaning-number-form {
-  display: flex;
-  align-items: stretch;
-  flex-wrap: wrap;
-  gap: var(--xs-padding);
-}
-
-.happy-cleaning-number-form input {
-  width: 50px;
-  min-width: 0;
-  max-width: 50px;
-  flex: 0 0 50px;
-  border: 2px solid white;
-  border-radius: var(--corner-rad);
-  padding: var(--xs-padding);
-}
-
-.happy-cleaning-number-value {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--xs-padding);
-}
-
-.happy-cleaning-number-edit {
-  display: inline-grid;
-  place-items: center;
-  border-radius: var(--corner-rad);
-  padding: var(--xs-padding);
-}
-
-.happy-cleaning-number-edit:hover,
-.happy-cleaning-number-edit:focus-visible {
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.happy-cleaning-number-edit svg {
-  display: block;
-}
-
 .happy-cleaning-dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -1836,9 +1674,7 @@ input[name="amount"]::placeholder {
   padding: var(--m-padding);
 }
 
-.happy-cleaning-number-dialog,
-.happy-cleaning-unassigned-dialog,
-.happy-cleaning-station-dialog {
+.happy-cleaning-number-dialog {
   position: relative;
   width: min(600px, 100%);
   max-width: 600px;
@@ -1848,9 +1684,7 @@ input[name="amount"]::placeholder {
   background: var(--bg-blue__solid);
 }
 
-.happy-cleaning-number-dialog h2,
-.happy-cleaning-unassigned-dialog h2,
-.happy-cleaning-station-dialog h2 {
+.happy-cleaning-number-dialog h2 {
   margin-right: calc(2rem + var(--s-padding));
 }
 
@@ -1868,21 +1702,6 @@ input[name="amount"]::placeholder {
 .happy-cleaning-dialog-close:hover,
 .happy-cleaning-dialog-close:focus-visible {
   background: rgba(255, 255, 255, 0.7);
-}
-
-.happy-cleaning-unassigned-dialog ul {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--xs-padding);
-  margin: var(--m-padding) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.happy-cleaning-unassigned-dialog li button {
-  width: 100%;
-  cursor: pointer;
-  text-align: left;
 }
 
 .happy-cleaning-batch-list {
@@ -1918,196 +1737,6 @@ input[name="amount"]::placeholder {
   margin-top: var(--m-padding);
 }
 
-.happy-cleaning-station-dialog dl {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--s-padding);
-  margin-bottom: 0;
-}
-
-.happy-cleaning-station-dialog dt {
-  font-weight: 600;
-}
-
-.happy-cleaning-station-dialog dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.happy-cleaning-number-neighborhood {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--xs-padding);
-  margin: var(--m-padding) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.happy-cleaning-number-neighborhood li > button,
-.happy-cleaning-number-occupied {
-  display: grid;
-  width: 100%;
-  grid-template-columns: minmax(3rem, auto) minmax(0, 1fr);
-  align-items: center;
-  gap: var(--s-padding);
-  border-radius: var(--corner-rad);
-  padding: var(--s-padding);
-  text-align: left;
-}
-
-.happy-cleaning-number-neighborhood li > button {
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  background: rgba(255, 255, 255, 0.65);
-  color: inherit;
-  cursor: pointer;
-}
-
-.happy-cleaning-number-neighborhood li > button:hover,
-.happy-cleaning-number-neighborhood li > button:focus-visible {
-  background: white;
-}
-
-.happy-cleaning-number-neighborhood li > button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.happy-cleaning-number-occupied {
-  background: rgba(0, 0, 0, 0.08);
-  color: rgba(0, 0, 0, 0.65);
-}
-
-.happy-cleaning-assignment-table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  border-radius: var(--corner-rad);
-}
-
-.happy-cleaning-assignment-table-wrap table {
-  width: 100%;
-  min-width: 60rem;
-}
-
-.happy-cleaning-assignment-table-wrap th,
-.happy-cleaning-assignment-table-wrap td {
-  padding: var(--s-padding);
-  vertical-align: top;
-}
-
-.happy-cleaning-assignment-table-wrap th button {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-}
-
-.happy-cleaning-excused-row {
-  background: rgba(255, 255, 255, 0.22);
-}
-
-.happy-cleaning-excused-children {
-  min-width: 0;
-}
-
-.happy-cleaning-station-details-trigger {
-  display: grid;
-  place-items: center;
-  border-radius: var(--corner-rad);
-  padding: var(--xs-padding);
-  cursor: pointer;
-}
-
-.happy-cleaning-station-details-trigger:hover,
-.happy-cleaning-station-details-trigger:focus-visible {
-  background: rgba(255, 255, 255, 0.7);
-}
-
-.happy-cleaning-children-header {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--xs-padding);
-}
-
-.happy-cleaning-children-toggle {
-  display: inline-grid;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: var(--corner-rad);
-  padding: var(--xs-padding);
-}
-
-.happy-cleaning-children-toggle:hover,
-.happy-cleaning-children-toggle:focus-visible {
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.happy-cleaning-children-toggle svg {
-  display: block;
-}
-
-.happy-cleaning-assigned-count {
-  display: none;
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-}
-
-.happy-cleaning-children-hidden .happy-cleaning-child-pills {
-  display: none;
-}
-
-.happy-cleaning-children-hidden .happy-cleaning-assigned-count {
-  display: inline;
-}
-
-.happy-cleaning-child-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--xs-padding);
-}
-
-.happy-cleaning-child-pill {
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.45);
-  color: inherit;
-  padding: 0.2rem 0.55rem;
-  white-space: nowrap;
-}
-
-@media (max-width: 639px) {
-  .happy-cleaning-assignment-table-wrap .happy-cleaning-mobile-table {
-    min-width: 0;
-  }
-
-  .happy-cleaning-mobile-table .happy-cleaning-desktop-column {
-    display: none;
-  }
-
-  .happy-cleaning-mobile-table th,
-  .happy-cleaning-mobile-table td {
-    padding: var(--xs-padding);
-  }
-
-  .happy-cleaning-mobile-table .happy-cleaning-places-column,
-  .happy-cleaning-mobile-table th:last-child,
-  .happy-cleaning-mobile-table td:last-child {
-    width: 1%;
-    white-space: nowrap;
-  }
-
-  .happy-cleaning-mobile-table th:last-child,
-  .happy-cleaning-mobile-table td:last-child {
-    text-align: center;
-  }
-
-  .happy-cleaning-mobile-table td.happy-cleaning-excused-children:last-child {
-    width: auto;
-    white-space: normal;
-    text-align: left;
-  }
-}
-
 @media (max-width: 759px) {
   .happy-cleaning-station-summary,
   .happy-cleaning-todo,
@@ -2119,18 +1748,6 @@ input[name="amount"]::placeholder {
   .happy-cleaning-todo input,
   .happy-cleaning-add-todo label {
     flex-basis: 100%;
-  }
-
-  .happy-cleaning-assignment-controls {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .happy-cleaning-assignment-controls > .happy-cleaning-selected-child {
-    grid-column: 1;
-  }
-
-  .happy-cleaning-child-results [role="option"] {
-    display: block;
   }
 
 }

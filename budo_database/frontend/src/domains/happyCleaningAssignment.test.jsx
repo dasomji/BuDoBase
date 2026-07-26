@@ -89,9 +89,13 @@ const assignmentData = {
 };
 
 const setViewport = mobile => {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: mobile ? 390 : 1024,
+  });
   window.matchMedia = vi.fn().mockReturnValue({
     matches: mobile,
-    media: '(max-width: 639px)',
+    media: '(max-width: 900px)',
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   });
@@ -169,8 +173,9 @@ describe('Happy Cleaning assignment', () => {
 
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     const heading = screen.getByRole('heading', { name: 'Ada Lovelace' });
-    const controls = heading.closest('.happy-cleaning-assignment-controls');
+    const controls = screen.getByRole('group', { name: 'Kind auswählen und bearbeiten' });
     const selectedSearch = screen.getByRole('combobox', { name: 'Kind suchen' });
+    expect(controls).toContainElement(heading);
     expect(controls).toContainElement(selectedSearch);
     expect(controls.children).toHaveLength(2);
     expect(selectedSearch).toHaveValue('Ada Lovelace');
@@ -220,9 +225,10 @@ describe('Happy Cleaning assignment', () => {
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
 
     const counterInfo = screen.getByText('Eingeteilt: 1/2');
-    expect(counterInfo).toHaveClass('happy-cleaning-counter-info');
     const counter = screen.getByRole('button', { name: 'Nicht eingeteilte Kinder anzeigen' });
-    expect(counter.closest('.happy-cleaning-counter-row')).toContainElement(counterInfo);
+    const actions = screen.getByRole('group', { name: 'Einteilungsaktionen' });
+    expect(actions).toContainElement(counterInfo);
+    expect(actions).toContainElement(counter);
     fireEvent.click(counter);
 
     let dialog = screen.getByRole('dialog');
@@ -243,14 +249,15 @@ describe('Happy Cleaning assignment', () => {
     expect(screen.getByRole('combobox', { name: 'Kind suchen' })).toHaveValue('Grace Hopper');
   });
 
-  it('renders the complete tablet table and a reduced mobile table with station-detail dialogs', () => {
+  it('renders shared table primitives inside an internal scroll boundary and keeps mobile station details available', () => {
     setViewport(false);
     const desktop = render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
 
     const table = screen.getByRole('table', { name: 'Happy Cleaning Stationen' });
-    expect(table).toHaveClass('data-table');
-    expect(within(table).getByRole('row', { name: /Station Wünsche/ })).toHaveClass('table-header');
-    expect(within(table).getByRole('columnheader', { name: 'Wünsche' })).toBeInTheDocument();
+    expect(table.parentElement).toHaveAttribute('data-slot', 'table-scroll');
+    expect(table).toHaveAttribute('data-slot', 'table');
+    expect(within(table).getByRole('row', { name: /Station Wünsche/ })).toHaveAttribute('data-slot', 'table-row');
+    expect(within(table).getByRole('columnheader', { name: 'Wünsche' })).toHaveAttribute('data-priority', 'low');
     expect(within(table).getByRole('rowheader', { name: 'Speisesaal' })).toBeInTheDocument();
     expect(within(table).getByText('Fenster')).toBeInTheDocument();
     expect(within(table).getByText('Vor dem Saal')).toBeInTheDocument();
@@ -266,24 +273,23 @@ describe('Happy Cleaning assignment', () => {
     expect(hideChildren.querySelector('.lucide-eye')).toBeInTheDocument();
     fireEvent.click(hideChildren);
 
-    expect(table).toHaveClass('happy-cleaning-children-hidden');
     expect(within(table).getByRole('button', { name: 'Kindernamen anzeigen' }).querySelector('.lucide-eye-off')).toBeInTheDocument();
     const diningHallRow = within(table).getByRole('rowheader', { name: 'Speisesaal' }).closest('tr');
-    expect(diningHallRow.querySelector('.happy-cleaning-assigned-count')).toHaveTextContent('1');
-    expect(diningHallRow.querySelector('.happy-cleaning-assigned-count')).toHaveAccessibleName('1 eingeteiltes Kind');
+    expect(within(diningHallRow).getByLabelText('1 eingeteiltes Kind')).toBeVisible();
     expect(childButton).toBeInTheDocument();
+    expect(childButton).not.toBeVisible();
 
     desktop.unmount();
     setViewport(true);
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
 
     const mobileTable = screen.getByRole('table', { name: 'Happy Cleaning Stationen' });
-    expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 639px)');
-    expect(mobileTable).toHaveClass('happy-cleaning-mobile-table');
+    expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 900px)');
+    expect(mobileTable.parentElement).toHaveAttribute('data-slot', 'table-scroll');
     expect(within(mobileTable).getByRole('columnheader', { name: 'SWP' })).toBeInTheDocument();
     expect(within(mobileTable).getByRole('columnheader', { name: 'Plätze' })).toBeInTheDocument();
     expect(within(mobileTable).getByRole('columnheader', { name: 'Details' })).toBeInTheDocument();
-    expect(within(mobileTable).getByRole('columnheader', { name: 'Wünsche' })).toHaveClass('happy-cleaning-desktop-column');
+    expect(within(mobileTable).getByRole('columnheader', { name: 'Wünsche' })).toHaveAttribute('data-priority', 'low');
     const detailsTrigger = within(mobileTable).getByRole('button', { name: 'Details zu Speisesaal anzeigen' });
     expect(detailsTrigger.querySelector('.lucide-eye')).toBeInTheDocument();
     fireEvent.click(detailsTrigger);
@@ -405,7 +411,7 @@ describe('Happy Cleaning assignment', () => {
     render(<HappyCleaningAssignmentPage data={data} mutate={mutate} />);
 
     const batch = screen.getByRole('button', { name: 'Kindern ohne Nummern, Nummern zuteilen' });
-    expect(batch.closest('.happy-cleaning-counter-row')).toContainElement(
+    expect(screen.getByRole('group', { name: 'Einteilungsaktionen' })).toContainElement(
       screen.getByRole('button', { name: 'Nicht eingeteilte Kinder anzeigen' }),
     );
     fireEvent.click(batch);
@@ -416,7 +422,6 @@ describe('Happy Cleaning assignment', () => {
     expect(within(dialog).getByRole('list', { name: 'Vorgeschlagene Nummern' })).toHaveTextContent('Katherine Johnson4');
     expect(within(dialog).queryByRole('spinbutton')).not.toBeInTheDocument();
     const actions = within(dialog).getByRole('group', { name: 'Dialogaktionen' });
-    expect(actions).toHaveClass('happy-cleaning-batch-actions');
     fireEvent.click(within(actions).getByRole('button', { name: 'Abbrechen' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
@@ -670,7 +675,6 @@ describe('Happy Cleaning assignment', () => {
 
     const toast = await screen.findByText(/Speisesaal ist inzwischen voll/, { selector: '.app-toast-description' });
     expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(document.querySelector('.happy-cleaning-assignment > .error')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Grace Hopper' })).toBeInTheDocument();
     expect(refresh).toHaveBeenCalledOnce();
     expect(screen.queryByText(/wurde Speisesaal zugeteilt/)).not.toBeInTheDocument();
