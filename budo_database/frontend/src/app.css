@@ -1,5 +1,7 @@
+@layer theme, base, legacy, components, utilities;
+
 @import "tailwindcss";
-@import "../../budo_app/static/stylesheet.css";
+@import "../../budo_app/static/stylesheet.css" layer(legacy);
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -593,6 +595,11 @@
   height: 420px;
   padding: 0;
   text-align: initial;
+}
+
+/* Preserve the legacy map height while its ID rule lives in the lower cascade layer. */
+#map.interactive-map {
+  height: 70vh;
 }
 
 .focus-dashboard > .focus-weeks-column {
@@ -2548,6 +2555,15 @@ input[name="amount"]::placeholder {
 
   .card-info-container {
     display: block !important;
+  }
+}
+
+/* Layered !important declarations reverse normal layer precedence. */
+@layer base {
+  @media print {
+    .happy-cleaning-print-table {
+      display: table !important;
+    }
   }
 }
 

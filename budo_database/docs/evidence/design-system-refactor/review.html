@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design-System Refactor — Before / After Review</title>
+<style>
+  :root {
+    --ink: #373737; --muted: #777; --line: #e3e3e3;
+    --before: #b3cad9; --after: #ffdd9b; --missing: #f4f4f4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 'Roboto', system-ui, sans-serif; color: var(--ink); background: #fafafa; }
+  header.page { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+  header.page h1 { font-size: 18px; margin: 0 auto 0 0; }
+  .tabs { display: flex; gap: 6px; }
+  .tabs button { font: inherit; padding: 6px 16px; border: 1px solid var(--line); background: #fff; border-radius: 999px; cursor: pointer; }
+  .tabs button.active { background: var(--after); border-color: transparent; font-weight: 600; }
+  .hint { color: var(--muted); font-size: 13px; width: 100%; }
+  main { max-width: 1500px; margin: 0 auto; padding: 24px; }
+  section h2 { font-size: 16px; margin: 32px 0 8px; border-bottom: 2px solid var(--before); padding-bottom: 4px; }
+  .row { background: #fff; border: 1px solid var(--line); border-radius: 8px; margin: 14px 0; padding: 14px 16px; }
+  .row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .row-head .title { font-weight: 600; }
+  .row-head .route { font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--muted); }
+  .row-head .state { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 800px) { .pair { grid-template-columns: 1fr; } }
+  .shot { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--missing); }
+  .shot .tag { display: block; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; padding: 4px 10px; }
+  .shot.before .tag { background: var(--before); }
+  .shot.after .tag { background: var(--after); }
+  .shot .frame { display: block; height: 340px; overflow: hidden; position: relative; cursor: zoom-in; }
+  .shot img { width: 100%; display: block; }
+  .shot .frame::after { content: ""; position: absolute; inset: auto 0 0 0; height: 44px; background: linear-gradient(transparent, rgba(0,0,0,.10)); pointer-events: none; }
+  .shot .missing { display: none; height: 340px; align-items: center; justify-content: center; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; cursor: default; }
+  .shot .missing code { font-size: 11.5px; background: #ececec; padding: 2px 6px; border-radius: 4px; }
+  .shot.is-missing .frame { display: none; }
+  .shot.is-missing .missing { display: flex; }
+  /* Lightbox: full image, keys A/B flip after/before for flicker comparison */
+  #lightbox { position: fixed; inset: 0; background: rgba(20,20,20,.94); display: none; z-index: 50; overflow: auto; }
+  #lightbox.open { display: block; }
+  #lightbox .bar { position: sticky; top: 0; display: flex; gap: 14px; align-items: center; padding: 10px 18px; background: rgba(0,0,0,.55); color: #eee; font-size: 13px; }
+  #lightbox .bar b#lb-state { text-transform: uppercase; letter-spacing: .08em; padding: 2px 10px; border-radius: 999px; color: #222; }
+  #lightbox img { display: block; margin: 0 auto; max-width: min(1400px, 96vw); width: 100%; }
+  #lightbox .bar button { margin-left: auto; font: inherit; background: none; color: #eee; border: 1px solid #666; border-radius: 6px; padding: 4px 12px; cursor: pointer; }
+  .filters { margin-left: 0; }
+  .filters label { font-size: 13px; color: var(--muted); cursor: pointer; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>Design-System Refactor — Before / After</h1>
+  <div class="tabs" id="tabs">
+    <button data-vp="desktop" class="active">Desktop</button>
+    <button data-vp="mobile">Mobile</button>
+    <button data-vp="print">Print</button>
+  </div>
+  <span class="filters"><label><input type="checkbox" id="only-changed"> only rows with an “after” shot</label></span>
+  <span class="hint">
+    Click a screenshot to zoom; in the zoom view press <b>B</b>/<b>A</b> (or click, or ←/→) to flicker between before and after.
+    Files follow the contract <code>before/&lt;slug&gt;--&lt;viewport&gt;.png</code> / <code>after/&lt;slug&gt;--&lt;viewport&gt;.png</code>,
+    captured by <code>capture.cjs</code> (print shots: <code>&lt;slug&gt;--print.png</code>, page 1 of the PDF).
+    Before = commit <code>98d6f48</code>, pre-refactor.
+  </span>
+</header>
+<main id="main"></main>
+
+<div id="lightbox">
+  <div class="bar">
+    <b id="lb-state">before</b>
+    <span id="lb-title"></span>
+    <button onclick="closeLb()">Close (Esc)</button>
+  </div>
+  <img id="lb-img" src="" alt="">
+</div>
+
+<script>
+// Keep slugs in sync with capture.cjs. print:true => a print shot exists for this page.
+const MANIFEST = [
+  { group: 'Allgemein', pages: [
+    { slug: 'login', title: 'Login', route: '/login' },
+    { slug: 'dashboard', title: 'Dashboard', route: '/dashboard/', print: true },
+    { slug: 'profil', title: 'Profil', route: '/profil/' },
+    { slug: 'team', title: 'Team', route: '/team/' },
+    { slug: 'upload', title: 'Turnus-Upload', route: '/upload/' },
+  ]},
+  { group: 'Listen', pages: [
+    { slug: 'all-kids', title: 'Alle Kinder', route: '/all_kids', print: true },
+    { slug: 'kid-detail', title: 'Kind-Details', route: '/kid_details/21' },
+    { slug: 'zugabreise', title: 'Zugabreise', route: '/zugabreise' },
+    { slug: 'zuganreise', title: 'Zuganreise', route: '/zuganreise' },
+    { slug: 'budo-familien', title: 'BuDo-Familien', route: '/budo_familien/' },
+    { slug: 'spezial-familien', title: 'Spezialfamilien', route: '/spezial_familien/' },
+    { slug: 'murdergame', title: 'Mörderspielliste', route: '/murdergame' },
+    { slug: 'serienbrief', title: 'Serienbrief', route: '/serienbrief' },
+    { slug: 'kindergesamtzahl', title: 'Kindergesamtzahl', route: '/kindergesamtzahl/' },
+    { slug: 'kindergeburtstage', title: 'Kindergeburtstage', route: '/kindergeburtstage/' },
+  ]},
+  { group: 'Schwerpunkte (SWP)', pages: [
+    { slug: 'swp-dashboard', title: 'SWP-Dashboard', route: '/swp-dashboard/' },
+    { slug: 'schwerpunkt-detail', title: 'Schwerpunkt-Details', route: '/schwerpunkt/1/' },
+    { slug: 'schwerpunkt-update', title: 'Schwerpunkt bearbeiten', route: '/schwerpunkt/1/update' },
+    { slug: 'swpmeals', title: 'SWP-Essen', route: '/swpmeals/1' },
+    { slug: 'swp-einteilung-w1', title: 'SWP-Einteilung Woche 1', route: '/swp-einteilung-w1', print: true },
+    { slug: 'swp-einteilung-w2', title: 'SWP-Einteilung Woche 2', route: '/swp-einteilung-w2' },
+  ]},
+  { group: 'Happy Cleaning', pages: [
+    { slug: 'happy-cleaning', title: 'Übersicht', route: '/happy-cleaning/' },
+    { slug: 'hc-assignment', title: 'Einteilung', route: '/happy-cleaning/<id>/assignment/' },
+    { slug: 'hc-nummernliste', title: 'Nummernliste', route: '/happy-cleaning/print/', print: true },
+  ]},
+  { group: 'Orte & Küche', pages: [
+    { slug: 'auslagerorte', title: 'Auslagerorte', route: '/auslagerorte-list/' },
+    { slug: 'auslagerort-detail', title: 'Auslagerort-Details', route: '/auslagerorte/1/' },
+    { slug: 'auslagerort-create', title: 'Auslagerort anlegen', route: '/auslagerorte/create' },
+    { slug: 'kitchen', title: 'Küche', route: '/kitchen', print: true },
+  ]},
+];
+
+let viewport = 'desktop';
+const main = document.getElementById('main');
+
+function src(kind, slug) { return `${kind}/${slug}--${viewport}.png`; }
+
+function shotHtml(kind, page) {
+  const file = src(kind, page.slug);
+  return `<figure class="shot ${kind}" data-kind="${kind}" data-slug="${page.slug}">
+    <span class="tag">${kind}</span>
+    <a class="frame" href="javascript:void 0" onclick="openLb('${page.slug}','${kind}','${page.title.replace(/'/g, "\\'")}')">
+      <img loading="lazy" src="${file}" alt="${kind} ${page.title}"
+           onerror="this.closest('.shot').classList.add('is-missing')"
+           onload="this.closest('.shot').classList.remove('is-missing'); rowLoaded(this)">
+    </a>
+    <div class="missing">not captured yet<code>${file}</code></div>
+  </figure>`;
+}
+
+function render() {
+  main.innerHTML = MANIFEST.map(section => {
+    const pages = section.pages.filter(p => viewport !== 'print' || p.print);
+    if (!pages.length) return '';
+    return `<section><h2>${section.group}</h2>` + pages.map(p => `
+      <div class="row" data-slug="${p.slug}">
+        <div class="row-head">
+          <span class="title">${p.title}</span>
+          <span class="route">${p.route}</span>
+          <span class="state">${viewport}</span>
+        </div>
+        <div class="pair">${shotHtml('before', p)}${shotHtml('after', p)}</div>
+      </div>`).join('') + '</section>';
+  }).join('');
+  applyFilter();
+}
+
+function rowLoaded(img) {
+  const shot = img.closest('.shot');
+  if (shot.dataset.kind === 'after') shot.closest('.row').dataset.hasAfter = '1';
+  applyFilter();
+}
+
+function applyFilter() {
+  const only = document.getElementById('only-changed').checked;
+  document.querySelectorAll('.row').forEach(row => {
+    row.style.display = only && !row.dataset.hasAfter ? 'none' : '';
+  });
+}
+
+document.getElementById('only-changed').addEventListener('change', applyFilter);
+document.getElementById('tabs').addEventListener('click', e => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  viewport = btn.dataset.vp;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b === btn));
+  render();
+});
+
+// Lightbox with before/after flicker
+const lb = document.getElementById('lightbox');
+let lbSlug = null, lbKind = 'before';
+function openLb(slug, kind, title) {
+  lbSlug = slug; lbKind = kind;
+  document.getElementById('lb-title').textContent = `${title} — ${viewport}`;
+  updateLb(); lb.classList.add('open');
+}
+function updateLb() {
+  const img = document.getElementById('lb-img');
+  img.src = src(lbKind, lbSlug);
+  const state = document.getElementById('lb-state');
+  state.textContent = lbKind;
+  state.style.background = lbKind === 'before' ? 'var(--before)' : 'var(--after)';
+}
+function flipLb() { lbKind = lbKind === 'before' ? 'after' : 'before'; updateLb(); }
+function closeLb() { lb.classList.remove('open'); }
+lb.addEventListener('click', e => { if (e.target.id === 'lb-img' || e.target.id === 'lightbox') flipLb(); });
+document.addEventListener('keydown', e => {
+  if (!lb.classList.contains('open')) return;
+  if (e.key === 'Escape') closeLb();
+  if (e.key === 'b' || e.key === 'B') { lbKind = 'before'; updateLb(); }
+  if (e.key === 'a' || e.key === 'A') { lbKind = 'after'; updateLb(); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); flipLb(); }
+});
+
+render();
+</script>
+</body>
+</html>
