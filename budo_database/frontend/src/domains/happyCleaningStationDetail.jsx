@@ -17,6 +17,20 @@ const StableTaskItem = TaskItem.extend({
       version: { default: null },
     };
   },
+  addNodeView() {
+    const createNodeView = this.parent?.();
+    return props => {
+      const nodeView = createNodeView(props);
+      const checkbox = nodeView.dom.querySelector('input[type="checkbox"]');
+      checkbox.disabled = true;
+      checkbox.tabIndex = -1;
+      checkbox.setAttribute(
+        'aria-label',
+        'Aufgabenstatus wird beim Bearbeiten nicht geändert',
+      );
+      return nodeView;
+    };
+  },
 });
 
 const requestId = () => globalThis.crypto?.randomUUID?.()
@@ -78,7 +92,6 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [editorRevision, setEditorRevision] = useState(0);
-  const editorContainer = useRef(null);
   const initialDocument = useMemo(() => station.document || { type: 'doc', content: [] }, [station.document]);
   const editor = useEditor({
     extensions: [
@@ -103,13 +116,6 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
     ...editorDocument,
     content: editorDocument.content || [],
   };
-  useEffect(() => {
-    editorContainer.current?.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-      checkbox.disabled = true;
-      checkbox.tabIndex = -1;
-      checkbox.setAttribute('aria-label', 'Aufgabenstatus wird beim Bearbeiten nicht geändert');
-    });
-  }, [editor, editorRevision]);
   const dirty = JSON.stringify({
     ...fields,
     document: currentDocument,
@@ -240,7 +246,7 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
           <option value="">Niemand</option>
           {(data.responsible_profiles || []).map(profile => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
         </select></label>
-        <div className="happy-cleaning-minimal-editor" ref={editorContainer}>
+        <div className="happy-cleaning-minimal-editor">
           <EditorContent editor={editor} />
         </div>
         {error && <p className="error" role="alert">{error}</p>}

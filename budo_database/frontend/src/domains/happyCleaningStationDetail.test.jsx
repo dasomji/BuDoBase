@@ -266,9 +266,11 @@ describe('Happy Cleaning station detail', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
     expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
-    expect(await screen.findByRole('checkbox', {
+    const taskStatus = await screen.findByRole('checkbox', {
       name: 'Aufgabenstatus wird beim Bearbeiten nicht geändert',
-    })).toBeDisabled();
+    });
+    expect(taskStatus).toBeDisabled();
+    expect(taskStatus).toHaveAttribute('tabindex', '-1');
     fireEvent.change(screen.getByLabelText('Name der Station'), { target: { value: 'Saal' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
