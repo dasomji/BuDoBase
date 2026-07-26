@@ -1237,10 +1237,6 @@ input[name="amount"]::placeholder {
   font-size: 0.7em;
 }
 
-#legacy-print-root {
-  display: none;
-}
-
 .happy-cleaning-page {
   display: block;
   width: min(72rem, 100%);
@@ -2260,18 +2256,46 @@ input[name="amount"]::placeholder {
   #headermenu,
   .realtime-warning,
   .react-actions,
+  .card-header-action,
   .search-filter,
   .filter-table,
   [data-slot="sidebar"],
   [data-slot="sheet-overlay"],
   [data-slot="sheet-content"],
-  #interaction-bar {
+  #interaction-bar,
+  .app-toast-viewport {
     display: none !important;
   }
 
   .app-shell-content {
     display: block;
     min-height: 0;
+  }
+
+  .card {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+
+  .card > .info-header-container {
+    background: white !important;
+    color: black !important;
+  }
+
+  .card > .card-info-container {
+    display: block !important;
+    padding-top: var(--str-padding);
+    padding-bottom: var(--str-padding);
+  }
+
+  .card > .card-info-container > .card-info-content {
+    overflow: visible !important;
+    animation: none;
+  }
+
+  .card-toggle > .icon {
+    display: none !important;
   }
 
   .allocation-page#body-container {
@@ -2322,6 +2346,13 @@ input[name="amount"]::placeholder {
     max-width: none;
     margin: 0;
     padding: 0;
+    background-image:
+      radial-gradient(
+        59.33% 87.53% at 38.82% 60.76%,
+        #ffffff 0%,
+        #f7ebe0 22%,
+        #999999 100%
+      ) !important;
   }
 
   body:has(> .happy-cleaning-todo-print-pages) > *:not(.happy-cleaning-todo-print-pages) {
@@ -2452,6 +2483,18 @@ input[name="amount"]::placeholder {
   #root {
     min-height: 0;
     background: white !important;
+    color: black !important;
+  }
+
+  #body-container:not(.allocation-page):not(.happy-cleaning-print-page) {
+    background: white !important;
+    color: black !important;
+  }
+
+  #body-container:not(.allocation-page):not(.happy-cleaning-print-page)
+    :is(table, thead, tbody, tr, th, td) {
+    background: white !important;
+    color: black !important;
   }
 
   .kitchen-layout#body-container {
@@ -2553,9 +2596,6 @@ input[name="amount"]::placeholder {
     gap: 10mm;
   }
 
-  .card-info-container {
-    display: block !important;
-  }
 }
 
 /* Layered !important declarations reverse normal layer precedence. */

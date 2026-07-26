@@ -1,5 +1,3 @@
-import re
-
 from django.middleware.csrf import get_token
 from django.template.loader import render_to_string
 
@@ -28,30 +26,11 @@ class ReactFrontendMiddleware:
             and "attachment" not in response.get("Content-Disposition", "")
         )
         if should_render_react:
-            legacy_html = response.content.decode(response.charset)
-            body_match = re.search(
-                r"<body[^>]*>(?P<body>.*)</body>",
-                legacy_html,
-                flags=re.IGNORECASE | re.DOTALL,
-            )
-            legacy_body = body_match.group("body") if body_match else legacy_html
-            legacy_body = re.sub(
-                r"<script\b[^>]*>.*?</script>",
-                "",
-                legacy_body,
-                flags=re.IGNORECASE | re.DOTALL,
-            )
             get_token(request)
             response.content = render_to_string(
                 "react_app.html",
                 {
                     "request_path": request.get_full_path(),
-                    "react_print_page": bool(re.fullmatch(
-                        r"(?:/happy-cleaning/print/|/swp-einteilung-w[12]/?|/kitchen/?)",
-                        request.path,
-                    )),
-                    "legacy_print_body": legacy_body,
-                    "legacy_uses_google_font": "fonts.googleapis.com" in legacy_html,
                 },
                 request=request,
             ).encode(response.charset)

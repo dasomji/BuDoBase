@@ -63,14 +63,17 @@ class HappyCleaningPrintPageTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_turnus_print_page_renders_a_print_enabled_react_shell(self):
+    def test_turnus_print_page_renders_the_universal_react_shell(self):
         self.client.force_login(self.user)
 
         response = self.client.get(reverse("happy-cleaning-print-page"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "/static/frontend/app.js")
-        self.assertContains(response, 'data-react-print-page="true"')
+        self.assertContains(response, 'id="react-app-styles"')
+        self.assertContains(response, 'media="all"')
+        self.assertNotContains(response, "data-react-print-page")
+        self.assertNotContains(response, "legacy-print-root")
 
     def test_active_event_print_deep_link_redirects_to_turnus_number_list(self):
         self.client.force_login(self.user)

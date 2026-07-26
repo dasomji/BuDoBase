@@ -319,7 +319,7 @@ describe('Happy Cleaning management', () => {
     await waitFor(() => expect(print).toHaveBeenCalledOnce());
     expect(printedText).toContain('Küche');
     expect(printedText).toContain('Boden kehren');
-    expect(printStylesMedia).toBe('all');
+    expect(printStylesMedia).toBe('screen');
     expect(stylesheet).toHaveAttribute('media', 'screen');
     stylesheet.remove();
     expect(fetchImpl).toHaveBeenCalledWith(
