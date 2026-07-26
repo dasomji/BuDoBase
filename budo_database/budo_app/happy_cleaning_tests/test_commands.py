@@ -282,7 +282,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
                 "station-create-invalid",
                 expected_revision=3,
                 name=" ",
-                max_kids=0,
+                max_kids=-1,
                 meeting_point="",
             ),
         )
@@ -290,6 +290,20 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
         self.assertEqual(set(invalid.json()["errors"]), {
             "name", "max_kids", "meeting_point",
         })
+
+        zero_capacity = self.post_json(
+            "happy-cleaning-station-create-api",
+            [self.event.id],
+            self.station_payload(
+                "station-create-zero-capacity",
+                expected_revision=3,
+                name="Geschlossen",
+                max_kids=0,
+                meeting_point="Treffpunkt",
+            ),
+        )
+        self.assertEqual(zero_capacity.status_code, 201, zero_capacity.content)
+        self.assertEqual(zero_capacity.json()["station"]["max_kids"], 0)
 
         hidden_profile = self.post_json(
             "happy-cleaning-station-update-api",

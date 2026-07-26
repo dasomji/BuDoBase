@@ -57,7 +57,7 @@ class HappyCleaningModelTests(TestCase):
             lambda: HappyCleaningStation.objects.create(
                 happy_cleaning=self.event,
                 name="Bad capacity",
-                max_kids=0,
+                max_kids=-1,
                 meeting_point="Hier",
                 position=2,
             ),
@@ -80,6 +80,16 @@ class HappyCleaningModelTests(TestCase):
             with self.subTest(create=create), self.assertRaises(IntegrityError):
                 with transaction.atomic():
                     create()
+
+        zero_capacity = HappyCleaningStation.objects.create(
+            happy_cleaning=self.event,
+            name="Closed station",
+            max_kids=0,
+            meeting_point="Hier",
+            position=2,
+        )
+        self.assertEqual(zero_capacity.max_kids, 0)
+
         with self.assertRaises(ValidationError):
             invalid_creates[-1]()
 

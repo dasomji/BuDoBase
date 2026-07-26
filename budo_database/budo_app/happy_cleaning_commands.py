@@ -148,8 +148,8 @@ def station_fields(payload):
         else:
             values[name] = value.strip()
     capacity = payload.get("max_kids")
-    if isinstance(capacity, bool) or not isinstance(capacity, int) or capacity <= 0:
-        errors["max_kids"] = ["A positive integer is required."]
+    if isinstance(capacity, bool) or not isinstance(capacity, int) or capacity < 0:
+        errors["max_kids"] = ["A non-negative integer is required."]
     else:
         values["max_kids"] = capacity
     wishes = payload.get("wishes", "")

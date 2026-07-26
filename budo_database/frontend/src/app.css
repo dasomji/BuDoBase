@@ -915,7 +915,7 @@
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 901px) {
   [data-slot="sidebar"].peer {
     display: block;
   }
@@ -939,7 +939,7 @@
   max-width: none;
 }
 
-@media (max-width: 767px) {
+@media only screen and (max-width: 900px) {
   [data-slot="sidebar"][data-mobile="true"] :is(
     [data-sidebar="menu-button"],
     [data-sidebar="menu-sub-button"]
@@ -1039,7 +1039,7 @@
   display: none;
 }
 
-@media only screen and (max-width: 767px) {
+@media only screen and (max-width: 900px) {
   #headermenu {
     padding: 20px 20px 10px;
   }

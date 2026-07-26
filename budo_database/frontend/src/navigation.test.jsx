@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AppSidebar, ApplicationShell } from './app-sidebar';
@@ -98,5 +98,15 @@ describe('application sidebar navigation', () => {
 
     expect(sidebar).toHaveAttribute('data-state', 'expanded');
     expect(document.cookie).toContain('sidebar_state=true');
+  });
+
+  it('uses the mobile sidebar at tablet widths where the desktop sidebar would overlap content', async () => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(886);
+
+    render(<ApplicationShell sidebar={<AppSidebar />} header={<div>Header</div>}><div>Inhalt</div></ApplicationShell>);
+
+    await waitFor(() => {
+      expect(document.querySelector('[data-slot="sidebar"][data-state]')).not.toBeInTheDocument();
+    });
   });
 });

@@ -390,6 +390,7 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
     const nameField = screen.getByLabelText('Name der Station');
     const responsibleField = screen.getByLabelText('Verantwortlich');
+    expect(screen.getByLabelText('Kapazität der Station')).toHaveAttribute('min', '0');
     expect(stationCard).toContainElement(nameField);
     const form = nameField.closest('form');
     expect(form.children[0]).toContainElement(nameField);

@@ -341,7 +341,7 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
           <option value="">Niemand</option>
           {(data.responsible_profiles || []).map(profile => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
         </select></label>
-        <label>Kapazität<input aria-label="Kapazität der Station" type="number" min="1" required value={fields.max_kids} onChange={event_ => setFields(value => ({ ...value, max_kids: event_.target.value }))} /></label>
+        <label>Kapazität<input aria-label="Kapazität der Station" type="number" min="0" required value={fields.max_kids} onChange={event_ => setFields(value => ({ ...value, max_kids: event_.target.value }))} /></label>
         <label>Treffpunkt<input aria-label="Treffpunkt der Station" value={fields.meeting_point} onChange={event_ => setFields(value => ({ ...value, meeting_point: event_.target.value }))} /></label>
         <label>Wünsche<textarea aria-label="Wünsche der Station" value={fields.wishes} onChange={event_ => setFields(value => ({ ...value, wishes: event_.target.value }))} /></label>
         <div className="happy-cleaning-minimal-editor-field" role="group" aria-labelledby={tasksLabelId}>

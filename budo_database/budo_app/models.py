@@ -710,8 +710,8 @@ class HappyCleaningStation(models.Model):
         ordering = ("position", "id")
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(max_kids__gt=0),
-                name="hc_station_capacity_positive",
+                condition=models.Q(max_kids__gte=0),
+                name="hc_station_capacity_nonnegative",
             ),
             models.CheckConstraint(
                 condition=models.Q(version__gt=0),
