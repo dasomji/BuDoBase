@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Editor } from '@tiptap/core';
@@ -104,7 +101,7 @@ describe('Happy Cleaning station detail', () => {
     expect(stationToggle).toHaveAttribute('aria-expanded', 'true');
     expect(stationToggle.querySelector('.icon')).not.toBeInTheDocument();
     const close = screen.getByRole('button', { name: 'Detail schließen' });
-    expect(close).toHaveClass('happy-cleaning-detail-close');
+    expect(close).toHaveAttribute('data-slot', 'button');
     fireEvent.click(close);
     expect(onBack).toHaveBeenCalledOnce();
     expect(stationToggle).toHaveAttribute('aria-expanded', 'true');
@@ -139,21 +136,9 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.queryByText('Dieser Projektionsinhalt darf nicht erscheinen')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Inhalt' })).not.toBeInTheDocument();
     const tasksHeading = screen.getByRole('heading', { level: 2, name: 'Aufgaben' });
-    expect(tasksHeading).toHaveClass('happy-cleaning-station-tasks-heading');
     expect(tasksHeading.nextElementSibling).toContainElement(document);
     expect(screen.queryByRole('button', { name: /löschen|bearbeiten|nach oben|nach unten/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Name der Station|Treffpunkt der Station/)).not.toBeInTheDocument();
-  });
-
-  it('gives the Aufgaben heading the annotated vertical padding', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/domains/happyCleaningStationDetail.css'), 'utf8');
-
-    expect(css).toMatch(
-      /\.happy-cleaning-station-tasks-heading\s*\{[^}]*padding:\s*12px 0 8px;/s,
-    );
-    expect(css).toMatch(
-      /\.happy-cleaning-station-facts dt\s*\{[^}]*font-weight:\s*500;/s,
-    );
   });
 
   it('places edit and copy actions together at the end of the card body', () => {
@@ -166,10 +151,11 @@ describe('Happy Cleaning station detail', () => {
       .closest('.happy-cleaning-station-detail-card');
     const cardBody = stationCard.querySelector('.card-info-content');
     const actions = cardBody.lastElementChild;
-    expect(actions).toHaveClass('react-actions', 'happy-cleaning-detail-actions');
-    expect(within(actions).getAllByRole('button').map(button => button.textContent)).toEqual([
+    const actionButtons = within(actions).getAllByRole('button');
+    expect(actionButtons.map(button => button.textContent)).toEqual([
       'Bearbeiten', 'Station kopieren',
     ]);
+    actionButtons.forEach(button => expect(button).toHaveAttribute('data-slot', 'button'));
     expect(actions.previousElementSibling).toContainElement(
       screen.getByRole('heading', { level: 2, name: 'Aufgaben' }),
     );
@@ -284,7 +270,9 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.queryByLabelText('Alle Stationen auswählen')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Station .* auswählen/)).not.toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Ziel-Happy-Cleaning'), '8');
-    screen.getByRole('button', { name: 'Prüfen und kopieren' }).focus();
+    const copyButton = screen.getByRole('button', { name: 'Prüfen und kopieren' });
+    expect(copyButton).toHaveAttribute('data-slot', 'button');
+    copyButton.focus();
     await user.keyboard('{Enter}');
 
     expect(screen.getByRole('status')).toHaveTextContent('Stationen werden geprüft');
@@ -307,14 +295,16 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.getByRole('heading', { name: 'Speisesaal', hidden: true })).toBeInTheDocument();
     expect(onBack).not.toHaveBeenCalled();
 
-    screen.getByRole('button', { name: 'Schließen' }).focus();
+    const closeButton = screen.getByRole('button', { name: 'Schließen' });
+    expect(closeButton).toHaveAttribute('data-slot', 'button');
+    closeButton.focus();
     await user.keyboard('{Enter}');
     expect(screen.queryByRole('dialog', { name: 'Station kopieren' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Speisesaal', hidden: true })).toBeInTheDocument();
     expect(onBack).not.toHaveBeenCalled();
   });
 
-  it('shares bulk validation, conflict actions, responsive classes, and stale errors', async () => {
+  it('shares bulk validation, conflict actions, and stale errors', async () => {
     const stale = Object.assign(new Error('stale'), {
       payload: { code: 'stale', current_version: 4 },
     });
@@ -347,8 +337,7 @@ describe('Happy Cleaning station detail', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Speisesaal → Speisesaal groß');
-    expect(alert.querySelector('.happy-cleaning-conflict-card')).toBeInTheDocument();
-    expect(alert.querySelector('.happy-cleaning-conflict-actions')).toBeInTheDocument();
+    expect(within(alert).getByRole('group', { name: 'Speisesaal (2 Aufgaben)' })).toBeInTheDocument();
     expect(screen.getAllByRole('radio')).toHaveLength(4);
     fireEvent.click(screen.getByRole('radio', { name: 'Als eigene Station kopieren' }));
     expect(screen.getByRole('button', { name: 'Auswahl verbindlich kopieren' })).toBeEnabled();
@@ -508,7 +497,6 @@ describe('Happy Cleaning station detail', () => {
     const dirtyDialog = screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' });
     expect(dirtyDialog).toBeInTheDocument();
     expect(dirtyDialog.closest('.happy-cleaning-station-detail-card')).toBeNull();
-    expect(document.querySelector('.happy-cleaning-dialog-backdrop')).toBeInTheDocument();
     screen.getByRole('button', { name: 'Weiter bearbeiten' }).focus();
     await user.keyboard('{Enter}');
     const closeDetail = screen.getByRole('button', { name: 'Detail schließen' });

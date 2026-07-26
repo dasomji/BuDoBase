@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer } from 'lucide-react';
+import { Plus, Printer } from 'lucide-react';
 
-import { Card } from '../components';
+import {
+  Card,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+} from '../components';
 import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
 import {
@@ -32,10 +41,6 @@ const errorMessage = error => {
   return error?.message || 'Die Änderung konnte nicht gespeichert werden.';
 };
 
-function Progress({ value }) {
-  return <span className="happy-cleaning-progress" aria-label="Todo-Fortschritt">{value === null ? '—' : `${value}%`}</span>;
-}
-
 function DeleteConfirmationDialog({ event, onCancel, onConfirm }) {
   const [confirmation, setConfirmation] = useState('');
   const eventName = `Happy Cleaning ${event.display_number}`;
@@ -43,9 +48,9 @@ function DeleteConfirmationDialog({ event, onCancel, onConfirm }) {
   const confirmationId = `happy-cleaning-delete-confirmation-${event.id}`;
   const confirmed = confirmation === eventName;
   return (
-    <div className="happy-cleaning-delete-backdrop">
+    <div className="happy-cleaning-delete-backdrop fixed inset-0 z-[var(--z-modal)] grid place-items-center bg-black/45 p-6">
       <section
-        className="card happy-cleaning-delete-dialog"
+        className="card happy-cleaning-delete-dialog w-full max-w-[30rem] bg-surface-solid p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -64,17 +69,17 @@ function DeleteConfirmationDialog({ event, onCancel, onConfirm }) {
           value={confirmation}
           onChange={change => setConfirmation(change.target.value)}
         />
-        <div className="react-actions">
-          <button className="button" type="button" onClick={onCancel}>Abbrechen</button>
-          <button
-            className="button danger"
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <Button variant="secondary" type="button" onClick={onCancel}>Abbrechen</Button>
+          <Button
+            variant="destructive"
             type="button"
             disabled={!confirmed}
             aria-label={`${eventName} endgültig löschen`}
             onClick={onConfirm}
           >
             Endgültig löschen
-          </button>
+          </Button>
         </div>
       </section>
     </div>
@@ -96,16 +101,16 @@ export function HappyCleaningCreateButton({ mutate }) {
   };
   return (
     <>
-      <button
-        className="button mobile-icon-action"
+      <Button
+        className="mobile-icon-action"
         type="button"
         aria-label="Happy Cleaning hinzufügen"
         disabled={busy}
         onClick={create}
       >
         <span className="desktop-action-label">Happy Cleaning hinzufügen</span>
-        <span className="mobile-action-label" aria-hidden="true">+</span>
-      </button>
+        <Plus className="mobile-action-label" aria-hidden="true" />
+      </Button>
     </>
   );
 }
@@ -154,7 +159,7 @@ const renderTodoPrintNode = (node, key) => {
 
 function HappyCleaningTodoPrintPages({ data }) {
   return createPortal(
-    <div className="happy-cleaning-todo-print-pages" aria-label={`To-Dos für Happy Cleaning ${data.event.display_number}`}>
+    <div className="happy-cleaning-todo-print-pages hidden" aria-label={`To-Dos für Happy Cleaning ${data.event.display_number}`}>
       {data.stations.map(station => {
         const content = station.document?.content || [];
         return (
@@ -180,26 +185,27 @@ function StationSummaryTable({ event, stations, sort, onSort, onSelect, selectio
     })
     .map(item => item.station), [stations, sort]);
   return (
-    <div className="happy-cleaning-overview-table-wrap">
-      <table className="happy-cleaning-overview-table">
-        <thead>
-          <tr>
+    <div>
+      <TableScroll>
+        <Table>
+          <TableHeader>
+            <TableRow className="table-header">
             {overviewColumns.map(column => {
               const active = sort.key === column.key;
               return (
-                <th key={column.key} scope="col" aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                <TableHead key={column.key} scope="col" aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
                   <button className="table-sort-button" type="button" aria-label={`${column.label} sortieren`} onClick={() => onSort(column.key)}>
                     {column.label}
                     {active && <span className="sort-indicator" aria-hidden="true">{sort.direction === 'asc' ? '↑' : '↓'}</span>}
                   </button>
-                </th>
+                </TableHead>
               );
             })}
-          </tr>
-        </thead>
-        <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
           {sorted.map(station => (
-            <tr
+            <TableRow
               key={station.id}
               tabIndex={0}
               aria-label={`Station ${station.name}`}
@@ -212,8 +218,9 @@ function StationSummaryTable({ event, stations, sort, onSort, onSelect, selectio
                 }
               }}
             >
-              <td><button
-                className="happy-cleaning-station-row-button"
+              <TableCell><Button
+                className="h-auto justify-start p-0 text-left text-inherit no-underline hover:bg-transparent"
+                variant="link"
                 type="button"
                 ref={node => {
                   const key = `${event.id}:${station.id}`;
@@ -225,18 +232,19 @@ function StationSummaryTable({ event, stations, sort, onSort, onSelect, selectio
                   click.stopPropagation();
                   onSelect(event, station);
                 }}
-              >{station.name}</button></td>
-              <td>{station.overbooked_count > 0
+              >{station.name}</Button></TableCell>
+              <TableCell>{station.overbooked_count > 0
                 ? `${station.overbooked_count} überbelegt`
-                : station.max_kids}</td>
-              <td>{station.meeting_point}</td>
-              <td>{station.responsible?.name || '—'}</td>
-              <td>{station.task_item_count}</td>
-            </tr>
+                : station.max_kids}</TableCell>
+              <TableCell>{station.meeting_point}</TableCell>
+              <TableCell>{station.responsible?.name || '—'}</TableCell>
+              <TableCell>{station.task_item_count}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-      {!stations.length && <p className="happy-cleaning-empty-stations">Noch keine Stationen angelegt.</p>}
+          </TableBody>
+        </Table>
+      </TableScroll>
+      {!stations.length && <p className="mb-0">Noch keine Stationen angelegt.</p>}
     </div>
   );
 }
@@ -577,7 +585,7 @@ export function HappyCleaningOverviewPage({
     ), 0,
   );
   const overview = (
-    <div className="happy-cleaning-overview-list">
+    <div className={`happy-cleaning-overview-list min-w-0 ${selection ? 'max-[900px]:hidden' : ''}`}>
       {deleteCandidate && (
         <DeleteConfirmationDialog
           event={deleteCandidate}
@@ -595,13 +603,13 @@ export function HappyCleaningOverviewPage({
         />
       )}
       {!eventCount && <p>Noch kein Happy Cleaning angelegt.</p>}
-      <div className="happy-cleaning-years">
+      <div className="grid gap-4">
         {years.map(group => {
           const open = preference.openYears.includes(group.year);
           const loading = loadingYears.includes(group.year);
           return (
             <Card
-              className="transparent happy-cleaning-year"
+              className="transparent"
               expanded={open}
               key={group.year}
               onExpandedChange={() => toggleYear(group)}
@@ -611,7 +619,7 @@ export function HappyCleaningOverviewPage({
               {group.loaded && group.turnuses.flatMap(turnus => turnus.events.map(event => (
                 <Card
                   as="article"
-                  className="happy-cleaning-event"
+                  className="mb-4"
                   headingLevel={2}
                   key={event.id}
                   title={`${turnus.number}. Turnus ${group.year} · Happy Cleaning ${event.display_number}`}
@@ -625,16 +633,15 @@ export function HappyCleaningOverviewPage({
                     selection={selection}
                     rowRefs={rowRefs}
                   />
-                  <div className="react-actions">
+                  <div className="flex flex-wrap gap-2">
                     {turnus.is_active && (
-                      <button
-                        className="button"
+                      <Button
                         type="button"
                         disabled={busy}
                         onClick={() => createStationDraft(event)}
                       >
                         Station hinzufügen
-                      </button>
+                      </Button>
                     )}
                     <Button
                       variant="secondary"
@@ -645,19 +652,19 @@ export function HappyCleaningOverviewPage({
                     >
                       To-Dos drucken
                     </Button>
-                    <button
-                      className="button"
+                    <Button
+                      variant="secondary"
                       type="button"
                       disabled={busy || !event.stations.length}
                       aria-label={`Stationen aus Happy Cleaning ${event.display_number} kopieren`}
                       onClick={() => setCopySource(event)}
                     >
                       Stationen kopieren
-                    </button>
+                    </Button>
                     {event.can_delete && (
-                      <button className="button danger" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
+                      <Button variant="destructive" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
                         Löschen
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </Card>
@@ -669,10 +676,16 @@ export function HappyCleaningOverviewPage({
     </div>
   );
   return (
-    <main className={`happy-cleaning-page happy-cleaning-overview-layout ${selection ? 'happy-cleaning-overview-split' : ''} ${todoPrintRequest ? 'happy-cleaning-todo-print-ready' : ''}`} id="body-container">
+    <main
+      className={`happy-cleaning-overview-layout mx-auto grid w-full max-w-6xl content-start p-4 max-[900px]:block ${selection ? 'happy-cleaning-overview-split grid-cols-2 gap-4' : 'grid-cols-[minmax(0,1fr)_minmax(0,0fr)] gap-0'} ${todoPrintRequest ? 'happy-cleaning-todo-print-ready' : ''}`}
+      id="body-container"
+    >
       {overview}
       {selection && (
-        <aside className="happy-cleaning-overview-detail" aria-live="polite">
+        <aside
+          className="happy-cleaning-overview-detail min-w-0 max-[900px]:fixed max-[900px]:inset-x-0 max-[900px]:bottom-0 max-[900px]:z-[15] max-[900px]:overflow-y-auto max-[900px]:bg-background max-[900px]:p-4 max-[900px]:top-[var(--app-header-height,0px)]"
+          aria-live="polite"
+        >
           {detailLoading && !detail && <p role="status">Station wird geladen…</p>}
           {detail && (
             <HappyCleaningStationDetailPage
@@ -703,30 +716,30 @@ export function HappyCleaningOverviewPage({
 
 function PrintSection({ id, title, columns, rows, children }) {
   return (
-    <section className="happy-cleaning-print-section" aria-labelledby={id}>
-      <h2 id={id}>{title}</h2>
+    <section className="happy-cleaning-print-section mb-6" aria-labelledby={id}>
+      <h2 className="mb-2 border-b-2 border-current pb-1 text-xl font-bold" id={id}>{title}</h2>
       {children}
       {!rows.length
-        ? <p className="happy-cleaning-print-empty">Keine Kinder in diesem Abschnitt.</p>
+        ? <p className="happy-cleaning-print-empty border border-dashed border-current p-2">Keine Kinder in diesem Abschnitt.</p>
         : (
-          <div className="happy-cleaning-print-table-container">
-            <table className="happy-cleaning-print-table" aria-labelledby={id}>
-              <thead>
-                <tr>{columns.map(column => <th key={column.key} scope="col">{column.label}</th>)}</tr>
-              </thead>
-              <tbody>
+          <TableScroll className="happy-cleaning-print-table-container">
+            <Table className="happy-cleaning-print-table" aria-labelledby={id}>
+              <TableHeader>
+                <TableRow className="table-header">{columns.map(column => <TableHead key={column.key} scope="col">{column.label}</TableHead>)}</TableRow>
+              </TableHeader>
+              <TableBody>
                 {rows.map(child => (
-                  <tr key={child.id}>
+                  <TableRow key={child.id}>
                     {columns.map(column => (
-                      <td className={column.className} key={column.key}>
+                      <TableCell className={column.className} key={column.key}>
                         {column.render ? column.render(child) : child[column.key]}
-                      </td>
+                      </TableCell>
                     ))}
-                  </tr>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </TableScroll>
         )}
     </section>
   );
@@ -749,9 +762,9 @@ function HappyCleaningPrintAction() {
 export function HappyCleaningPrintPage({ data, mutate, refresh, realtimeSync }) {
   const writeBlocked = Boolean(realtimeSync?.enabled && !realtimeSync.writesEnabled);
   return (
-    <main className="happy-cleaning-print-page" id="body-container">
-      <header className="happy-cleaning-print-title">
-        <h1>Happy Cleaning · Nummernliste</h1>
+    <main className="happy-cleaning-print-page mx-auto block w-[min(52rem,calc(100%-2rem))] p-6 text-black" id="body-container">
+      <header className="happy-cleaning-print-title mb-6 border-b-4 border-double border-current pb-2">
+        <h1 className="m-0 text-[clamp(1.65rem,5vw,2.4rem)] font-bold whitespace-normal [overflow-wrap:anywhere]">Happy Cleaning · Nummernliste</h1>
       </header>
       <PrintSection
         id="happy-cleaning-present-numberless"
@@ -760,7 +773,7 @@ export function HappyCleaningPrintPage({ data, mutate, refresh, realtimeSync }) 
         rows={data.present_numberless}
       >
         {data.number_batch?.available && (
-          <div className="happy-cleaning-numberless-actions react-actions">
+          <div className="mb-2 flex justify-start print:hidden">
             <HappyCleaningNumberBatchAction
               eventId={data.number_batch_event_id}
               numberBatch={data.number_batch}
@@ -775,7 +788,7 @@ export function HappyCleaningPrintPage({ data, mutate, refresh, realtimeSync }) 
         id="happy-cleaning-present-numbered"
         title="Anwesend mit Nummer"
         columns={[
-          { key: 'number', label: 'Nummer', className: 'happy-cleaning-print-number' },
+          { key: 'number', label: 'Nummer', className: 'w-24 text-right font-bold tabular-nums' },
           { key: 'full_name', label: 'Name' },
         ]}
         rows={data.present_numbered}
@@ -787,7 +800,7 @@ export function HappyCleaningPrintPage({ data, mutate, refresh, realtimeSync }) 
           {
             key: 'number',
             label: 'Nummer',
-            className: 'happy-cleaning-print-number',
+            className: 'w-24 text-right font-bold tabular-nums',
             render: child => child.number ?? '—',
           },
           { key: 'full_name', label: 'Name' },
