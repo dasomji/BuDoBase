@@ -4,7 +4,26 @@ import { SearchIcon } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+} from '@/components/ui/table';
 import { useErrorToast, useToastManager } from '@/components/ui/toast';
+
+export {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+};
 
 export function findById(items, id) {
   return items.find(item => Number(item.id) === Number(id));
@@ -234,7 +253,17 @@ function compareTableValues(left, right) {
   return leftText.localeCompare(rightText, 'de', { numeric: true, sensitivity: 'base' });
 }
 
-export function SearchTable({ columns, rows, showFilter = false, id = 'kids-table', empty = 'Keine Einträge', beforeFilter = null }) {
+export function DataTable({
+  columns,
+  rows,
+  showFilter = false,
+  id,
+  empty = 'Keine Einträge',
+  beforeFilter = null,
+  stickyHeader = false,
+  stickyFirstColumn = false,
+  verticalScroll = false,
+}) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState(null);
   const visibleRows = useMemo(() => {
@@ -263,22 +292,28 @@ export function SearchTable({ columns, rows, showFilter = false, id = 'kids-tabl
           {showFilter && <input className="filter-table" type="search" placeholder="Kinder filtern..." aria-label="Kinder filtern" value={query} onChange={event => setQuery(event.target.value)} />}
         </div>
       )}
-      <div className="table-container">
-        <table className="data-table" id={id}>
-          <thead><tr className="table-header">{columns.map((column, index) => {
+      <TableScroll
+        stickyHeader={stickyHeader}
+        stickyFirstColumn={stickyFirstColumn}
+        verticalScroll={verticalScroll}
+      >
+        <Table id={id}>
+          <TableHeader><TableRow className="table-header">{columns.map(column => {
             const direction = sort?.key === column.key ? sort.direction : undefined;
             const nextDirection = direction === 'ascending' ? 'absteigend' : direction === 'descending' ? 'aufsteigend' : '';
-            return <th key={column.key} className={index === 0 ? 'headcol' : ''} aria-sort={direction}>{column.sortable === false ? column.label : <button className="table-sort-button" type="button" aria-label={`${column.label}${nextDirection ? ` ${nextDirection}` : ''} sortieren`} onClick={() => sortBy(column.key)}><span>{column.label}</span>{direction && <span className="sort-indicator" aria-hidden="true">{direction === 'ascending' ? '▲' : '▼'}</span>}</button>}</th>;
-          })}</tr></thead>
-          <tbody>
-            {visibleRows.map(row => <tr className="table_row" key={row.id}>{columns.map((column, index) => <td className={`${column.className || 'text-cell'} ${index === 0 ? 'headcol' : ''}`} key={column.key}>{column.render ? column.render(row) : row[column.key]}</td>)}</tr>)}
-            {!visibleRows.length && <tr><td colSpan={columns.length}>{empty}</td></tr>}
-          </tbody>
-        </table>
-      </div>
+            return <TableHead key={column.key} data-priority={column.priority} aria-sort={direction}>{column.sortable === false ? column.label : <button className="table-sort-button" type="button" aria-label={`${column.label}${nextDirection ? ` ${nextDirection}` : ''} sortieren`} onClick={() => sortBy(column.key)}><span>{column.label}</span>{direction && <span className="sort-indicator" aria-hidden="true">{direction === 'ascending' ? '▲' : '▼'}</span>}</button>}</TableHead>;
+          })}</TableRow></TableHeader>
+          <TableBody>
+            {visibleRows.map(row => <TableRow className="table_row" key={row.id}>{columns.map(column => <TableCell className={column.className || 'text-cell'} data-priority={column.priority} key={column.key}>{column.render ? column.render(row) : row[column.key]}</TableCell>)}</TableRow>)}
+            {!visibleRows.length && <TableRow><TableCell colSpan={columns.length}>{empty}</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </TableScroll>
     </>
   );
 }
+
+export const SearchTable = DataTable;
 
 export function CsrfInput({ token }) {
   return <input type="hidden" name="csrfmiddlewaretoken" value={token} />;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Column, Columns, FieldList, findById, RestForm, SearchTable } from '../components';
+import { Card, Column, Columns, DataTable, FieldList, findById, RestForm } from '../components';
 import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { FirstAidGallery } from './first-aid-gallery';
@@ -99,24 +99,24 @@ export function KidInteractionForm({ kid, token, onSaved }) {
 export const kidColumns = [
   { key: 'name', label: 'Name', render: linkKid },
   { key: 'budo_family', label: 'Familie', render: row => displayOrPlaceholder(row.budo_family) },
-  { key: 'special_family', label: 'Haus', render: row => displayOrPlaceholder(row.special_family) },
-  { key: 'sex_short', label: '⚧' },
+  { key: 'special_family', label: 'Haus', priority: 'low', render: row => displayOrPlaceholder(row.special_family) },
+  { key: 'sex_short', label: '⚧', priority: 'low' },
   { key: 'age', label: 'Alter', className: 'number-cell', render: row => <>{row.birthday_during_turnus && '🥳 '}{displayOrPlaceholder(row.age)}</> },
-  { key: 'weeks', label: 'Wochen' },
+  { key: 'weeks', label: 'Wochen', priority: 'low' },
   { key: 'focus_w1', label: 'SWP 1' },
   { key: 'focus_w2', label: 'SWP 2' },
-  { key: 'siblings', label: 'Geschwister', render: row => displayOrPlaceholder(row.siblings) },
-  { key: 'tent_request', label: 'Zeltwunsch', render: row => displayOrPlaceholder(row.tent_request) },
+  { key: 'siblings', label: 'Geschwister', priority: 'low', render: row => displayOrPlaceholder(row.siblings) },
+  { key: 'tent_request', label: 'Zeltwunsch', priority: 'low', render: row => displayOrPlaceholder(row.tent_request) },
   { key: 'food', label: 'Ernährung' },
   { key: 'drugs', label: 'Medikamente', render: row => displayOrPlaceholder(row.drugs) },
   { key: 'illness', label: 'Gesundheitliches', render: row => displayOrPlaceholder(row.illness) },
-  { key: 'note', label: 'Anmerkungen', render: row => <TrustedHtml value={row.note} /> },
-  { key: 'booking_note', label: 'Anmerkungen (Buchung)', render: row => <TrustedHtml value={row.booking_note} /> },
+  { key: 'note', label: 'Anmerkungen', priority: 'low', render: row => <TrustedHtml value={row.note} /> },
+  { key: 'booking_note', label: 'Anmerkungen (Buchung)', priority: 'low', render: row => <TrustedHtml value={row.booking_note} /> },
 ];
 
 export function KidsPage({ data }) {
   const rows = data.kids.map(kid => ({ ...kid, filterText: kid.full_name }));
-  return <main className="table-only" id="body-container"><SearchTable columns={kidColumns} rows={rows} showFilter /></main>;
+  return <main className="table-only" id="body-container"><DataTable columns={kidColumns} rows={rows} showFilter stickyHeader stickyFirstColumn verticalScroll /></main>;
 }
 
 export function KidDetailPage({ data, id, mutate, onSaved }) {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Card, Column, Columns, findById, MapCard, NativeForm, RestForm, SearchTable } from '../components';
+import { Card, Column, Columns, DataTable, findById, MapCard, NativeForm, RestForm } from '../components';
 import { displayOrPlaceholder, formatGermanDate, linkKid, MealTable, NotFoundPage, yesNo } from './shared';
 
 const focusKidColumns = [
@@ -42,7 +42,7 @@ export function FocusDashboardPage({ data }) {
   const tables = [['u', 'Unklar Wann'], ['w1', 'Woche 1'], ['w2', 'Woche 2']].filter(([week]) => group(week).length || week !== 'u');
   return <Columns className="focus-dashboard">
     <Column id="left-column" className="focus-weeks-column">
-      {tables.map(([week, title]) => <Card title={title} className="transparent" key={week} headerAction={week !== 'u' ? <a className="button" href={`/swp-einteilung-${week}`}>Kinder einteilen</a> : null}><SearchTable columns={columns} rows={group(week)} /></Card>)}
+      {tables.map(([week, title]) => <Card title={title} className="transparent" key={week} headerAction={week !== 'u' ? <a className="button" href={`/swp-einteilung-${week}`}>Kinder einteilen</a> : null}><DataTable columns={columns} rows={group(week)} /></Card>)}
     </Column>
     <Column id="right-column" className="focus-map-column">
       <MapCard
@@ -73,7 +73,7 @@ export function FocusDetailPage({ data, id }) {
   if (!focus) return <NotFoundPage />;
   const kids = data.kids;
   const mapPlaces = focus.place_id ? [{ id: focus.place_id, name: focus.place, coordinates: focus.coordinates }] : [];
-  return <Columns><Column id="left-column"><Card title={focus.name}><FocusDetails focus={focus} kidCount={kids.length} /><div className="react-actions focus-detail-actions"><a className="button" href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</a></div></Card><Card title="Essen" className="focus-meals-card"><MealTable focus={focus} /><div className="react-actions"><a className="button" href={`/swpmeals/${focus.id}`}>Essen bearbeiten</a></div></Card><MapCard places={mapPlaces} /></Column><Column id="right-column"><SearchTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
+  return <Columns><Column id="left-column"><Card title={focus.name}><FocusDetails focus={focus} kidCount={kids.length} /><div className="react-actions focus-detail-actions"><a className="button" href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</a></div></Card><Card title="Essen" className="focus-meals-card"><MealTable focus={focus} /><div className="react-actions"><a className="button" href={`/swpmeals/${focus.id}`}>Essen bearbeiten</a></div></Card><MapCard places={mapPlaces} /></Column><Column id="right-column"><DataTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
 }
 
 export function FocusFormPage({ data, id }) {

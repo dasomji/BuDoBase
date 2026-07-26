@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Card, Column, Columns, FieldList, findById, MapCard, NativeForm, RestForm, SearchTable } from '../components';
+import { Card, Column, Columns, DataTable, FieldList, findById, MapCard, NativeForm, RestForm } from '../components';
 import { formatGermanDate, NotFoundPage } from './shared';
 
 export function PlacesPage({ data }) {
@@ -10,7 +10,7 @@ export function PlacesPage({ data }) {
     { key: 'maps_link', label: 'Wo', render: row => row.maps_link ? <a href={row.maps_link}>Google Maps</a> : '---' },
     { key: 'parking_link', label: 'Parkspot', render: row => row.parking_link ? <a href={row.parking_link}>Google Maps</a> : '---' },
   ];
-  return <Columns><Column id="left-column" className="normal-column"><SearchTable columns={columns} rows={rows} /></Column><Column id="right-column"><MapCard places={data.places} /></Column></Columns>;
+  return <Columns><Column id="left-column" className="normal-column"><DataTable columns={columns} rows={rows} /></Column><Column id="right-column"><MapCard places={data.places} /></Column></Columns>;
 }
 
 function PlaceCommentForm({ place, token, onSaved }) {

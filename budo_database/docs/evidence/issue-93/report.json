@@ -1,0 +1,18 @@
+[
+  {
+    "slug": "all-kids",
+    "path": "/all_kids",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8014/all_kids",
+    "heading": "Alle Kinder"
+  },
+  {
+    "slug": "all-kids",
+    "path": "/all_kids",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8014/all_kids",
+    "heading": "Alle Kinder"
+  }
+]
