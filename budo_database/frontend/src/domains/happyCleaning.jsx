@@ -457,25 +457,12 @@ export function HappyCleaningOverviewPage({
   }, [restoreFocusKey, selection]);
   useEffect(() => {
     if (!todoPrintRequest) return undefined;
-    // Normal application routes load the React stylesheet for screen media only so it
-    // cannot interfere with legacy Django print views. Temporarily enable it here so
-    // this React-owned print job receives its @media print layout.
-    const stylesheet = document.getElementById('react-app-styles');
-    const previousMedia = stylesheet?.media;
-    if (stylesheet) stylesheet.media = 'all';
     // Let React commit the portal and Chromium complete print-media layout before
     // opening the native dialog.
     const printTimer = window.setTimeout(() => {
-      try {
-        window.print();
-      } finally {
-        if (stylesheet) stylesheet.media = previousMedia;
-      }
+      window.print();
     }, 50);
-    return () => {
-      window.clearTimeout(printTimer);
-      if (stylesheet) stylesheet.media = previousMedia;
-    };
+    return () => window.clearTimeout(printTimer);
   }, [todoPrintRequest]);
   useEffect(() => {
     setYears(current => data.years.map(group => (

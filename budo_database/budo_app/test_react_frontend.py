@@ -9,12 +9,20 @@ from .models import Geld, Kinder, Turnus
 
 
 class ReactShellTests(TestCase):
-    def test_template_page_is_replaced_by_react_mount(self):
+    def test_template_page_uses_the_react_mount_for_screen_and_print(self):
         response = self.client.get(reverse("login"))
 
         self.assertContains(response, '<div id="root"></div>', html=True)
         self.assertContains(response, "/static/frontend/app.js")
-        self.assertContains(response, 'id="legacy-print-root"')
+        self.assertContains(
+            response,
+            'id="react-app-styles" rel="stylesheet" '
+            'href="/static/frontend/app.css" media="all"',
+        )
+        self.assertNotContains(response, 'id="legacy-print-root"')
+        self.assertNotContains(response, "bootstrap@5.3.0")
+        self.assertNotContains(response, 'href="/static/stylesheet.css"')
+        self.assertNotContains(response, "data-react-print-page")
 
     def test_team_page_deep_link_uses_the_authenticated_react_shell(self):
         user = User.objects.create_user("team-page-user", password="secret")
@@ -32,16 +40,20 @@ class ReactShellTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, "/login/?next=/team/")
 
-    def test_kitchen_print_uses_the_current_react_page(self):
+    def test_kitchen_uses_the_same_react_shell_as_every_other_page(self):
         user = User.objects.create_user("kitchen-print-user", password="secret")
         self.client.force_login(user)
 
         response = self.client.get(reverse("kitchen"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'data-react-print-page="true"')
-        self.assertContains(response, "#root { display: block !important; }")
-        self.assertContains(response, "#legacy-print-root { display: none !important; }")
+        self.assertContains(
+            response,
+            'id="react-app-styles" rel="stylesheet" '
+            'href="/static/frontend/app.css" media="all"',
+        )
+        self.assertNotContains(response, "data-react-print-page")
+        self.assertNotContains(response, "legacy-print-root")
 
     def test_selected_profile_edit_deep_link_requires_profile_permission(self):
         editor = User.objects.create_user("profile-editor", password="secret")
