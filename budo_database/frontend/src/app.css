@@ -1307,214 +1307,6 @@ input[name="amount"]::placeholder {
   padding: var(--m-padding);
 }
 
-.happy-cleaning-toolbar,
-.happy-cleaning-station-summary,
-.happy-cleaning-order-controls,
-.happy-cleaning-todo,
-.happy-cleaning-add-todo {
-  display: flex;
-  align-items: center;
-  gap: var(--s-padding);
-}
-
-.happy-cleaning-toolbar {
-  justify-content: flex-end;
-  margin-bottom: var(--m-padding);
-}
-
-.happy-cleaning-events,
-.happy-cleaning-todos {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.happy-cleaning-years {
-  display: grid;
-  gap: var(--m-padding);
-}
-
-.happy-cleaning-overview-table-wrap {
-  overflow-x: auto;
-}
-
-.happy-cleaning-overview-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.happy-cleaning-overview-table th,
-.happy-cleaning-overview-table td {
-  padding: var(--s-padding);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
-  text-align: left;
-}
-
-.happy-cleaning-overview-table th {
-  font-weight: 500;
-}
-
-.happy-cleaning-station-row-button {
-  padding: 0;
-  border: 0;
-  color: inherit;
-  background: none;
-  font: inherit;
-  font-weight: 500;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.happy-cleaning-station-row-button:hover {
-  background: none;
-}
-
-#body-container.happy-cleaning-overview-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
-  align-content: start;
-  justify-content: stretch;
-  gap: 0;
-}
-
-#body-container.happy-cleaning-overview-split {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--m-padding);
-}
-
-.happy-cleaning-overview-list,
-.happy-cleaning-overview-detail {
-  min-width: 0;
-}
-
-.happy-cleaning-overview-detail .happy-cleaning-station-detail-card {
-  width: 100%;
-}
-
-@media (max-width: 900px) {
-  #body-container.happy-cleaning-overview-layout,
-  #body-container.happy-cleaning-overview-split {
-    display: block;
-  }
-
-  .happy-cleaning-overview-split .happy-cleaning-overview-list {
-    display: none;
-  }
-
-  .happy-cleaning-overview-detail {
-    position: fixed;
-    z-index: 15;
-    top: var(--app-header-height, 0px);
-    right: 0;
-    bottom: 0;
-    left: 0;
-    overflow-y: auto;
-    padding: var(--m-padding);
-    background: var(--background-color, white);
-  }
-}
-
-.happy-cleaning-empty-stations {
-  margin-bottom: 0;
-}
-
-.happy-cleaning-event,
-.happy-cleaning-station,
-.happy-cleaning-create,
-.happy-cleaning-copy {
-  margin-bottom: var(--m-padding);
-}
-
-.happy-cleaning-station,
-.happy-cleaning-create,
-.happy-cleaning-copy {
-  padding: var(--m-padding);
-}
-
-.happy-cleaning-event .react-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-padding);
-}
-
-.happy-cleaning-detail-actions {
-  justify-content: flex-end;
-  gap: var(--s-padding);
-}
-
-.happy-cleaning-todo-print-pages {
-  display: none;
-}
-
-.happy-cleaning-copy-spinner {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  margin-right: var(--xs-padding);
-  vertical-align: -0.15em;
-  border: 0.15em solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: happy-cleaning-copy-spin 0.7s linear infinite;
-}
-
-@keyframes happy-cleaning-copy-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .happy-cleaning-copy-spinner {
-    animation: none;
-  }
-}
-
-.happy-cleaning-delete-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
-  display: grid;
-  place-items: center;
-  padding: var(--l-padding);
-  background: rgba(0, 0, 0, 0.45);
-}
-
-.happy-cleaning-delete-dialog {
-  width: min(30rem, 100%);
-  padding: var(--l-padding);
-  background: var(--bg-blue__solid);
-}
-
-.happy-cleaning-delete-dialog label {
-  display: block;
-  margin-top: var(--m-padding);
-  font-weight: 500;
-}
-
-.happy-cleaning-delete-dialog input {
-  width: 100%;
-  margin-top: var(--xs-padding);
-}
-
-.happy-cleaning-delete-dialog .react-actions {
-  justify-content: flex-end;
-}
-
-.happy-cleaning-print-page#body-container {
-  display: block;
-  width: min(52rem, calc(100% - 2rem));
-  margin: 0 auto;
-  padding: var(--l-padding);
-  color: black;
-}
-
-.happy-cleaning-numberless-actions {
-  justify-content: flex-start;
-  margin: 0 0 var(--s-padding);
-}
-
 .happy-cleaning-batch-trigger {
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -1590,46 +1382,6 @@ input[name="amount"]::placeholder {
 .happy-cleaning-print-empty {
   border: 1px dashed currentColor;
   padding: var(--s-padding);
-}
-
-.happy-cleaning-station-summary {
-  justify-content: space-between;
-}
-
-.happy-cleaning-expand {
-  flex: 1;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.happy-cleaning-progress {
-  min-width: 3rem;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.happy-cleaning-station-details {
-  margin-top: var(--m-padding);
-  border-top: 1px solid currentColor;
-  padding-top: var(--m-padding);
-}
-
-.happy-cleaning-station-form textarea {
-  min-height: 5rem;
-}
-
-.happy-cleaning-todo {
-  margin-bottom: var(--xs-padding);
-}
-
-.happy-cleaning-todo input,
-.happy-cleaning-add-todo label,
-.happy-cleaning-add-todo input {
-  flex: 1;
 }
 
 .happy-cleaning-dialog-backdrop {
@@ -1709,21 +1461,6 @@ input[name="amount"]::placeholder {
   justify-content: flex-end;
   gap: var(--s-padding);
   margin-top: var(--m-padding);
-}
-
-@media (max-width: 759px) {
-  .happy-cleaning-station-summary,
-  .happy-cleaning-todo,
-  .happy-cleaning-add-todo {
-    align-items: stretch;
-    flex-wrap: wrap;
-  }
-
-  .happy-cleaning-todo input,
-  .happy-cleaning-add-todo label {
-    flex-basis: 100%;
-  }
-
 }
 
 #body-container.families-page {
@@ -2119,6 +1856,12 @@ input[name="amount"]::placeholder {
 
   .happy-cleaning-print-title {
     margin-bottom: 8mm;
+    padding-bottom: var(--s-padding);
+  }
+
+  .happy-cleaning-print-title h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
   }
 
   .happy-cleaning-print-section {
@@ -2126,6 +1869,10 @@ input[name="amount"]::placeholder {
   }
 
   .happy-cleaning-print-section h2 {
+    margin-bottom: var(--s-padding);
+    padding-bottom: var(--xs-padding);
+    font-size: 1.35rem;
+    font-weight: 700;
     break-after: avoid;
     page-break-after: avoid;
   }
@@ -2138,11 +1885,12 @@ input[name="amount"]::placeholder {
     display: table !important;
     width: 100%;
     background: white;
+    font-size: 11pt !important;
   }
 
   .happy-cleaning-print-table th,
   .happy-cleaning-print-table td {
-    padding: 1.5mm 2mm;
+    padding: 1.5mm 2mm !important;
     white-space: nowrap;
   }
 
@@ -2158,6 +1906,10 @@ input[name="amount"]::placeholder {
   .happy-cleaning-print-empty {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .happy-cleaning-print-empty {
+    padding: var(--s-padding);
   }
 
   #root {
@@ -2611,11 +2363,3 @@ input[name="amount"]::placeholder {
     padding-inline: 2.5rem;
   }
 }
-.happy-cleaning-conflict-resolution{display:grid;gap:var(--m-padding)}
-.happy-cleaning-conflict-card{border:1px solid #37373740;border-radius:var(--corner-rad);padding:var(--m-padding);display:grid;grid-template-columns:minmax(12rem,1fr) minmax(18rem,2fr);gap:var(--m-padding)}
-.happy-cleaning-conflict-card legend{font-weight:700}
-.happy-cleaning-conflict-target{display:grid;align-content:start;gap:var(--xs-padding)}
-.happy-cleaning-conflict-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--xs-padding)}
-.happy-cleaning-conflict-action{min-height:44px;border:1px solid #37373740;border-radius:var(--corner-rad);padding:var(--s-padding);display:grid;grid-template-columns:auto 1fr;align-items:center;gap:var(--xs-padding)}
-.happy-cleaning-conflict-action small{grid-column:2;color:#8a1c1c}
-@media (width<=900px){.happy-cleaning-conflict-card{grid-template-columns:1fr}.happy-cleaning-conflict-actions{grid-template-columns:1fr}.happy-cleaning-conflict-action{min-height:52px}}

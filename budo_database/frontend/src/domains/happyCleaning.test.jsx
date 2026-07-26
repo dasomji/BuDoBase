@@ -69,20 +69,6 @@ describe('Happy Cleaning management', () => {
     vi.restoreAllMocks();
   });
 
-  it('keeps fullscreen station detail below the measured mobile header', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
-    const mobileRule = css.match(
-      /@media \(max-width: 900px\) \{[\s\S]*?\.happy-cleaning-overview-detail \{([^}]*)\}/,
-    )?.[1];
-
-    expect(mobileRule).toBeDefined();
-    expect(mobileRule).toContain('top: var(--app-header-height, 0px);');
-    expect(mobileRule).toContain('right: 0;');
-    expect(mobileRule).toContain('bottom: 0;');
-    expect(mobileRule).toContain('left: 0;');
-    expect(mobileRule).not.toContain('inset: 0;');
-  });
-
   it('owns refreshable event management and one Turnus-wide number-list route', () => {
     const overview = parseRoute('/happy-cleaning/');
     const print = parseRoute('/happy-cleaning/print/');
@@ -172,7 +158,7 @@ describe('Happy Cleaning management', () => {
     });
     const eventCard = eventHeading.closest('article');
     const eventToggle = eventHeading.closest('.card-toggle');
-    expect(eventCard).toHaveClass('card', 'happy-cleaning-event');
+    expect(eventCard).toHaveClass('card');
     expect(eventToggle).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(eventHeading);
     expect(eventToggle).toHaveAttribute('aria-expanded', 'false');
@@ -180,6 +166,8 @@ describe('Happy Cleaning management', () => {
     fireEvent.click(eventToggle);
 
     const activeTable = screen.getAllByRole('table')[0];
+    expect(activeTable).toHaveAttribute('data-slot', 'table');
+    expect(activeTable.parentElement).toHaveAttribute('data-slot', 'table-scroll');
     expect(within(activeTable).getAllByRole('columnheader').map(cell => cell.textContent)).toEqual([
       'Stationsname↑', 'Max Kinder', 'Treffpunkt', 'Verantwortlicher', 'To-Dos',
     ]);
@@ -613,7 +601,7 @@ describe('Happy Cleaning management', () => {
     fireEvent.change(dialog.getByLabelText('Ziel-Happy-Cleaning'), { target: { value: '9' } });
     fireEvent.click(dialog.getByRole('button', { name: 'Prüfen und kopieren' }));
     expect(dialog.getByRole('status')).toHaveTextContent('Stationen werden geprüft');
-    expect(dialog.getByRole('status').querySelector('.happy-cleaning-copy-spinner')).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: 'Prüfen und kopieren' })).toBeDisabled();
     expect(mutate).toHaveBeenCalledWith(
       '/api/happy-cleaning/events/9/stations/copy/',
       expect.objectContaining({
@@ -758,6 +746,7 @@ describe('Happy Cleaning management', () => {
     render(<HappyCleaningCreateButton mutate={mutate} />);
 
     const createButton = screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' });
+    expect(createButton).toHaveAttribute('data-slot', 'button');
     expect(createButton).toHaveClass('mobile-icon-action');
     expect(createButton.querySelector('.desktop-action-label')).toHaveTextContent('Happy Cleaning hinzufügen');
     expect(createButton.querySelector('.mobile-action-label')).toHaveAttribute('aria-hidden', 'true');
@@ -828,6 +817,10 @@ describe('Happy Cleaning management', () => {
     const numbered = within(screen.getByRole('table', { name: 'Anwesend mit Nummer' }));
     const numberless = within(screen.getByRole('table', { name: 'Anwesend ohne Nummer' }));
     const absent = within(screen.getByRole('table', { name: 'Abwesend' }));
+    for (const table of screen.getAllByRole('table')) {
+      expect(table).toHaveAttribute('data-slot', 'table');
+      expect(table.parentElement).toHaveAttribute('data-slot', 'table-scroll');
+    }
     expect(numbered.getAllByRole('columnheader').map(cell => cell.textContent)).toEqual([
       'Nummer',
       'Name',
@@ -855,6 +848,27 @@ describe('Happy Cleaning management', () => {
       ['3', 'Linus Torvalds'],
     ]);
     expect(screen.queryByText(/Private Krankheit|private@example\.test|Private Notiz/)).not.toBeInTheDocument();
+  });
+
+  it('retains the established number-list print treatment', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
+    const printStyles = css.slice(css.indexOf('@media print'));
+
+    expect(printStyles).toMatch(
+      /\.happy-cleaning-print-page#body-container\s*\{[\s\S]*?background-image:\s*radial-gradient\(/,
+    );
+    expect(printStyles).toMatch(
+      /\.happy-cleaning-print-title h1\s*\{[^}]*font-size:\s*2\.4rem;[^}]*font-weight:\s*700;/s,
+    );
+    expect(printStyles).toMatch(
+      /\.happy-cleaning-print-section h2\s*\{[^}]*font-size:\s*1\.35rem;[^}]*font-weight:\s*700;/s,
+    );
+    expect(printStyles).toMatch(
+      /\.happy-cleaning-print-table\s*\{[^}]*font-size:\s*11pt !important;/s,
+    );
+    expect(printStyles).toMatch(
+      /\.happy-cleaning-print-table th,[\s\S]*?\.happy-cleaning-print-table td\s*\{[^}]*padding:\s*1\.5mm 2mm !important;/s,
+    );
   });
 
   it('offers the same fixed batch-number dialog on the number list after HC1 is complete', async () => {

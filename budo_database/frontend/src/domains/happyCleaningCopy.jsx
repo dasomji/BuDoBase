@@ -1,6 +1,7 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { useState } from 'react';
 
+import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
 
 const requestId = () => globalThis.crypto?.randomUUID?.()
@@ -28,14 +29,14 @@ export function ConflictResolution({ preview, decisions, setDecisions }) {
   const choose = (id, patch) => setDecisions(current => ({
     ...current, [id]: { ...(current[id] || {}), ...patch },
   }));
-  return <div className="happy-cleaning-conflict-resolution">
+  return <div className="grid gap-4">
     {!!preview.conflict_free_station_ids?.length && <p>{preview.conflict_free_station_ids.length} konfliktfreie Station(en) werden ebenfalls kopiert.</p>}
     <p role="status">{groups.filter(group => !decisions[group.id]?.action).length} Konfliktgruppe(n) ungelöst.</p>
     {groups.map(group => {
       const decision = decisions[group.id] || {};
       const candidate = group.candidates.find(item => item.target_station_id === Number(decision.target_station_id));
-      return <fieldset className="happy-cleaning-conflict-card" key={group.id}>
-        <legend>{group.name} ({group.taskCount ?? 0} Aufgaben)</legend>
+      return <fieldset className="grid grid-cols-[minmax(12rem,1fr)_minmax(18rem,2fr)] gap-4 rounded-lg border border-foreground/25 p-4 max-[900px]:grid-cols-1" key={group.id}>
+        <legend className="font-bold">{group.name} ({group.taskCount ?? 0} Aufgaben)</legend>
         <p className="happy-cleaning-conflict-summary">
           {group.candidates.map(item => `${group.name} → ${item.target_name}`).join(', ')}
         </p>
@@ -45,7 +46,7 @@ export function ConflictResolution({ preview, decisions, setDecisions }) {
             {group.candidates.map(item => <option key={item.target_station_id} value={item.target_station_id}>{item.target_name} ({item.target_task_count ?? 0} Aufgaben)</option>)}
           </select>
         </label>
-        <div className="happy-cleaning-conflict-actions">
+        <div className="grid grid-cols-2 gap-2 max-[900px]:grid-cols-1">
           {[
             ['overwrite', 'Bestehende Station überschreiben'],
             ['append', 'Inhalte anhängen'],
@@ -54,10 +55,10 @@ export function ConflictResolution({ preview, decisions, setDecisions }) {
           ].map(([value, label]) => {
             const targetRequired = value === 'overwrite' || value === 'append';
             const locked = value === 'overwrite' && candidate && !candidate.overwrite_eligible;
-            return <label className="happy-cleaning-conflict-action" key={value}>
+            return <label className="grid min-h-11 grid-cols-[auto_1fr] items-center gap-2 rounded-lg border border-foreground/25 p-2 max-[900px]:min-h-13" key={value}>
               <input type="radio" name={`resolution-${group.id}`} checked={decision.action === value} disabled={(targetRequired && !candidate) || locked} onChange={() => choose(group.id, { action: value })} />
               <span>{label}</span>
-              {locked && <small>{candidate.overwrite_disabled_reason}</small>}
+              {locked && <small className="col-start-2 text-destructive">{candidate.overwrite_disabled_reason}</small>}
             </label>;
           })}
         </div>
@@ -127,9 +128,9 @@ function StationCopyDialog({
   return (
     <Dialog.Root open onOpenChange={open => { if (!open) close(); }}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="happy-cleaning-dialog-backdrop" />
-        <Dialog.Viewport className="happy-cleaning-dialog-viewport">
-          <Dialog.Popup className="card happy-cleaning-copy" aria-label={workflow.title}>
+        <Dialog.Backdrop className="fixed inset-0 z-[var(--z-modal)] bg-black/45" />
+        <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] grid place-items-center overflow-y-auto p-4">
+          <Dialog.Popup className="card grid max-h-[calc(100dvh-2rem)] w-full max-w-3xl gap-4 overflow-y-auto bg-surface-solid p-4" aria-label={workflow.title}>
       <Dialog.Title>{workflow.title}</Dialog.Title>
       <p>Quelle: {workflow.sourceLabel(source)}</p>
       {workflow.showSelection && <>
@@ -167,7 +168,7 @@ function StationCopyDialog({
       </label>
       {state.kind === 'busy' && (
         <p role="status">
-          <span className="happy-cleaning-copy-spinner" aria-hidden="true" />
+          <span className="mr-1 inline-block size-4 animate-spin rounded-full border-[.15em] border-current border-r-transparent align-[-.15em] motion-reduce:animate-none" aria-hidden="true" />
           Stationen werden geprüft…
         </p>
       )}
@@ -178,9 +179,8 @@ function StationCopyDialog({
           <ConflictResolution preview={state.result} decisions={decisions} setDecisions={setDecisions} />
         </div>
       )}
-      <div className="react-actions">
-        <button
-          className="button"
+      <div className="flex flex-wrap gap-2">
+        <Button
           type="button"
           disabled={state.kind === 'busy' || !stationIds.length || !targetId || (
             state.kind === 'conflicts'
@@ -189,9 +189,9 @@ function StationCopyDialog({
           onClick={submit}
         >
           {state.kind === 'conflicts' ? 'Auswahl verbindlich kopieren' : state.kind === 'error' ? 'Erneut prüfen' : 'Prüfen und kopieren'}
-        </button>
-        {state.kind === 'conflicts' && <button className="button" type="button" onClick={() => { setDecisions({}); submit(true); }}>Erneut prüfen</button>}
-        <Dialog.Close className="button" disabled={state.kind === 'busy'}>Schließen</Dialog.Close>
+        </Button>
+        {state.kind === 'conflicts' && <Button variant="secondary" type="button" onClick={() => { setDecisions({}); submit(true); }}>Erneut prüfen</Button>}
+        <Dialog.Close render={<Button variant="secondary" disabled={state.kind === 'busy'} />}>Schließen</Dialog.Close>
       </div>
           </Dialog.Popup>
         </Dialog.Viewport>

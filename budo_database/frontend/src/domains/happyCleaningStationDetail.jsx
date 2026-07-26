@@ -6,11 +6,35 @@ import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
+import { X } from 'lucide-react';
 
 import { Card } from '../components';
+import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
-import './happyCleaningStationDetail.css';
 import { SingleStationCopyDialog } from './happyCleaningCopy';
+
+const stationDocumentUtilities = [
+  '[&_.tiptap]:outline-none',
+  '[&_ul[data-type=taskList]]:m-0',
+  '[&_ul[data-type=taskList]]:grid',
+  '[&_ul[data-type=taskList]]:list-none',
+  '[&_ul[data-type=taskList]]:gap-2',
+  '[&_ul[data-type=taskList]]:p-0',
+  '[&_ul[data-type=taskList]_li]:grid',
+  '[&_ul[data-type=taskList]_li]:grid-cols-[auto_minmax(0,1fr)]',
+  '[&_ul[data-type=taskList]_li]:items-start',
+  '[&_ul[data-type=taskList]_li]:gap-2',
+  '[&_ul[data-type=taskList]_li>label]:flex',
+  '[&_ul[data-type=taskList]_li>label]:w-auto',
+  '[&_ul[data-type=taskList]_li>label]:items-center',
+  '[&_ul[data-type=taskList]_li>label]:gap-0',
+  '[&_ul[data-type=taskList]_li>label]:font-light',
+  '[&_ul[data-type=taskList]_li>div]:min-w-0',
+  '[&_ul[data-type=taskList]_p]:m-0',
+  '[&_li[data-checked=true]>div]:opacity-70',
+  '[&_li[data-checked=true]>div]:line-through',
+  '[&_input[type=checkbox]]:mt-[.2rem]',
+].join(' ');
 
 const TaskItemWithIdentity = TaskItem.extend({
   addAttributes() {
@@ -150,7 +174,7 @@ function ReadOnlyStationDocument({
 
   if (!document.content?.length) return <p>Noch kein Inhalt angelegt.</p>;
   return (
-    <div className="happy-cleaning-readonly-document" ref={documentRoot}>
+    <div className={`${stationDocumentUtilities} [&_input[type=checkbox]:not(:disabled)]:cursor-pointer`} ref={documentRoot}>
       <EditorContent editor={editor} />
     </div>
   );
@@ -160,15 +184,15 @@ function DirtyNavigationDialog({ onContinue, onDiscard, onSave }) {
   return (
     <Dialog.Root open onOpenChange={open => { if (!open) onContinue(); }}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="happy-cleaning-dialog-backdrop" />
-        <Dialog.Viewport className="happy-cleaning-dialog-viewport">
-          <Dialog.Popup className="card happy-cleaning-dirty-dialog">
+        <Dialog.Backdrop className="fixed inset-0 z-[var(--z-modal)] bg-black/45" />
+        <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] grid place-items-center overflow-y-auto p-4">
+          <Dialog.Popup className="card max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-surface-solid p-6">
             <Dialog.Title>Ungespeicherte Änderungen</Dialog.Title>
             <Dialog.Description>Es gibt ungespeicherte Änderungen.</Dialog.Description>
-            <div className="react-actions">
-              <button className="button" type="button" onClick={onContinue}>Weiter bearbeiten</button>
-              <button className="button" type="button" onClick={onDiscard}>Verwerfen</button>
-              <button className="button" type="button" onClick={onSave}>Speichern und weiter</button>
+            <div className="mt-4 flex flex-wrap justify-between gap-2">
+              <Button variant="secondary" type="button" onClick={onContinue}>Weiter bearbeiten</Button>
+              <Button variant="destructive" type="button" onClick={onDiscard}>Verwerfen</Button>
+              <Button type="button" onClick={onSave}>Speichern und weiter</Button>
             </div>
           </Dialog.Popup>
         </Dialog.Viewport>
@@ -332,8 +356,8 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
   };
   return (
     <>
-      <div className="react-actions">
-        <button type="button" className="button happy-cleaning-detail-back" onClick={() => navigate(onBack)}>Zur Liste</button>
+      <div className="hidden max-[900px]:flex">
+        <Button variant="secondary" type="button" onClick={() => navigate(onBack)}>Zur Liste</Button>
       </div>
       <form className="form-grid" onSubmit={async event_ => { event_.preventDefault(); await save(); }}>
         <label>Name<input aria-label="Name der Station" value={fields.name} onChange={event_ => setFields(value => ({ ...value, name: event_.target.value }))} /></label>
@@ -344,15 +368,15 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
         <label>Kapazität<input aria-label="Kapazität der Station" type="number" min="0" required value={fields.max_kids} onChange={event_ => setFields(value => ({ ...value, max_kids: event_.target.value }))} /></label>
         <label>Treffpunkt<input aria-label="Treffpunkt der Station" value={fields.meeting_point} onChange={event_ => setFields(value => ({ ...value, meeting_point: event_.target.value }))} /></label>
         <label>Wünsche<textarea aria-label="Wünsche der Station" value={fields.wishes} onChange={event_ => setFields(value => ({ ...value, wishes: event_.target.value }))} /></label>
-        <div className="happy-cleaning-minimal-editor-field" role="group" aria-labelledby={tasksLabelId}>
-          <span id={tasksLabelId}>Aufgaben</span>
-          <div className="happy-cleaning-minimal-editor">
+        <div className="grid gap-1" role="group" aria-labelledby={tasksLabelId}>
+          <span className="font-medium" id={tasksLabelId}>Aufgaben</span>
+          <div className={`${stationDocumentUtilities} min-h-40 rounded-md border border-current/30 p-3 [&_.tiptap]:min-h-32 [&_input[type=checkbox]]:pointer-events-none`}>
             <EditorContent editor={editor} />
           </div>
         </div>
-        <div className="react-actions">
-          <button className="button" type="submit" disabled={busy}>Speichern</button>
-          {!creating && station.can_delete && <button className="button danger" type="button" disabled={busy} onClick={remove}>Station löschen</button>}
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" disabled={busy}>Speichern</Button>
+          {!creating && station.can_delete && <Button variant="destructive" type="button" disabled={busy} onClick={remove}>Station löschen</Button>}
         </div>
       </form>
       {pendingNavigation && (
@@ -421,25 +445,26 @@ export function HappyCleaningStationDetailPage({
 
   const Page = embedded ? 'section' : 'main';
   return (
-    <Page className="happy-cleaning-station-detail-page" id={embedded ? undefined : 'body-container'}>
+    <Page className="grid w-full content-start gap-4" id={embedded ? undefined : 'body-container'}>
       {!editing && onBack && (
-        <button className="button happy-cleaning-detail-back" type="button" onClick={onBack}>
+        <Button className="hidden max-[900px]:inline-flex" variant="secondary" type="button" onClick={onBack}>
           Zur Liste
-        </button>
+        </Button>
       )}
       <Card
-        className="happy-cleaning-station-detail-card"
+        className="happy-cleaning-station-detail-card mx-auto w-full max-w-[52rem]"
         title={station.name}
         showToggleIcon={false}
         headerAction={onBack ? (
-          <button
-            className="button happy-cleaning-detail-close"
+          <Button
+            variant="ghost"
+            size="icon"
             type="button"
             aria-label="Detail schließen"
             onClick={closeDetail}
           >
-            ×
-          </button>
+            <X aria-hidden="true" />
+          </Button>
         ) : null}
       >
         {editing ? (
@@ -456,16 +481,16 @@ export function HappyCleaningStationDetailPage({
           />
         ) : (
           <>
-            <dl className="happy-cleaning-station-facts">
+            <dl className="happy-cleaning-station-facts grid gap-2.5">
               {station.responsible && (
-                <div><dt>Hauptverantwortlich</dt><dd>{station.responsible.name}</dd></div>
+                <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[600px]:grid-cols-1 max-[600px]:gap-0.5"><dt className="font-medium">Hauptverantwortlich</dt><dd className="m-0">{station.responsible.name}</dd></div>
               )}
-              <div><dt>Max Kinder</dt><dd>{station.max_kids}</dd></div>
-              <div><dt>Treffpunkt</dt><dd>{station.meeting_point || '—'}</dd></div>
-              <div><dt>Wünsche</dt><dd>{station.wishes || '—'}</dd></div>
+              <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[600px]:grid-cols-1 max-[600px]:gap-0.5"><dt className="font-medium">Max Kinder</dt><dd className="m-0">{station.max_kids}</dd></div>
+              <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[600px]:grid-cols-1 max-[600px]:gap-0.5"><dt className="font-medium">Treffpunkt</dt><dd className="m-0">{station.meeting_point || '—'}</dd></div>
+              <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[600px]:grid-cols-1 max-[600px]:gap-0.5"><dt className="font-medium">Wünsche</dt><dd className="m-0">{station.wishes || '—'}</dd></div>
             </dl>
             <section aria-labelledby={`station-tasks-${station.id}`}>
-              <h2 className="happy-cleaning-station-tasks-heading" id={`station-tasks-${station.id}`}>Aufgaben</h2>
+              <h2 className="py-2 [padding-top:12px]" id={`station-tasks-${station.id}`}>Aufgaben</h2>
               <ReadOnlyStationDocument
                 document={station.document}
                 canToggle={station.can_toggle_tasks}
@@ -474,16 +499,16 @@ export function HappyCleaningStationDetailPage({
                 onToggle={setTodoState}
               />
             </section>
-            <div className="react-actions happy-cleaning-detail-actions">
+            <div className="flex flex-wrap justify-end gap-2">
               {station.can_edit && (
-                <button className="button" type="button" onClick={() => setEditing(true)}>
+                <Button type="button" onClick={() => setEditing(true)}>
                   Bearbeiten
-                </button>
+                </Button>
               )}
               {station.id != null && (
-                <button className="button" type="button" onClick={() => setCopyOpen(true)}>
+                <Button variant="secondary" type="button" onClick={() => setCopyOpen(true)}>
                   Station kopieren
-                </button>
+                </Button>
               )}
             </div>
           </>
