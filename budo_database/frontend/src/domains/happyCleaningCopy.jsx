@@ -1,6 +1,8 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { useState } from 'react';
 
+import { useErrorToast } from '../components/ui/toast';
+
 const requestId = () => globalThis.crypto?.randomUUID?.()
   || `happy-cleaning-copy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -76,6 +78,7 @@ function StationCopyDialog({
   const [targetId, setTargetId] = useState('');
   const [state, setState] = useState({ kind: 'ready' });
   const [decisions, setDecisions] = useState({});
+  const showError = useErrorToast();
   const availableTargets = targets.filter(target => target.id !== source.id);
   const selectedAll = workflow.showSelection && source.stations.length > 0
     && stationIds.length === source.stations.length;
@@ -117,7 +120,8 @@ function StationCopyDialog({
         onSuccess?.(target.id, result);
       }
     } catch (caught) {
-      setState({ kind: 'error', message: errorMessage(caught) });
+      setState({ kind: 'error' });
+      showError(errorMessage(caught));
     }
   };
   return (
@@ -174,7 +178,6 @@ function StationCopyDialog({
           <ConflictResolution preview={state.result} decisions={decisions} setDecisions={setDecisions} />
         </div>
       )}
-      {state.kind === 'error' && <p className="error" role="alert">{state.message}</p>}
       <div className="react-actions">
         <button
           className="button"

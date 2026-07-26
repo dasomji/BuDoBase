@@ -41,6 +41,7 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "happy-cleaning-assignment",
     "happy-cleaning-overview-station",
     "happy-cleaning-print",
+    "happy-cleaning-todo-print",
 )
 
 class RouteContractDispatchTests(TestCase):

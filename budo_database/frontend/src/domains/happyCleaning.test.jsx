@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { Toaster } from '../components/ui/toast';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute, resolveRouteTitle, routeHeaderAction } from '../routes';
 import {
@@ -14,6 +15,9 @@ import {
   HappyCleaningPrintPage,
 } from './happyCleaning';
 
+const render = ui => testingLibraryRender(ui, {
+  wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
+});
 
 const stationsData = {
   event: { id: 7, display_number: 2, revision: 5 },
@@ -60,6 +64,7 @@ const stationsData = {
 describe('Happy Cleaning management', () => {
   afterEach(() => {
     cleanup();
+    document.getElementById('react-app-styles')?.remove();
     localStorage.clear();
     vi.restoreAllMocks();
   });
@@ -111,7 +116,10 @@ describe('Happy Cleaning management', () => {
           year: 2025, loaded: true, is_active: false,
           turnuses: [{ id: 3, number: 4, start: '2025-08-01', is_active: false, events: [{
             id: 5, display_number: 1, revision: 2, can_delete: false,
-            stations: [{ id: 50, name: 'Archiv', max_kids: 8, meeting_point: 'Altbau', task_item_count: 1 }],
+            stations: [{
+              id: 50, name: 'Archiv', max_kids: 8, meeting_point: 'Altbau',
+              responsible: null, task_item_count: 1,
+            }],
           }] }],
         }],
       }),
@@ -126,9 +134,18 @@ describe('Happy Cleaning management', () => {
             {
               id: 7, display_number: 1, revision: 2, can_delete: false,
               stations: [
-                { id: 70, name: 'Küche', max_kids: 2, meeting_point: 'Gang', task_item_count: 4 },
-                { id: 71, name: 'Bad', max_kids: 5, meeting_point: 'Hof', task_item_count: 1 },
-                { id: 72, name: 'Balkon', max_kids: 5, meeting_point: 'Hof', task_item_count: 2 },
+                {
+                  id: 70, name: 'Küche', max_kids: 2, meeting_point: 'Gang',
+                  responsible: { id: 4, name: 'Mira' }, task_item_count: 4,
+                },
+                {
+                  id: 71, name: 'Bad', max_kids: 5, meeting_point: 'Hof',
+                  responsible: null, task_item_count: 1,
+                },
+                {
+                  id: 72, name: 'Balkon', max_kids: 5, meeting_point: 'Hof',
+                  responsible: { id: 5, name: 'Zora' }, task_item_count: 2,
+                },
               ],
             },
             { id: 9, display_number: 2, revision: 4, can_delete: true, stations: [] },
@@ -144,13 +161,40 @@ describe('Happy Cleaning management', () => {
     };
     render(<HappyCleaningOverviewPage data={data} mutate={mutate} fetchImpl={fetchImpl} />);
 
-    expect(screen.getByRole('button', { name: '2026 schließen' })).toHaveAttribute('aria-expanded', 'true');
+    const activeYearToggle = screen.getByRole('button', { name: '2026 schließen' });
+    expect(activeYearToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(activeYearToggle.querySelector('.icon')).toHaveTextContent('−');
     expect(screen.getByRole('button', { name: '2025 öffnen' })).toHaveAttribute('aria-expanded', 'false');
+
+    const eventHeading = screen.getByRole('heading', {
+      level: 2,
+      name: '3. Turnus 2026 · Happy Cleaning 1',
+    });
+    const eventCard = eventHeading.closest('article');
+    const eventToggle = eventHeading.closest('.card-toggle');
+    expect(eventCard).toHaveClass('card', 'happy-cleaning-event');
+    expect(eventToggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(eventHeading);
+    expect(eventToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(eventCard.querySelector('.card-info-container')).toHaveAttribute('inert');
+    fireEvent.click(eventToggle);
+
     const activeTable = screen.getAllByRole('table')[0];
     expect(within(activeTable).getAllByRole('columnheader').map(cell => cell.textContent)).toEqual([
-      'Stationsname↑', 'Max Kinder', 'Treffpunkt', 'Anzahl Todos',
+      'Stationsname↑', 'Max Kinder', 'Treffpunkt', 'Verantwortlicher', 'To-Dos',
     ]);
     expect(within(activeTable).getAllByRole('row')[1]).toHaveTextContent('Bad');
+    expect(within(activeTable).getAllByRole('row')[1].children[3]).toHaveTextContent('—');
+    expect(within(activeTable).getAllByRole('row')[3].children[3]).toHaveTextContent('Mira');
+    const responsibleSort = within(activeTable).getByRole('button', { name: 'Verantwortlicher sortieren' });
+    await user.click(responsibleSort);
+    expect(within(activeTable).getAllByRole('row').slice(1).map(row => row.children[3].textContent)).toEqual([
+      '—', 'Mira', 'Zora',
+    ]);
+    await user.click(responsibleSort);
+    expect(within(activeTable).getAllByRole('row').slice(1).map(row => row.children[3].textContent)).toEqual([
+      'Zora', 'Mira', '—',
+    ]);
     const capacitySort = within(activeTable).getByRole('button', { name: 'Max Kinder sortieren' });
     capacitySort.focus();
     await user.keyboard('{Enter}');
@@ -188,6 +232,117 @@ describe('Happy Cleaning management', () => {
     await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
     expect(mutate.mock.calls[0][0]).toBe('/api/happy-cleaning/events/9/delete/');
     expect(mutate.mock.calls[0][1]).toMatchObject({ expected_revision: 4 });
+  });
+
+  it('prints one task page per station from the event actions', async () => {
+    let printedText = '';
+    let printStylesMedia = '';
+    const stylesheet = document.createElement('link');
+    stylesheet.id = 'react-app-styles';
+    stylesheet.media = 'screen';
+    document.head.append(stylesheet);
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {
+      printedText = document.querySelector('.happy-cleaning-todo-print-pages')?.textContent || '';
+      printStylesMedia = stylesheet.media;
+    });
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        event: { id: 7, display_number: 1, revision: 2 },
+        stations: [
+          {
+            id: 70,
+            name: 'Küche',
+            document: {
+              type: 'doc',
+              content: [{
+                type: 'taskList',
+                content: [
+                  {
+                    type: 'taskItem', attrs: { checked: false },
+                    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Boden kehren' }] }],
+                  },
+                  {
+                    type: 'taskItem', attrs: { checked: true },
+                    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Tische wischen' }] }],
+                  },
+                ],
+              }],
+            },
+          },
+          { id: 71, name: 'Bad', document: { type: 'doc', content: [] } },
+        ],
+      }),
+    });
+    render(<HappyCleaningOverviewPage data={{
+      user_id: 42,
+      active_year: 2026,
+      years: [{
+        year: 2026, loaded: true, is_active: true,
+        turnuses: [{ id: 1, number: 3, start: '2026-07-01', is_active: true, events: [{
+          id: 7, display_number: 1, revision: 2, can_delete: false,
+          stations: [
+            {
+              id: 70,
+              name: 'Küche',
+              max_kids: 2,
+              meeting_point: 'Gang',
+              task_item_count: 2,
+              document: {
+                type: 'doc',
+                content: [{
+                  type: 'taskList',
+                  content: [
+                    {
+                      type: 'taskItem', attrs: { checked: false },
+                      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Boden kehren' }] }],
+                    },
+                    {
+                      type: 'taskItem', attrs: { checked: true },
+                      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Tische wischen' }] }],
+                    },
+                  ],
+                }],
+              },
+            },
+            {
+              id: 71, name: 'Bad', max_kids: 2, meeting_point: 'Hof',
+              task_item_count: 0, document: { type: 'doc', content: [] },
+            },
+          ],
+        }] }],
+      }],
+    }} mutate={vi.fn()} fetchImpl={fetchImpl} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'To-Dos für Happy Cleaning 1 drucken' }));
+
+    await waitFor(() => expect(print).toHaveBeenCalledOnce());
+    expect(printedText).toContain('Küche');
+    expect(printedText).toContain('Boden kehren');
+    expect(printStylesMedia).toBe('all');
+    expect(stylesheet).toHaveAttribute('media', 'screen');
+    stylesheet.remove();
+    expect(fetchImpl).toHaveBeenCalledWith(
+      '/api/route-data/happy-cleaning-todo-print/?event_id=7',
+      { credentials: 'same-origin' },
+    );
+    const pages = document.querySelector('.happy-cleaning-todo-print-pages');
+    expect(pages.parentElement).toBe(document.body);
+    expect(pages).toHaveAccessibleName('To-Dos für Happy Cleaning 1');
+    const stations = [...pages.querySelectorAll('.happy-cleaning-todo-print-station')];
+    expect(stations).toHaveLength(2);
+    expect(stations.map(station => station.querySelector('h1').textContent)).toEqual(['Küche', 'Bad']);
+    expect(stations[0]).toHaveTextContent('☐Boden kehren');
+    expect(stations[0]).toHaveTextContent('☒Tische wischen');
+    expect(stations[1]).toHaveTextContent('Keine Aufgaben hinterlegt.');
+
+    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
+    expect(css).toMatch(/@page happy-cleaning-todos\s*\{[^}]*margin:\s*0;/s);
+    expect(css).toMatch(/body:has\(> \.happy-cleaning-todo-print-pages\) > \*:not\(\.happy-cleaning-todo-print-pages\)\s*\{[^}]*display:\s*none !important;/s);
+    expect(css).toMatch(/\.happy-cleaning-todo-print-station\s*\{[^}]*page:\s*happy-cleaning-todos;[^}]*break-before:\s*page;[^}]*break-after:\s*page;[^}]*page-break-before:\s*always;[^}]*page-break-after:\s*always;/s);
+    expect(css).toMatch(/\.happy-cleaning-todo-print-station:first-child\s*\{[^}]*break-before:\s*auto;[^}]*page-break-before:\s*auto;/s);
+    expect(css).toMatch(/\.happy-cleaning-todo-print-station:last-child\s*\{[^}]*break-after:\s*auto;[^}]*page-break-after:\s*auto;/s);
+    expect(css).toMatch(/\.happy-cleaning-todo-print-station li::marker\s*\{[^}]*content:\s*"";/s);
   });
 
   it('opens and switches station detail locally, restores focus, and keeps the URL', async () => {
@@ -368,7 +523,7 @@ describe('Happy Cleaning management', () => {
     expect(screen.getAllByRole('button', { name: 'Station hinzufügen' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Station hinzufügen' }));
     expect(screen.getByLabelText('Name der Station')).toHaveValue('');
-    expect(screen.getByLabelText('Hauptverantwortlich')).toHaveTextContent('Mira');
+    expect(screen.getByLabelText('Verantwortlich')).toHaveTextContent('Mira');
     expect(mutate).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText('Name der Station'), {
@@ -402,7 +557,7 @@ describe('Happy Cleaning management', () => {
     fireEvent.change(screen.getByLabelText('Treffpunkt der Station'), {
       target: { value: 'Gang' },
     });
-    fireEvent.change(screen.getByLabelText('Hauptverantwortlich'), {
+    fireEvent.change(screen.getByLabelText('Verantwortlich'), {
       target: { value: '4' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
@@ -422,6 +577,7 @@ describe('Happy Cleaning management', () => {
     expect(screen.getByRole('heading', { name: 'Abstellraum' })).toBeInTheDocument();
     const rows = within(screen.getAllByRole('table')[0]).getAllByRole('row');
     expect(rows[1]).toHaveTextContent('Abstellraum');
+    expect(rows[1].children[3]).toHaveTextContent('Mira');
     expect(rows[2]).toHaveTextContent('Küche');
   });
 
@@ -533,7 +689,9 @@ describe('Happy Cleaning management', () => {
     expect(await dialog.findByRole('alert')).toHaveTextContent('Bad → Bad Kinder');
     expect(dialog.getByText(/Zielversion 4/)).toBeInTheDocument();
     fireEvent.click(dialog.getByRole('button', { name: 'Erneut prüfen' }));
-    expect(await dialog.findByRole('alert')).toHaveTextContent('network down');
+    const toast = await screen.findByText('network down', { selector: '.app-toast-description' });
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    expect(dialog.queryByText('network down')).not.toBeInTheDocument();
   });
 
   it('requires an accessible explicit conflict decision and one eligible candidate', async () => {
@@ -595,16 +753,31 @@ describe('Happy Cleaning management', () => {
     expect(dialog.getByRole('button', { name: 'Auswahl verbindlich kopieren' })).toBeEnabled();
   });
 
-  it('creates Happy Cleaning from the header action', async () => {
+  it('creates Happy Cleaning from the responsive header action', async () => {
     const mutate = vi.fn().mockResolvedValue({ ok: true });
     render(<HappyCleaningCreateButton mutate={mutate} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' }));
+    const createButton = screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' });
+    expect(createButton).toHaveClass('mobile-icon-action');
+    expect(createButton.querySelector('.desktop-action-label')).toHaveTextContent('Happy Cleaning hinzufügen');
+    expect(createButton.querySelector('.mobile-action-label')).toHaveTextContent('+');
+    fireEvent.click(createButton);
 
     await waitFor(() => expect(mutate).toHaveBeenCalledWith(
       '/api/happy-cleaning/events/create/',
       expect.objectContaining({ request_id: expect.any(String) }),
     ));
+  });
+
+  it('shows create failures as error toasts instead of header text', async () => {
+    const mutate = vi.fn().mockRejectedValue(new Error('network down'));
+    render(<HappyCleaningCreateButton mutate={mutate} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' }));
+
+    const toast = await screen.findByText('network down', { selector: '.app-toast-description' });
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    expect(document.querySelector('.header-action-error')).not.toBeInTheDocument();
   });
 
   it('restores the current user overview preference and lazy loads remembered open years', async () => {

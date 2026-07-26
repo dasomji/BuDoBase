@@ -176,11 +176,18 @@ class HappyCleaningContractTests(TestCase):
             display_number=1,
             revision=5,
         )
+        historical_profile = User.objects.create_user(
+            username="historical-happy-cleaning-carer",
+        ).profil
+        historical_profile.rufname = "Historical carer"
+        historical_profile.turnus = older_turnus
+        historical_profile.save(update_fields=["rufname", "turnus"])
         HappyCleaningStation.objects.create(
             happy_cleaning=older_event,
             name="Historische Küche",
             max_kids=9,
             meeting_point="Altbau",
+            responsible_profile=historical_profile,
             position=1,
             content_document={
                 "type": "doc",
@@ -192,6 +199,14 @@ class HappyCleaningContractTests(TestCase):
                     ],
                 }],
             },
+        )
+        same_year_private_station = HappyCleaningStation.objects.create(
+            happy_cleaning=self.other_event,
+            name="Other station",
+            max_kids=4,
+            meeting_point="Other meeting point",
+            responsible_profile=self.other_profile,
+            position=1,
         )
         response = self.client.get(self.url("happy-cleaning-overview"))
 
@@ -227,17 +242,25 @@ class HappyCleaningContractTests(TestCase):
                 "name": "Speisesaal",
                 "max_kids": 3,
                 "meeting_point": "Vor dem Speisesaal",
+                "responsible": {
+                    "id": self.user.profil.id,
+                    "name": "Mira",
+                },
                 "task_item_count": 2,
                 "assigned_count": 2,
                 "overbooked_count": 0,
             },
         )
+        same_year_private = active["turnuses"][1]["events"][0]["stations"][0]
+        self.assertEqual(same_year_private["id"], same_year_private_station.id)
+        self.assertIsNone(same_year_private["responsible"])
         historical = payload["years"][1]
         self.assertFalse(historical["loaded"])
         self.assertNotIn("stations", historical["turnuses"][0]["events"][0])
         serialized = response.content.decode()
         self.assertNotIn("Historische Küche", serialized)
         self.assertNotIn("Other carer", serialized)
+        self.assertNotIn("Historical carer", serialized)
         self.assertNotIn("Other Child", serialized)
 
         loaded = self.client.get(self.url("happy-cleaning-overview", year=2025))
@@ -248,9 +271,42 @@ class HappyCleaningContractTests(TestCase):
         station = loaded_payload["years"][0]["turnuses"][0]["events"][0]["stations"][0]
         self.assertEqual(station["name"], "Historische Küche")
         self.assertEqual(station["task_item_count"], 2)
+        self.assertIsNone(station["responsible"])
         loaded_serialized = loaded.content.decode()
         self.assertNotIn("Other carer", loaded_serialized)
+        self.assertNotIn("Historical carer", loaded_serialized)
         self.assertNotIn("Other Child", loaded_serialized)
+
+    def test_todo_print_contract_returns_ordered_station_documents_without_people(self):
+        response = self.client.get(self.url(
+            "happy-cleaning-todo-print",
+            event_id=self.event.id,
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {
+            "event": {
+                "id": self.event.id,
+                "display_number": self.event.display_number,
+                "revision": self.event.revision,
+            },
+            "stations": [
+                {
+                    "id": self.station.id,
+                    "name": "Speisesaal",
+                    "document": self.station.content_document,
+                },
+                {
+                    "id": self.empty_station.id,
+                    "name": "Küche",
+                    "document": self.empty_station.content_document,
+                },
+            ],
+        })
+        serialized = response.content.decode()
+        self.assertNotIn("Mira", serialized)
+        self.assertNotIn("Ada Lovelace", serialized)
+        self.assertNotIn("Private Krankheit", serialized)
 
     def test_assignment_snapshot_exposes_only_search_station_child_and_presence_fields(self):
         response = self.client.get(self.url(

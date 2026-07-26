@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { Card, Column, Columns } from '../components';
+import { useErrorToast } from '../components/ui/toast';
 
 
 function queryUrl(filters, page, pageSize) {
@@ -114,14 +115,13 @@ function exportFilename(response) {
 export function AuditPage({ data, fetchImpl = fetch }) {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState('');
+  const showError = useErrorToast();
   if (!data.authorized) {
     return <Columns><Column id="single-column"><Card title="Kein Zugriff"><p>Dir fehlt die Berechtigung, Audit-Ereignisse anzusehen.</p></Card></Column></Columns>;
   }
   const download = async () => {
     if (!privacyAccepted || exporting) return;
     setExporting(true);
-    setExportError('');
     try {
       const response = await fetchImpl(data.export_url, { credentials: 'same-origin' });
       if (!response.ok) throw new Error(`Export fehlgeschlagen (${response.status})`);
@@ -132,7 +132,7 @@ export function AuditPage({ data, fetchImpl = fetch }) {
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setExportError(error.message || 'Export fehlgeschlagen');
+      showError(error.message || 'Export fehlgeschlagen');
     } finally {
       setExporting(false);
     }
@@ -151,7 +151,6 @@ export function AuditPage({ data, fetchImpl = fetch }) {
           <button className="button" type="button" disabled={!privacyAccepted || exporting} onClick={download}>
             {exporting ? 'Export wird erstellt…' : 'Audit-Log herunterladen'}
           </button>
-          {exportError && <p role="alert" className="error">{exportError}</p>}
         </div>
       </section>
       <p>{data.pagination.total} Ereignisse</p>

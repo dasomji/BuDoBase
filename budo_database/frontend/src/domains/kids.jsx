@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card, Column, Columns, FieldList, findById, RestForm, SearchTable } from '../components';
+import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { FirstAidGallery } from './first-aid-gallery';
 import {
@@ -119,9 +120,16 @@ export function KidsPage({ data }) {
 }
 
 export function KidDetailPage({ data, id, mutate, onSaved }) {
+  const showError = useErrorToast();
   const kid = findById(data.kids, id);
   if (!kid) return <NotFoundPage />;
-  const deposit = action => mutate('/update_pfand/', { id: kid.id, action });
+  const deposit = async action => {
+    try {
+      await mutate('/update_pfand/', { id: kid.id, action });
+    } catch {
+      showError('Das Pfand konnte nicht gespeichert werden.');
+    }
+  };
   return (
     <FirstAidGallery entries={[...(kid.notes || []), ...(kid.first_aid_entries || [])]} childName={kid.full_name}>
       <Columns className="kid-detail-grid">

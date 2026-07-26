@@ -4,7 +4,7 @@ import { SearchIcon } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { useToastManager } from '@/components/ui/toast';
+import { useErrorToast, useToastManager } from '@/components/ui/toast';
 
 export function findById(items, id) {
   return items.find(item => Number(item.id) === Number(id));
@@ -144,26 +144,45 @@ export function Header({ title, authenticated, searchData, action }) {
   );
 }
 
-export function Card({ title, children, id, initiallyClosed = false, className = '', headerAction = null }) {
+export function Card({
+  title,
+  children,
+  id,
+  initiallyClosed = false,
+  className = '',
+  headerAction = null,
+  showToggleIcon = true,
+  as: Container = 'section',
+  headingLevel = 2,
+  expanded,
+  onExpandedChange,
+}) {
   const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 759px)').matches;
-  const [closed, setClosed] = useState(initiallyClosed || mobile);
+  const [internallyClosed, setInternallyClosed] = useState(initiallyClosed || mobile);
+  const controlled = expanded !== undefined;
+  const closed = controlled ? !expanded : internallyClosed;
+  const Heading = `h${headingLevel}`;
+  const toggle = () => {
+    if (controlled) onExpandedChange?.(!expanded);
+    else setInternallyClosed(value => !value);
+  };
   return (
-    <section className={`card ${closed ? 'closed-card' : ''} ${className}`} id={id}>
+    <Container className={`card ${closed ? 'closed-card' : ''} ${className}`} id={id}>
       <div
         className="info-header-container card-toggle"
         role="button"
         tabIndex={0}
         aria-expanded={!closed}
         aria-label={`${title} ${closed ? 'öffnen' : 'schließen'}`}
-        onClick={() => setClosed(value => !value)}
+        onClick={toggle}
         onKeyDown={event => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            setClosed(value => !value);
+            toggle();
           }
         }}
       >
-        <h2>{title}</h2>
+        <Heading>{title}</Heading>
         {headerAction && (
           <span
             className="card-header-action"
@@ -173,14 +192,16 @@ export function Card({ title, children, id, initiallyClosed = false, className =
             {headerAction}
           </span>
         )}
-        <span className="icon" aria-hidden="true">
-          <span className="open-icon">{closed ? '+' : '−'}</span>
-        </span>
+        {showToggleIcon && (
+          <span className="icon" aria-hidden="true">
+            <span className="open-icon">{closed ? '+' : '−'}</span>
+          </span>
+        )}
       </div>
       <div className="card-info-container" aria-hidden={closed} inert={closed || undefined}>
         <div className="card-info-content">{children}</div>
       </div>
-    </section>
+    </Container>
   );
 }
 
@@ -264,8 +285,8 @@ export function CsrfInput({ token }) {
 }
 
 export function RestForm({ target, token, children, className = '', encType, onSuccess, resetOnSuccess = false }) {
-  const [errors, setErrors] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const showError = useErrorToast();
   const submittingRef = useRef(false);
   const submit = async event => {
     event.preventDefault();
@@ -273,7 +294,6 @@ export function RestForm({ target, token, children, className = '', encType, onS
     submittingRef.current = true;
     const form = event.currentTarget;
     setSubmitting(true);
-    setErrors([]);
     const body = new FormData(form);
     form.querySelectorAll('input[type="file"][multiple][name]').forEach(input => {
       body.delete(input.name);
@@ -291,7 +311,7 @@ export function RestForm({ target, token, children, className = '', encType, onS
       });
       const result = await response.json();
       if (!response.ok || !result.ok) {
-        setErrors(result.errors || ['Das Formular konnte nicht gespeichert werden.']);
+        showError((result.errors || ['Das Formular konnte nicht gespeichert werden.']).join(' '));
         return;
       }
       if (onSuccess) {
@@ -301,13 +321,13 @@ export function RestForm({ target, token, children, className = '', encType, onS
       }
       window.location.assign(result.redirect || target);
     } catch (error) {
-      setErrors([error.message]);
+      showError(error.message);
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
     }
   };
-  return <form action={target} method="post" encType={encType} className={className} onSubmit={submit} aria-busy={submitting}><CsrfInput token={token} />{errors.length > 0 && <ul className="errorlist" role="alert">{errors.map(error => <li key={error}>{error}</li>)}</ul>}{typeof children === 'function' ? children({ submitting }) : children}{submitting && <p aria-live="polite">Wird gespeichert…</p>}</form>;
+  return <form action={target} method="post" encType={encType} className={className} onSubmit={submit} aria-busy={submitting}><CsrfInput token={token} />{typeof children === 'function' ? children({ submitting }) : children}{submitting && <p aria-live="polite">Wird gespeichert…</p>}</form>;
 }
 
 export function NativeForm({ action = '', method = 'post', token, encType, fields, submit = 'Speichern', children }) {

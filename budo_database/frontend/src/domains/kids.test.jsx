@@ -1,13 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
+import { Toaster } from '../components/ui/toast';
 import { parseRoute } from '../routes';
 import { KidDetailPage, KidInteractionForm, KidsPage } from './kids';
 import { formatGermanDate, formatKidBirthday } from './shared';
+
+const render = ui => testingLibraryRender(ui, {
+  wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
+});
 
 const response = (data, { ok = true, status = 200 } = {}) => ({
   ok,
@@ -126,7 +131,8 @@ describe('Kinder pages', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'EH-Eintrag senden' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Bitte eine Beschreibung eingeben.');
+    const toast = await screen.findByText('Bitte eine Beschreibung eingeben.', { selector: '.app-toast-description' });
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
   });
 
   it('restores the saved Taschengeld mode from its cookie', () => {
@@ -176,6 +182,27 @@ describe('Kinder pages', () => {
     const checkAction = screen.getByRole('link', { name: action });
     expect(checkAction).toHaveAttribute('href', path);
     expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');
+  });
+
+  it('shows failed deposit writes as error toasts', async () => {
+    const mutate = vi.fn().mockRejectedValue(new Error('network down'));
+    const kid = {
+      id: 7,
+      full_name: 'Ada Lovelace',
+      present: true,
+      weeks: 2,
+      notes: [],
+      first_aid_entries: [],
+      transactions: [],
+      remaining_money: 0,
+      deposit: 0,
+    };
+    render(<KidDetailPage data={{ kids: [kid], csrf_token: 'token' }} id="7" mutate={mutate} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '+ Pfand' }));
+
+    const toast = await screen.findByText('Das Pfand konnte nicht gespeichert werden.', { selector: '.app-toast-description' });
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
   });
 
   it('keeps the directory columns, filtering, sorting, links, and empty state on focused rows', () => {

@@ -1,8 +1,13 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CheckPage, TrainPage, attendanceRoutes } from './attendance';
 import App from '../App';
+import { Toaster } from '../components/ui/toast';
+
+const render = ui => testingLibraryRender(ui, {
+  wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
+});
 
 const response = (data, { ok = true, status = 200 } = {}) => ({
   ok,
@@ -109,6 +114,30 @@ describe('attendance pages', () => {
       id: 7,
       notiz_abreise: 'Neuer Treffpunkt',
     });
+  });
+
+  it('shows failed transport writes as error toasts', async () => {
+    const mutate = vi.fn().mockRejectedValue(new Error('network down'));
+    render(<TrainPage departure mutate={mutate} data={{
+      kids: [{
+        id: 7,
+        full_name: 'Ada Lovelace',
+        present: true,
+        train_departure: false,
+        departure_note: '',
+        youth_ticket: false,
+        age: 14,
+        registrant_name: 'Grace Hopper',
+        registrant_phone: '+4312345',
+        siblings: '',
+      }],
+      totals: { train_departure: 0 },
+    }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nein' }));
+
+    const toast = await screen.findByText('Die Zugabreise konnte nicht gespeichert werden.', { selector: '.app-toast-description' });
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
   });
 
   it('refreshes only the current focused transport contract after a toggle', async () => {

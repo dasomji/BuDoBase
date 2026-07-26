@@ -463,9 +463,12 @@ describe('Happy Cleaning assignment', () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bestätigen' }));
 
     await waitFor(() => expect(refresh).toHaveBeenCalledWith({ preserveData: true }));
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    const toast = await screen.findByText(
       'Es sind keine Nummern mehr zuzuteilen. Die Daten wurden neu geladen.',
+      { selector: '.app-toast-description' },
     );
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    expect(within(screen.getByRole('dialog')).queryByText(/keine Nummern mehr/)).not.toBeInTheDocument();
   });
 
   it('gates station assignment on a versioned number entry', async () => {
@@ -665,7 +668,9 @@ describe('Happy Cleaning assignment', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Grace Hopper Speisesaal zuweisen' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Speisesaal ist inzwischen voll.');
+    const toast = await screen.findByText(/Speisesaal ist inzwischen voll/, { selector: '.app-toast-description' });
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    expect(document.querySelector('.happy-cleaning-assignment > .error')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Grace Hopper' })).toBeInTheDocument();
     expect(refresh).toHaveBeenCalledOnce();
     expect(screen.queryByText(/wurde Speisesaal zugeteilt/)).not.toBeInTheDocument();

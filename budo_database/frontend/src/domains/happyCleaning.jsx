@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer } from 'lucide-react';
 
+import { Card } from '../components';
+import { useErrorToast } from '../components/ui/toast';
 import {
   HappyCleaningAssignmentPage,
   HappyCleaningNumberBatchAction,
@@ -79,37 +82,93 @@ function DeleteConfirmationDialog({ event, onCancel, onConfirm }) {
 
 export function HappyCleaningCreateButton({ mutate }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const showError = useErrorToast();
   const create = async () => {
     setBusy(true);
-    setError('');
     try {
       await mutate('/api/happy-cleaning/events/create/', { request_id: requestId() });
     } catch (caught) {
-      setError(errorMessage(caught));
+      showError(errorMessage(caught));
     } finally {
       setBusy(false);
     }
   };
-  return <><button className="button" type="button" disabled={busy} onClick={create}>Happy Cleaning hinzufügen</button>{error && <span className="error header-action-error" role="alert">{error}</span>}</>;
+  return (
+    <>
+      <button
+        className="button mobile-icon-action"
+        type="button"
+        aria-label="Happy Cleaning hinzufügen"
+        disabled={busy}
+        onClick={create}
+      >
+        <span className="desktop-action-label">Happy Cleaning hinzufügen</span>
+        <span className="mobile-action-label" aria-hidden="true">+</span>
+      </button>
+    </>
+  );
 }
 
 const overviewColumns = [
   { key: 'name', label: 'Stationsname' },
   { key: 'max_kids', label: 'Max Kinder' },
   { key: 'meeting_point', label: 'Treffpunkt' },
-  { key: 'task_item_count', label: 'Anzahl Todos' },
+  { key: 'responsible_name', label: 'Verantwortlicher' },
+  { key: 'task_item_count', label: 'To-Dos' },
 ];
 
+const stationValue = (station, key) => key === 'responsible_name'
+  ? station.responsible?.name
+  : station[key];
+
 const compareStationValues = (left, right, key) => {
-  const a = left[key];
-  const b = right[key];
+  const a = stationValue(left, key);
+  const b = stationValue(right, key);
   if (typeof a === 'number' && typeof b === 'number') return a - b;
   return String(a ?? '').localeCompare(String(b ?? ''), 'de', {
     numeric: true,
     sensitivity: 'base',
   });
 };
+
+const renderTodoPrintNode = (node, key) => {
+  const children = (node.content || []).map((child, index) => (
+    renderTodoPrintNode(child, `${key}-${index}`)
+  ));
+  if (node.type === 'text') return node.text || '';
+  if (node.type === 'paragraph') return <p key={key}>{children}</p>;
+  if (node.type === 'taskList') return <ul key={key}>{children}</ul>;
+  if (node.type === 'taskItem') {
+    return (
+      <li key={key}>
+        <span className="happy-cleaning-todo-print-marker" aria-hidden="true">
+          {node.attrs?.checked ? '☒' : '☐'}
+        </span>
+        <div>{children}</div>
+      </li>
+    );
+  }
+  return <div key={key}>{children}</div>;
+};
+
+function HappyCleaningTodoPrintPages({ data }) {
+  return createPortal(
+    <div className="happy-cleaning-todo-print-pages" aria-label={`To-Dos für Happy Cleaning ${data.event.display_number}`}>
+      {data.stations.map(station => {
+        const content = station.document?.content || [];
+        return (
+          <section className="happy-cleaning-todo-print-station" key={station.id}>
+            <h1>{station.name}</h1>
+            {content.length
+              ? content.map((node, index) => renderTodoPrintNode(node, `${station.id}-${index}`))
+              : <p>Keine Aufgaben hinterlegt.</p>}
+          </section>
+        );
+      })}
+    </div>,
+    document.body,
+  );
+}
 
 function StationSummaryTable({ event, stations, sort, onSort, onSelect, selection, rowRefs }) {
   const sorted = useMemo(() => stations
@@ -170,6 +229,7 @@ function StationSummaryTable({ event, stations, sort, onSort, onSelect, selectio
                 ? `${station.overbooked_count} überbelegt`
                 : station.max_kids}</td>
               <td>{station.meeting_point}</td>
+              <td>{station.responsible?.name || '—'}</td>
               <td>{station.task_item_count}</td>
             </tr>
           ))}
@@ -197,10 +257,12 @@ export function HappyCleaningOverviewPage({
   setPageState = () => {},
   realtimeSync,
 }) {
-  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const showError = useErrorToast();
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [copySource, setCopySource] = useState(null);
+  const [todoPrintRequest, setTodoPrintRequest] = useState(null);
+  const [printingEventId, setPrintingEventId] = useState(null);
   const storageKey = `happy-cleaning-overview:${data.user_id}`;
   const [preference, setPreference] = useState(
     () => readOverviewPreference(storageKey, data.active_year),
@@ -218,7 +280,6 @@ export function HappyCleaningOverviewPage({
   const loadDetail = useCallback(async selected => {
     const request = ++detailRequestId.current;
     setDetailLoading(true);
-    setError('');
     try {
       const response = await fetchImpl(
         `/api/route-data/happy-cleaning-overview-station/?event_id=${selected.eventId}&station_id=${selected.stationId}`,
@@ -228,11 +289,11 @@ export function HappyCleaningOverviewPage({
       const payload = await response.json();
       if (request === detailRequestId.current) setDetail(payload);
     } catch (caught) {
-      if (request === detailRequestId.current) setError(caught.message);
+      if (request === detailRequestId.current) showError(caught.message);
     } finally {
       if (request === detailRequestId.current) setDetailLoading(false);
     }
-  }, [fetchImpl]);
+  }, [fetchImpl, showError]);
   const selectStationNow = (event, station) => {
     const selected = { eventId: event.id, stationId: station.id };
     setSelection(selected);
@@ -338,6 +399,7 @@ export function HappyCleaningOverviewPage({
               name: station.name,
               max_kids: station.max_kids,
               meeting_point: station.meeting_point,
+              responsible: station.responsible,
               task_item_count: station.task_item_count,
             },
           ],
@@ -393,6 +455,28 @@ export function HappyCleaningOverviewPage({
     }
   }, [restoreFocusKey, selection]);
   useEffect(() => {
+    if (!todoPrintRequest) return undefined;
+    // Normal application routes load the React stylesheet for screen media only so it
+    // cannot interfere with legacy Django print views. Temporarily enable it here so
+    // this React-owned print job receives its @media print layout.
+    const stylesheet = document.getElementById('react-app-styles');
+    const previousMedia = stylesheet?.media;
+    if (stylesheet) stylesheet.media = 'all';
+    // Let React commit the portal and Chromium complete print-media layout before
+    // opening the native dialog.
+    const printTimer = window.setTimeout(() => {
+      try {
+        window.print();
+      } finally {
+        if (stylesheet) stylesheet.media = previousMedia;
+      }
+    }, 50);
+    return () => {
+      window.clearTimeout(printTimer);
+      if (stylesheet) stylesheet.media = previousMedia;
+    };
+  }, [todoPrintRequest]);
+  useEffect(() => {
     setYears(current => data.years.map(group => (
       group.loaded ? group : current.find(item => item.year === group.year && item.loaded) || group
     )));
@@ -411,11 +495,10 @@ export function HappyCleaningOverviewPage({
   }, [preference, storageKey]);
   const run = async (url, payload = {}) => {
     setBusy(true);
-    setError('');
     try {
       await mutate(url, { request_id: requestId(), ...payload });
     } catch (caught) {
-      setError(errorMessage(caught));
+      showError(errorMessage(caught));
     } finally {
       setBusy(false);
     }
@@ -433,6 +516,22 @@ export function HappyCleaningOverviewPage({
       direction: current.sort.key === key && current.sort.direction === 'asc' ? 'desc' : 'asc',
     },
   }));
+  const printTodos = async event => {
+    setPrintingEventId(event.id);
+    setTodoPrintRequest(null);
+    try {
+      const response = await fetchImpl(
+        `/api/route-data/happy-cleaning-todo-print/?event_id=${event.id}`,
+        { credentials: 'same-origin' },
+      );
+      if (!response.ok) throw new Error(`To-Dos konnten nicht geladen werden (${response.status})`);
+      setTodoPrintRequest(await response.json());
+    } catch (caught) {
+      showError(caught.message);
+    } finally {
+      setPrintingEventId(null);
+    }
+  };
   const loadYear = async group => {
     if (group.loaded || loadingYearRequests.current.has(group.year)) return;
     loadingYearRequests.current.add(group.year);
@@ -448,7 +547,7 @@ export function HappyCleaningOverviewPage({
       if (!loaded) throw new Error('Historisches Jahr konnte nicht geladen werden.');
       setYears(current => current.map(item => item.year === group.year ? loaded : item));
     } catch (caught) {
-      setError(caught.message);
+      showError(caught.message);
     } finally {
       loadingYearRequests.current.delete(group.year);
       setLoadingYears(current => current.filter(year => year !== group.year));
@@ -494,72 +593,82 @@ export function HappyCleaningOverviewPage({
           onSuccess={patchCopiedTarget}
         />
       )}
-      {error && <p className="error" role="alert">{error}</p>}
       {!eventCount && <p>Noch kein Happy Cleaning angelegt.</p>}
       <div className="happy-cleaning-years">
         {years.map(group => {
           const open = preference.openYears.includes(group.year);
           const loading = loadingYears.includes(group.year);
           return (
-            <section className={`card transparent happy-cleaning-year ${open ? '' : 'closed-card'}`} key={group.year}>
-              <button className="info-header-container card-toggle" type="button" aria-expanded={open} aria-label={`${group.year} ${open ? 'schließen' : 'öffnen'}`} onClick={() => toggleYear(group)}>
-                <h2>{group.year}</h2>
-              </button>
-              {open && (
-                <div className="card-info-container">
-                  <div className="card-info-content">
-                    {loading && <p role="status">Stationstabellen werden geladen…</p>}
-                    {group.loaded && group.turnuses.flatMap(turnus => turnus.events.map(event => (
-                      <article className="card happy-cleaning-event" key={event.id}>
-                        <h3>{turnus.number}. Turnus {group.year} · Happy Cleaning {event.display_number}</h3>
-                        <StationSummaryTable
-                          event={event}
-                          stations={event.stations}
-                          sort={preference.sort}
-                          onSort={changeSort}
-                          onSelect={selectStation}
-                          selection={selection}
-                          rowRefs={rowRefs}
-                        />
-                        <div className="react-actions">
-                          {turnus.is_active && (
-                            <button
-                              className="button"
-                              type="button"
-                              disabled={busy}
-                              onClick={() => createStationDraft(event)}
-                            >
-                              Station hinzufügen
-                            </button>
-                          )}
-                          <button
-                            className="button"
-                            type="button"
-                            disabled={busy || !event.stations.length}
-                            aria-label={`Stationen aus Happy Cleaning ${event.display_number} kopieren`}
-                            onClick={() => setCopySource(event)}
-                          >
-                            Stationen kopieren
-                          </button>
-                          {event.can_delete && (
-                            <button className="button danger" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
-                              Löschen
-                            </button>
-                          )}
-                        </div>
-                      </article>
-                    )))}
+            <Card
+              className="transparent happy-cleaning-year"
+              expanded={open}
+              key={group.year}
+              onExpandedChange={() => toggleYear(group)}
+              title={`${group.year}`}
+            >
+              {loading && <p role="status">Stationstabellen werden geladen…</p>}
+              {group.loaded && group.turnuses.flatMap(turnus => turnus.events.map(event => (
+                <Card
+                  as="article"
+                  className="happy-cleaning-event"
+                  headingLevel={2}
+                  key={event.id}
+                  title={`${turnus.number}. Turnus ${group.year} · Happy Cleaning ${event.display_number}`}
+                >
+                  <StationSummaryTable
+                    event={event}
+                    stations={event.stations}
+                    sort={preference.sort}
+                    onSort={changeSort}
+                    onSelect={selectStation}
+                    selection={selection}
+                    rowRefs={rowRefs}
+                  />
+                  <div className="react-actions">
+                    {turnus.is_active && (
+                      <button
+                        className="button"
+                        type="button"
+                        disabled={busy}
+                        onClick={() => createStationDraft(event)}
+                      >
+                        Station hinzufügen
+                      </button>
+                    )}
+                    <button
+                      className="button"
+                      type="button"
+                      disabled={busy || printingEventId !== null || !event.stations.length}
+                      aria-label={`To-Dos für Happy Cleaning ${event.display_number} drucken`}
+                      onClick={() => printTodos(event)}
+                    >
+                      To-Dos drucken
+                    </button>
+                    <button
+                      className="button"
+                      type="button"
+                      disabled={busy || !event.stations.length}
+                      aria-label={`Stationen aus Happy Cleaning ${event.display_number} kopieren`}
+                      onClick={() => setCopySource(event)}
+                    >
+                      Stationen kopieren
+                    </button>
+                    {event.can_delete && (
+                      <button className="button danger" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
+                        Löschen
+                      </button>
+                    )}
                   </div>
-                </div>
-              )}
-            </section>
+                </Card>
+              )))}
+            </Card>
           );
         })}
       </div>
     </div>
   );
   return (
-    <main className={`happy-cleaning-page happy-cleaning-overview-layout ${selection ? 'happy-cleaning-overview-split' : ''}`} id="body-container">
+    <main className={`happy-cleaning-page happy-cleaning-overview-layout ${selection ? 'happy-cleaning-overview-split' : ''} ${todoPrintRequest ? 'happy-cleaning-todo-print-ready' : ''}`} id="body-container">
       {overview}
       {selection && (
         <aside className="happy-cleaning-overview-detail" aria-live="polite">
@@ -586,6 +695,7 @@ export function HappyCleaningOverviewPage({
           )}
         </aside>
       )}
+      {todoPrintRequest && <HappyCleaningTodoPrintPages data={todoPrintRequest} />}
     </main>
   );
 }

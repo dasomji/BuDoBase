@@ -1,5 +1,7 @@
 .happy-cleaning-station-detail-page {
   display: grid;
+  width: 100%;
+  align-content: start;
   gap: 1rem;
 }
 
@@ -8,18 +10,43 @@
   margin-inline: auto;
 }
 
-.happy-cleaning-station-detail-heading,
-.happy-cleaning-checklist-heading,
-.happy-cleaning-detail-todos li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+.happy-cleaning-station-detail-card > .card-toggle > .card-header-action {
+  margin-right: 0;
 }
 
-.happy-cleaning-detail-progress {
-  font-weight: 700;
-  white-space: nowrap;
+.happy-cleaning-station-detail-card .happy-cleaning-detail-close.button {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  place-items: center;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 1.4rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.happy-cleaning-detail-back {
+  display: none;
+}
+
+.happy-cleaning-dirty-dialog {
+  width: min(32rem, 100%);
+  max-height: calc(100dvh - (2 * var(--m-padding)));
+  overflow-y: auto;
+  padding: var(--l-padding);
+  background: var(--bg-blue__solid);
+}
+
+.happy-cleaning-dirty-dialog h2 {
+  margin-top: 0;
+}
+
+.happy-cleaning-dirty-dialog .react-actions {
+  justify-content: space-between;
 }
 
 .happy-cleaning-station-facts {
@@ -34,22 +61,24 @@
 }
 
 .happy-cleaning-station-facts dt {
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .happy-cleaning-station-facts dd {
   margin: 0;
 }
 
-.happy-cleaning-detail-todos {
-  display: grid;
-  gap: .6rem;
-  padding-left: 1.5rem;
+.happy-cleaning-station-tasks-heading {
+  padding: 12px 0 8px;
 }
 
-.happy-cleaning-detail-todos li.completed span {
-  text-decoration: line-through;
-  opacity: .72;
+.happy-cleaning-minimal-editor-field {
+  display: grid;
+  gap: .25rem;
+}
+
+.happy-cleaning-minimal-editor-field > span {
+  font-weight: 500;
 }
 
 .happy-cleaning-minimal-editor {
@@ -61,21 +90,75 @@
 
 .happy-cleaning-minimal-editor .tiptap {
   min-height: 8rem;
+}
+
+.happy-cleaning-readonly-document .tiptap,
+.happy-cleaning-minimal-editor .tiptap {
   outline: none;
+}
+
+.happy-cleaning-readonly-document ul[data-type="taskList"],
+.happy-cleaning-minimal-editor ul[data-type="taskList"] {
+  display: grid;
+  gap: .5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.happy-cleaning-readonly-document ul[data-type="taskList"] li,
+.happy-cleaning-minimal-editor ul[data-type="taskList"] li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: .5rem;
+}
+
+.happy-cleaning-readonly-document ul[data-type="taskList"] li > label,
+.happy-cleaning-minimal-editor ul[data-type="taskList"] li > label {
+  display: flex;
+  width: auto;
+  align-items: center;
+  gap: 0;
+  font-weight: 300;
+}
+
+.happy-cleaning-readonly-document ul[data-type="taskList"] li > div,
+.happy-cleaning-minimal-editor ul[data-type="taskList"] li > div {
+  min-width: 0;
+}
+
+.happy-cleaning-readonly-document ul[data-type="taskList"] p,
+.happy-cleaning-minimal-editor ul[data-type="taskList"] p {
+  margin: 0;
+}
+
+.happy-cleaning-readonly-document li[data-checked="true"] > div,
+.happy-cleaning-minimal-editor li[data-checked="true"] > div {
+  text-decoration: line-through;
+  opacity: .72;
+}
+
+.happy-cleaning-readonly-document input[type="checkbox"],
+.happy-cleaning-minimal-editor input[type="checkbox"] {
+  margin-top: .2rem;
+}
+
+.happy-cleaning-readonly-document input[type="checkbox"]:not(:disabled) {
+  cursor: pointer;
 }
 
 .happy-cleaning-minimal-editor input[type="checkbox"] {
   pointer-events: none;
 }
 
-@media (max-width: 600px) {
-  .happy-cleaning-station-detail-heading,
-  .happy-cleaning-checklist-heading,
-  .happy-cleaning-detail-todos li {
-    align-items: stretch;
-    flex-direction: column;
+@media (max-width: 900px) {
+  .happy-cleaning-detail-back {
+    display: block;
   }
+}
 
+@media (max-width: 600px) {
   .happy-cleaning-station-facts div {
     grid-template-columns: 1fr;
     gap: .15rem;

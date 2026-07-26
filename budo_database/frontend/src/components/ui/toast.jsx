@@ -1,8 +1,10 @@
 "use client"
 
+import { createContext, useCallback, useContext, useState } from "react"
 import { Toast as ToastPrimitive } from "@base-ui/react/toast"
 
 const toast = ToastPrimitive.createToastManager()
+const ErrorToastManagerContext = createContext(null)
 
 const toastIcons = {
   error: "!",
@@ -40,21 +42,34 @@ function ToastList() {
 }
 
 function Toaster({ children, toastManager, ...props }) {
-  const managerProps = toastManager ? { toastManager } : {}
+  const [defaultToastManager] = useState(() => ToastPrimitive.createToastManager())
+  const manager = toastManager || defaultToastManager
 
   return (
-    <ToastPrimitive.Provider {...managerProps} {...props}>
-      {children}
-      <ToastPrimitive.Portal>
-        <ToastPrimitive.Viewport className="app-toast-viewport" aria-label="Benachrichtigungen">
-          <ToastList />
-        </ToastPrimitive.Viewport>
-      </ToastPrimitive.Portal>
-    </ToastPrimitive.Provider>
+    <ErrorToastManagerContext.Provider value={manager}>
+      <ToastPrimitive.Provider toastManager={manager} {...props}>
+        {children}
+        <ToastPrimitive.Portal>
+          <ToastPrimitive.Viewport className="app-toast-viewport" aria-label="Benachrichtigungen">
+            <ToastList />
+          </ToastPrimitive.Viewport>
+        </ToastPrimitive.Portal>
+      </ToastPrimitive.Provider>
+    </ErrorToastManagerContext.Provider>
   )
 }
 
 const createToastManager = ToastPrimitive.createToastManager
 const useToastManager = ToastPrimitive.useToastManager
 
-export { createToastManager, toast, Toaster, useToastManager }
+function useErrorToast() {
+  const contextManager = useContext(ErrorToastManagerContext)
+  const manager = contextManager || toast
+  return useCallback((description) => manager.add({
+    description,
+    type: "error",
+    priority: "high",
+  }), [manager])
+}
+
+export { createToastManager, toast, Toaster, useErrorToast, useToastManager }

@@ -256,6 +256,10 @@
   background-color: var(--dark-blue);
 }
 
+.info-header-container.card-toggle > :is(h2, h3) {
+  margin: 0;
+}
+
 .transparent > .info-header-container.card-toggle:hover {
   background-color: transparent;
   filter: none;
@@ -1264,24 +1268,6 @@ input[name="amount"]::placeholder {
   gap: var(--m-padding);
 }
 
-.happy-cleaning-year {
-  padding: 0;
-}
-
-.happy-cleaning-year > .card-toggle {
-  padding: var(--m-padding);
-  border: 0;
-  background: transparent;
-}
-
-.happy-cleaning-year > .card-toggle h2 {
-  margin: 0;
-}
-
-.happy-cleaning-year > .card-info-container > .card-info-content {
-  padding: 0 var(--m-padding);
-}
-
 .happy-cleaning-overview-table-wrap {
   overflow-x: auto;
 }
@@ -1298,27 +1284,36 @@ input[name="amount"]::placeholder {
   text-align: left;
 }
 
+.happy-cleaning-overview-table th {
+  font-weight: 500;
+}
+
 .happy-cleaning-station-row-button {
   padding: 0;
   border: 0;
   color: inherit;
   background: none;
   font: inherit;
-  font-weight: 700;
+  font-weight: 500;
   text-align: left;
-  text-decoration: underline;
+  text-decoration: none;
   cursor: pointer;
 }
 
-.happy-cleaning-overview-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
-  gap: 0;
-  transition: grid-template-columns 240ms ease-in-out;
+.happy-cleaning-station-row-button:hover {
+  background: none;
 }
 
-.happy-cleaning-overview-split {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+#body-container.happy-cleaning-overview-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
+  align-content: start;
+  justify-content: stretch;
+  gap: 0;
+}
+
+#body-container.happy-cleaning-overview-split {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--m-padding);
 }
 
@@ -1332,8 +1327,8 @@ input[name="amount"]::placeholder {
 }
 
 @media (max-width: 900px) {
-  .happy-cleaning-overview-layout,
-  .happy-cleaning-overview-split {
+  #body-container.happy-cleaning-overview-layout,
+  #body-container.happy-cleaning-overview-split {
     display: block;
   }
 
@@ -1363,6 +1358,11 @@ input[name="amount"]::placeholder {
 .happy-cleaning-create,
 .happy-cleaning-copy {
   margin-bottom: var(--m-padding);
+}
+
+.happy-cleaning-station,
+.happy-cleaning-create,
+.happy-cleaning-copy {
   padding: var(--m-padding);
 }
 
@@ -1370,6 +1370,15 @@ input[name="amount"]::placeholder {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-padding);
+}
+
+.happy-cleaning-detail-actions {
+  justify-content: flex-end;
+  gap: var(--s-padding);
+}
+
+.happy-cleaning-todo-print-pages {
+  display: none;
 }
 
 .happy-cleaning-copy-spinner {
@@ -2228,6 +2237,10 @@ input[name="amount"]::placeholder {
     margin: 14mm;
   }
 
+  @page happy-cleaning-todos {
+    margin: 0;
+  }
+
   html,
   body {
     background: white !important;
@@ -2302,6 +2315,88 @@ input[name="amount"]::placeholder {
     max-width: none;
     margin: 0;
     padding: 0;
+  }
+
+  body:has(> .happy-cleaning-todo-print-pages) > *:not(.happy-cleaning-todo-print-pages) {
+    display: none !important;
+  }
+
+  body > .happy-cleaning-todo-print-pages {
+    display: block;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .happy-cleaning-todo-print-station {
+    box-sizing: border-box;
+    padding: 14mm;
+    page: happy-cleaning-todos;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    break-before: page;
+    break-after: page;
+    page-break-before: always;
+    page-break-after: always;
+  }
+
+  .happy-cleaning-todo-print-station:first-child {
+    break-before: auto;
+    page-break-before: auto;
+  }
+
+  .happy-cleaning-todo-print-station:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .happy-cleaning-todo-print-station h1 {
+    margin: 0 0 8mm;
+    font-size: 22pt;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .happy-cleaning-todo-print-station ul {
+    display: grid;
+    gap: 3mm;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .happy-cleaning-todo-print-station li {
+    display: flex;
+    align-items: flex-start;
+    gap: 3mm;
+    list-style: none;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .happy-cleaning-todo-print-station li::marker {
+    content: "";
+  }
+
+  .happy-cleaning-todo-print-station li > div {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .happy-cleaning-todo-print-station p {
+    margin: 0 0 3mm;
+  }
+
+  .happy-cleaning-todo-print-station li p {
+    margin: 0;
+  }
+
+  .happy-cleaning-todo-print-marker {
+    display: inline-block;
+    flex: 0 0 auto;
+    font-size: 14pt;
+    line-height: 1;
   }
 
   .happy-cleaning-print-title {

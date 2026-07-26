@@ -1,11 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
+import { Toaster } from '../components/ui/toast';
 import { AllocationPage } from './allocation';
+
+const render = ui => testingLibraryRender(ui, {
+  wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
+});
 
 const response = data => ({
   ok: true,
@@ -42,6 +47,19 @@ describe('allocation page', () => {
       kids: [],
     }} />);
     expect(screen.queryByText('Noch keine Kinder für diesen Schwerpunkt eingeteilt')).not.toBeInTheDocument();
+  });
+
+  it('shows failed allocation writes as error toasts', async () => {
+    const mutate = vi.fn().mockRejectedValue(new Error('network down'));
+    render(<AllocationPage week="2" mutate={mutate} data={{
+      focuses: [{ id: 2, name: 'Wald', week: 'w2', kid_ids: [], stats: null }],
+      kids: [{ id: 1, full_name: 'Ada', focus_ids: [], choices: [], age: 12, siblings: '' }],
+    }} />);
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
+
+    const toast = await screen.findByText('Die Schwerpunktdaten konnten nicht gespeichert werden.', { selector: '.app-toast-description' });
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
   });
 
   it('renders assignment stats above a two-column kid list and highlights selected choices', () => {

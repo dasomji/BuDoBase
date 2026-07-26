@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Eye, EyeOff, Pencil, X } from 'lucide-react';
-import { useToastManager } from '../components/ui/toast';
+import { useErrorToast, useToastManager } from '../components/ui/toast';
 
 
 const requestId = () => globalThis.crypto?.randomUUID?.()
@@ -169,7 +169,7 @@ export function HappyCleaningNumberBatchAction({
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const showError = useErrorToast();
   if (!numberBatch?.available) return null;
 
   const assignments = numberBatch.children.map(child => ({
@@ -179,7 +179,6 @@ export function HappyCleaningNumberBatchAction({
   }));
   const confirm = async () => {
     setBusy(true);
-    setError('');
     try {
       const result = await mutate(`/api/happy-cleaning/events/${eventId}/numbers/assign-missing/`, {
         request_id: requestId(),
@@ -196,7 +195,7 @@ export function HappyCleaningNumberBatchAction({
       if (code === 'stale' || code === 'batch_locked' || code === 'nothing_to_assign') {
         await refresh?.({ preserveData: true });
       }
-      setError(code === 'stale'
+      showError(code === 'stale'
         ? 'Die Nummernvorschläge sind nicht mehr aktuell. Die Daten wurden neu geladen.'
         : code === 'batch_locked'
           ? 'Die automatische Nummernvergabe ist nicht mehr verfügbar.'
@@ -209,7 +208,6 @@ export function HappyCleaningNumberBatchAction({
   };
   const changeOpen = nextOpen => {
     if (!nextOpen && busy) return;
-    setError('');
     setOpen(nextOpen);
   };
 
@@ -240,7 +238,6 @@ export function HappyCleaningNumberBatchAction({
                 </li>
               ))}
             </ul>
-            {error && <p className="error" role="alert">{error}</p>}
             <div className="happy-cleaning-batch-actions" role="group" aria-label="Dialogaktionen">
               <Dialog.Close className="button" disabled={busy}>Abbrechen</Dialog.Close>
               <button className="button" type="button" disabled={busy || disabled} onClick={confirm}>
@@ -553,10 +550,11 @@ function DesktopStations({ eventId, stations, selected, busy, onActivate, onSele
 function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync }) {
   const [selectedId, setSelectedId] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [duplicateError, setDuplicateError] = useState('');
   const [neighborhood, setNeighborhood] = useState([]);
   const [restoreFocus, setRestoreFocus] = useState(false);
   const toastManager = useToastManager();
+  const showError = useErrorToast();
   const searchRef = useRef(null);
   const selected = data.children.find(child => child.id === selectedId) || null;
   const mobile = useMobileViewport();
@@ -571,7 +569,7 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
   }, [restoreFocus, selectedId]);
   const saveNumber = async number => {
     setBusy(true);
-    setError('');
+    setDuplicateError('');
     setNeighborhood([]);
     try {
       const result = await mutate(`/api/happy-cleaning/children/${selected.id}/number/`, {
@@ -586,11 +584,11 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
       }
     } catch (caught) {
       if (caught?.payload?.code === 'duplicate_number') {
-        setError(`Nummer ${number} ist bereits vergeben.`);
+        setDuplicateError(`Nummer ${number} ist bereits vergeben.`);
         setNeighborhood(caught.payload.neighborhood || []);
       } else {
         if (caught?.payload?.code === 'stale') await refresh?.({ preserveData: true });
-        setError(caught?.payload?.code === 'stale'
+        showError(caught?.payload?.code === 'stale'
           ? 'Die Daten wurden inzwischen geändert. Bitte erneut versuchen.'
           : 'Die Nummer konnte nicht gespeichert werden.');
       }
@@ -604,7 +602,6 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
       `${selected.full_name} von ${selected.assigned_station.name} nach ${station.name} verschieben?`,
     )) return;
     setBusy(true);
-    setError('');
     try {
       const url = moving
         ? station.is_excused
@@ -642,7 +639,7 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
       if (caught?.payload?.code === 'station_full' || caught?.payload?.code === 'stale') {
         await refresh?.({ preserveData: true });
       }
-      setError(caught?.payload?.code === 'station_full'
+      showError(caught?.payload?.code === 'station_full'
         ? `${station.name} ist inzwischen voll. Die Einteilung wurde aktualisiert.`
         : 'Die Einteilung konnte nicht gespeichert werden. Bitte erneut versuchen.');
     } finally {
@@ -673,15 +670,14 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
           ? <ChildDetails child={selected} busy={writeBusy} onNumber={saveNumber} />
           : <PlaceholderChildDetails />}
       </div>
-      {error && neighborhood.length === 0 && <p className="error" role="alert">{error}</p>}
       {neighborhood.length > 0 && (
         <DuplicateNumberDialog
-          error={error}
+          error={duplicateError}
           neighborhood={neighborhood}
           busy={writeBusy}
           onSelect={saveNumber}
           onClose={() => {
-            setError('');
+            setDuplicateError('');
             setNeighborhood([]);
           }}
         />

@@ -1,4 +1,5 @@
 import { Card, Column, SearchTable } from '../components';
+import { useErrorToast } from '../components/ui/toast';
 import { displayOrPlaceholder, linkKid } from './shared';
 
 const EMPTY_STATS = {
@@ -43,6 +44,14 @@ function AllocationCard({ focus, kids, showKids }) {
 }
 
 export function AllocationPage({ data, week, mutate, showKids = true }) {
+  const showError = useErrorToast();
+  const save = async (...args) => {
+    try {
+      await mutate(...args);
+    } catch {
+      showError('Die Schwerpunktdaten konnten nicht gespeichert werden.');
+    }
+  };
   const focuses = data.focuses.filter(focus => focus.week === `w${week}`);
   const rows = data.kids.map(kid => ({ ...kid, filterText: kid.full_name }));
   const columns = [
@@ -54,7 +63,7 @@ export function AllocationPage({ data, week, mutate, showKids = true }) {
       render: kid => (
         <select
           value={kid.focus_ids.find(id => focuses.some(focus => focus.id === id)) || ''}
-          onChange={event => event.target.value && mutate('/update-schwerpunkt-wahl/', {
+          onChange={event => event.target.value && save('/update-schwerpunkt-wahl/', {
             kid_id: kid.id,
             swp_id: Number(event.target.value),
             choice_rank: null,
@@ -81,7 +90,7 @@ export function AllocationPage({ data, week, mutate, showKids = true }) {
                   type="button"
                   key={rank}
                   aria-pressed={selected}
-                  onClick={() => mutate('/update-schwerpunkt-wahl/', {
+                  onClick={() => save('/update-schwerpunkt-wahl/', {
                     kid_id: kid.id,
                     swp_id: focus.id,
                     choice_rank: rank,
@@ -110,7 +119,7 @@ export function AllocationPage({ data, week, mutate, showKids = true }) {
               aria-label={`Freunde von ${kid.full_name} bearbeiten`}
               onClick={() => {
                 const value = window.prompt('Freunde bearbeiten', friends);
-                if (value !== null) mutate('/update_freunde/', { kid_id: kid.id, freunde: value, week });
+                if (value !== null) save('/update_freunde/', { kid_id: kid.id, freunde: value, week });
               }}
             >
               ✏️

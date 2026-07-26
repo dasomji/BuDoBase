@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Dialog } from '@base-ui/react/dialog';
 import { EditorContent, useEditor } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
 import Paragraph from '@tiptap/extension-paragraph';
@@ -6,17 +7,42 @@ import Text from '@tiptap/extension-text';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 
+import { Card } from '../components';
+import { useErrorToast } from '../components/ui/toast';
 import './happyCleaningStationDetail.css';
 import { SingleStationCopyDialog } from './happyCleaningCopy';
 
-const StableTaskItem = TaskItem.extend({
+const TaskItemWithIdentity = TaskItem.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
-      id: { default: null },
-      version: { default: null },
+      id: {
+        default: null,
+        keepOnSplit: false,
+        parseHTML: element => {
+          const value = Number(element.getAttribute('data-task-id'));
+          return Number.isSafeInteger(value) && value > 0 ? value : null;
+        },
+        renderHTML: attributes => attributes.id == null
+          ? {}
+          : { 'data-task-id': attributes.id },
+      },
+      version: {
+        default: null,
+        keepOnSplit: false,
+        parseHTML: element => {
+          const value = Number(element.getAttribute('data-task-version'));
+          return Number.isSafeInteger(value) && value > 0 ? value : null;
+        },
+        renderHTML: attributes => attributes.version == null
+          ? {}
+          : { 'data-task-version': attributes.version },
+      },
     };
   },
+});
+
+export const StableTaskItem = TaskItemWithIdentity.extend({
   addNodeView() {
     const createNodeView = this.parent?.();
     return props => {
@@ -51,29 +77,103 @@ const errorMessage = error => {
   return error?.message || 'Die Änderung konnte nicht gespeichert werden.';
 };
 
-const capacityLabel = station => station.overbooked_count > 0
-  ? `${station.overbooked_count} überbelegt`
-  : `${Math.max(station.max_kids - (station.assigned_count || 0), 0)} / ${station.max_kids} frei`;
+const taskActionLabel = node => {
+  const text = node.textContent.trim() || 'Aufgabe';
+  return node.attrs.checked ? `${text} wieder öffnen` : `${text} erledigen`;
+};
 
-function Progress({ station }) {
-  const total = station.todo_total_count;
-  if (!total) {
-    return <span className="happy-cleaning-detail-progress" aria-label="Todo-Fortschritt">—</span>;
-  }
+function ReadOnlyStationDocument({
+  document: stationDocument,
+  canToggle,
+  writesBlocked,
+  busyTodoIds,
+  onToggle,
+}) {
+  const document = stationDocument || { type: 'doc', content: [] };
+  const documentSignature = JSON.stringify(document);
+  const documentRoot = useRef(null);
+  const interaction = useRef();
+  interaction.current = {
+    canToggle,
+    writesBlocked,
+    busyTodoIds,
+    onToggle,
+  };
+  const editor = useEditor({
+    editable: false,
+    extensions: [
+      Document,
+      Paragraph,
+      Text,
+      TaskList,
+      TaskItemWithIdentity.configure({
+        nested: false,
+        a11y: { checkboxLabel: taskActionLabel },
+        onReadOnlyChecked: (node, checked) => {
+          const current = interaction.current;
+          const taskId = String(node.attrs.id);
+          if (
+            !current.canToggle
+            || current.writesBlocked
+            || current.busyTodoIds.has(taskId)
+            || node.attrs.id == null
+            || node.attrs.version == null
+            || checked === node.attrs.checked
+          ) return false;
+          current.onToggle?.({
+            id: node.attrs.id,
+            version: node.attrs.version,
+            checked: node.attrs.checked,
+          });
+          return false;
+        },
+      }),
+    ],
+    content: document,
+    editorProps: {
+      attributes: { 'aria-label': 'Stationsinhalt' },
+    },
+  }, [documentSignature]);
+
+  useEffect(() => {
+    if (!documentRoot.current) return;
+    const disabledForAll = !canToggle || writesBlocked;
+    documentRoot.current.querySelectorAll('li[data-task-id]').forEach(taskItem => {
+      const checkbox = taskItem.querySelector(':scope > label input[type="checkbox"]');
+      if (!checkbox) return;
+      const disabled = disabledForAll || busyTodoIds.has(taskItem.dataset.taskId);
+      checkbox.disabled = disabled;
+      if (disabled) checkbox.tabIndex = -1;
+      else checkbox.removeAttribute('tabindex');
+    });
+  }, [editor, canToggle, writesBlocked, busyTodoIds, documentSignature]);
+
+  if (!document.content?.length) return <p>Noch kein Inhalt angelegt.</p>;
   return (
-    <span className="happy-cleaning-detail-progress" aria-label="Todo-Fortschritt">
-      {station.todo_checked_count}/{total} · {station.todo_progress_percentage}%
-    </span>
+    <div className="happy-cleaning-readonly-document" ref={documentRoot}>
+      <EditorContent editor={editor} />
+    </div>
   );
 }
+
 function DirtyNavigationDialog({ onContinue, onDiscard, onSave }) {
   return (
-    <section role="dialog" aria-modal="true" aria-label="Ungespeicherte Änderungen">
-      <p>Es gibt ungespeicherte Änderungen.</p>
-      <button type="button" onClick={onContinue}>Weiter bearbeiten</button>
-      <button type="button" onClick={onDiscard}>Verwerfen</button>
-      <button type="button" onClick={onSave}>Speichern und weiter</button>
-    </section>
+    <Dialog.Root open onOpenChange={open => { if (!open) onContinue(); }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="happy-cleaning-dialog-backdrop" />
+        <Dialog.Viewport className="happy-cleaning-dialog-viewport">
+          <Dialog.Popup className="card happy-cleaning-dirty-dialog">
+            <Dialog.Title>Ungespeicherte Änderungen</Dialog.Title>
+            <Dialog.Description>Es gibt ungespeicherte Änderungen.</Dialog.Description>
+            <div className="react-actions">
+              <button className="button" type="button" onClick={onContinue}>Weiter bearbeiten</button>
+              <button className="button" type="button" onClick={onDiscard}>Verwerfen</button>
+              <button className="button" type="button" onClick={onSave}>Speichern und weiter</button>
+            </div>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -89,9 +189,10 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
     responsible_profile_id: station.responsible?.id ? String(station.responsible.id) : '',
   });
   const [pendingNavigation, setPendingNavigation] = useState(null);
-  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [editorRevision, setEditorRevision] = useState(0);
+  const showError = useErrorToast();
+  const tasksLabelId = `station-editor-tasks-${station.id ?? 'new'}`;
   const initialDocument = useMemo(() => station.document || { type: 'doc', content: [] }, [station.document]);
   const editor = useEditor({
     extensions: [
@@ -103,7 +204,7 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
     ],
     content: initialDocument,
     editorProps: {
-      attributes: { 'aria-label': 'Stationsinhalt' },
+      attributes: { 'aria-labelledby': tasksLabelId },
       handleDOMEvents: {
         click: (_view, event) => event.target instanceof HTMLInputElement
           && event.target.type === 'checkbox',
@@ -161,7 +262,6 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
       document: currentDocument,
     };
     setBusy(true);
-    setError('');
     try {
       const result = await mutate(url, payload);
       await onSaved?.(result);
@@ -188,11 +288,11 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
           await onSaved?.(result);
           return true;
         } catch (retryError) {
-          setError(errorMessage(retryError));
+          showError(errorMessage(retryError));
           return false;
         }
       }
-      setError(errorMessage(caught));
+      showError(errorMessage(caught));
       return false;
     } finally {
       setBusy(false);
@@ -217,7 +317,6 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
   const remove = async () => {
     if (!globalThis.confirm?.(`Station ${station.name} wirklich löschen?`)) return;
     setBusy(true);
-    setError('');
     try {
       await mutate(
         `/api/happy-cleaning/events/${event.id}/stations/${station.id}/delete/`,
@@ -227,29 +326,30 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
       );
       onDeleted?.(station.id);
     } catch (caught) {
-      setError(errorMessage(caught));
+      showError(errorMessage(caught));
       setBusy(false);
     }
   };
   return (
     <>
       <div className="react-actions">
-        <button type="button" className="button" onClick={() => navigate(onBack)}>Zur Liste</button>
-        <button type="button" className="button" aria-label="Detail schließen" onClick={() => navigate(onBack)}>×</button>
+        <button type="button" className="button happy-cleaning-detail-back" onClick={() => navigate(onBack)}>Zur Liste</button>
       </div>
       <form className="form-grid" onSubmit={async event_ => { event_.preventDefault(); await save(); }}>
         <label>Name<input aria-label="Name der Station" value={fields.name} onChange={event_ => setFields(value => ({ ...value, name: event_.target.value }))} /></label>
-        <label>Kapazität<input aria-label="Kapazität der Station" type="number" min="1" required value={fields.max_kids} onChange={event_ => setFields(value => ({ ...value, max_kids: event_.target.value }))} /></label>
-        <label>Treffpunkt<input aria-label="Treffpunkt der Station" value={fields.meeting_point} onChange={event_ => setFields(value => ({ ...value, meeting_point: event_.target.value }))} /></label>
-        <label>Wünsche<textarea aria-label="Wünsche der Station" value={fields.wishes} onChange={event_ => setFields(value => ({ ...value, wishes: event_.target.value }))} /></label>
-        <label>Hauptverantwortlich<select aria-label="Hauptverantwortlich" value={fields.responsible_profile_id} onChange={event_ => setFields(value => ({ ...value, responsible_profile_id: event_.target.value }))}>
+        <label>Verantwortlich<select aria-label="Verantwortlich" value={fields.responsible_profile_id} onChange={event_ => setFields(value => ({ ...value, responsible_profile_id: event_.target.value }))}>
           <option value="">Niemand</option>
           {(data.responsible_profiles || []).map(profile => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
         </select></label>
-        <div className="happy-cleaning-minimal-editor">
-          <EditorContent editor={editor} />
+        <label>Kapazität<input aria-label="Kapazität der Station" type="number" min="1" required value={fields.max_kids} onChange={event_ => setFields(value => ({ ...value, max_kids: event_.target.value }))} /></label>
+        <label>Treffpunkt<input aria-label="Treffpunkt der Station" value={fields.meeting_point} onChange={event_ => setFields(value => ({ ...value, meeting_point: event_.target.value }))} /></label>
+        <label>Wünsche<textarea aria-label="Wünsche der Station" value={fields.wishes} onChange={event_ => setFields(value => ({ ...value, wishes: event_.target.value }))} /></label>
+        <div className="happy-cleaning-minimal-editor-field" role="group" aria-labelledby={tasksLabelId}>
+          <span id={tasksLabelId}>Aufgaben</span>
+          <div className="happy-cleaning-minimal-editor">
+            <EditorContent editor={editor} />
+          </div>
         </div>
-        {error && <p className="error" role="alert">{error}</p>}
         <div className="react-actions">
           <button className="button" type="submit" disabled={busy}>Speichern</button>
           {!creating && station.can_delete && <button className="button danger" type="button" disabled={busy} onClick={remove}>Station löschen</button>}
@@ -279,22 +379,25 @@ export function HappyCleaningStationDetailPage({
   onCopySuccess,
 }) {
   const { event, station } = data;
-  const [showCompleted, setShowCompleted] = useState(true);
   const [busyTodoIds, setBusyTodoIds] = useState(() => new Set());
-  const [error, setError] = useState('');
   const [editing, setEditing] = useState(initialEditing);
+  const showError = useErrorToast();
   const [copyOpen, setCopyOpen] = useState(false);
+  const navigationGuard = useRef(null);
   const writesBlocked = realtimeSync?.enabled && !realtimeSync.writesEnabled;
-  const orderedTodos = [...station.todos].sort((left, right) => (
-    left.position - right.position || left.id - right.id
-  ));
-  const visibleTodos = showCompleted
-    ? orderedTodos
-    : orderedTodos.filter(todo => !todo.checked);
+  const registerDetailNavigationGuard = useCallback(guard => {
+    navigationGuard.current = guard;
+    registerNavigationGuard?.(guard);
+  }, [registerNavigationGuard]);
+  const closeDetail = () => {
+    if (!onBack) return;
+    if (editing && navigationGuard.current) navigationGuard.current(onBack);
+    else onBack();
+  };
 
   const setTodoState = async todo => {
-    setBusyTodoIds(current => new Set(current).add(todo.id));
-    setError('');
+    const taskId = String(todo.id);
+    setBusyTodoIds(current => new Set(current).add(taskId));
     const operation = todo.checked ? 'reopen' : 'check';
     try {
       await mutate(
@@ -305,12 +408,12 @@ export function HappyCleaningStationDetailPage({
         },
       );
     } catch (caught) {
-      setError(errorMessage(caught));
+      showError(errorMessage(caught));
       if (caught?.payload?.code === 'stale') await refresh?.();
     } finally {
       setBusyTodoIds(current => {
         const next = new Set(current);
-        next.delete(todo.id);
+        next.delete(taskId);
         return next;
       });
     }
@@ -319,103 +422,73 @@ export function HappyCleaningStationDetailPage({
   const Page = embedded ? 'section' : 'main';
   return (
     <Page className="happy-cleaning-station-detail-page" id={embedded ? undefined : 'body-container'}>
-      {editing ? (
-        <StationEditor
-          data={data}
-          mutate={mutate}
-          onSaved={async result => {
-            await refresh?.(result);
-            setEditing(false);
-          }}
-          onDeleted={onDeleted}
-          registerNavigationGuard={registerNavigationGuard}
-          onBack={onBack}
-        />
-      ) : (
-      <>
-      {onBack && <button className="button happy-cleaning-detail-back" type="button" onClick={onBack}>Zur Liste</button>}
-      <section className="card happy-cleaning-station-detail-card">
-        <div className="happy-cleaning-station-detail-heading">
-          <h1>{station.name}</h1>
-          <Progress station={station} />
-        </div>
-        {station.can_edit && <button className="button" type="button" onClick={() => setEditing(true)}>Bearbeiten</button>}
-        {station.id != null && (
-          <button className="button" type="button" onClick={() => setCopyOpen(true)}>
-            Station kopieren
+      {!editing && onBack && (
+        <button className="button happy-cleaning-detail-back" type="button" onClick={onBack}>
+          Zur Liste
+        </button>
+      )}
+      <Card
+        className="happy-cleaning-station-detail-card"
+        title={station.name}
+        showToggleIcon={false}
+        headerAction={onBack ? (
+          <button
+            className="button happy-cleaning-detail-close"
+            type="button"
+            aria-label="Detail schließen"
+            onClick={closeDetail}
+          >
+            ×
           </button>
-        )}
-        <dl className="happy-cleaning-station-facts">
-          <div><dt>Max Kinder</dt><dd>{station.max_kids}</dd></div>
-          <div><dt>Plätze</dt><dd>{capacityLabel(station)}</dd></div>
-          <div><dt>Treffpunkt</dt><dd>{station.meeting_point || '—'}</dd></div>
-          <div><dt>Wünsche</dt><dd>{station.wishes || '—'}</dd></div>
-          {station.responsible && (
-            <div><dt>Hauptverantwortlich</dt><dd>{station.responsible.name}</dd></div>
-          )}
-        </dl>
-        {station.content?.some(block => block.type === 'paragraph') && (
-          <section aria-labelledby={`station-content-${station.id}`}>
-            <h2 id={`station-content-${station.id}`}>Inhalt</h2>
-            {station.content
-              .filter(block => block.type === 'paragraph')
-              .map((block, index) => <p key={index}>{block.text || '\u00a0'}</p>)}
-          </section>
-        )}
-
-        {station.children && (
+        ) : null}
+      >
+        {editing ? (
+          <StationEditor
+            data={data}
+            mutate={mutate}
+            onSaved={async result => {
+              await refresh?.(result);
+              setEditing(false);
+            }}
+            onDeleted={onDeleted}
+            registerNavigationGuard={registerDetailNavigationGuard}
+            onBack={onBack}
+          />
+        ) : (
           <>
-            <h2>Eingeteilte Kinder</h2>
-            {!station.children.length && <p>Noch keine Kinder eingeteilt.</p>}
-            {station.children.length > 0 && (
-              <ul className="happy-cleaning-detail-children">
-                {station.children.map(child => <li key={child.id}>{child.full_name}</li>)}
-              </ul>
-            )}
-          </>
-        )}
-
-        <div className="happy-cleaning-checklist-heading">
-          <h2>Aufgaben</h2>
-          <label>
-            <input
-              type="checkbox"
-              checked={showCompleted}
-              onChange={change => setShowCompleted(change.target.checked)}
-            />
-            Erledigte Aufgaben anzeigen
-          </label>
-        </div>
-        {error && <p className="error" role="alert">{error}</p>}
-        {!orderedTodos.length && <p>Noch keine Aufgabe angelegt.</p>}
-        {orderedTodos.length > 0 && !visibleTodos.length && (
-          <p>Alle Aufgaben sind erledigt.</p>
-        )}
-        <ol className="happy-cleaning-detail-todos">
-          {visibleTodos.map(todo => (
-            <li
-              key={todo.id}
-              aria-label={`Aufgabe ${todo.text}`}
-              className={todo.checked ? 'completed' : ''}
-            >
-              <span>{todo.text}</span>
-              {station.can_toggle_tasks && (
-                <button
-                  className="button"
-                  type="button"
-                  disabled={writesBlocked || busyTodoIds.has(todo.id)}
-                  aria-label={todo.checked
-                    ? `${todo.text} wieder öffnen`
-                    : `${todo.text} erledigen`}
-                  onClick={() => setTodoState(todo)}
-                >
-                  {todo.checked ? 'Wieder öffnen' : 'Erledigt'}
+            <dl className="happy-cleaning-station-facts">
+              {station.responsible && (
+                <div><dt>Hauptverantwortlich</dt><dd>{station.responsible.name}</dd></div>
+              )}
+              <div><dt>Max Kinder</dt><dd>{station.max_kids}</dd></div>
+              <div><dt>Treffpunkt</dt><dd>{station.meeting_point || '—'}</dd></div>
+              <div><dt>Wünsche</dt><dd>{station.wishes || '—'}</dd></div>
+            </dl>
+            <section aria-labelledby={`station-tasks-${station.id}`}>
+              <h2 className="happy-cleaning-station-tasks-heading" id={`station-tasks-${station.id}`}>Aufgaben</h2>
+              <ReadOnlyStationDocument
+                document={station.document}
+                canToggle={station.can_toggle_tasks}
+                writesBlocked={writesBlocked}
+                busyTodoIds={busyTodoIds}
+                onToggle={setTodoState}
+              />
+            </section>
+            <div className="react-actions happy-cleaning-detail-actions">
+              {station.can_edit && (
+                <button className="button" type="button" onClick={() => setEditing(true)}>
+                  Bearbeiten
                 </button>
               )}
-            </li>
-          ))}
-        </ol>
-      </section>
+              {station.id != null && (
+                <button className="button" type="button" onClick={() => setCopyOpen(true)}>
+                  Station kopieren
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </Card>
       {copyOpen && (
         <SingleStationCopyDialog
           source={event}
@@ -425,8 +498,6 @@ export function HappyCleaningStationDetailPage({
           close={() => setCopyOpen(false)}
           onSuccess={onCopySuccess}
         />
-      )}
-      </>
       )}
     </Page>
   );

@@ -1,9 +1,14 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
+import { Toaster } from '../components/ui/toast';
 import { parseRoute } from '../routes';
 import { DashboardPage } from './dashboard';
+
+const render = ui => testingLibraryRender(ui, {
+  wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
+});
 
 const emptyPage = { items: [], next_cursor: null, has_more: false, limit: 20 };
 
@@ -216,7 +221,7 @@ describe('dashboard page', () => {
 
   it('shows a recoverable error when an activity continuation fails', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(response({}, { ok: false, status: 503 }));
-    render(<DashboardPage
+    render(<Toaster timeout={0}><DashboardPage
       data={dashboardData({
         transactions: {
           items: [],
@@ -226,11 +231,13 @@ describe('dashboard page', () => {
         },
       })}
       fetchImpl={fetchImpl}
-    />);
+    /></Toaster>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Ältere Transaktionen laden' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Ältere Transaktionen konnten nicht geladen werden.');
+    const toast = await screen.findByText('Ältere Transaktionen konnten nicht geladen werden.', { selector: '.app-toast-description' });
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    expect(document.querySelector('.activity-error')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ältere Transaktionen laden' })).toBeEnabled();
   });
 

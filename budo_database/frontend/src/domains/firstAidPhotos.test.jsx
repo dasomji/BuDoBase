@@ -1,12 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
+import { Toaster } from '../components/ui/toast';
 import { DashboardPage } from './dashboard';
 import { KidDetailPage, KidInteractionForm } from './kids';
+
+const render = ui => testingLibraryRender(ui, {
+  wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
+});
 
 const emptyPage = { items: [], next_cursor: null, has_more: false, limit: 20 };
 const photos = [
@@ -187,7 +192,8 @@ describe('EH photo upload and card strips', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'EH-Eintrag senden' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Es sind höchstens 5 Fotos erlaubt.');
+    const toast = await screen.findByText('Es sind höchstens 5 Fotos erlaubt.', { selector: '.app-toast-description' });
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
     expect(description).toHaveValue('Knie verbunden');
     expect(photoInput.files).toHaveLength(1);
     expect(onSaved).not.toHaveBeenCalled();

@@ -238,17 +238,19 @@ describe('reusable components', () => {
     expect(firstColumn()).toEqual(['Ada', 'Zora']);
   });
 
-  it('keeps form state in React and renders REST validation errors', async () => {
+  it('keeps form state in React and shows REST validation errors as a toast', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       json: async () => ({ ok: false, errors: ['Dieses Feld ist erforderlich.'] }),
     });
     vi.stubGlobal('fetch', fetchMock);
-    render(<RestForm target="/profil/" token="token"><input name="rufname" defaultValue="Ada" /><button type="submit" name="money_action" value="withdraw">Speichern</button></RestForm>);
+    render(<Toaster timeout={0}><RestForm target="/profil/" token="token"><input name="rufname" defaultValue="Ada" /><button type="submit" name="money_action" value="withdraw">Speichern</button></RestForm></Toaster>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Dieses Feld ist erforderlich.');
+    const toast = await screen.findByText('Dieses Feld ist erforderlich.', { selector: '.app-toast-description' });
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    expect(document.querySelector('.errorlist')).not.toBeInTheDocument();
     expect(screen.getByDisplayValue('Ada')).toBeInTheDocument();
     expect(fetchMock.mock.calls[0][1].body.get('money_action')).toBe('withdraw');
     vi.unstubAllGlobals();

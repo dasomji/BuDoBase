@@ -1,4 +1,5 @@
 import { Card, Column, Columns, NativeForm, SearchTable } from '../components';
+import { useErrorToast } from '../components/ui/toast';
 import { displayOrPlaceholder, linkKid, money, NotFoundPage, yesNo } from './shared';
 
 export function CheckPage({ data, checkout = false }) {
@@ -24,12 +25,20 @@ export function CheckPage({ data, checkout = false }) {
 }
 
 export function TrainPage({ data, departure, mutate }) {
+  const showError = useErrorToast();
+  const save = async (...args) => {
+    try {
+      await mutate(...args);
+    } catch {
+      showError('Die Zugabreise konnte nicht gespeichert werden.');
+    }
+  };
   const source = departure ? [...data.kids].sort((a, b) => Number(b.train_departure) - Number(a.train_departure)) : data.kids.filter(kid => kid.train_arrival);
   const rows = source.map(kid => ({ ...kid, filterText: kid.full_name }));
   const columns = departure ? [
     { key: 'name', label: 'Name', render: linkKid },
-    { key: 'train_departure', label: `Zugabreise: ${data.totals.train_departure}`, render: row => <button type="button" className="zug-switch" onClick={() => mutate('/toggle_zug_abreise/', { id: row.id }, false)}>{yesNo(row.train_departure)}</button> },
-    { key: 'departure_note', label: 'Abreise-Notiz', render: row => <>{row.departure_note} <button type="button" onClick={() => { const value = window.prompt('Abreise-Notiz', row.departure_note || ''); if (value !== null) mutate('/update_notiz_abreise/', { id: row.id, notiz_abreise: value }); }}>✏️</button></> },
+    { key: 'train_departure', label: `Zugabreise: ${data.totals.train_departure}`, render: row => <button type="button" className="zug-switch" onClick={() => save('/toggle_zug_abreise/', { id: row.id }, false)}>{yesNo(row.train_departure)}</button> },
+    { key: 'departure_note', label: 'Abreise-Notiz', render: row => <>{row.departure_note} <button type="button" onClick={() => { const value = window.prompt('Abreise-Notiz', row.departure_note || ''); if (value !== null) save('/update_notiz_abreise/', { id: row.id, notiz_abreise: value }); }}>✏️</button></> },
     { key: 'youth_ticket', label: 'Top-Jugendticket', render: row => yesNo(row.youth_ticket) },
     { key: 'age', label: 'Alter' },
     { key: 'registrant_name', label: 'Anmelder' },

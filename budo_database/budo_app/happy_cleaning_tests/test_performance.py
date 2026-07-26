@@ -115,6 +115,10 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
                 self.client,
                 self._url("happy-cleaning-print"),
             ),
+            "happy-cleaning-todo-print": measure_http_get(
+                self.client,
+                self._url("happy-cleaning-todo-print", **event_query),
+            ),
         }
 
     def test_query_growth_is_bounded_for_children_stations_and_todos(self):
@@ -129,6 +133,7 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
             "happy-cleaning-assignment": 64_000,
             "happy-cleaning-overview-station": 32_000,
             "happy-cleaning-print": 64_000,
+            "happy-cleaning-todo-print": 64_000,
         }
         for key in realistic:
             with self.subTest(contract=key):

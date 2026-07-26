@@ -1,6 +1,7 @@
 import { Children, useCallback, useEffect, useState } from 'react';
 
 import { Card, Column, Columns } from '../components';
+import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { FirstAidGallery } from './first-aid-gallery';
 import { formatGermanDate, formatKidBirthday, linkKid, money } from './shared';
@@ -13,14 +14,13 @@ function appendUnique(current, incoming) {
 function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const showError = useErrorToast();
   const textActivity = kind !== 'transactions';
   const label = kind === 'notes' ? 'Notizen' : kind === 'first_aid' ? 'EH-Einträge' : 'Transaktionen';
 
   useEffect(() => {
     setPage(initialPage);
     setLoading(false);
-    setError(false);
   }, [initialPage]);
 
   useEffect(() => {
@@ -29,7 +29,6 @@ function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
 
   const loadMore = async () => {
     setLoading(true);
-    setError(false);
     try {
       const query = new URLSearchParams({ activity: kind, cursor: page.next_cursor });
       const response = await fetchImpl(`/api/route-data/dashboard/?${query}`, {
@@ -42,7 +41,7 @@ function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
         items: appendUnique(current.items, nextPage.items),
       }));
     } catch {
-      setError(true);
+      showError(`Ältere ${label} konnten nicht geladen werden.`);
     } finally {
       setLoading(false);
     }
@@ -60,7 +59,6 @@ function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
             <p>{textActivity ? item.text : `Betrag: ${money(item.amount)}`}</p>
           </li>
       ))}</ul>
-      {error && <p className="activity-error" role="alert">Ältere {label} konnten nicht geladen werden.</p>}
       {page.has_more && (
         <button className="button" type="button" disabled={loading} onClick={loadMore}>
           {loading ? `Ältere ${label} werden geladen…` : `Ältere ${label} laden`}
