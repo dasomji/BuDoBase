@@ -106,10 +106,12 @@ describe('reusable components', () => {
     const button = screen.getByRole('button', { name: 'Gesundheit schließen' });
 
     expect(button).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.queryByText('−')).not.toBeInTheDocument();
     fireEvent.click(button);
 
     expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByText('Details').closest('.card-info-container')).toHaveAttribute('inert');
+    expect(screen.queryByText('+')).not.toBeInTheDocument();
   });
 
   it('toggles a card from anywhere in its header', () => {
@@ -120,12 +122,76 @@ describe('reusable components', () => {
     expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('shows the open and closed state on transparent cards', () => {
+    render(<Card title="Karte" className="transparent"><p>Orte</p></Card>);
+
+    expect(screen.getByText('−')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('heading', { name: 'Karte' }));
+
+    expect(screen.getByText('+')).toBeInTheDocument();
+  });
+
+  it('runs a header action without toggling the card', () => {
+    const handleAction = vi.fn();
+    render(
+      <Card
+        title="Woche 1"
+        headerAction={<button type="button" onClick={handleAction}>Kinder einteilen</button>}
+      >
+        <p>Details</p>
+      </Card>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Kinder einteilen' }));
+
+    expect(handleAction).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Woche 1 schließen' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Details').closest('[aria-hidden]')).not.toHaveAttribute('inert');
+  });
+
   it('toggles a card header with the keyboard', () => {
     render(<Card title="Gesundheit"><p>Details</p></Card>);
+    const details = screen.getByText('Details').closest('[aria-hidden]');
 
     fireEvent.keyDown(screen.getByRole('button', { name: 'Gesundheit schließen' }), { key: ' ' });
 
     expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
+    expect(details).toHaveAttribute('aria-hidden', 'true');
+    expect(details).toHaveAttribute('inert');
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Gesundheit öffnen' }), { key: 'Enter' });
+
+    expect(screen.getByRole('button', { name: 'Gesundheit schließen' })).toHaveAttribute('aria-expanded', 'true');
+    expect(details).toHaveAttribute('aria-hidden', 'false');
+    expect(details).not.toHaveAttribute('inert');
+  });
+
+  it('reacts to the shared mobile boundary at 901px', () => {
+    let viewportWidth = 901;
+    const listeners = new Set();
+    vi.spyOn(window, 'innerWidth', 'get').mockImplementation(() => viewportWidth);
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: viewportWidth < 901,
+      media: query,
+      addEventListener: (_event, listener) => listeners.add(listener),
+      removeEventListener: (_event, listener) => listeners.delete(listener),
+    }));
+
+    render(<Card title="Gesundheit"><p>Details</p></Card>);
+    expect(screen.getByRole('button', { name: 'Gesundheit schließen' })).toHaveAttribute('aria-expanded', 'true');
+
+    act(() => {
+      viewportWidth = 900;
+      listeners.forEach(listener => listener());
+    });
+    expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Details').closest('[aria-hidden]')).toHaveAttribute('inert');
+
+    act(() => {
+      viewportWidth = 901;
+      listeners.forEach(listener => listener());
+    });
+    expect(screen.getByRole('button', { name: 'Gesundheit schließen' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('shows selectable results from kids, focuses, and places', () => {

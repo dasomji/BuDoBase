@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useErrorToast, useToastManager } from '@/components/ui/toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function findById(items, id) {
   return items.find(item => Number(item.id) === Number(id));
@@ -151,16 +152,20 @@ export function Card({
   initiallyClosed = false,
   className = '',
   headerAction = null,
-  showToggleIcon = true,
+  showToggleIcon,
   as: Container = 'section',
   headingLevel = 2,
   expanded,
   onExpandedChange,
 }) {
-  const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 759px)').matches;
+  const mobile = useIsMobile();
   const [internallyClosed, setInternallyClosed] = useState(initiallyClosed || mobile);
   const controlled = expanded !== undefined;
   const closed = controlled ? !expanded : internallyClosed;
+  const toggleIconVisible = showToggleIcon ?? className.split(/\s+/).includes('transparent');
+  useEffect(() => {
+    if (!controlled) setInternallyClosed(initiallyClosed || mobile);
+  }, [controlled, initiallyClosed, mobile]);
   const Heading = `h${headingLevel}`;
   const toggle = () => {
     if (controlled) onExpandedChange?.(!expanded);
@@ -192,7 +197,7 @@ export function Card({
             {headerAction}
           </span>
         )}
-        {showToggleIcon && (
+        {toggleIconVisible && (
           <span className="icon" aria-hidden="true">
             <span className="open-icon">{closed ? '+' : '−'}</span>
           </span>
