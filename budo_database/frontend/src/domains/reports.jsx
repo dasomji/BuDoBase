@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Card, Column, Columns, RestForm, SearchTable } from '../components';
+import { Card, Column, Columns, DataTable, RestForm } from '../components';
 import { displayOrPlaceholder, formatGermanDate, linkKid, yesNo } from './shared';
 
 export function SerialLetterPage({ data }) {
@@ -40,7 +40,7 @@ export function BirthdaysPage({ data }) {
     { key: 'match', label: 'Check', sortValue: row => row.birthday && row.sv ? Number(row.birthday === row.sv) : -1, render: row => row.birthday && row.sv ? row.birthday === row.sv ? '✅' : '❌' : '---' },
     { key: 'note', label: 'Notiz', sortable: false, render: row => <RestForm target="/kindergeburtstage/" token={data.csrf_token}><input type="hidden" name="kid_id" value={row.id} /><input name="notiz" placeholder="Notiz..." /><button className="button" type="submit">Speichern</button></RestForm> },
   ];
-  return <main className="table-only" id="body-container"><SearchTable columns={columns} rows={rows} showFilter /></main>;
+  return <main className="table-only" id="body-container"><DataTable columns={columns} rows={rows} showFilter /></main>;
 }
 
 export function KidCountPage({ data }) {

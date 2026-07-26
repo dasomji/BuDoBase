@@ -1,4 +1,4 @@
-import { Card, Column, SearchTable } from '../components';
+import { Card, Column, DataTable } from '../components';
 import { useErrorToast } from '../components/ui/toast';
 import { displayOrPlaceholder, linkKid } from './shared';
 
@@ -142,7 +142,7 @@ export function AllocationPage({ data, week, mutate, showKids = true }) {
   return (
     <main className="allocation-page" id="body-container">
       <Column id="right-column" className="allocation-table-column">
-        <SearchTable columns={columns} rows={rows} showFilter beforeFilter={overview} />
+        <DataTable columns={columns} rows={rows} showFilter beforeFilter={overview} stickyHeader stickyFirstColumn verticalScroll />
       </Column>
       <section className="allocation-print-pages" aria-label="SWP-Listen">
         {focuses.map(focus => <article className="allocation-print-page" key={focus.id}><h1>{focus.name}</h1><ul>{data.kids.filter(kid => focus.kid_ids.includes(kid.id)).map(kid => <li key={kid.id}>{kid.full_name}</li>)}</ul></article>)}

@@ -1182,6 +1182,94 @@
   max-height: min(60vh, 28rem);
 }
 
+[data-slot="table-scroll"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border-radius: var(--corner-rad);
+  overscroll-behavior-inline: contain;
+}
+
+[data-slot="table-scroll"][data-vertical-scroll] {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+[data-slot="table"] {
+  width: max-content;
+  min-width: 100%;
+  border-spacing: 0;
+  border-collapse: separate;
+  border-radius: var(--corner-rad);
+  text-align: left;
+}
+
+[data-slot="table-head"],
+[data-slot="table-cell"] {
+  padding: var(--s-padding);
+  vertical-align: top;
+}
+
+[data-slot="table-head"] {
+  position: relative;
+  border-bottom: 1px solid #8f8f8f;
+  background: var(--dark-blue);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+[data-slot="table-head"]::after {
+  content: none;
+}
+
+[data-slot="table-row"] {
+  --table-row-background: var(--bg-blue);
+  background: var(--table-row-background);
+}
+
+[data-slot="table-body"] [data-slot="table-row"]:nth-child(even) {
+  --table-row-background: var(--blue);
+}
+
+[data-slot="table-row"]:not(:last-child) > :is([data-slot="table-head"], [data-slot="table-cell"]) {
+  border-bottom: 1px solid #8f8f8f;
+}
+
+[data-slot="table-scroll"][data-sticky-header] [data-slot="table-head"] {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-table-header);
+}
+
+[data-slot="table-scroll"][data-sticky-first-column]
+  :is([data-slot="table-head"], [data-slot="table-cell"]):first-child {
+  position: sticky;
+  left: 0;
+  z-index: var(--z-headcol);
+  background: var(--table-row-background, var(--dark-blue));
+}
+
+[data-slot="table-scroll"][data-sticky-first-column] [data-slot="table-head"]:first-child {
+  z-index: var(--z-th-headcol);
+  background: var(--dark-blue);
+}
+
+[data-slot="table"] a {
+  text-decoration: none;
+}
+
+[data-slot="table"] a:hover {
+  border-radius: var(--corner-rad);
+  box-shadow: #8f8f8f;
+}
+
+@media only screen and (max-width: 900px) {
+  [data-slot="table"] [data-priority="low"] {
+    display: none;
+  }
+}
+
 .filter-table {
   width: 100%;
   border: 2px solid white;
@@ -2218,14 +2306,14 @@ input[name="amount"]::placeholder {
     flex-direction: column;
   }
 
-  .allocation-page .allocation-table-column > .table-container:has(#kids-table) {
+  .allocation-page .allocation-table-column > [data-slot="table-scroll"][data-vertical-scroll] {
     height: 0;
     min-height: 50vh;
     max-height: none;
     flex: 1 1 0;
   }
 
-  .allocation-page #kids-table {
+  .allocation-page [data-slot="table"] {
     min-height: 50vh;
   }
 }

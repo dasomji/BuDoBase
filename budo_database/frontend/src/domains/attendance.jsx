@@ -1,4 +1,4 @@
-import { Card, Column, Columns, NativeForm, SearchTable } from '../components';
+import { Card, Column, Columns, DataTable, NativeForm } from '../components';
 import { useErrorToast } from '../components/ui/toast';
 import { displayOrPlaceholder, linkKid, money, NotFoundPage, yesNo } from './shared';
 
@@ -60,7 +60,7 @@ export function TrainPage({ data, departure, mutate }) {
       <p>Kinder mit Top-Jugendticket: {data.totals.with_youth_ticket}</p>
       <p>Kinder ohne Top-Jugendticket: {data.totals.without_youth_ticket}</p>
     </>;
-  return <><div className="print_only"><h1>{departure ? 'Zugabreise' : 'Zuganreise'}</h1>{printSummary}</div><main className="table-only" id="body-container"><SearchTable columns={columns} rows={rows} showFilter /></main></>;
+  return <><div className="print_only"><h1>{departure ? 'Zugabreise' : 'Zuganreise'}</h1>{printSummary}</div><main className="table-only" id="body-container"><DataTable columns={columns} rows={rows} showFilter /></main></>;
 }
 
 const selectedKidTitle = (route, data) => data.kid?.full_name || route.title;

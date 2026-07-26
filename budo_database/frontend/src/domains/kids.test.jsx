@@ -247,6 +247,12 @@ describe('Kinder pages', () => {
       },
     ] }} />);
 
+    const table = screen.getByRole('table');
+    expect(table).not.toHaveAttribute('id');
+    expect(table.parentElement).toHaveAttribute('data-sticky-header');
+    expect(table.parentElement).toHaveAttribute('data-sticky-first-column');
+    expect(table.parentElement).toHaveAttribute('data-vertical-scroll');
+    expect(screen.getByRole('columnheader', { name: /Zeltwunsch/ })).toHaveAttribute('data-priority', 'low');
     expect(screen.getByRole('link', { name: 'Ada Lovelace ❌' })).toHaveAttribute('href', '/kid_details/7');
     expect(screen.getByRole('columnheader', { name: /Anmerkungen \(Buchung\)/ })).toBeInTheDocument();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Kinder filtern' }), { target: { value: 'grace' } });

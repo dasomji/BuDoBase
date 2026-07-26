@@ -3,7 +3,20 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { Printer } from 'lucide-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Card, GlobalSearch, Messages, RestForm, SearchTable } from './components';
+import {
+  Card,
+  DataTable,
+  GlobalSearch,
+  Messages,
+  RestForm,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+} from './components';
 import { Button } from './components/ui/button';
 import { Toaster } from './components/ui/toast';
 
@@ -314,6 +327,53 @@ describe('reusable components', () => {
     expect(search).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('renders table primitives inside the shared scroll boundary with optional sticky behavior', () => {
+    render(
+      <TableScroll stickyHeader stickyFirstColumn verticalScroll>
+        <Table>
+          <TableHeader>
+            <TableRow><TableHead>Name</TableHead></TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow><TableCell>Ada</TableCell></TableRow>
+          </TableBody>
+        </Table>
+      </TableScroll>,
+    );
+
+    const table = screen.getByRole('table');
+    expect(table.parentElement).toHaveAttribute('data-slot', 'table-scroll');
+    expect(table.parentElement).toHaveAttribute('data-sticky-header');
+    expect(table.parentElement).toHaveAttribute('data-sticky-first-column');
+    expect(table.parentElement).toHaveAttribute('data-vertical-scroll');
+  });
+
+  it('wraps DataTables by default without generating ids and exposes sticky and priority options', () => {
+    const columns = [
+      { key: 'name', label: 'Name' },
+      { key: 'note', label: 'Notiz', priority: 'low' },
+    ];
+    const rows = [{ id: 1, name: 'Ada', note: 'Vegetarisch' }];
+
+    render(
+      <>
+        <DataTable columns={columns} rows={rows} />
+        <DataTable columns={columns} rows={rows} stickyHeader stickyFirstColumn verticalScroll />
+      </>,
+    );
+
+    const tables = screen.getAllByRole('table');
+    expect(tables).toHaveLength(2);
+    expect(tables.every(table => !table.hasAttribute('id'))).toBe(true);
+    expect(tables[0].parentElement).toHaveAttribute('data-slot', 'table-scroll');
+    expect(tables[0].parentElement).not.toHaveAttribute('data-sticky-header');
+    expect(tables[1].parentElement).toHaveAttribute('data-sticky-header');
+    expect(tables[1].parentElement).toHaveAttribute('data-sticky-first-column');
+    expect(tables[1].parentElement).toHaveAttribute('data-vertical-scroll');
+    expect(screen.getAllByRole('columnheader', { name: /Notiz/ })[0]).toHaveAttribute('data-priority', 'low');
+    expect(screen.getAllByRole('cell', { name: 'Vegetarisch' })[0]).toHaveAttribute('data-priority', 'low');
+  });
+
   it('filters table pages by the first-column name only', () => {
     const columns = [{ key: 'name', label: 'Name' }];
     const rows = [
@@ -321,7 +381,7 @@ describe('reusable components', () => {
       { id: 2, name: 'Grace', filterText: 'Grace Hopper', searchText: 'Grace Ada' },
     ];
 
-    render(<SearchTable columns={columns} rows={rows} showFilter />);
+    render(<DataTable columns={columns} rows={rows} showFilter />);
     fireEvent.change(screen.getByPlaceholderText('Kinder filtern...'), { target: { value: 'ada' } });
 
     expect(screen.getByText('Ada')).toBeInTheDocument();
@@ -329,7 +389,7 @@ describe('reusable components', () => {
   });
 
   it('does not add the child filter to ordinary tables', () => {
-    render(<SearchTable columns={[{ key: 'name', label: 'Name' }]} rows={[]} />);
+    render(<DataTable columns={[{ key: 'name', label: 'Name' }]} rows={[]} />);
 
     expect(screen.queryByPlaceholderText('Kinder filtern...')).not.toBeInTheDocument();
   });
@@ -346,7 +406,7 @@ describe('reusable components', () => {
     ];
     const firstColumn = () => screen.getAllByRole('row').slice(1).map(row => row.querySelector('td').textContent);
 
-    render(<SearchTable columns={columns} rows={rows} />);
+    render(<DataTable columns={columns} rows={rows} />);
     fireEvent.click(screen.getByRole('button', { name: 'Name sortieren' }));
     expect(firstColumn()).toEqual(['Ada', 'Zora']);
     expect(screen.getByRole('columnheader', { name: /Name/ })).toHaveAttribute('aria-sort', 'ascending');
