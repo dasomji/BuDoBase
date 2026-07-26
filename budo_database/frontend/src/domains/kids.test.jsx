@@ -56,8 +56,8 @@ describe('Kinder pages', () => {
     expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
     expect(document.cookie).toContain('interaction-bar=geld-form');
     expect(screen.getByPlaceholderText('Taschengeld...')).toHaveAttribute('min', '0');
-    expect(screen.getByRole('button', { name: 'Abbuchen' })).toHaveClass('money-withdraw');
-    expect(screen.getByRole('button', { name: 'Aufladen' })).toHaveClass('money-topup');
+    expect(screen.getByRole('button', { name: 'Abbuchen' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Aufladen' })).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Senden' })).not.toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('Taschengeld...'), { target: { value: '5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Abbuchen' }));

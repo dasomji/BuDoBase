@@ -404,18 +404,6 @@
   padding: 0 var(--s-padding);
 }
 
-#interaction-bar form .money-withdraw,
-#interaction-bar form .money-withdraw:hover {
-  background-color: var(--success);
-  color: var(--success-foreground);
-}
-
-#interaction-bar form .money-topup,
-#interaction-bar form .money-topup:hover {
-  background-color: var(--destructive);
-  color: var(--destructive-foreground);
-}
-
 @media (max-width: 600px) {
   #interaction-bar form:has(.interaction-send-button) {
     display: grid;
@@ -1145,7 +1133,7 @@
     grid-column: 4;
   }
 
-  .mobile-icon-action.button {
+  .mobile-icon-action[data-slot="button"] {
     display: inline-grid;
     width: 32px;
     height: 32px;

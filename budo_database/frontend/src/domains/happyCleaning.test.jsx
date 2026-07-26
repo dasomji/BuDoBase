@@ -911,9 +911,8 @@ describe('Happy Cleaning management', () => {
     render(routeHeaderAction(parseRoute('/happy-cleaning/print/'), {}));
 
     const printButton = screen.getByRole('button', { name: 'Drucken' });
-    expect(printButton).toHaveClass('mobile-icon-action');
-    expect(printButton.querySelector('.desktop-action-label')).toHaveTextContent('Drucken');
-    expect(printButton.querySelector('.lucide-printer')).toBeInTheDocument();
+    expect(printButton).toHaveTextContent('Drucken');
+    expect(printButton.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     expect(printButton).not.toHaveTextContent('Nummernliste');
 
     fireEvent.click(printButton);

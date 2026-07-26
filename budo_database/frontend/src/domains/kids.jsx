@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card, Column, Columns, FieldList, findById, RestForm, SearchTable } from '../components';
+import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { FirstAidGallery } from './first-aid-gallery';
@@ -88,7 +89,7 @@ export function KidInteractionForm({ kid, token, onSaved }) {
             </p>
           </div>
           {field === 'amount'
-            ? <><button className="money-action money-withdraw" type="submit" name="money_action" value="withdraw">Abbuchen</button><button className="money-action money-topup" type="submit" name="money_action" value="topup">Aufladen</button></>
+            ? <><Button className="money-action" variant="success" type="submit" name="money_action" value="withdraw">Abbuchen</Button><Button className="money-action" variant="destructive" type="submit" name="money_action" value="topup">Aufladen</Button></>
             : <button className="interaction-send-button" type="submit" name={field === 'first_aid' ? 'interaction_kind' : undefined} value={field === 'first_aid' ? 'first_aid' : undefined} aria-label={field === 'first_aid' ? 'EH-Eintrag senden' : undefined}><img src="/static/img/send-button.svg" alt={field === 'first_aid' ? '' : 'Senden'} /></button>}
         </RestForm>
       </div>

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Printer } from 'lucide-react';
 
 import { Card } from '../components';
+import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
 import {
   HappyCleaningAssignmentPage,
@@ -635,15 +636,15 @@ export function HappyCleaningOverviewPage({
                         Station hinzufügen
                       </button>
                     )}
-                    <button
-                      className="button"
+                    <Button
+                      variant="secondary"
                       type="button"
                       disabled={busy || printingEventId !== null || !event.stations.length}
                       aria-label={`To-Dos für Happy Cleaning ${event.display_number} drucken`}
                       onClick={() => printTodos(event)}
                     >
                       To-Dos drucken
-                    </button>
+                    </Button>
                     <button
                       className="button"
                       type="button"
@@ -733,15 +734,15 @@ function PrintSection({ id, title, columns, rows, children }) {
 
 function HappyCleaningPrintAction() {
   return (
-    <button
+    <Button
       aria-label="Drucken"
-      className="button mobile-icon-action"
+      className="mobile-icon-action"
       type="button"
       onClick={() => window.print()}
     >
       <span className="desktop-action-label">Drucken</span>
       <Printer className="mobile-action-label" size={20} aria-hidden="true" />
-    </button>
+    </Button>
   );
 }
 

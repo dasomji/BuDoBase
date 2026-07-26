@@ -1,4 +1,5 @@
 import { Card, Column, Columns, FieldList } from '../components';
+import { Button } from '../components/ui/button';
 import { linkKid } from './shared';
 
 const mealTypes = [
@@ -205,9 +206,9 @@ export const kitchenRoutes = [{
   domain: 'kitchen',
   readContractKey: 'kitchen',
   headerAction: () => (
-    <button className="button kitchen-print-button" type="button" onClick={() => window.print()}>
+    <Button className="kitchen-print-button" type="button" onClick={() => window.print()}>
       Drucken
-    </button>
+    </Button>
   ),
   render: ({ data }) => <KitchenPage data={data} />,
 }];

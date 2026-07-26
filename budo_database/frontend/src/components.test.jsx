@@ -1,8 +1,10 @@
 import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { Printer } from 'lucide-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Card, GlobalSearch, Messages, RestForm, SearchTable } from './components';
+import { Button } from './components/ui/button';
 import { Toaster } from './components/ui/toast';
 
 describe('reusable components', () => {
@@ -18,6 +20,59 @@ describe('reusable components', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     }));
+  });
+
+  it('renders the link variant as a named link', () => {
+    render(<Button variant="link" href="/profil/">Profil öffnen</Button>);
+
+    expect(screen.getByRole('link', { name: 'Profil öffnen' })).toHaveAttribute('href', '/profil/');
+  });
+
+  it('prevents disabled links from activating', () => {
+    const onClick = vi.fn();
+    render(<Button variant="link" href="/profil/" disabled onClick={onClick}>Profil öffnen</Button>);
+
+    const link = screen.getByRole('link', { name: 'Profil öffnen' });
+    expect(link).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(link);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('renders each action variant as a named button', () => {
+    render(
+      <>
+        <Button>Primäraktion</Button>
+        <Button variant="secondary">Sekundäraktion</Button>
+        <Button variant="success">Erfolgsaktion</Button>
+        <Button variant="destructive">Löschaktion</Button>
+        <Button variant="ghost">Leise Aktion</Button>
+      </>,
+    );
+
+    for (const name of ['Primäraktion', 'Sekundäraktion', 'Erfolgsaktion', 'Löschaktion', 'Leise Aktion']) {
+      expect(screen.getByRole('button', { name })).toBeEnabled();
+    }
+  });
+
+  it('keeps disabled actions named and inactive', () => {
+    const onClick = vi.fn();
+    render(<Button disabled onClick={onClick}>Speichern</Button>);
+
+    const button = screen.getByRole('button', { name: 'Speichern' });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('exposes an icon action by its aria-label while hiding its icon', () => {
+    render(
+      <Button size="icon" aria-label="Drucken">
+        <Printer />
+      </Button>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Drucken' });
+    expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('publishes Django messages as typed toasts only once', async () => {
