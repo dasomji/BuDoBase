@@ -11,3 +11,7 @@ The canonical labels are `needs-triage`, `needs-info`, `ready-for-agent`, `ready
 ### Domain docs
 
 This is a single-context repository using root `CONTEXT.md` and `docs/adr/`. See `docs/agents/domain.md`.
+
+### Frontend design system
+
+Frontend and UI work follows `docs/design-system.md` and the accepted ADR under `docs/adr/2026-07-26-frontend-design-system.md`.
