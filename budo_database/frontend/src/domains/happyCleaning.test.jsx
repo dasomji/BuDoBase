@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { routeDataRequest } from '../dataLoader';
@@ -84,6 +85,7 @@ describe('Happy Cleaning management', () => {
   });
 
   it('groups years, lazy loads history, persists user state, and globally sorts every station table', async () => {
+    const user = userEvent.setup();
     const mutate = vi.fn().mockResolvedValue({ ok: true });
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
@@ -132,9 +134,11 @@ describe('Happy Cleaning management', () => {
       'Stationsname↑', 'Max Kinder', 'Treffpunkt', 'Anzahl Todos',
     ]);
     expect(within(activeTable).getAllByRole('row')[1]).toHaveTextContent('Bad');
-    fireEvent.click(within(activeTable).getByRole('button', { name: 'Max Kinder sortieren' }));
+    const capacitySort = within(activeTable).getByRole('button', { name: 'Max Kinder sortieren' });
+    capacitySort.focus();
+    await user.keyboard('{Enter}');
     expect(within(activeTable).getAllByRole('row')[1]).toHaveTextContent('Küche');
-    fireEvent.click(within(activeTable).getByRole('button', { name: 'Max Kinder sortieren' }));
+    await user.keyboard('{Enter}');
     expect(within(activeTable).getAllByRole('row')[1]).toHaveTextContent('Bad');
     expect(within(activeTable).getAllByRole('row')[2]).toHaveTextContent('Balkon');
     expect(JSON.parse(localStorage.getItem('happy-cleaning-overview:42')).sort).toEqual({
@@ -170,6 +174,7 @@ describe('Happy Cleaning management', () => {
   });
 
   it('opens and switches station detail locally, restores focus, and keeps the URL', async () => {
+    const user = userEvent.setup();
     const originalPath = window.location.pathname;
     const fetchImpl = vi.fn().mockImplementation(async url => ({
       ok: true,
@@ -210,16 +215,19 @@ describe('Happy Cleaning management', () => {
     }} mutate={vi.fn()} fetchImpl={fetchImpl} />);
 
     const kitchen = screen.getByRole('button', { name: 'Station Küche öffnen' });
-    fireEvent.click(kitchen);
+    kitchen.focus();
+    await user.keyboard('{Enter}');
     expect(await screen.findByRole('heading', { name: 'Küche' })).toBeInTheDocument();
     expect(document.querySelector('.happy-cleaning-overview-split')).toBeInTheDocument();
     expect(window.location.pathname).toBe(originalPath);
 
-    fireEvent.click(screen.getByRole('row', { name: 'Station Bad' }));
+    screen.getByRole('row', { name: 'Station Bad' }).focus();
+    await user.keyboard('{Enter}');
     expect(await screen.findByRole('heading', { name: 'Bad' })).toBeInTheDocument();
     expect(window.location.pathname).toBe(originalPath);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zur Liste' }));
+    screen.getByRole('button', { name: 'Zur Liste' }).focus();
+    await user.keyboard('{Enter}');
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Bad' })).not.toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Station Bad öffnen' })).toHaveFocus();
   });
@@ -277,11 +285,12 @@ describe('Happy Cleaning management', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Prüfen und kopieren' }));
 
     await waitFor(() => expect(mutate).toHaveBeenCalled());
-    expect(screen.getByRole('heading', { name: 'Küche' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Küche', hidden: true })).toBeInTheDocument();
     const targetCard = screen.getByRole('heading', {
       name: '3. Turnus 2026 · Happy Cleaning 2',
+      hidden: true,
     }).closest('article');
-    expect(within(targetCard).getByRole('button', { name: 'Station Küche öffnen' })).toBeInTheDocument();
+    expect(within(targetCard).getByRole('button', { name: 'Station Küche öffnen', hidden: true })).toBeInTheDocument();
   });
 
   it('creates an active-Turnus station from a local draft and patches the sorted card', async () => {
@@ -444,6 +453,43 @@ describe('Happy Cleaning management', () => {
     await waitFor(() => expect(dialog.getByRole('status')).toHaveTextContent('2 Stationen wurden kopiert'));
   });
 
+  it('traps keyboard focus in the copy dialog, supports Escape, and restores its trigger', async () => {
+    const user = userEvent.setup();
+    render(<HappyCleaningOverviewPage data={{
+      user_id: 42,
+      active_year: 2026,
+      copy_targets: [
+        { id: 7, display_number: 1, revision: 2, label: 'Happy Cleaning 1' },
+        { id: 9, display_number: 2, revision: 4, label: 'Happy Cleaning 2' },
+      ],
+      years: [{
+        year: 2026, loaded: true, is_active: true,
+        turnuses: [{ id: 1, number: 3, start: '2026-07-01', is_active: true, events: [{
+          id: 7, display_number: 1, revision: 2, can_delete: false,
+          stations: [{ id: 70, name: 'Küche', max_kids: 2, meeting_point: 'Gang', task_item_count: 4 }],
+        }] }],
+      }],
+    }} mutate={vi.fn()} />);
+
+    const trigger = screen.getByRole('button', { name: 'Stationen aus Happy Cleaning 1 kopieren' });
+    await user.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: 'Stationen kopieren' });
+    const first = within(dialog).getByRole('checkbox', { name: 'Alle Stationen auswählen' });
+    const last = within(dialog).getByRole('button', { name: 'Schließen' });
+    expect(first).toHaveFocus();
+
+    last.focus();
+    await user.keyboard('{Tab}');
+    expect(document.activeElement).toHaveAttribute('data-base-ui-focus-guard');
+    expect(trigger).not.toHaveFocus();
+    await user.keyboard('{Shift>}{Tab}{/Shift}');
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Stationen kopieren' })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
   it('keeps copy conflicts and errors in the overview dialog', async () => {
     const conflict = {
       ok: true, result: 'conflicts', target_revision: 4,
@@ -474,6 +520,7 @@ describe('Happy Cleaning management', () => {
   });
 
   it('requires an accessible explicit conflict decision and one eligible candidate', async () => {
+    const user = userEvent.setup();
     const mutate = vi.fn().mockResolvedValue({
       ok: true, result: 'conflicts', target_revision: 4,
       source_event_id: 5, station_ids: [50], conflict_free_station_ids: [],
@@ -501,19 +548,33 @@ describe('Happy Cleaning management', () => {
       }] }],
     };
     render(<HappyCleaningOverviewPage data={data} mutate={mutate} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Stationen aus Happy Cleaning 1 kopieren' }));
+    const copyTrigger = screen.getByRole('button', { name: 'Stationen aus Happy Cleaning 1 kopieren' });
+    copyTrigger.focus();
+    await user.keyboard('{Enter}');
     const dialog = within(screen.getByRole('dialog', { name: 'Stationen kopieren' }));
-    fireEvent.click(dialog.getByLabelText('Station Bad auswählen'));
-    fireEvent.change(dialog.getByLabelText('Ziel-Happy-Cleaning'), { target: { value: '9' } });
-    fireEvent.click(dialog.getByRole('button', { name: 'Prüfen und kopieren' }));
+    dialog.getByLabelText('Station Bad auswählen').focus();
+    await user.keyboard(' ');
+    await user.selectOptions(dialog.getByLabelText('Ziel-Happy-Cleaning'), '9');
+    dialog.getByRole('button', { name: 'Prüfen und kopieren' }).focus();
+    await user.keyboard('{Enter}');
     expect(await dialog.findByText('1 Konfliktgruppe(n) ungelöst.')).toBeInTheDocument();
     expect(dialog.getByRole('radio', { name: 'Bestehende Station überschreiben' })).not.toBeChecked();
     expect(dialog.getByRole('button', { name: 'Auswahl verbindlich kopieren' })).toBeDisabled();
-    fireEvent.change(dialog.getByLabelText('Bestehende Station für Bad'), { target: { value: '90' } });
+    await user.selectOptions(dialog.getByLabelText('Bestehende Station für Bad'), '90');
     expect(dialog.getByRole('radio', { name: /Bestehende Station überschreiben/ })).toBeDisabled();
     expect(dialog.getByText('Bereits zugeordnet.')).toBeInTheDocument();
-    fireEvent.change(dialog.getByLabelText('Bestehende Station für Bad'), { target: { value: '91' } });
-    fireEvent.click(dialog.getByRole('radio', { name: 'Inhalte anhängen' }));
+    await user.selectOptions(dialog.getByLabelText('Bestehende Station für Bad'), '91');
+    for (const name of [
+      'Bestehende Station überschreiben',
+      'Inhalte anhängen',
+      'Als eigene Station kopieren',
+      'Überspringen',
+    ]) {
+      const action = dialog.getByRole('radio', { name });
+      action.focus();
+      await user.keyboard(' ');
+      expect(action).toBeChecked();
+    }
     expect(dialog.getByRole('button', { name: 'Auswahl verbindlich kopieren' })).toBeEnabled();
   });
 

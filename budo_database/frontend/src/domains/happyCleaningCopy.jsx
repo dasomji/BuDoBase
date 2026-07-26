@@ -1,3 +1,4 @@
+import { Dialog } from '@base-ui/react/dialog';
 import { useState } from 'react';
 
 const requestId = () => globalThis.crypto?.randomUUID?.()
@@ -120,8 +121,12 @@ function StationCopyDialog({
     }
   };
   return (
-    <section className="card happy-cleaning-copy" role="dialog" aria-modal="true" aria-label={workflow.title}>
-      <h2>{workflow.title}</h2>
+    <Dialog.Root open onOpenChange={open => { if (!open) close(); }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="happy-cleaning-dialog-backdrop" />
+        <Dialog.Viewport className="happy-cleaning-dialog-viewport">
+          <Dialog.Popup className="card happy-cleaning-copy" aria-label={workflow.title}>
+      <Dialog.Title>{workflow.title}</Dialog.Title>
       <p>Quelle: {workflow.sourceLabel(source)}</p>
       {workflow.showSelection && <>
         <label>
@@ -183,9 +188,12 @@ function StationCopyDialog({
           {state.kind === 'conflicts' ? 'Auswahl verbindlich kopieren' : state.kind === 'error' ? 'Erneut prüfen' : 'Prüfen und kopieren'}
         </button>
         {state.kind === 'conflicts' && <button className="button" type="button" onClick={() => { setDecisions({}); submit(true); }}>Erneut prüfen</button>}
-        <button className="button" type="button" disabled={state.kind === 'busy'} onClick={close}>Schließen</button>
+        <Dialog.Close className="button" disabled={state.kind === 'busy'}>Schließen</Dialog.Close>
       </div>
-    </section>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import json
 from time import perf_counter
 
 from django.db import DEFAULT_DB_ALIAS, connections
@@ -19,13 +20,16 @@ class HttpMeasurement:
     sql_time_ms: float
 
 
-def measure_http_get(client, url, *, database=DEFAULT_DB_ALIAS, **request):
-    """Measure one Django HTTP GET without imposing a wall-clock assertion."""
+def _measure_http_request(
+    request_callable,
+    *,
+    database=DEFAULT_DB_ALIAS,
+):
     connection = connections[database]
     sql_timer = _SqlTimer()
     with connection.execute_wrapper(sql_timer):
         with CaptureQueriesContext(connection) as queries:
-            response = client.get(url, **request)
+            response = request_callable()
             if hasattr(response, "render") and not response.is_rendered:
                 response.render()
 
@@ -35,6 +39,35 @@ def measure_http_get(client, url, *, database=DEFAULT_DB_ALIAS, **request):
         response_bytes=len(response.content),
         query_count=len(queries),
         sql_time_ms=round(sql_timer.total_seconds * 1000, 3),
+    )
+
+
+def measure_http_get(client, url, *, database=DEFAULT_DB_ALIAS, **request):
+    """Measure one Django HTTP GET without imposing a wall-clock assertion."""
+    return _measure_http_request(
+        lambda: client.get(url, **request),
+        database=database,
+    )
+
+
+def measure_http_post(
+    client,
+    url,
+    data,
+    *,
+    database=DEFAULT_DB_ALIAS,
+    content_type="application/json",
+    **request,
+):
+    """Measure one Django HTTP POST without imposing a wall-clock assertion."""
+    return _measure_http_request(
+        lambda: client.post(
+            url,
+            json.dumps(data) if content_type == "application/json" else data,
+            content_type=content_type,
+            **request,
+        ),
+        database=database,
     )
 
 

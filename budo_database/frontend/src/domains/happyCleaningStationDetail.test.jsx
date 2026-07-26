@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { routeDataRequest } from '../dataLoader';
@@ -45,7 +46,7 @@ describe('Happy Cleaning station detail', () => {
   it('shows operational fields, full child names and the ordered checklist only', () => {
     render(<HappyCleaningStationDetailPage data={detailData} mutate={vi.fn()} />);
 
-    expect(screen.getByRole('heading', { name: 'Speisesaal' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Speisesaal', hidden: true })).toBeInTheDocument();
     expect(screen.getByText('Vor dem Saal')).toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument();
     expect(screen.getByText('Fenster nicht vergessen')).toBeInTheDocument();
@@ -144,6 +145,7 @@ describe('Happy Cleaning station detail', () => {
   });
 
   it('reuses the fixed-source copy wizard without mutating or closing detail state', async () => {
+    const user = userEvent.setup();
     let finish;
     const mutate = vi.fn(() => new Promise(resolve => { finish = resolve; }));
     const onBack = vi.fn();
@@ -157,15 +159,15 @@ describe('Happy Cleaning station detail', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Station kopieren' }));
+    screen.getByRole('button', { name: 'Station kopieren' }).focus();
+    await user.keyboard('{Enter}');
     const dialog = screen.getByRole('dialog', { name: 'Station kopieren' });
     expect(dialog).toHaveTextContent('Quelle: Speisesaal');
     expect(screen.queryByLabelText('Alle Stationen auswählen')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Station .* auswählen/)).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Ziel-Happy-Cleaning'), {
-      target: { value: '8' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Prüfen und kopieren' }));
+    await user.selectOptions(screen.getByLabelText('Ziel-Happy-Cleaning'), '8');
+    screen.getByRole('button', { name: 'Prüfen und kopieren' }).focus();
+    await user.keyboard('{Enter}');
 
     expect(screen.getByRole('status')).toHaveTextContent('Stationen werden geprüft');
     expect(mutate).toHaveBeenCalledWith(
@@ -184,12 +186,13 @@ describe('Happy Cleaning station detail', () => {
     expect(onCopySuccess).toHaveBeenCalledWith(8, expect.objectContaining({
       affected_stations: [{ id: 90, name: 'Speisesaal' }],
     }));
-    expect(screen.getByRole('heading', { name: 'Speisesaal' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Speisesaal', hidden: true })).toBeInTheDocument();
     expect(onBack).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    screen.getByRole('button', { name: 'Schließen' }).focus();
+    await user.keyboard('{Enter}');
     expect(screen.queryByRole('dialog', { name: 'Station kopieren' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Speisesaal' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Speisesaal', hidden: true })).toBeInTheDocument();
     expect(onBack).not.toHaveBeenCalled();
   });
 
@@ -234,7 +237,7 @@ describe('Happy Cleaning station detail', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Erneut prüfen' }));
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('inzwischen geändert'));
-    expect(screen.getByRole('heading', { name: 'Speisesaal' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Speisesaal', hidden: true })).toBeInTheDocument();
   });
 
   it('edits an active station through the restricted document command', async () => {
@@ -317,6 +320,7 @@ describe('Happy Cleaning station detail', () => {
   });
 
   it('guards dirty Escape and retains the draft when a structural save is stale', async () => {
+    const user = userEvent.setup();
     const onBack = vi.fn();
     const mutate = vi.fn().mockRejectedValue(Object.assign(new Error('failed'), {
       payload: { code: 'stale', current_version: 4 },
@@ -330,16 +334,24 @@ describe('Happy Cleaning station detail', () => {
       },
     }} mutate={mutate} onBack={onBack} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
-    fireEvent.change(screen.getByLabelText('Name der Station'), { target: { value: 'Entwurf' } });
-    fireEvent.keyDown(document, { key: 'Escape' });
+    screen.getByRole('button', { name: 'Bearbeiten' }).focus();
+    await user.keyboard('{Enter}');
+    const name = screen.getByLabelText('Name der Station');
+    name.focus();
+    await user.clear(name);
+    await user.keyboard('Entwurf');
+    await user.keyboard('{Escape}');
     expect(screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter bearbeiten' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Detail schließen' }));
+    screen.getByRole('button', { name: 'Weiter bearbeiten' }).focus();
+    await user.keyboard('{Enter}');
+    screen.getByRole('button', { name: 'Detail schließen' }).focus();
+    await user.keyboard('{Enter}');
     expect(screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter bearbeiten' }));
-    fireEvent.keyDown(document, { key: 'Escape' });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern und weiter' }));
+    screen.getByRole('button', { name: 'Weiter bearbeiten' }).focus();
+    await user.keyboard('{Enter}');
+    await user.keyboard('{Escape}');
+    screen.getByRole('button', { name: 'Speichern und weiter' }).focus();
+    await user.keyboard('{Enter}');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('inzwischen geändert');
     expect(screen.getByLabelText('Name der Station')).toHaveValue('Entwurf');
