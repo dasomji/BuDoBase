@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -59,6 +62,20 @@ describe('Happy Cleaning management', () => {
     cleanup();
     localStorage.clear();
     vi.restoreAllMocks();
+  });
+
+  it('keeps fullscreen station detail below the measured mobile header', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
+    const mobileRule = css.match(
+      /@media \(max-width: 900px\) \{[\s\S]*?\.happy-cleaning-overview-detail \{([^}]*)\}/,
+    )?.[1];
+
+    expect(mobileRule).toBeDefined();
+    expect(mobileRule).toContain('top: var(--app-header-height, 0px);');
+    expect(mobileRule).toContain('right: 0;');
+    expect(mobileRule).toContain('bottom: 0;');
+    expect(mobileRule).toContain('left: 0;');
+    expect(mobileRule).not.toContain('inset: 0;');
   });
 
   it('owns refreshable event management and one Turnus-wide number-list route', () => {
