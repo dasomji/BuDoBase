@@ -87,7 +87,7 @@ describe('route inventory', () => {
   it.each([
     ['/swp-dashboard', 'link', 'SWP hinzufügen', 'href', '/schwerpunkt/create'],
     ['/auslagerorte-list', 'link', 'Ort hinzufügen', 'href', '/auslagerorte/create'],
-    ['/kindergeburtstage', 'button', '🔄 Geburtstage aktualisieren', 'formAction', '/update-birthdays-from-sv/'],
+    ['/kindergeburtstage', 'button', 'Geburtstage aktualisieren', 'formAction', '/update-birthdays-from-sv/'],
   ])('keeps the header action for %s', (path, role, label, attribute, target) => {
     render(routeHeaderAction(parseRoute(path), { csrf_token: 'token' }));
     const action = screen.getByRole(role, { name: label });
@@ -102,7 +102,26 @@ describe('route inventory', () => {
 
     const action = screen.getByRole('link', { name: label });
     expect(action).toHaveClass('mobile-icon-action');
-    expect(action.querySelector('.mobile-action-label')).toHaveTextContent('+');
+    expect(action.querySelector('.mobile-action-label')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it.each([
+    ['/swp-dashboard', 'link', 'SWP hinzufügen'],
+    ['/auslagerorte-list', 'link', 'Ort hinzufügen'],
+    ['/kindergeburtstage', 'button', 'Geburtstage aktualisieren'],
+    ['/kitchen', 'button', 'Drucken'],
+    ['/swp-einteilung-w1', 'button', 'Kinder ausblenden'],
+    ['/happy-cleaning', 'button', 'Happy Cleaning hinzufügen'],
+    ['/happy-cleaning/print', 'button', 'Drucken'],
+  ])('renders the header action on %s as a labeled icon affordance', (path, role, name) => {
+    render(routeHeaderAction(
+      parseRoute(path),
+      { csrf_token: 'token' },
+      { mutate: () => Promise.resolve(), pageState: {} },
+    ));
+
+    const action = screen.getByRole(role, { name });
+    expect(action.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('keeps standalone and not-found layout behavior declared in routing', () => {

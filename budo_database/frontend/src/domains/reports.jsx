@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
+import { RefreshCwIcon } from 'lucide-react';
+
 import { Card, Column, Columns, DataTable, RestForm } from '../components';
+import { Button } from '../components/ui/button';
 import { displayOrPlaceholder, formatGermanDate, linkKid, yesNo } from './shared';
 
 export function SerialLetterPage({ data }) {
@@ -97,7 +100,18 @@ export const reportRoutes = [
     title: 'Kindergeburtstage',
     domain: 'reports',
     readContractKey: 'birthdays',
-    headerAction: data => <RestForm target="/update-birthdays-from-sv/" token={data.csrf_token}><button className="button" type="submit">🔄 Geburtstage aktualisieren</button></RestForm>,
+    headerAction: data => (
+      <RestForm target="/update-birthdays-from-sv/" token={data.csrf_token}>
+        <Button
+          aria-label="Geburtstage aktualisieren"
+          className="mobile-icon-action"
+          type="submit"
+        >
+          <span className="desktop-action-label">Geburtstage aktualisieren</span>
+          <RefreshCwIcon className="mobile-action-label" aria-hidden="true" />
+        </Button>
+      </RestForm>
+    ),
     render: ({ data }) => <BirthdaysPage data={data} />,
   },
 ];

@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { PlusIcon } from 'lucide-react';
 
 import { Card, Column, Columns, DataTable, findById, MapCard, NativeForm, RestForm } from '../components';
+import { Button } from '../components/ui/button';
 import { displayOrPlaceholder, formatGermanDate, linkKid, MealTable, NotFoundPage, yesNo } from './shared';
 
 const focusKidColumns = [
@@ -191,10 +193,10 @@ export const focusRoutes = [
     domain: 'focuses',
     readContractKey: 'focus-dashboard',
     headerAction: () => (
-      <a className="button mobile-icon-action" href="/schwerpunkt/create" aria-label="SWP hinzufügen">
+      <Button className="mobile-icon-action" href="/schwerpunkt/create" aria-label="SWP hinzufügen">
         <span className="desktop-action-label">SWP hinzufügen</span>
-        <span className="mobile-action-label" aria-hidden="true">+</span>
-      </a>
+        <PlusIcon className="mobile-action-label" aria-hidden="true" />
+      </Button>
     ),
     render: ({ data }) => <FocusDashboardPage data={data} />,
   },

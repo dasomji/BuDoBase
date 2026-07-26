@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { PlusIcon } from 'lucide-react';
 
 import { Card, Column, Columns, DataTable, FieldList, findById, MapCard, NativeForm, RestForm } from '../components';
+import { Button } from '../components/ui/button';
 import { formatGermanDate, NotFoundPage } from './shared';
 
 export function PlacesPage({ data }) {
@@ -70,10 +72,10 @@ export const placeRoutes = [
     domain: 'places',
     readContractKey: 'places-list',
     headerAction: () => (
-      <a className="button mobile-icon-action" href="/auslagerorte/create" aria-label="Ort hinzufügen">
+      <Button className="mobile-icon-action" href="/auslagerorte/create" aria-label="Ort hinzufügen">
         <span className="desktop-action-label">Ort hinzufügen</span>
-        <span className="mobile-action-label" aria-hidden="true">+</span>
-      </a>
+        <PlusIcon className="mobile-action-label" aria-hidden="true" />
+      </Button>
     ),
     render: ({ data }) => <PlacesPage data={data} />,
   },

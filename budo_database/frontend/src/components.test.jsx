@@ -1,12 +1,14 @@
 import { StrictMode } from 'react';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Printer } from 'lucide-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AppSidebar, ApplicationShell } from './app-sidebar';
 import {
   Card,
   DataTable,
   GlobalSearch,
+  Header,
   Messages,
   RestForm,
   Table,
@@ -86,6 +88,106 @@ describe('reusable components', () => {
 
     const button = screen.getByRole('button', { name: 'Drucken' });
     expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('orders mobile header controls as title, action, search, and burger', async () => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
+    render(
+      <ApplicationShell
+        sidebar={<AppSidebar />}
+        header={(
+          <Header
+            title="Küche"
+            authenticated
+            searchData={{ search_index: { kids: [], focuses: [], places: [] } }}
+            action={(
+              <Button size="icon" aria-label="Drucken">
+                <Printer aria-hidden="true" />
+              </Button>
+            )}
+          />
+        )}
+      >
+        <div>Inhalt</div>
+      </ApplicationShell>,
+    );
+
+    const title = screen.getByRole('heading', { name: 'Küche' });
+    const action = screen.getByRole('button', { name: 'Drucken' });
+    const search = await screen.findByRole('button', { name: 'Suche öffnen' });
+    const burger = await screen.findByRole('button', { name: 'Sidebar ein- oder ausklappen' });
+
+    await waitFor(() => {
+      expect(title.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(action.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(search.compareDocumentPosition(burger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    fireEvent.click(search);
+    expect(screen.getByRole('button', { name: 'Suche schließen' })).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Suche schließen' }));
+    expect(screen.getByRole('button', { name: 'Suche öffnen' })).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(burger);
+    expect(await screen.findByRole('dialog', { name: 'Sidebar' })).toBeInTheDocument();
+  });
+
+  it('orders desktop header controls as trigger, title, search, and action', async () => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1280);
+    render(
+      <ApplicationShell
+        sidebar={<AppSidebar />}
+        header={(
+          <Header
+            title="Küche"
+            authenticated
+            searchData={{ search_index: { kids: [], focuses: [], places: [] } }}
+            action={<Button aria-label="Drucken">Drucken</Button>}
+          />
+        )}
+      >
+        <div>Inhalt</div>
+      </ApplicationShell>,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Sidebar ein- oder ausklappen' });
+    const title = screen.getByRole('heading', { name: 'Küche' });
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+    const action = screen.getByRole('button', { name: 'Drucken' });
+
+    await waitFor(() => {
+      expect(trigger.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(title.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(search.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+    expect(screen.queryByRole('button', { name: 'Suche öffnen' })).not.toBeInTheDocument();
+  });
+
+  it('publishes and cleans up the measured header height contract', () => {
+    const bounds = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 800,
+      height: 64,
+      top: 0,
+      right: 800,
+      bottom: 64,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    const view = render(
+      <ApplicationShell
+        header={<Header title="Dashboard" authenticated={false} />}
+      >
+        <div>Inhalt</div>
+      </ApplicationShell>,
+    );
+
+    expect(document.documentElement.style.getPropertyValue('--app-header-height')).toBe('64px');
+
+    view.unmount();
+    expect(document.documentElement.style.getPropertyValue('--app-header-height')).toBe('');
+    bounds.mockRestore();
   });
 
   it('publishes Django messages as typed toasts only once', async () => {

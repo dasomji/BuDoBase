@@ -760,7 +760,7 @@ describe('Happy Cleaning management', () => {
     const createButton = screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' });
     expect(createButton).toHaveClass('mobile-icon-action');
     expect(createButton.querySelector('.desktop-action-label')).toHaveTextContent('Happy Cleaning hinzufügen');
-    expect(createButton.querySelector('.mobile-action-label')).toHaveTextContent('+');
+    expect(createButton.querySelector('.mobile-action-label')).toHaveAttribute('aria-hidden', 'true');
     fireEvent.click(createButton);
 
     await waitFor(() => expect(mutate).toHaveBeenCalledWith(

@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { SearchIcon } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
+import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
   Table,
@@ -123,6 +124,7 @@ export function GlobalSearch({ data, onNavigate = path => window.location.assign
 export function Header({ title, authenticated, searchData, action }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const headerRef = useRef(null);
+  const mobile = useIsMobile();
   useEffect(() => {
     const updateHeaderHeight = () => {
       const height = headerRef.current?.getBoundingClientRect().height || 0;
@@ -138,27 +140,43 @@ export function Header({ title, authenticated, searchData, action }) {
       document.documentElement.style.removeProperty('--app-header-height');
     };
   }, [searchOpen]);
+  const titleNode = <div id="headertitle" key="title"><h1>{title}</h1></div>;
+  const sidebarTrigger = (
+    <SidebarTrigger key="sidebar-trigger" id="menu-button" aria-label="Sidebar ein- oder ausklappen" />
+  );
+  const searchToggle = (
+    <Button
+      key="search-toggle"
+      id="search-button"
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label={searchOpen ? 'Suche schließen' : 'Suche öffnen'}
+      aria-controls="headersearch"
+      aria-expanded={searchOpen}
+      onClick={() => setSearchOpen(open => !open)}
+    >
+      <SearchIcon aria-hidden="true" />
+    </Button>
+  );
+  const search = <GlobalSearch key="search" data={searchData} />;
+  const actionNode = action ? <div id="headerbutton" key="action">{action}</div> : null;
+  const authenticatedContent = mobile
+    ? [titleNode, actionNode, searchToggle, sidebarTrigger, search]
+    : [sidebarTrigger, titleNode, search, actionNode];
+
   return (
     <header id="headermenu" ref={headerRef}>
-      <div id="header-content" className={searchOpen ? 'search-open' : ''}>
+      <div
+        id="header-content"
+        className={[
+          searchOpen ? 'search-open' : '',
+          action ? 'has-action' : '',
+        ].filter(Boolean).join(' ')}
+      >
         {authenticated
-          ? <SidebarTrigger id="menu-button" aria-label="Sidebar ein- oder ausklappen" />
-          : <div id="logo"><a href="/dashboard/"><Logo /></a></div>}
-        <div id="headertitle"><h1>{title}</h1></div>
-        {authenticated && (
-          <button
-            id="search-button"
-            type="button"
-            aria-label={searchOpen ? 'Suche schließen' : 'Suche öffnen'}
-            aria-controls="headersearch"
-            aria-expanded={searchOpen}
-            onClick={() => setSearchOpen(open => !open)}
-          >
-            <SearchIcon aria-hidden="true" />
-          </button>
-        )}
-        {authenticated && <GlobalSearch data={searchData} />}
-        {authenticated && action && <div id="headerbutton">{action}</div>}
+          ? authenticatedContent
+          : [<div id="logo" key="logo"><a href="/dashboard/"><Logo /></a></div>, titleNode]}
       </div>
     </header>
   );

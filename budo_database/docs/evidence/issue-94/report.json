@@ -1,0 +1,130 @@
+[
+  {
+    "slug": "dashboard",
+    "path": "/dashboard/",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/dashboard/",
+    "heading": "BuDo Dashboard"
+  },
+  {
+    "slug": "dashboard",
+    "path": "/dashboard/",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/dashboard/",
+    "heading": "BuDo Dashboard"
+  },
+  {
+    "slug": "kindergeburtstage",
+    "path": "/kindergeburtstage/",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/kindergeburtstage/",
+    "heading": "Kindergeburtstage"
+  },
+  {
+    "slug": "kindergeburtstage",
+    "path": "/kindergeburtstage/",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/kindergeburtstage/",
+    "heading": "Kindergeburtstage"
+  },
+  {
+    "slug": "swp-dashboard",
+    "path": "/swp-dashboard/",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/swp-dashboard/",
+    "heading": "Schwerpunkte"
+  },
+  {
+    "slug": "swp-dashboard",
+    "path": "/swp-dashboard/",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/swp-dashboard/",
+    "heading": "Schwerpunkte"
+  },
+  {
+    "slug": "swp-einteilung-w1",
+    "path": "/swp-einteilung-w1",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/swp-einteilung-w1",
+    "heading": "SWP-Einteilung Woche 1"
+  },
+  {
+    "slug": "swp-einteilung-w1",
+    "path": "/swp-einteilung-w1",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/swp-einteilung-w1",
+    "heading": "SWP-Einteilung Woche 1"
+  },
+  {
+    "slug": "happy-cleaning",
+    "path": "/happy-cleaning/",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/happy-cleaning/",
+    "heading": "Happy Cleaning"
+  },
+  {
+    "slug": "happy-cleaning",
+    "path": "/happy-cleaning/",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/happy-cleaning/",
+    "heading": "Happy Cleaning"
+  },
+  {
+    "slug": "hc-nummernliste",
+    "path": "/happy-cleaning/print/",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/happy-cleaning/print/",
+    "heading": "Nummernliste · Happy Cleaning"
+  },
+  {
+    "slug": "hc-nummernliste",
+    "path": "/happy-cleaning/print/",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/happy-cleaning/print/",
+    "heading": "Nummernliste · Happy Cleaning"
+  },
+  {
+    "slug": "kitchen",
+    "path": "/kitchen",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/kitchen",
+    "heading": "Küche"
+  },
+  {
+    "slug": "kitchen",
+    "path": "/kitchen",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/kitchen",
+    "heading": "Küche"
+  },
+  {
+    "slug": "auslagerorte",
+    "path": "/auslagerorte-list/",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/auslagerorte-list/",
+    "heading": "Auslagerorte"
+  },
+  {
+    "slug": "auslagerorte",
+    "path": "/auslagerorte-list/",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/auslagerorte-list/",
+    "heading": "Auslagerorte"
+  }
+]

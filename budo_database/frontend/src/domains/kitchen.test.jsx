@@ -171,6 +171,7 @@ describe('Küche page', () => {
       readContractKey: 'kitchen',
     });
     window.history.pushState({}, '', '/kitchen');
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(response({
         authenticated: true,
@@ -188,8 +189,11 @@ describe('Küche page', () => {
 
     expect(await screen.findByRole('heading', { name: 'Menüplan Woche 1' })).toBeInTheDocument();
     const printButton = screen.getByRole('button', { name: 'Drucken' });
-    const search = screen.getByRole('combobox', { name: 'Suche' });
-    expect(search.compareDocumentPosition(printButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const searchButton = await screen.findByRole('button', { name: 'Suche öffnen' });
+    const burger = await screen.findByRole('button', { name: 'Sidebar ein- oder ausklappen' });
+    expect(printButton.querySelector('.lucide-printer')).toHaveAttribute('aria-hidden', 'true');
+    expect(printButton.compareDocumentPosition(searchButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(searchButton.compareDocumentPosition(burger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(printButton);
     expect(print).toHaveBeenCalledOnce();
     expect(fetchImpl.mock.calls[1][0]).toBe('/api/route-data/kitchen/');
