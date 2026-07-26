@@ -6,11 +6,11 @@ import { Button } from '../components/ui/button';
 import { displayOrPlaceholder, formatGermanDate, linkKid, yesNo } from './shared';
 
 export function SerialLetterPage({ data }) {
-  return <main>{data.kids.map(kid => <div className="serienbrief-kid" key={kid.id}><div className="serienbrief_name">{kid.full_name}</div><div className="serienbrief-container"><div className="serienbrief">E-Card: {yesNo(kid.e_card)}</div><div className="serienbrief">Ausweis: {yesNo(kid.id_card)}</div></div><div className="serienbrief-container"><div className="serienbrief">Einverständnis für ärztliche Behandlung: {yesNo(kid.consent)}</div><div className="serienbrief">Rezeptfreie Medikamente: {displayOrPlaceholder(kid.over_the_counter_medication)}</div><div className="serienbrief">Medikamente auf Rezept: {displayOrPlaceholder(kid.prescription_medication)}</div></div><div className="serienbrief-container"><div className="serienbrief">Tetanusimpfung: {displayOrPlaceholder(kid.tetanus)}</div><div className="serienbrief">Zeckenimpfung: {displayOrPlaceholder(kid.tick_vaccine)}</div></div><div className="serienbrief-container"><div className="serienbrief">Krankheit: {displayOrPlaceholder(kid.illness)}</div><div className="serienbrief">Medikamente: {displayOrPlaceholder(kid.drugs)}</div><div className="serienbrief">Ernährung: {displayOrPlaceholder(kid.special_food)}</div></div></div>)}</main>;
+  return <main>{data.kids.map(kid => <article className="px-8 min-[901px]:px-24" key={kid.id}><h2 className="text-5xl print:[break-before:page]">{kid.full_name}</h2><div className="mb-4 border border-black p-8 text-xl"><p>E-Card: {yesNo(kid.e_card)}</p><p>Ausweis: {yesNo(kid.id_card)}</p></div><div className="mb-4 border border-black p-8 text-xl"><p>Einverständnis für ärztliche Behandlung: {yesNo(kid.consent)}</p><p>Rezeptfreie Medikamente: {displayOrPlaceholder(kid.over_the_counter_medication)}</p><p>Medikamente auf Rezept: {displayOrPlaceholder(kid.prescription_medication)}</p></div><div className="mb-4 border border-black p-8 text-xl"><p>Tetanusimpfung: {displayOrPlaceholder(kid.tetanus)}</p><p>Zeckenimpfung: {displayOrPlaceholder(kid.tick_vaccine)}</p></div><div className="mb-4 border border-black p-8 text-xl"><p>Krankheit: {displayOrPlaceholder(kid.illness)}</p><p>Medikamente: {displayOrPlaceholder(kid.drugs)}</p><p>Ernährung: {displayOrPlaceholder(kid.special_food)}</p></div></article>)}</main>;
 }
 
 export function MurderPage({ data }) {
-  return <main><h2 className="murder_name">Mörderspiel: Kids & Team</h2><div className="murder-container">{data.kids.map(kid => <div className="murder_name" key={`kid-${kid.id}`}>{kid.full_name}</div>)}{data.team.map(member => <div className="murder_name" key={`team-${member.id}`}>{member.role_display} {member.rufname}</div>)}</div></main>;
+  return <main><h2 className="w-auto px-8 pt-8">Mörderspiel: Kids & Team</h2><div className="flex flex-wrap gap-8 p-8">{data.kids.map(kid => <div className="w-50" key={`kid-${kid.id}`}>{kid.full_name}</div>)}{data.team.map(member => <div className="w-50" key={`team-${member.id}`}>{member.role_display} {member.rufname}</div>)}</div></main>;
 }
 
 export function FamiliesPage({ data, special = false }) {
@@ -20,11 +20,11 @@ export function FamiliesPage({ data, special = false }) {
     return result;
   }, {}), [data.kids, special]);
   return (
-    <Columns className="families-page">
+    <Columns className="grid grid-cols-1 items-start min-[901px]:grid-cols-2">
       {Object.entries(groups).map(([name, kids]) => (
-        <Column className="family-card-column" key={name}>
+        <Column className="min-w-0 w-full [&>.card]:w-full" key={name}>
           <Card title={`${name} (${kids.length})`}>
-            <ul className="family-kids">
+            <ul className="m-0 grid grid-cols-1 gap-x-4 gap-y-1 pl-4 min-[901px]:grid-cols-2 [&>li]:min-w-0 [&>li]:[overflow-wrap:anywhere]">
               {kids.map(kid => <li key={kid.id}>{linkKid(kid)} – {kid.age}</li>)}
             </ul>
           </Card>
@@ -41,13 +41,13 @@ export function BirthdaysPage({ data }) {
     { key: 'birthday', label: 'DB-Geburtstag', render: row => displayOrPlaceholder(row.birthday ? `${formatGermanDate(row.birthday)}${row.sv && row.sv !== row.birthday ? ' ❗' : ''}` : null) },
     { key: 'sv', label: 'SV-Geburtstag', render: row => displayOrPlaceholder(formatGermanDate(row.sv)) },
     { key: 'match', label: 'Check', sortValue: row => row.birthday && row.sv ? Number(row.birthday === row.sv) : -1, render: row => row.birthday && row.sv ? row.birthday === row.sv ? '✅' : '❌' : '---' },
-    { key: 'note', label: 'Notiz', sortable: false, render: row => <RestForm target="/kindergeburtstage/" token={data.csrf_token}><input type="hidden" name="kid_id" value={row.id} /><input name="notiz" placeholder="Notiz..." /><button className="button" type="submit">Speichern</button></RestForm> },
+    { key: 'note', label: 'Notiz', sortable: false, render: row => <RestForm target="/kindergeburtstage/" token={data.csrf_token}><input type="hidden" name="kid_id" value={row.id} /><input name="notiz" placeholder="Notiz..." /><Button type="submit">Speichern</Button></RestForm> },
   ];
   return <main className="table-only" id="body-container"><DataTable columns={columns} rows={rows} showFilter /></main>;
 }
 
 export function KidCountPage({ data }) {
-  return <main className="gesamtkinderzahl-body"><div className="gesamtkinderzahl-container"><h1 className="gesamtkinderzahl">{data.totals.checked_in}/{data.totals.kids}</h1></div></main>;
+  return <main className="m-0 flex h-screen items-center justify-center p-0"><div className="w-full box-border p-8"><h1 className="m-0 overflow-hidden p-0 text-center text-[20vw] text-ellipsis whitespace-nowrap">{data.totals.checked_in}/{data.totals.kids}</h1></div></main>;
 }
 
 export const reportRoutes = [

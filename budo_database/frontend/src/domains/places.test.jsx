@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
@@ -150,7 +150,7 @@ describe('Auslagerorte workflows', () => {
     expect(screen.getAllByRole('img', { name: /Ada Hütte/ })).toHaveLength(2);
     const photo = new File(['photo'], 'damage.jpg', { type: 'image/jpeg' });
     fireEvent.change(screen.getByLabelText('Kommentar-Bilder'), { target: { files: [photo] } });
-    expect(document.querySelector('.attachment-count')).toHaveTextContent('1');
+    expect(within(screen.getByLabelText('Kommentar-Bilder').previousElementSibling).getByText('1')).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('Kommentar...'), { target: { value: 'Mit Bild' } });
     fireEvent.click(screen.getByRole('button', { name: 'Kommentar senden' }));
 

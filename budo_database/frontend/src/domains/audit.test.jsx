@@ -63,6 +63,7 @@ describe('audit explorer', () => {
     expect(screen.getByLabelText('Ressourcentyp')).toBeInTheDocument();
     expect(screen.getByLabelText('Ressourcen-ID')).toBeInTheDocument();
     expect(screen.getByText(/Ada Teamer/)).toBeInTheDocument();
+    expect(screen.getByRole('table').closest('[data-slot="table-scroll"]')).not.toBeNull();
     expect(screen.getByRole('link', { name: 'Nächste Seite' })).toHaveAttribute(
       'href',
       expect.stringMatching(/turnus=2.*page=2/),

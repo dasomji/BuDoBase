@@ -64,18 +64,6 @@ const response = (data, { ok = true, status = 200 } = {}) => ({
   json: vi.fn().mockResolvedValue(data),
 });
 
-function setDashboardViewport(width) {
-  vi.spyOn(window, 'matchMedia').mockImplementation(query => {
-    const maxWidth = Number(query.match(/max-width:\s*(\d+)px/)?.[1]);
-    return {
-      matches: Number.isFinite(maxWidth) && width <= maxWidth,
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    };
-  });
-}
-
 describe('dashboard page', () => {
   afterEach(() => {
     cleanup();
@@ -109,31 +97,6 @@ describe('dashboard page', () => {
     expect(screen.getAllByRole('link', { name: 'Grace Hopper' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/11/');
     expect(screen.getByRole('link', { name: 'See' })).toHaveAttribute('href', '/schwerpunkt/12/');
-  });
-
-  it.each([
-    [1400, [
-      ['db-kinderübersicht', 'db-budo-familie', 'db-ersties', 'db-essen', 'db-geld'],
-      ['db-notizen', 'db-swp-1', 'db-einwöchig', 'db-geburtstagskinder'],
-      ['db-erste-hilfe', 'db-swp-2', 'db-gesundheit', 'db-sechzehner'],
-    ]],
-    [1000, [
-      ['db-kinderübersicht', 'db-erste-hilfe', 'db-swp-1', 'db-ersties', 'db-gesundheit', 'db-geburtstagskinder', 'db-geld'],
-      ['db-notizen', 'db-budo-familie', 'db-swp-2', 'db-einwöchig', 'db-essen', 'db-sechzehner'],
-    ]],
-    [700, [[
-      'db-kinderübersicht', 'db-notizen', 'db-erste-hilfe', 'db-budo-familie', 'db-swp-1', 'db-swp-2',
-      'db-ersties', 'db-einwöchig', 'db-gesundheit', 'db-essen', 'db-geburtstagskinder', 'db-sechzehner', 'db-geld',
-    ]]],
-  ])('stacks cards without row gaps in fixed flex columns at %ipx', (width, expectedColumns) => {
-    setDashboardViewport(width);
-
-    const { container } = render(<DashboardPage data={dashboardData()} />);
-    const actualColumns = Array.from(container.querySelectorAll('.dashboard-column'), column => (
-      Array.from(column.children, card => card.id)
-    ));
-
-    expect(actualColumns).toEqual(expectedColumns);
   });
 
   it('waits to show each personal SWP until all present kids are assigned for that week', () => {

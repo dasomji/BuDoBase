@@ -370,10 +370,6 @@ button.closebtn {
   flex-basis: 40%;
 }
 
-#right-column.normal-column {
-  flex-basis: 20%;
-}
-
 #right-column:has(#ort-detail-info) {
   max-width: 300px;
 }
@@ -414,12 +410,6 @@ button.closebtn {
 
 .transparent .table-container {
   background-color: transparent;
-}
-
-.meal-table {
-  border-radius: var(--corner-rad);
-  padding: var(--m-padding);
-  overflow: hidden;
 }
 
 .card li a {
@@ -752,9 +742,7 @@ button:hover,
 }
 
 .data-table td,
-.data-table th,
-.meal-table td,
-.meal-table th {
+.data-table th {
   padding: var(--s-padding);
   vertical-align: top;
 }
@@ -773,14 +761,12 @@ button:hover,
   background-color: var(--dark-blue);
 }
 
-.meal-table tr,
 .data-table tr {
   border-bottom: 1px solid #8f8f8f;
   background-color: var(--bg-blue);
   padding: var(--m-padding);
 }
 
-.meal-table tr:last-of-type,
 .data-table tr:last-of-type {
   border-bottom: none;
 }
@@ -901,83 +887,6 @@ table #alter {
   white-space: nowrap;
   text-decoration: none;
   color: var(--text-color);
-}
-
-/* ------------kitchen/Küche ------------*/
-.meal-container {
-  display: flex;
-  flex-flow: row wrap;
-  gap: var(--l-padding);
-}
-
-.meal-card {
-  width: 100%;
-}
-
-.schwerpunkt-container {
-  display: flex;
-  flex-flow: row wrap;
-  gap: var(--l-padding);
-  width: 100%;
-  padding-right: 44px;
-}
-
-.schwerpunkt-container .card {
-  width: 100%;
-  height: fit-content;
-}
-
-.table-column {
-  flex-basis: 60%;
-  flex-grow: 1;
-}
-
-/*---------Spezialdokumente------*/
-.serienbrief_name {
-  font-size: 3em;
-}
-
-.serienbrief {
-  font-size: 1.2em;
-}
-
-.serienbrief-container {
-  border: 1px solid black;
-  padding: var(--xl-padding);
-  margin-bottom: var(--l-padding);
-}
-
-.serienbrief-kid {
-  padding-left: 94px;
-  padding-right: 94px;
-}
-
-@media print {
-  .serienbrief_name {
-    page-break-before: always;
-  }
-}
-
-.murder-container {
-  display: flex;
-  flex-flow: row wrap;
-  gap: var(--xl-padding);
-  padding: var(--xl-padding);
-}
-
-.murder_name {
-  width: 200px;
-}
-
-h2.murder_name {
-  padding-left: var(--xl-padding);
-  padding-top: var(--xl-padding);
-  width: auto;
-}
-
-/* ------------Anreise/Abreise */
-.zug-switch {
-  cursor: pointer;
 }
 
 /* --------------Abreisenotiz-Popup */
@@ -1173,68 +1082,6 @@ h2.murder_name {
   }
 }
 
-/* -----auslagerorte ---- */
-.auslagerorte-detail {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--l-padding);
-}
-
-.auslagerorte-detail #left-column {
-  flex: 0 0 350px;
-  max-width: 350px;
-}
-
-.auslagerorte-detail #right-column {
-  flex: 1 1 350px;
-  /* min-width: 350px; */
-}
-
-.auslagerorte-detail #bottom-column {
-  flex: 0 0 100%;
-  width: 100%;
-}
-
-@media (max-width: 767px) {
-  .auslagerorte-detail #left-column,
-  .auslagerorte-detail #right-column {
-    flex: 0 0 100%;
-    max-width: 100%;
-  }
-}
-
-#image-gallery .gallery-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-padding);
-  /* margin: 0 -0.5rem; */
-}
-
-#image-gallery .card-info-container .gallery-item {
-  background-position: center center;
-  background-size: cover;
-  flex: auto;
-  height: 15vw;
-  max-height: 10rem;
-  min-width: 150px;
-  border-radius: var(--corner-rad);
-  overflow: hidden;
-  cursor: pointer;
-}
-
-#image-gallery .card-info-container .gallery-item img {
-  height: 100%;
-  width: 100%;
-  object-fit: cover;
-  opacity: 0;
-}
-
-@media (max-width: 767px) {
-  #image-gallery .card-info-container .gallery-item {
-    height: 30vw;
-  }
-}
-
 /* Fullscreen Modal */
 .fullscreen-modal {
   display: none;
@@ -1290,45 +1137,6 @@ h2.murder_name {
   right: 20px;
 }
 
-/* ------swp-wahl------- */
-.swp-choice {
-  display: flex;
-  justify-content: space-around;
-  gap: var(--xs-padding);
-}
-
-.swp-choice-link {
-  cursor: pointer;
-  border: 1px solid black;
-  border-radius: 100px;
-  padding: var(--xs-padding) var(--s-padding);
-  background-color: #fefefe61;
-}
-
-.data-table .swp-choice-link:hover {
-  border: 1px solid black;
-  border-radius: 100px;
-  padding: var(--xs-padding) var(--s-padding);
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  transform: scale(1.05) translate(0px, -5px);
-  transition: transform 0.1s ease-in-out;
-}
-
-.data-table .swp-choice-link.one.active,
-.data-table .swp-choice-link.one:hover {
-  background-color: gold;
-}
-
-.data-table .swp-choice-link.two.active,
-.data-table .swp-choice-link.two:hover {
-  background-color: silver;
-}
-
-.data-table .swp-choice-link.three.active,
-.data-table .swp-choice-link.three:hover {
-  background-color: #cd7f32;
-}
-
 .schwerpunkt-overview {
   padding-top: var(--xl-padding);
 }
@@ -1352,32 +1160,6 @@ h2.murder_name {
   #db-spezial {
     display: none;
   }
-}
-
-/* -------Gesamtkinderzahl---------- */
-.gesamtkinderzahl-body {
-  margin: 0;
-  padding: 0;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.gesamtkinderzahl-container {
-  width: 100%;
-  padding: var(--xl-padding);
-  box-sizing: border-box;
-}
-
-.gesamtkinderzahl {
-  font-size: 20vw;
-  text-align: center;
-  margin: 0;
-  padding: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .alert {

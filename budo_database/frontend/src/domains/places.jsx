@@ -12,7 +12,7 @@ export function PlacesPage({ data }) {
     { key: 'maps_link', label: 'Wo', render: row => row.maps_link ? <a href={row.maps_link}>Google Maps</a> : '---' },
     { key: 'parking_link', label: 'Parkspot', render: row => row.parking_link ? <a href={row.parking_link}>Google Maps</a> : '---' },
   ];
-  return <Columns><Column id="left-column" className="normal-column"><DataTable columns={columns} rows={rows} /></Column><Column id="right-column"><MapCard places={data.places} /></Column></Columns>;
+  return <Columns><Column id="left-column"><DataTable columns={columns} rows={rows} /></Column><Column id="right-column"><MapCard places={data.places} /></Column></Columns>;
 }
 
 function PlaceCommentForm({ place, token, onSaved }) {
@@ -24,22 +24,20 @@ function PlaceCommentForm({ place, token, onSaved }) {
       }
     : undefined;
   return (
-    <div id="interaction-bar">
-      <div id="interaction-input">
-        <RestForm target={`/auslagerorte/${place.id}/`} token={token} encType="multipart/form-data" onSuccess={handleSaved} resetOnSuccess>
-          <div>
-            <p className="place-comment-input-field">
-              <textarea className="interaction-textarea" name="notiz" placeholder="Kommentar..." rows="2" aria-label="Kommentar" />
-              <label className="attachment-button" htmlFor="id_place_comment_images">
-                <span className="sr-only">Kommentar-Bilder</span><span aria-hidden="true">+</span>
-                {photoCount > 0 && <span className="attachment-count" aria-hidden="true">{photoCount}</span>}
-              </label>
-              <input id="id_place_comment_images" className="attachment-input" aria-label="Kommentar-Bilder" name="images" type="file" accept="image/*" multiple onChange={event => setPhotoCount(event.target.files?.length || 0)} />
-            </p>
-          </div>
-          <button className="interaction-send-button" type="submit" aria-label="Kommentar senden">➤</button>
-        </RestForm>
-      </div>
+    <div className="w-full p-2">
+      <RestForm className="mx-auto flex w-full max-w-5xl items-center gap-2" target={`/auslagerorte/${place.id}/`} token={token} encType="multipart/form-data" onSuccess={handleSaved} resetOnSuccess>
+        <div className="min-w-0 flex-1">
+          <p className="relative m-0">
+            <textarea className="max-h-[4lh] min-h-[2lh] w-full resize-none overflow-y-auto rounded-lg border-2 border-white bg-white py-1 pr-10 pl-1 font-light field-sizing-content" name="notiz" placeholder="Kommentar..." rows="2" aria-label="Kommentar" />
+            <label className="absolute top-1/2 right-1 z-1 inline-grid size-8 -translate-y-1/2 place-items-center text-2xl" htmlFor="id_place_comment_images">
+              <span className="sr-only">Kommentar-Bilder</span><span aria-hidden="true">+</span>
+              {photoCount > 0 && <span className="absolute -right-1 -bottom-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#b42318] px-0.5 text-[0.65rem] leading-none font-bold text-white" aria-hidden="true">{photoCount}</span>}
+            </label>
+            <input id="id_place_comment_images" className="absolute size-px overflow-hidden [clip-path:inset(50%)]" aria-label="Kommentar-Bilder" name="images" type="file" accept="image/*" multiple onChange={event => setPhotoCount(event.target.files?.length || 0)} />
+          </p>
+        </div>
+        <Button size="icon" type="submit" aria-label="Kommentar senden">➤</Button>
+      </RestForm>
     </div>
   );
 }
@@ -47,7 +45,29 @@ function PlaceCommentForm({ place, token, onSaved }) {
 export function PlaceDetailPage({ data, id, onSaved }) {
   const place = findById(data.places, id);
   if (!place) return <NotFoundPage />;
-  return <><Columns className="auslagerorte-detail"><Column id="left-column"><Card title={place.name}><FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} /><div className="react-actions place-edit-actions"><a className="button" href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</a></div></Card><Card title="Kommentare"><ul>{place.notes.map(note => <li key={note.id}><strong>{note.author}</strong> am {formatGermanDate(note.date)}: {note.text}{note.photos?.length > 0 && <div className="comment-photo-strip">{note.photos.map(photo => <img src={photo.url} alt={photo.alt} key={photo.id} />)}</div>}</li>)}</ul></Card></Column><Column id="right-column"><Card title="Bilder"><div className="gallery-container">{place.images.map((src, index) => <div className="gallery-item" key={src}><img src={src} alt={`${place.name} ${index + 1}`} /></div>)}</div><a className="button" href={`/auslagerorte/${place.id}/upload-image/`}>Bilder hochladen</a></Card><MapCard places={[place]} /></Column></Columns><PlaceCommentForm place={place} token={data.csrf_token} onSaved={onSaved} /></>;
+  return (
+    <>
+      <Columns className="grid grid-cols-1 items-start min-[901px]:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+        <Column id="left-column" className="min-w-0">
+          <Card title={place.name}>
+            <FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} />
+            <div className="mt-6 flex justify-end"><Button href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</Button></div>
+          </Card>
+          <Card title="Kommentare">
+            <ul>{place.notes.map(note => <li key={note.id}><strong>{note.author}</strong> am {formatGermanDate(note.date)}: {note.text}{note.photos?.length > 0 && <div className="mt-1 flex gap-1 overflow-x-auto">{note.photos.map(photo => <img className="h-32 w-auto max-w-48 rounded-lg object-cover" src={photo.url} alt={photo.alt} key={photo.id} />)}</div>}</li>)}</ul>
+          </Card>
+        </Column>
+        <Column id="right-column" className="min-w-0">
+          <Card title="Bilder">
+            <div className="flex flex-wrap gap-2">{place.images.map((src, index) => <div className="min-w-36 flex-auto overflow-hidden rounded-lg" key={src}><img className="h-45 w-full object-cover" src={src} alt={`${place.name} ${index + 1}`} /></div>)}</div>
+            <Button className="mt-3" href={`/auslagerorte/${place.id}/upload-image/`}>Bilder hochladen</Button>
+          </Card>
+          <MapCard places={[place]} />
+        </Column>
+      </Columns>
+      <PlaceCommentForm place={place} token={data.csrf_token} onSaved={onSaved} />
+    </>
+  );
 }
 
 export function PlaceFormPage({ data, id }) {

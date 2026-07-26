@@ -1,6 +1,5 @@
-import { Children, useEffect, useState } from 'react';
-
-import { Card, Column, Columns, FieldList, NativeForm } from '../components';
+import { Card, Column, Columns, FieldList, NativeForm, ResponsiveCardGrid } from '../components';
+import { Button } from '../components/ui/button';
 import { NotFoundPage } from './shared';
 
 const familyLabels = {
@@ -24,58 +23,17 @@ function PersonCard({ person, focuses, turnus, id = 'db-profil', updateHref }) {
     ['Kaffee', person.coffee],
     ['Email', person.email ? <a href={`mailto:${person.email}`}>{person.email}</a> : null],
     ['Mobil', person.phone ? <a href={`tel:${person.phone}`}>{person.phone}</a> : null],
-  ]} /><AssignedFocuses focuses={focuses} />{updateHref && <a className="button" href={updateHref}>Informationen aktualisieren</a>}</Card>;
-}
-
-const teamMediaQueries = ['(max-width: 900px)', '(max-width: 1200px)'];
-
-function teamColumnCount() {
-  if (typeof window === 'undefined' || !window.matchMedia) return 3;
-  if (window.matchMedia(teamMediaQueries[0]).matches) return 1;
-  if (window.matchMedia(teamMediaQueries[1]).matches) return 2;
-  return 3;
-}
-
-function useTeamColumnCount() {
-  const [count, setCount] = useState(teamColumnCount);
-
-  useEffect(() => {
-    const mediaQueries = teamMediaQueries.map(query => window.matchMedia(query));
-    const update = () => setCount(teamColumnCount());
-    mediaQueries.forEach(query => query.addEventListener('change', update));
-    update();
-    return () => mediaQueries.forEach(query => query.removeEventListener('change', update));
-  }, []);
-
-  return count;
-}
-
-function TeamColumns({ children }) {
-  const columnCount = useTeamColumnCount();
-  const columns = Array.from({ length: columnCount }, () => []);
-  Children.toArray(children).forEach((card, index) => {
-    columns[index % columnCount].push(card);
-  });
-
-  return (
-    <Columns className="team-page">
-      {columns.map((cards, index) => (
-        <Column className="team-column" id={`team-column-${index + 1}`} key={index}>
-          {cards}
-        </Column>
-      ))}
-    </Columns>
-  );
+  ]} /><AssignedFocuses focuses={focuses} />{updateHref && <Button href={updateHref}>Informationen aktualisieren</Button>}</Card>;
 }
 
 export function TeamPage({ data }) {
   if (!data.team?.length) {
-    return <Columns className="team-page team-empty"><p>Kein Team für den aktiven Turnus vorhanden.</p></Columns>;
+    return <Columns className="block"><p>Kein Team für den aktiven Turnus vorhanden.</p></Columns>;
   }
   const ownProfileId = data.profile?.id;
   const canChangeProfiles = Boolean(data.permissions?.change_profiles);
   return (
-    <TeamColumns>
+    <ResponsiveCardGrid>
       {data.team.map(person => {
         let updateHref = null;
         if (person.id === ownProfileId) updateHref = '/profil/';
@@ -91,7 +49,7 @@ export function TeamPage({ data }) {
           />
         );
       })}
-    </TeamColumns>
+    </ResponsiveCardGrid>
   );
 }
 

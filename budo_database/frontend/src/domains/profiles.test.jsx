@@ -30,18 +30,6 @@ const data = {
   ],
 };
 
-function setTeamViewport(width) {
-  vi.spyOn(window, 'matchMedia').mockImplementation(query => {
-    const maxWidth = Number(query.match(/max-width:\s*(\d+)px/)?.[1]);
-    return {
-      matches: Number.isFinite(maxWidth) && width <= maxWidth,
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    };
-  });
-}
-
 describe('Profil and Team pages', () => {
   afterEach(() => {
     cleanup();
@@ -142,12 +130,7 @@ describe('Profil and Team pages', () => {
     expect(within(graceCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/6/');
   });
 
-  it.each([
-    [1400, [[5, 8], [6, 9], [7]]],
-    [1000, [[5, 7, 9], [6, 8]]],
-    [700, [[5, 6, 7, 8, 9]]],
-  ])('stacks Team profile cards in fixed responsive flex columns at %ipx', (width, expectedColumns) => {
-    setTeamViewport(width);
+  it('keeps every Team profile in contract order', () => {
     const team = Array.from({ length: 5 }, (_, index) => ({
       ...profile,
       id: index + 5,
@@ -155,12 +138,10 @@ describe('Profil and Team pages', () => {
       focuses: [],
     }));
 
-    const { container } = render(<TeamPage data={{ team, turnus: data.turnus }} />);
-    const actualColumns = Array.from(container.querySelectorAll('.team-column'), column => (
-      Array.from(column.children, card => Number(card.id.replace('team-profile-', '')))
-    ));
-
-    expect(actualColumns).toEqual(expectedColumns);
+    render(<TeamPage data={{ team, turnus: data.turnus }} />);
+    expect(screen.getAllByRole('heading').map(heading => heading.textContent)).toEqual([
+      'Teamer 1', 'Teamer 2', 'Teamer 3', 'Teamer 4', 'Teamer 5',
+    ]);
   });
 
   it('shows an empty state when no active-turnus Team exists', () => {
