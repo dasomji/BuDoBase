@@ -251,6 +251,14 @@ export function Columns({ children, className = '' }) {
   return <main className={`flex-container ${className}`} id="body-container">{children}</main>;
 }
 
+export function ResponsiveCardGrid({ children, className = '' }) {
+  return (
+    <Columns className={`grid grid-cols-1 items-start gap-4 min-[901px]:grid-cols-3 ${className}`}>
+      {children}
+    </Columns>
+  );
+}
+
 export function Column({ children, id, className = '' }) {
   return <div className={`detail-column ${className}`} id={id}>{children}</div>;
 }

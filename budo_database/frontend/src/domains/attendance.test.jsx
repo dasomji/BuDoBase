@@ -109,7 +109,7 @@ describe('attendance pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nein' }));
     expect(mutate).toHaveBeenCalledWith('/toggle_zug_abreise/', { id: 7 }, false);
 
-    fireEvent.click(screen.getByRole('button', { name: '✏️' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abreise-Notiz von Ada Lovelace bearbeiten' }));
     expect(mutate).toHaveBeenCalledWith('/update_notiz_abreise/', {
       id: 7,
       notiz_abreise: 'Neuer Treffpunkt',

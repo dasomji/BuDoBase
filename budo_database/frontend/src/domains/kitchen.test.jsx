@@ -122,7 +122,7 @@ describe('Küche page', () => {
       .getByRole('table', { name: 'Menüplan Tag 1' });
     const boxCell = within(menuTable).getByText('Frühstück').closest('tr').children[1];
 
-    expect([...boxCell.querySelectorAll(':scope > .kitchen-meal-focus')]
+    expect([...boxCell.children]
       .map(entry => entry.textContent)).toEqual([
       'Blubb (1 🥩, 0 🧀, 0 🌱)',
       'Test (1 🥩, 0 🧀, 0 🌱)',

@@ -1720,6 +1720,12 @@ input[name="amount"]::placeholder {
     width: 100%;
     margin: 0;
     padding: 0;
+    background-image: radial-gradient(
+      59.33% 87.53% at 38.82% 60.76%,
+      #ffffff 0%,
+      #f7ebe0 22%,
+      #999999 100%
+    ) !important;
   }
 
   .allocation-page .allocation-table-column {
@@ -1731,11 +1737,27 @@ input[name="amount"]::placeholder {
   }
 
   .allocation-page .allocation-print-page {
+    position: relative;
+    isolation: isolate;
     min-height: calc(100vh - 28mm);
+    overflow: hidden;
     margin: 0;
     padding: 0;
     break-after: page;
     page-break-after: always;
+  }
+
+  .allocation-page .allocation-print-illustration {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: url("../../budo_app/static/img/BudoMap20a.png") no-repeat
+      fixed bottom center;
+  }
+
+  .allocation-page .allocation-print-page :is(h1, ul) {
+    position: relative;
+    z-index: 1;
   }
 
   .allocation-page .allocation-print-page:last-child {

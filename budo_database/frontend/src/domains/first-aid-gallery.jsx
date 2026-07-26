@@ -25,7 +25,7 @@ export function FirstAidGalleryTrigger({ photo, childName, entryId, ordinal, chi
 
   if (!gallery) {
     return (
-      <button className="first-aid-photo-trigger" type="button" aria-label={label}>
+      <button className="max-w-full shrink-0 border-0 bg-transparent p-0" type="button" aria-label={label}>
         {children}
       </button>
     );
@@ -33,7 +33,7 @@ export function FirstAidGalleryTrigger({ photo, childName, entryId, ordinal, chi
 
   return (
     <Dialog.Trigger
-      className="first-aid-photo-trigger"
+      className="max-w-full shrink-0 border-0 bg-transparent p-0"
       id={`first-aid-photo-${photo.id}`}
       type="button"
       aria-label={label}
@@ -85,27 +85,27 @@ function GalleryDialog({ inventory, selectedId, select }) {
 
   return (
     <Dialog.Portal>
-      <Dialog.Backdrop className="first-aid-gallery-backdrop" />
-      <Dialog.Viewport className="first-aid-gallery-viewport">
-        <Dialog.Popup className="first-aid-gallery" aria-modal="true" onKeyDown={handleKeyDown}>
-          <Dialog.Title className="first-aid-gallery-title">EH-Fotogalerie</Dialog.Title>
-          <Dialog.Description className="first-aid-gallery-description">
+      <Dialog.Backdrop className="fixed inset-0 z-1000 bg-black/80" data-testid="first-aid-gallery-backdrop" />
+      <Dialog.Viewport className="fixed inset-0 z-1001 grid place-items-center p-1 min-[901px]:p-3">
+        <Dialog.Popup className="relative grid max-h-[calc(100dvh-0.5rem)] w-full max-w-275 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 rounded-lg bg-[#181818] p-2 text-white shadow-2xl min-[901px]:max-h-[calc(100dvh-1.5rem)] min-[901px]:gap-2 min-[901px]:p-3" aria-modal="true" onKeyDown={handleKeyDown}>
+          <Dialog.Title className="col-span-full m-0 px-10 text-center text-xl">EH-Fotogalerie</Dialog.Title>
+          <Dialog.Description className="col-span-full m-0 px-10 text-center text-[#eee]">
             {current.alt}; Bild {currentIndex + 1} von {inventory.length}
           </Dialog.Description>
-          <Dialog.Close className="first-aid-gallery-close" aria-label="Galerie schließen">
+          <Dialog.Close className="absolute top-2 right-2 grid size-11 place-items-center rounded-full border border-white/45 bg-black/55 text-3xl leading-none text-white" aria-label="Galerie schließen">
             <span aria-hidden="true">×</span>
           </Dialog.Close>
           <button
-            className="first-aid-gallery-control first-aid-gallery-previous"
+            className="grid size-11 place-items-center rounded-full border border-white/45 bg-black/55 text-3xl leading-none text-white"
             type="button"
             aria-label="Vorheriges Foto"
             onClick={() => move(-1)}
           >
             <span aria-hidden="true">‹</span>
           </button>
-          <div className="first-aid-gallery-media">
+          <div className="grid min-h-0 min-w-0 place-items-center">
             <img
-              className="first-aid-gallery-image"
+              className="block h-auto max-h-[calc(100dvh-12rem)] w-auto max-w-full touch-pan-y object-contain select-none"
               src={current.url}
               width={current.width}
               height={current.height}
@@ -116,7 +116,7 @@ function GalleryDialog({ inventory, selectedId, select }) {
             />
           </div>
           <button
-            className="first-aid-gallery-control first-aid-gallery-next"
+            className="grid size-11 place-items-center rounded-full border border-white/45 bg-black/55 text-3xl leading-none text-white"
             type="button"
             aria-label="Nächstes Foto"
             onClick={() => move(1)}

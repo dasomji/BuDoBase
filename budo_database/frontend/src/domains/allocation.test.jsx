@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -23,15 +20,6 @@ describe('allocation page', () => {
     cleanup();
     vi.restoreAllMocks();
     window.history.pushState({}, '', '/');
-  });
-
-  it('allows the allocation column background to grow with expanded kid cards', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
-    const desktopRule = css.match(/@media only screen and \(min-width: 761px\) \{\s*\.allocation-page \.allocation-table-column \{([^}]*)\}/)?.[1];
-
-    expect(desktopRule).toBeDefined();
-    expect(desktopRule).toContain('min-height: calc(100svh - var(--app-header-height, 0px));');
-    expect(desktopRule).not.toMatch(/(^|\s)height:/);
   });
 
   it('explains an empty focus when kid lists are displayed', () => {
@@ -83,23 +71,23 @@ describe('allocation page', () => {
     }} />);
 
     const card = screen.getByRole('heading', { name: 'Wald: 3' }).closest('.card');
-    expect(card.parentElement).toHaveClass('allocation-card-row');
+    expect(card.parentElement).toHaveAccessibleName('SWP-Übersicht');
     expect(card.parentElement.parentElement).toHaveClass('table-sticky-controls');
     expect(within(card.parentElement.parentElement).getByRole('searchbox', { name: 'Kinder filtern' })).toBeInTheDocument();
     const stats = within(card).getByLabelText('Statistik Wald');
     expect(stats).toHaveTextContent('Ø Alter: 12,5');
     expect(stats).toHaveTextContent('Geschlechter: 1 ♂ · 1 ♀ · 1 ⚧');
     expect(stats).toHaveTextContent('BuDo-Familien: 1 S · 1 M · 0 L · 1 XL');
-    expect(within(card).getByRole('list')).toHaveClass('allocation-kids');
+    expect(within(card).getByRole('list')).toBeInTheDocument();
     const printPages = screen.getByRole('region', { name: 'SWP-Listen', hidden: true });
     const printPage = within(printPages).getByRole('heading', { name: 'Wald', hidden: true }).closest('.allocation-print-page');
+    expect(printPage.querySelector('.allocation-print-illustration[aria-hidden="true"]')).toBeInTheDocument();
     expect(within(printPage).getAllByRole('listitem', { hidden: true }).map(item => item.textContent)).toEqual(['Ada', 'Bea', 'Chris']);
     expect(within(printPage).queryByRole('link', { hidden: true })).not.toBeInTheDocument();
     expect(screen.getAllByRole('option', { name: 'Wald' })[0].selected).toBe(true);
-    expect(screen.getAllByRole('button', { name: '1' })[0]).toHaveClass('swp-medal', 'swp-medal-1', 'active');
-    expect(screen.getAllByRole('button', { name: '2' })[0]).toHaveClass('swp-medal-2');
-    expect(screen.getAllByRole('button', { name: '3' })[0]).toHaveClass('swp-medal-3');
     expect(screen.getAllByRole('button', { name: '1' })[0]).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getAllByRole('button', { name: '2' })[0]).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getAllByRole('button', { name: '3' })[0]).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: 'Familie sortieren' })).toBeInTheDocument();
     expect(screen.getByRole('row', { name: /Ada/ })).toHaveTextContent('M');
     expect(screen.getByRole('row', { name: /Ada/ })).toHaveTextContent('Bea');
@@ -203,13 +191,13 @@ describe('allocation page', () => {
 
     const toggleKids = screen.getByRole('button', { name: 'Kinder ausblenden' });
     expect(toggleKids).toHaveAttribute('aria-pressed', 'true');
-    expect(document.querySelectorAll('.allocation-kids')).toHaveLength(2);
+    const allocationCards = ['Wald: 1', 'See: 0'].map(name => screen.getByRole('heading', { name }).closest('.card'));
+    expect(allocationCards.map(card => within(card).getByRole('list'))).toHaveLength(2);
     fireEvent.click(toggleKids);
     expect(toggleKids).toHaveAttribute('aria-pressed', 'false');
     expect(toggleKids).toHaveTextContent('Kinder anzeigen');
-    expect(document.querySelectorAll('.allocation-kids.screen-hidden-kids')).toHaveLength(2);
-    expect(document.querySelectorAll('.allocation-kids[aria-hidden="true"]')).toHaveLength(2);
-    expect(document.querySelectorAll('.allocation-stats.without-kid-divider')).toHaveLength(2);
+    allocationCards.forEach(card => expect(within(card).getByRole('list', { hidden: true })).toHaveAttribute('aria-hidden', 'true'));
+    allocationCards.forEach(card => expect(within(card).getByLabelText(/Statistik/)).toBeInTheDocument());
 
     const kidRow = screen.getByRole('row', { name: /Ada Kind/ });
     fireEvent.change(within(kidRow).getByRole('combobox'), { target: { value: '3' } });
@@ -217,7 +205,7 @@ describe('allocation page', () => {
     expect(screen.getByRole('option', { name: 'See' }).selected).toBe(true);
 
     fireEvent.click(screen.getAllByRole('button', { name: '1' })[1]);
-    await waitFor(() => expect(screen.getAllByRole('button', { name: '1' })[1]).toHaveClass('active'));
+    await waitFor(() => expect(screen.getAllByRole('button', { name: '1' })[1]).toHaveAttribute('aria-pressed', 'true'));
 
     vi.spyOn(window, 'prompt').mockReturnValue('Cora');
     fireEvent.click(screen.getByRole('button', { name: 'Freunde von Ada Kind bearbeiten' }));

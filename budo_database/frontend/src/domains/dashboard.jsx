@@ -1,6 +1,7 @@
-import { Children, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-import { Card, Column, Columns } from '../components';
+import { Card, ResponsiveCardGrid } from '../components';
+import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { FirstAidGallery } from './first-aid-gallery';
@@ -60,9 +61,9 @@ function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
           </li>
       ))}</ul>
       {page.has_more && (
-        <button className="button" type="button" disabled={loading} onClick={loadMore}>
+        <Button type="button" disabled={loading} onClick={loadMore}>
           {loading ? `Ältere ${label} werden geladen…` : `Ältere ${label} laden`}
-        </button>
+        </Button>
       )}
     </>
   );
@@ -78,53 +79,12 @@ const familyLabels = {
 function FocusAssignment({ focus, kidsById }) {
   const assignedKids = (focus.kid_ids || []).map(id => kidsById.get(Number(id))).filter(Boolean);
   return (
-    <section className="dashboard-focus" aria-labelledby={`dashboard-focus-${focus.id}`}>
-      <h3 id={`dashboard-focus-${focus.id}`}><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a></h3>
+    <section className="[&+&]:mt-3 [&+&]:border-t [&+&]:border-foreground/20 [&+&]:pt-3" aria-labelledby={`dashboard-focus-${focus.id}`}>
+      <h3 className="m-0 text-base" id={`dashboard-focus-${focus.id}`}><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a></h3>
       {assignedKids.length
         ? <ul>{assignedKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul>
         : <p>Keine Kinder eingeteilt.</p>}
     </section>
-  );
-}
-
-const dashboardMediaQueries = ['(max-width: 900px)', '(max-width: 1200px)'];
-
-function dashboardColumnCount() {
-  if (typeof window === 'undefined' || !window.matchMedia) return 3;
-  if (window.matchMedia(dashboardMediaQueries[0]).matches) return 1;
-  if (window.matchMedia(dashboardMediaQueries[1]).matches) return 2;
-  return 3;
-}
-
-function useDashboardColumnCount() {
-  const [count, setCount] = useState(dashboardColumnCount);
-
-  useEffect(() => {
-    const mediaQueries = dashboardMediaQueries.map(query => window.matchMedia(query));
-    const update = () => setCount(dashboardColumnCount());
-    mediaQueries.forEach(query => query.addEventListener('change', update));
-    update();
-    return () => mediaQueries.forEach(query => query.removeEventListener('change', update));
-  }, []);
-
-  return count;
-}
-
-function DashboardColumns({ children }) {
-  const columnCount = useDashboardColumnCount();
-  const columns = Array.from({ length: columnCount }, () => []);
-  Children.toArray(children).forEach((card, index) => {
-    columns[index % columnCount].push(card);
-  });
-
-  return (
-    <Columns className="dashboard-page">
-      {columns.map((cards, index) => (
-        <Column className="dashboard-column" id={`dashboard-column-${index + 1}`} key={index}>
-          {cards}
-        </Column>
-      ))}
-    </Columns>
   );
 }
 
@@ -164,7 +124,7 @@ export function DashboardPage({ data, fetchImpl = fetch, onFirstAidItemsChange }
   );
   return (
     <FirstAidGallery entries={[...noteItems, ...firstAidItems]}>
-      <DashboardColumns>
+      <ResponsiveCardGrid>
       <Card title={`Kinder: ${totals.checked_in}`} id="db-kinderübersicht">
         <p><span className="label">Eingecheckt</span>: {totals.checked_in}/{totals.kids}</p>
         <p><span className="label">Geschlechter</span>: {kids.filter(kid => kid.sex === 'männlich').length} ♂ // {kids.filter(kid => kid.sex === 'weiblich').length} ♀ // {kids.filter(kid => !['männlich', 'weiblich'].includes(kid.sex)).length} ⚧</p>
@@ -188,7 +148,7 @@ export function DashboardPage({ data, fetchImpl = fetch, onFirstAidItemsChange }
       <Card title={`Geburtstagskinder: ${birthdays.length}`} id="db-geburtstagskinder">{birthdays.map(kid => <p key={kid.id}>{linkKid(kid)}: {formatKidBirthday(kid)}</p>)}</Card>
       <Card title={`Verabschiedungsliste: ${goodbyes.length}`} id="db-sechzehner">{goodbyes.map(kid => <p key={kid.id}>{linkKid(kid)}: {kid.age} – {formatKidBirthday(kid)}</p>)}</Card>
       <Card title="Taschengeldtransaktionen" id="db-geld"><ActivityList kind="transactions" initialPage={activity.transactions} fetchImpl={fetchImpl} /></Card>
-      </DashboardColumns>
+      </ResponsiveCardGrid>
     </FirstAidGallery>
   );
 }
