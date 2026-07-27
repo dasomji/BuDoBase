@@ -144,6 +144,17 @@ describe('Profil and Team pages', () => {
     ]);
   });
 
+  it('preserves long contact links inside Team cards without truncating their value', () => {
+    const longEmail = `${'long-address-'.repeat(8)}@example.test`;
+    render(<TeamPage data={{
+      team: [{ ...profile, email: longEmail, focuses: [] }],
+      turnus: data.turnus,
+    }} />);
+
+    const card = screen.getByRole('heading', { name: 'Ada' }).closest('section');
+    expect(within(card).getByRole('link', { name: longEmail })).toHaveAttribute('href', `mailto:${longEmail}`);
+  });
+
   it('shows an empty state when no active-turnus Team exists', () => {
     render(<TeamPage data={{ team: [], turnus: null }} />);
 
