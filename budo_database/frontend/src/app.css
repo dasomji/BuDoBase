@@ -1306,6 +1306,13 @@
   display: none;
 }
 
+}
+
+/*
+ * Keep the global print cascade unlayered. Unlayered author rules outrank
+ * Tailwind's layered utilities, so plain print declarations reliably replace
+ * their screen-layout counterparts.
+ */
 @media print {
   @page {
     margin: 14mm;
@@ -1326,7 +1333,6 @@
 
   #headermenu,
   .realtime-warning,
-  .react-actions,
   .card-header-action,
   .search-filter,
   .filter-table,
@@ -1356,8 +1362,10 @@
 
   .card > .card-info-container {
     display: block !important;
+    padding-inline: var(--str-padding);
     padding-top: var(--str-padding);
     padding-bottom: var(--str-padding);
+    transition: none;
   }
 
   .card > .card-info-container > .card-info-content {
@@ -1680,32 +1688,23 @@
   }
 
   .kitchen-print-page .kitchen-meal-table-scroll > .meal-table {
-    width: 100%;
+    width: auto;
     min-width: 0;
-    table-layout: fixed;
+    table-layout: auto;
     padding: 0;
     font-family: Arial, Helvetica, "Noto Color Emoji", "Segoe UI Emoji", sans-serif;
     font-size: 9pt;
-  }
-
-  .kitchen-print-page .meal-table :is(th, td):first-child {
-    width: 12%;
-  }
-
-  .kitchen-print-page .meal-table :is(th, td):nth-child(2),
-  .kitchen-print-page .meal-table :is(th, td):nth-child(3),
-  .kitchen-print-page .meal-table :is(th, td):nth-child(4) {
-    width: 21%;
-  }
-
-  .kitchen-print-page .meal-table :is(th, td):last-child {
-    width: 25%;
   }
 
   .kitchen-print-page .meal-table th,
   .kitchen-print-page .meal-table td {
     padding: 1.5mm 2mm;
     overflow-wrap: break-word;
+  }
+
+  .kitchen-print-page .meal-table th {
+    background: var(--color-surface);
+    font-weight: 700;
   }
 
   .kitchen-print-kicker {
@@ -1728,7 +1727,6 @@
     gap: 10mm;
   }
 
-}
 }
 
 @theme static {
