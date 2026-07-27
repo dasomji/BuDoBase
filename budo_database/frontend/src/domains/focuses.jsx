@@ -91,7 +91,7 @@ export function FocusDetailPage({ data, id }) {
   if (!focus) return <NotFoundPage />;
   const kids = data.kids;
   const mapPlaces = focus.place_id ? [{ id: focus.place_id, name: focus.place, coordinates: focus.coordinates }] : [];
-  return <Columns><Column id="left-column"><Card title={focus.name}><FocusDetails focus={focus} kidCount={kids.length} /><div className="mt-3 flex justify-end"><Button href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</Button></div></Card><Card title="Essen"><MealTable focus={focus} /><div className="mt-3 flex justify-end"><Button href={`/swpmeals/${focus.id}`}>Essen bearbeiten</Button></div></Card><MapCard places={mapPlaces} /></Column><Column id="right-column"><DataTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
+  return <Columns><Column id="left-column"><Card title={focus.name} actions={<Button href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</Button>}><FocusDetails focus={focus} kidCount={kids.length} /></Card><Card title="Essen" actions={<Button href={`/swpmeals/${focus.id}`}>Essen bearbeiten</Button>}><MealTable focus={focus} /></Card><MapCard places={mapPlaces} /></Column><Column id="right-column"><DataTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
 }
 
 export function FocusFormPage({ data, id }) {
@@ -209,7 +209,7 @@ export const focusRoutes = [
     domain: 'focuses',
     readContractKey: 'focus-dashboard',
     headerAction: () => (
-      <Button className="mobile-icon-action" href="/schwerpunkt/create" aria-label="SWP hinzufügen">
+      <Button className="mobile-icon-action" size="responsive-icon" href="/schwerpunkt/create" aria-label="SWP hinzufügen">
         <span className="desktop-action-label">SWP hinzufügen</span>
         <PlusIcon className="mobile-action-label" aria-hidden="true" />
       </Button>

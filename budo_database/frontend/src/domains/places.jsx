@@ -49,18 +49,22 @@ export function PlaceDetailPage({ data, id, onSaved }) {
     <>
       <Columns className="grid grid-cols-1 items-start min-[901px]:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <Column id="left-column" className="min-w-0">
-          <Card title={place.name}>
+          <Card
+            title={place.name}
+            actions={<Button href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</Button>}
+          >
             <FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} />
-            <div className="mt-6 flex justify-end"><Button href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</Button></div>
           </Card>
           <Card title="Kommentare">
             <ul>{place.notes.map(note => <li key={note.id}><strong>{note.author}</strong> am {formatGermanDate(note.date)}: {note.text}{note.photos?.length > 0 && <div className="mt-1 flex gap-1 overflow-x-auto">{note.photos.map(photo => <img className="h-32 w-auto max-w-48 rounded-lg object-cover" src={photo.url} alt={photo.alt} key={photo.id} />)}</div>}</li>)}</ul>
           </Card>
         </Column>
         <Column id="right-column" className="min-w-0">
-          <Card title="Bilder">
+          <Card
+            title="Bilder"
+            actions={<Button href={`/auslagerorte/${place.id}/upload-image/`}>Bilder hochladen</Button>}
+          >
             <div className="flex flex-wrap gap-2">{place.images.map((src, index) => <div className="min-w-36 flex-auto overflow-hidden rounded-lg" key={src}><img className="h-45 w-full object-cover" src={src} alt={`${place.name} ${index + 1}`} /></div>)}</div>
-            <Button className="mt-3" href={`/auslagerorte/${place.id}/upload-image/`}>Bilder hochladen</Button>
           </Card>
           <MapCard places={[place]} />
         </Column>
@@ -92,7 +96,7 @@ export const placeRoutes = [
     domain: 'places',
     readContractKey: 'places-list',
     headerAction: () => (
-      <Button className="mobile-icon-action" href="/auslagerorte/create" aria-label="Ort hinzufügen">
+      <Button className="mobile-icon-action" size="responsive-icon" href="/auslagerorte/create" aria-label="Ort hinzufügen">
         <span className="desktop-action-label">Ort hinzufügen</span>
         <PlusIcon className="mobile-action-label" aria-hidden="true" />
       </Button>

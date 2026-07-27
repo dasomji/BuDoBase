@@ -1107,16 +1107,6 @@
     margin: 0;
   }
 
-  .mobile-icon-action[data-slot="button"] {
-    display: inline-grid;
-    width: 32px;
-    height: 32px;
-    place-items: center;
-    border-radius: 50%;
-    padding: 0;
-    line-height: 1;
-  }
-
   .mobile-icon-action .desktop-action-label {
     display: none;
   }

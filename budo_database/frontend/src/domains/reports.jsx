@@ -105,6 +105,7 @@ export const reportRoutes = [
         <Button
           aria-label="Geburtstage aktualisieren"
           className="mobile-icon-action"
+          size="responsive-icon"
           type="submit"
         >
           <span className="desktop-action-label">Geburtstage aktualisieren</span>
