@@ -1,7 +1,3 @@
-function classes(...values) {
-  return values.filter(Boolean).join(' ');
-}
-
 export function TableScroll({
   children,
   className = '',
@@ -12,7 +8,7 @@ export function TableScroll({
 }) {
   return (
     <div
-      className={classes('table-container', className)}
+      className={className}
       data-slot="table-scroll"
       data-sticky-header={stickyHeader ? '' : undefined}
       data-sticky-first-column={stickyFirstColumn ? '' : undefined}
@@ -25,7 +21,7 @@ export function TableScroll({
 }
 
 export function Table({ children, className = '', ...props }) {
-  return <table className={classes('data-table', className)} data-slot="table" {...props}>{children}</table>;
+  return <table className={className} data-slot="table" {...props}>{children}</table>;
 }
 
 export function TableHeader({ children, className = '', ...props }) {

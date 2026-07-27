@@ -33,7 +33,11 @@ Semantic colors are defined once in `frontend/src/app.css` through Tailwind
 theme tokens. Primary is `#ffdd9b` with `#e6c78b` hover; secondary is
 `#a9cfef` with `#8fb8d9` hover. Existing blue surfaces remain distinct.
 Success and destructive colors are semantic tokens. Legacy custom properties
-are compatibility aliases only.
+with no remaining consumers are removed rather than retained as aliases.
+
+Roboto is self-hosted as variable WOFF2 assets with a metric-adjusted local
+fallback. Third-party component CSS is imported into a `vendor` cascade layer
+before application components and utilities.
 
 The legacy stylesheet is contained in a named `legacy` cascade layer while
 consumers migrate, then removed with the remaining legacy selectors. Dark mode
@@ -93,9 +97,8 @@ unit tests.
 - Wide tables scroll inside their own boundary and may hide explicitly
   low-priority columns on mobile.
 - The final contract step removed the legacy stylesheet, its cascade layer,
-  dead UI assets, and old responsive breakpoints. Compatibility aliases remain
-  only for the shared stylesheet rules that still consume them; new work uses
-  semantic tokens directly.
+  dead UI assets, old responsive breakpoints, and unconsumed legacy
+  custom-property aliases. New work uses semantic tokens directly.
 - A bespoke print document still needs manual print-preview evidence because
   paper pagination and browser layout are not unit-test behavior.
 

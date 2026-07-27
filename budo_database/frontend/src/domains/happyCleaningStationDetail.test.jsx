@@ -95,7 +95,7 @@ describe('Happy Cleaning station detail', () => {
     render(<HappyCleaningStationDetailPage data={detailData} mutate={vi.fn()} onBack={onBack} />);
 
     const stationHeading = screen.getByRole('heading', { level: 2, name: 'Speisesaal' });
-    const stationCard = stationHeading.closest('.happy-cleaning-station-detail-card');
+    const stationCard = stationHeading.closest('.card');
     const stationToggle = stationHeading.closest('.card-toggle');
     expect(stationCard).toHaveClass('card');
     expect(stationToggle).toHaveAttribute('aria-expanded', 'true');
@@ -114,7 +114,7 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.getByText('4')).toBeInTheDocument();
     expect(screen.getByText('Fenster nicht vergessen')).toBeInTheDocument();
     expect(screen.getByText('Mira')).toBeInTheDocument();
-    const facts = stationCard.querySelector('.happy-cleaning-station-facts');
+    const facts = screen.getByText('Hauptverantwortlich').closest('dl');
     expect([...facts.querySelectorAll('dt')].map(term => term.textContent)).toEqual([
       'Hauptverantwortlich', 'Max Kinder', 'Treffpunkt', 'Wünsche',
     ]);
@@ -157,7 +157,7 @@ describe('Happy Cleaning station detail', () => {
     }} mutate={vi.fn()} />);
 
     const stationCard = screen.getByRole('heading', { level: 2, name: 'Speisesaal' })
-      .closest('.happy-cleaning-station-detail-card');
+      .closest('.card');
     const cardBody = stationCard.querySelector('.card-info-content');
     const actions = cardBody.lastElementChild;
     const actionButtons = within(actions).getAllByRole('button');
@@ -207,11 +207,13 @@ describe('Happy Cleaning station detail', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Boden kehren erledigen' }));
+    const completed = screen.getByRole('checkbox', { name: 'Boden kehren erledigen' });
+    const stationCard = completed.closest('.card');
+    fireEvent.click(completed);
 
     const toast = await screen.findByText(/erneut versuchen/, { selector: '.app-toast-description' });
     expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(document.querySelector('.happy-cleaning-station-detail-card .error')).not.toBeInTheDocument();
+    expect(stationCard.querySelector('.error')).not.toBeInTheDocument();
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
     expect(screen.getByRole('checkbox', { name: 'Boden kehren erledigen' })).toBeEnabled();
   });
@@ -382,7 +384,7 @@ describe('Happy Cleaning station detail', () => {
     }} mutate={mutate} refresh={refresh} onBack={vi.fn()} />);
 
     const stationCard = screen.getByRole('heading', { level: 2, name: 'Speisesaal' })
-      .closest('.happy-cleaning-station-detail-card');
+      .closest('.card');
     const stationToggle = stationCard.querySelector('.card-toggle');
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
     expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
@@ -499,6 +501,7 @@ describe('Happy Cleaning station detail', () => {
     screen.getByRole('button', { name: 'Bearbeiten' }).focus();
     await user.keyboard('{Enter}');
     const name = screen.getByLabelText('Name der Station');
+    const stationCard = name.closest('.card');
     name.focus();
     await user.clear(name);
     await user.keyboard('Entwurf');
@@ -509,7 +512,7 @@ describe('Happy Cleaning station detail', () => {
       level: 2,
       name: 'Ungespeicherte Änderungen',
     })).toBeInTheDocument();
-    expect(dirtyDialog.closest('.happy-cleaning-station-detail-card')).toBeNull();
+    expect(stationCard).not.toContainElement(dirtyDialog);
     const dirtyDialogViewport = dirtyDialog.parentElement;
     const dirtyDialogBackdrop = dirtyDialogViewport?.previousElementSibling;
     expect(dirtyDialogViewport).toHaveAttribute('role', 'presentation');
@@ -530,7 +533,7 @@ describe('Happy Cleaning station detail', () => {
 
     const toast = await screen.findByText(/inzwischen geändert/, { selector: '.app-toast-description' });
     expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(document.querySelector('.happy-cleaning-editor .error')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Name der Station').closest('form').querySelector('.error')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Name der Station')).toHaveValue('Entwurf');
     expect(onBack).not.toHaveBeenCalled();
   });

@@ -178,6 +178,8 @@ class ReactShellTests(TestCase):
         self.assertNotContains(response, "bootstrap@5.3.0")
         self.assertNotContains(response, 'href="/static/stylesheet.css"')
         self.assertNotContains(response, "data-react-print-page")
+        self.assertNotContains(response, "fonts.googleapis.com")
+        self.assertNotContains(response, "fonts.gstatic.com")
 
     def test_team_page_deep_link_uses_the_authenticated_react_shell(self):
         user = User.objects.create_user("team-page-user", password="secret")

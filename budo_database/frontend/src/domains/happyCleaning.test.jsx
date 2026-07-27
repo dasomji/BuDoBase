@@ -240,7 +240,7 @@ describe('Happy Cleaning management', () => {
       printedText = todoPrintPages?.textContent || '';
       printStylesMedia = stylesheet.media;
       printedViews.push({
-        overview: Boolean(document.querySelector('.happy-cleaning-overview-layout')),
+        overview: Boolean(document.querySelector('#body-container')),
         todoPrintPages: Boolean(todoPrintPages),
       });
     });
@@ -400,7 +400,6 @@ describe('Happy Cleaning management', () => {
       bottom: '0px',
       left: '0px',
     });
-    expect(document.querySelector('.happy-cleaning-overview-split')).toBeInTheDocument();
     expect(window.location.pathname).toBe(originalPath);
 
     screen.getByRole('row', { name: 'Station Bad' }).focus();

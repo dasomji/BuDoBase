@@ -1,8 +1,55 @@
-@layer theme, base, components, utilities;
+@layer theme, base, vendor, components, utilities;
 
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "leaflet/dist/leaflet.css" layer(vendor);
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("@fontsource-variable/roboto/files/roboto-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("@fontsource-variable/roboto/files/roboto-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("@fontsource-variable/roboto/files/roboto-latin-ext-wght-italic.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Roboto";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("@fontsource-variable/roboto/files/roboto-latin-wght-italic.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Match local Arial's average width and line box to Roboto during font swap. */
+@font-face {
+  font-family: "Roboto Fallback";
+  src: local("Arial");
+  size-adjust: 99.7809%;
+  ascent-override: 92.9771%;
+  descent-override: 24.4677%;
+  line-gap-override: 0%;
+}
 
 @layer components {
 :where(
@@ -15,14 +62,6 @@
   [role="button"]:not([aria-disabled="true"])
 ) {
   cursor: pointer;
-}
-
-@font-face {
-  font-family: "Roboto";
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: local("Roboto");
 }
 
 .react-loading,
@@ -216,7 +255,6 @@
   }
 }
 
-@layer components {
   #root {
     min-height: 100vh;
     background:
@@ -280,14 +318,9 @@
     flex-basis: 40%;
   }
 
-  #right-column:has(#ort-detail-info) {
-    max-width: 300px;
-  }
-
   #single-column {
     max-width: 500px;
   }
-}
 
 .card {
   min-width: 0;
@@ -661,25 +694,8 @@
   min-width: 10rem;
 }
 
-.react-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
-
 #pfand .card-info-container {
   padding-top: 0;
-}
-
-#pfand .deposit-actions {
-  justify-content: flex-end;
-  margin-top: 0;
-}
-
-.react-actions button,
-.react-actions [data-slot="button"] {
-  border: 0;
 }
 
 .app-shell-content {
@@ -695,7 +711,6 @@
   flex: 1;
 }
 
-@layer components {
   #headermenu {
     position: sticky;
     top: 0;
@@ -728,8 +743,6 @@
     padding: 0;
     flex: 0 1 100vw;
   }
-}
-
 #header-content:has(#headersearch) {
   display: grid;
   grid-template-columns: auto max-content minmax(10rem, 1fr) auto;
@@ -738,7 +751,6 @@
   flex-flow: initial;
 }
 
-@layer components {
   #headertitle {
     display: inline-block;
   }
@@ -769,8 +781,6 @@
     border-radius: var(--corner-rad);
     padding: var(--xs-padding);
   }
-}
-
 #headermenu #menu-button:hover {
   background: rgba(255, 255, 255, 0.45);
 }
@@ -785,7 +795,6 @@
   display: none;
 }
 
-@layer components {
   .search-results {
     position: absolute;
     top: 32px;
@@ -809,8 +818,6 @@
   .search-results :is(.search-item:hover, a.search-result-link.selected .search-item) {
     background-color: var(--color-surface);
   }
-}
-
 [data-sidebar="sidebar"] [data-sidebar="menu-button"] {
   border: 0;
   border-radius: 0.375rem;
@@ -929,7 +936,6 @@
   height: 32px;
 }
 
-@layer components {
   #interaction-bar {
     position: sticky;
     bottom: 0;
@@ -999,8 +1005,6 @@
     flex: 0 0 auto;
     padding: 0;
   }
-}
-
 #search-button {
   display: none;
 }
@@ -1782,7 +1786,7 @@
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Roboto', sans-serif;
+  --font-sans: 'Roboto', 'Roboto Fallback', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -1830,14 +1834,6 @@
   --border: var(--color-border);
   --input: var(--color-input);
   --ring: var(--color-ring);
-  --text-color: var(--color-foreground);
-  --blue: var(--color-surface-subtle);
-  --dark-blue: var(--color-surface-header);
-  --bg-blue: var(--color-surface);
-  --bg-blue__solid: var(--color-surface-solid);
-  --grey: var(--color-border);
-  --button-color: var(--color-primary);
-  --light-blue: var(--color-secondary);
   --str-padding: 24px;
   --corner-rad: 8px;
   --xs-padding: 6px;
@@ -1850,10 +1846,8 @@
   --z-headcol: 3;
   --z-th-headcol: 4;
   --z-interaction-bar: 80;
-  --z-toggle-button: 80;
   --z-headermenu: 80;
   --z-sidebar: 99;
-  --z-map-modal: 999;
   --z-modal: 999;
   --z-expand-icon: 1000;
   --z-overlay: 9999;
