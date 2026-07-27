@@ -1,0 +1,51 @@
+{
+  "source": {
+    "server": "http://127.0.0.1:8023",
+    "database": "disposable copy of .artifacts/design-system-review.sqlite3",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    }
+  },
+  "semanticActions": {
+    "success": {
+      "route": "/kid_details/21",
+      "label": "Abbuchen",
+      "foreground": "rgb(55, 55, 55)",
+      "background": "rgb(84, 185, 88)",
+      "contrastRatio": 4.7942
+    },
+    "destructive": {
+      "route": "/kid_details/21",
+      "label": "Aufladen",
+      "foreground": "rgb(255, 255, 255)",
+      "background": "rgb(185, 63, 59)",
+      "contrastRatio": 5.473
+    }
+  },
+  "link": {
+    "route": "/happy-cleaning/",
+    "label": "Station Lagerfeuerplatz öffnen",
+    "foreground": "rgb(114, 85, 0)",
+    "effectiveRenderedBackground": "rgb(224.97, 241.35, 255)",
+    "contrastRatio": 6.0593,
+    "tokenContrastOnPage": 6.9654,
+    "tokenContrastOnCard": 6.2597
+  },
+  "focusIndicators": {
+    "cardHeader": {
+      "route": "/happy-cleaning/",
+      "label": "2. Turnus 2023 · Happy Cleaning 1 schließen",
+      "outline": "rgb(104, 104, 104) solid 2px",
+      "effectiveRenderedBackground": "rgb(181.65, 204.13, 218.9)",
+      "contrastRatio": 3.357
+    },
+    "tableSort": {
+      "route": "/happy-cleaning/",
+      "label": "Stationsname sortieren",
+      "outline": "rgb(104, 104, 104) solid 2px",
+      "effectiveRenderedBackground": "rgb(181.3, 203.97, 218.9)",
+      "contrastRatio": 3.3508
+    }
+  }
+}
