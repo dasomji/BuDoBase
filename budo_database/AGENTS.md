@@ -14,7 +14,10 @@ This is a single-context repository using root `CONTEXT.md` and `docs/adr/`. See
 
 ### Frontend design system
 
-Frontend and UI work follows `docs/design-system.md` and the accepted ADR under `docs/adr/2026-07-26-frontend-design-system.md`.
+Frontend and UI work follows the
+[developer guide](docs/design-system.md), including its Header, shared layout,
+form, table, breakpoint, and print contracts, and the accepted
+[design-system ADR](docs/adr/2026-07-26-frontend-design-system.md).
 
 ### Static collection after asset removal
 

@@ -65,6 +65,12 @@ Application mobile behavior changes below 901px; desktop behavior starts at
 the matching 900/901 boundary. Older breakpoints are transitional legacy code,
 not choices for new work.
 
+The specification planned a registered custom Tailwind variant for this
+boundary. The shipped implementation instead uses Tailwind arbitrary variants,
+`max-[900px]:...` and `min-[901px]:...`, and does not register a named mobile
+variant. This is an implementation deviation, not a second breakpoint: both
+forms match the same 900/901 boundary.
+
 ### Printing
 
 React is the only application print architecture. Every route loads the app

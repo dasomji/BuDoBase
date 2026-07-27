@@ -88,7 +88,7 @@ Everything lives in `docs/evidence/design-system-refactor/`:
   filename contract `before/<slug>--<viewport>.png` and `after/<slug>--<viewport>.png`.
 - `capture.cjs` — Playwright capture script. Slugs in it MUST stay in sync with the `MANIFEST`
   in `review.html`.
-- `before/` — **complete, already captured** at commit `98d6f48` (58 screen shots + 5 print PDFs
+- `before/` — **complete, already captured** at commit `98d6f48` (56 screen shots + 5 print PDFs
   converted to PNG). Do not re-capture "before" — it is the frozen reference.
 
 To capture the **after** set (repeat after each visually-affecting ticket lands, at minimum after

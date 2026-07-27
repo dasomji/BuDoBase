@@ -14,8 +14,10 @@ not precedent for new work.
   [`frontend/src/app.css`](../frontend/src/app.css)
 - Button:
   [`frontend/src/components/ui/button.jsx`](../frontend/src/components/ui/button.jsx)
-- Card and DataTable:
+- Header, Card, DataTable, and shared page components:
   [`frontend/src/components.jsx`](../frontend/src/components.jsx)
+- Route-level Header declarations:
+  [`frontend/src/routes.jsx`](../frontend/src/routes.jsx)
 - Table primitives:
   [`frontend/src/components/ui/table.jsx`](../frontend/src/components/ui/table.jsx)
 - Mobile behavior:
@@ -61,9 +63,9 @@ literals in component markup.
 | `surface-subtle` | `rgb(183 220 255 / 34%)` | Subtle blue surface/row |
 | `surface-header` | `rgb(179 202 217 / 95%)` | Blue header/table chrome |
 
-The retired legacy color aliases have no consumers and are not part of the
-design-system API. Use the semantic tokens above. Dark mode is not part of the
-current system.
+The legacy color alias declarations were removed after their consumers were
+migrated. They are not part of the design-system API; use the semantic tokens
+above. Dark mode is not part of the current system.
 
 ## Fonts and vendor styles
 
@@ -144,6 +146,68 @@ its dimensions, padding, or border radius on individual pages.
 Use `Button` instead of new `.button` anchors or bare button styling. Keep the
 native `type`, form, ARIA, and disabled semantics appropriate to the action.
 
+## Header
+
+`Header` owns the application chrome for authenticated routes. Do not position
+its controls from individual pages. Its DOM order is responsive:
+
+- Below 901px: title, optional route action, search toggle, sidebar trigger,
+  expandable search field.
+- At least 901px: sidebar trigger, title, search field, optional route action.
+
+A page declares its action on its route definition with
+`headerAction(data, pageContext)`. `App` resolves that callback for
+authenticated routes and passes its result to Header's `action` slot.
+`pageContext` currently contains `pageState`, `setPageState`, and `mutate`, so
+stateful route actions can share the owning page's state and mutation path.
+Return one accessible action or `null`; routes without the property have no
+action.
+
+```jsx
+{
+  pattern: /^\/example$/,
+  title: 'Beispiel',
+  headerAction: (_data, { pageState = {}, setPageState }) => (
+    <Button
+      className="mobile-icon-action"
+      size="responsive-icon"
+      type="button"
+      aria-label={pageState.showDetails ? 'Details ausblenden' : 'Details anzeigen'}
+      onClick={() => setPageState(current => ({
+        ...current,
+        showDetails: !current.showDetails,
+      }))}
+    >
+      <span className="desktop-action-label">
+        {pageState.showDetails ? 'Details ausblenden' : 'Details anzeigen'}
+      </span>
+      <EyeIcon className="mobile-action-label" aria-hidden="true" />
+    </Button>
+  ),
+  render: ({ data, pageState }) => <ExamplePage data={data} pageState={pageState} />,
+}
+```
+
+Every icon-only Header control is a 32px circle. Header gives both the sidebar
+trigger and search toggle `size="icon"`; route actions that collapse from text
+to an icon use the `size="responsive-icon"` and responsive-label pattern
+documented under Button. Keep an explicit accessible name on each control and
+mark its decorative icon `aria-hidden="true"`.
+
+Header measures itself, publishes the result on the root element as
+`--app-header-height`, updates it after resize or Header size changes, and
+removes it when unmounted. Current consumers are:
+
+- the mobile SWP-Einteilung table controls, whose sticky `top` is the Header
+  height;
+- the desktop SWP-Einteilung and focus-dashboard layouts, whose viewport
+  heights subtract it; and
+- the mobile Happy Cleaning station-detail overlay, whose top edge starts
+  below it.
+
+Use `var(--app-header-height, 0px)` for layout offsets that must clear Header;
+do not duplicate a fixed pixel height.
+
 ## Card
 
 Import `Card` from the shared module:
@@ -220,6 +284,55 @@ Card props:
 
 Do not build a second collapse state around Card. Use `expanded` and
 `onExpandedChange` when another component must control it.
+
+## Shared page and form components
+
+Import these established layout and data-entry seams from `../components`:
+
+| Component | Contract |
+|---|---|
+| `Columns` | Neutral page `<main id="body-container">`; accepts `children` and `className`, so the caller owns its grid or flex layout |
+| `Column` | `<div>` with the shared `detail-column` hook; accepts `children`, `id`, and `className` |
+| `ResponsiveCardGrid` | A `Columns` grid with `min-w-0`, one column below 901px, and a hard-coded three columns from `min-[901px]`; accepts `children` and `className` |
+| `FieldList` | Renders `[label, value]` pairs as labeled paragraphs and omits only `null`, `undefined`, and empty-string values |
+| `NativeForm` | Schema-driven `.form-grid` for inputs, selects, textareas, checkboxes, and checkbox groups; accepts `action`, `method`, `token`, `encType`, `fields`, `submit`, and action `children` |
+| `RestForm` | JavaScript-enhanced POST form; accepts `target`, `token`, `children`, `className`, `encType`, `onSuccess`, and `resetOnSuccess` |
+| `MapCard` | Transparent, expandable Karte Card for `places`; accepts an optional `headerAction` |
+
+`Columns` deliberately supplies no default visual layout. Add page-specific
+grid or flex utilities through `className`, and use `Column` for its direct
+regions. Use `ResponsiveCardGrid` only for the established one-to-three-card
+layout; its desktop column count is fixed rather than inferred from its
+children.
+
+```jsx
+<ResponsiveCardGrid>
+  {people.map(person => <PersonCard key={person.id} person={person} />)}
+</ResponsiveCardGrid>
+```
+
+`FieldList` preserves meaningful `false` and zero values. Format domain values
+before passing them when they need labels such as `Ja`/`Nein`.
+
+```jsx
+<FieldList items={[
+  ['Name', place.name],
+  ['Beschreibung', place.description],
+  ['Google Maps', place.maps_link && <a href={place.maps_link}>Link</a>],
+]} />
+```
+
+For POST requests, `NativeForm` delegates to `RestForm`; other methods use a
+native form. `RestForm` submits to the shared form-submit API with its `target`,
+prevents duplicate submissions, exposes `{ submitting }` to function
+children, reports errors through the shared toast path, and otherwise follows
+the response redirect. Supply `onSuccess` when the owning page needs to update
+local state instead; `resetOnSuccess` applies only after that callback
+succeeds.
+
+`MapCard` expects each place to provide `name` and comma-separated
+`coordinates`; `id` supplies the default `/auslagerorte/<id>/` link, while
+`href` overrides it. Entries without two finite coordinates are not plotted.
 
 ## Native form controls
 
@@ -359,7 +472,8 @@ case-insensitive matching. Populate `filterText` when the visible name is
 rendered from another shape. Do not expect values in arbitrary columns to
 match.
 
-The retired `SearchTable` alias has been removed. Use `DataTable`.
+The `SearchTable` export was removed in the dead-code sweep. Use `DataTable`
+directly.
 
 ## One mobile boundary
 
