@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Toaster } from '../components/ui/toast';
@@ -304,6 +305,32 @@ describe('Happy Cleaning assignment', () => {
     expect(stationDialog).toHaveTextContent('1 / 2 frei');
     expect(stationDialog).toHaveTextContent('50%');
     expect(within(stationDialog).getByRole('button', { name: 'Ada Lovelace auswählen' })).toBeInTheDocument();
+  });
+
+  it('renders the mobile station column set in the first frame', () => {
+    setViewport(true);
+
+    const markup = renderToStaticMarkup(
+      <Toaster timeout={0}>
+        <HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />
+      </Toaster>,
+    );
+    const template = document.createElement('template');
+    template.innerHTML = markup;
+    const table = template.content.querySelector('table[aria-label="Happy Cleaning Stationen"]');
+    const headings = Array.from(table.querySelectorAll('thead th'), heading => heading.textContent);
+
+    expect(headings).toEqual([
+      'SWP',
+      'Wünsche',
+      'Treffpunkt',
+      'Verantwortlich',
+      'Plätze',
+      'Aufgaben',
+      'Kinder',
+      'Details',
+    ]);
+    expect(table.querySelector('tbody tr').children).toHaveLength(8);
   });
 
   it('assigns a numberless child to the built-in Entschuldigt target', async () => {

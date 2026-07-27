@@ -101,7 +101,12 @@ describe('application sidebar navigation', () => {
   });
 
   it('uses the mobile sidebar at tablet widths where the desktop sidebar would overlap content', async () => {
-    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(886);
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query === '(max-width: 900px)',
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
 
     render(<ApplicationShell sidebar={<AppSidebar />} header={<div>Header</div>}><div>Inhalt</div></ApplicationShell>);
 

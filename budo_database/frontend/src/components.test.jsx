@@ -1,4 +1,5 @@
 import { StrictMode } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Printer } from 'lucide-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -120,6 +121,12 @@ describe('reusable components', () => {
 
   it('orders mobile header controls as title, action, search, and burger', async () => {
     vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query.includes('max-width'),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
     render(
       <ApplicationShell
         sidebar={<AppSidebar />}
@@ -158,6 +165,50 @@ describe('reusable components', () => {
 
     fireEvent.click(burger);
     expect(await screen.findByRole('dialog', { name: 'Sidebar' })).toBeInTheDocument();
+  });
+
+  it('renders mobile Card and Header behavior in the first frame', () => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query === '(max-width: 900px)',
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+
+    const markup = renderToStaticMarkup(
+      <ApplicationShell
+        header={(
+          <Header
+            title="Küche"
+            authenticated
+            searchData={{ search_index: { kids: [], focuses: [], places: [] } }}
+            action={<Button aria-label="Drucken">Drucken</Button>}
+          />
+        )}
+      >
+        <Card title="Gesundheit"><p>Details</p></Card>
+      </ApplicationShell>,
+    );
+    const template = document.createElement('template');
+    template.innerHTML = markup;
+
+    const card = template.content.querySelector('.card');
+    expect(card.classList.contains('closed-card')).toBe(true);
+    expect(card.querySelector('.card-toggle').getAttribute('aria-expanded')).toBe('false');
+    expect(card.querySelector('.card-info-container').hasAttribute('inert')).toBe(true);
+
+    const headerChildren = Array.from(
+      template.content.querySelector('#header-content').children,
+      child => child.id,
+    );
+    expect(headerChildren).toEqual([
+      'headertitle',
+      'headerbutton',
+      'search-button',
+      'menu-button',
+      'headersearch',
+    ]);
   });
 
   it('orders desktop header controls as trigger, title, search, and action', async () => {
@@ -340,14 +391,14 @@ describe('reusable components', () => {
 
     act(() => {
       viewportWidth = 900;
-      listeners.forEach(listener => listener());
+      listeners.forEach(listener => listener({ matches: true }));
     });
     expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByText('Details').closest('[aria-hidden]')).toHaveAttribute('inert');
 
     act(() => {
       viewportWidth = 901;
-      listeners.forEach(listener => listener());
+      listeners.forEach(listener => listener({ matches: false }));
     });
     expect(screen.getByRole('button', { name: 'Gesundheit schließen' })).toHaveAttribute('aria-expanded', 'true');
   });
