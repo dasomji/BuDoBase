@@ -6,13 +6,13 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import FileResponse, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.template import loader
+from django.shortcuts import get_object_or_404, redirect
 
 from . import models
 from .excelProcessor import process_excel
 from .forms import UploadForm
 from .models import Profil
+from .react_views import render_react_page
 from .storage_lifecycle import delete_storage_object_on_commit
 from .updateExcel import update_excel_file
 
@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def uploadFile(request):
-    template = loader.get_template('upload-file.html')
     documents = models.Turnus.objects.all()
     context = {
         "documents": documents,
@@ -52,7 +51,7 @@ def uploadFile(request):
         upload_form = UploadForm()
         context["upload_form"] = upload_form
 
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)
 
 
 @login_required
@@ -106,7 +105,7 @@ def upload_excel(request, turnus_id):
                     del turnus._replaced_storage_file
     else:
         form = UploadForm(instance=turnus)
-    return render(request, 'upload_excel.html', {'form': form, 'turnus': turnus})
+    return render_react_page(request, {'form': form, 'turnus': turnus})
 
 
 @login_required
