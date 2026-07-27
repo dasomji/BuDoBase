@@ -1,0 +1,55 @@
+{
+  "route": "/kitchen",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "status": 200,
+  "headerBounds": {
+    "x": 0,
+    "y": 0,
+    "width": 390,
+    "height": 73.1875,
+    "scrollY": 0
+  },
+  "controls": [
+    {
+      "name": "page action",
+      "x": 250,
+      "y": 25.59375,
+      "width": 32,
+      "height": 32,
+      "borderRadius": 33554400,
+      "glyphWidth": 16,
+      "glyphHeight": 16,
+      "ariaLabel": "Drucken"
+    },
+    {
+      "name": "search toggle",
+      "x": 294,
+      "y": 25.59375,
+      "width": 32,
+      "height": 32,
+      "borderRadius": 33554400,
+      "glyphWidth": 16,
+      "glyphHeight": 16,
+      "ariaLabel": "Suche öffnen"
+    },
+    {
+      "name": "burger",
+      "x": 338,
+      "y": 25.59375,
+      "width": 32,
+      "height": 32,
+      "borderRadius": 33554400,
+      "glyphWidth": 16,
+      "glyphHeight": 16,
+      "ariaLabel": "Sidebar ein- oder ausklappen"
+    }
+  ],
+  "behavior": {
+    "pageActionInvoked": true,
+    "searchExpanded": true,
+    "sidebarOpened": true
+  }
+}

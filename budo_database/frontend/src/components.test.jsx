@@ -120,6 +120,7 @@ describe('reusable components', () => {
   });
 
   it('orders mobile header controls as title, action, search, and burger', async () => {
+    const runAction = vi.fn();
     vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
     window.matchMedia = vi.fn().mockImplementation(query => ({
       matches: query.includes('max-width'),
@@ -136,8 +137,9 @@ describe('reusable components', () => {
             authenticated
             searchData={{ search_index: { kids: [], focuses: [], places: [] } }}
             action={(
-              <Button size="icon" aria-label="Drucken">
-                <Printer aria-hidden="true" />
+              <Button className="mobile-icon-action" size="responsive-icon" aria-label="Drucken" onClick={runAction}>
+                <span className="desktop-action-label">Drucken</span>
+                <Printer className="mobile-action-label" aria-hidden="true" />
               </Button>
             )}
           />
@@ -152,11 +154,19 @@ describe('reusable components', () => {
     const search = await screen.findByRole('button', { name: 'Suche öffnen' });
     const burger = await screen.findByRole('button', { name: 'Sidebar ein- oder ausklappen' });
 
+    for (const control of [action, search]) {
+      expect(control).toHaveAttribute('data-slot', 'button');
+    }
+    expect(burger).toHaveAttribute('data-sidebar', 'trigger');
+
     await waitFor(() => {
       expect(title.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect(action.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect(search.compareDocumentPosition(burger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
+
+    fireEvent.click(action);
+    expect(runAction).toHaveBeenCalledOnce();
 
     fireEvent.click(search);
     expect(screen.getByRole('button', { name: 'Suche schließen' })).toHaveAttribute('aria-expanded', 'true');
