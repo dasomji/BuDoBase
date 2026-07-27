@@ -1186,6 +1186,13 @@
 }
 
 @media only screen and (max-width: 900px) {
+  .allocation-page [data-slot="table-sticky-controls"] {
+    position: sticky;
+    top: var(--app-header-height, 0px);
+    z-index: 5;
+    flex: 0 0 auto;
+  }
+
   [data-slot="table"] [data-priority="low"] {
     display: none;
   }

@@ -76,8 +76,13 @@ describe('allocation page', () => {
     }} />);
 
     const card = screen.getByRole('heading', { name: 'Wald: 3' }).closest('.card');
-    expect(card.parentElement).toHaveAccessibleName('SWP-Übersicht');
-    expect(within(card.parentElement.parentElement).getByRole('searchbox', { name: 'Kinder filtern' })).toBeInTheDocument();
+    const overview = card.parentElement;
+    const stickyControls = overview.parentElement;
+    expect(overview).toHaveAccessibleName('SWP-Übersicht');
+    expect(stickyControls).toHaveAttribute('data-slot', 'table-sticky-controls');
+    expect(within(stickyControls).getByRole('searchbox', { name: 'Kinder filtern' })).toBeInTheDocument();
+    expect(stickyControls.nextElementSibling).toHaveAttribute('data-slot', 'table-scroll');
+    expect(stickyControls.nextElementSibling).toHaveAttribute('data-vertical-scroll');
     const stats = within(card).getByLabelText('Statistik Wald');
     expect(stats).toHaveTextContent('Ø Alter: 12,5');
     expect(stats).toHaveTextContent('Geschlechter: 1 ♂ · 1 ♀ · 1 ⚧');
