@@ -222,7 +222,7 @@ export const kitchenRoutes = [{
   headerAction: () => (
     <Button
       aria-label="Drucken"
-      className="kitchen-print-button mobile-icon-action"
+      className="mobile-icon-action"
       size="responsive-icon"
       type="button"
       onClick={() => window.print()}

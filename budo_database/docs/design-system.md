@@ -61,10 +61,22 @@ literals in component markup.
 | `surface-subtle` | `rgb(183 220 255 / 34%)` | Subtle blue surface/row |
 | `surface-header` | `rgb(179 202 217 / 95%)` | Blue header/table chrome |
 
-The `:root` properties such as `--button-color`, `--light-blue`, `--blue`,
-`--dark-blue`, and `--bg-blue` are compatibility aliases for code that has not
-yet migrated. Do not introduce new uses of those aliases. Dark mode is not part
-of the current system.
+The retired legacy color aliases have no consumers and are not part of the
+design-system API. Use the semantic tokens above. Dark mode is not part of the
+current system.
+
+## Fonts and vendor styles
+
+Roboto is self-hosted as variable WOFF2 assets for normal and italic text,
+covering Latin and Latin Extended characters at weights 100–900. The source
+files come from the OFL-1.1-licensed `@fontsource-variable/roboto` package;
+the local `Roboto Fallback` face adjusts Arial's width and line metrics to
+Roboto during font swap. Do not add external font stylesheets, preconnects, or
+requests.
+
+Third-party component CSS belongs in a named `vendor` cascade layer before
+`components` and `utilities`. Leaflet follows this contract, so an application
+utility on a map element wins without selector escalation.
 
 ## Button
 
@@ -347,8 +359,7 @@ case-insensitive matching. Populate `filterText` when the visible name is
 rendered from another shape. Do not expect values in arbitrary columns to
 match.
 
-`SearchTable` remains a compatibility alias for `DataTable`; new code should
-use `DataTable`.
+The retired `SearchTable` alias has been removed. Use `DataTable`.
 
 ## One mobile boundary
 

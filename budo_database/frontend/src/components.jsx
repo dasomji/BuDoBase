@@ -1,7 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { SearchIcon } from 'lucide-react';
-import 'leaflet/dist/leaflet.css';
 
 import { Button, buttonVariants } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -238,9 +237,7 @@ export function Card({
           </span>
         )}
         {toggleIconVisible && (
-          <span className="icon" aria-hidden="true">
-            <span className="open-icon">{closed ? '+' : '−'}</span>
-          </span>
+          <span className="icon" aria-hidden="true">{closed ? '+' : '−'}</span>
         )}
       </div>
       <div className="card-info-container" id={contentId} aria-hidden={closed} inert={closed || undefined}>
@@ -258,7 +255,7 @@ export function Card({
 }
 
 export function Columns({ children, className = '' }) {
-  return <main className={`flex-container ${className}`} id="body-container">{children}</main>;
+  return <main className={className} id="body-container">{children}</main>;
 }
 
 export function ResponsiveCardGrid({ children, className = '' }) {
@@ -339,13 +336,13 @@ export function DataTable({
         verticalScroll={verticalScroll}
       >
         <Table id={id}>
-          <TableHeader><TableRow className="table-header">{columns.map(column => {
+          <TableHeader><TableRow>{columns.map(column => {
             const direction = sort?.key === column.key ? sort.direction : undefined;
             const nextDirection = direction === 'ascending' ? 'absteigend' : direction === 'descending' ? 'aufsteigend' : '';
             return <TableHead key={column.key} scope="col" data-priority={column.priority} aria-sort={direction}>{column.sortable === false ? column.label : <button className="table-sort-button" type="button" aria-label={`${column.label}${nextDirection ? ` ${nextDirection}` : ''} sortieren`} onClick={() => sortBy(column.key)}><span>{column.label}</span>{direction && <span className="sort-indicator" aria-hidden="true">{direction === 'ascending' ? '▲' : '▼'}</span>}</button>}</TableHead>;
           })}</TableRow></TableHeader>
           <TableBody>
-            {visibleRows.map(row => <TableRow className="table_row" key={row.id}>{columns.map(column => <TableCell className={column.className || 'text-cell'} data-priority={column.priority} key={column.key}>{column.render ? column.render(row) : row[column.key]}</TableCell>)}</TableRow>)}
+            {visibleRows.map(row => <TableRow key={row.id}>{columns.map(column => <TableCell className={column.className} data-priority={column.priority} key={column.key}>{column.render ? column.render(row) : row[column.key]}</TableCell>)}</TableRow>)}
             {!visibleRows.length && <TableRow><TableCell colSpan={columns.length}>{empty}</TableCell></TableRow>}
           </TableBody>
         </Table>
@@ -353,8 +350,6 @@ export function DataTable({
     </>
   );
 }
-
-export const SearchTable = DataTable;
 
 export function CsrfInput({ token }) {
   return <input type="hidden" name="csrfmiddlewaretoken" value={token} />;

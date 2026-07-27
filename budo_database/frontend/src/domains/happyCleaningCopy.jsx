@@ -38,7 +38,7 @@ export function ConflictResolution({ preview, decisions, setDecisions }) {
       const candidate = group.candidates.find(item => item.target_station_id === Number(decision.target_station_id));
       return <fieldset className="grid grid-cols-[minmax(12rem,1fr)_minmax(18rem,2fr)] gap-4 rounded-lg border border-foreground/25 p-4 max-[900px]:grid-cols-1" key={group.id}>
         <legend className="font-bold">{group.name} ({group.taskCount ?? 0} Aufgaben)</legend>
-        <p className="happy-cleaning-conflict-summary">
+        <p>
           {group.candidates.map(item => `${group.name} → ${item.target_name}`).join(', ')}
         </p>
         <label className="grid gap-1 font-medium">Bestehende Station

@@ -49,9 +49,9 @@ function DeleteConfirmationDialog({ event, onCancel, onConfirm }) {
   const confirmationId = `happy-cleaning-delete-confirmation-${event.id}`;
   const confirmed = confirmation === eventName;
   return (
-    <div className="happy-cleaning-delete-backdrop fixed inset-0 z-[var(--z-modal)] grid place-items-center bg-black/45 p-6">
+    <div className="fixed inset-0 z-[var(--z-modal)] grid place-items-center bg-black/45 p-6">
       <section
-        className="card happy-cleaning-delete-dialog w-full max-w-[30rem] bg-surface-solid p-6"
+        className="card w-full max-w-[30rem] bg-surface-solid p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -191,7 +191,7 @@ function StationSummaryTable({ event, stations, sort, onSort, onSelect, selectio
       <TableScroll>
         <Table>
           <TableHeader>
-            <TableRow className="table-header">
+            <TableRow>
             {overviewColumns.map(column => {
               const active = sort.key === column.key;
               return (
@@ -579,7 +579,7 @@ export function HappyCleaningOverviewPage({
     ), 0,
   );
   const overview = (
-    <div className={`happy-cleaning-overview-list min-w-0 ${selection ? 'max-[900px]:hidden' : ''}`}>
+    <div className={`min-w-0 ${selection ? 'max-[900px]:hidden' : ''}`}>
       {deleteCandidate && (
         <DeleteConfirmationDialog
           event={deleteCandidate}
@@ -669,13 +669,13 @@ export function HappyCleaningOverviewPage({
   );
   return (
     <main
-      className={`happy-cleaning-overview-layout mx-auto grid w-full max-w-6xl content-start p-4 max-[900px]:block ${selection ? 'happy-cleaning-overview-split grid-cols-2 gap-4' : 'grid-cols-[minmax(0,1fr)_minmax(0,0fr)] gap-0'} ${todoPrintRequest ? 'happy-cleaning-todo-print-ready' : ''}`}
+      className={`mx-auto grid w-full max-w-6xl content-start p-4 max-[900px]:block ${selection ? 'grid-cols-2 gap-4' : 'grid-cols-[minmax(0,1fr)_minmax(0,0fr)] gap-0'}`}
       id="body-container"
     >
       {overview}
       {selection && (
         <aside
-          className="happy-cleaning-overview-detail min-w-0 max-[900px]:fixed max-[900px]:z-[15] max-[900px]:overflow-y-auto max-[900px]:bg-background max-[900px]:p-4"
+          className="min-w-0 max-[900px]:fixed max-[900px]:z-[15] max-[900px]:overflow-y-auto max-[900px]:bg-background max-[900px]:p-4"
           aria-live="polite"
           style={{
             top: 'var(--app-header-height, 0px)',
@@ -723,7 +723,7 @@ function PrintSection({ id, title, columns, rows, children }) {
           <TableScroll className="happy-cleaning-print-table-container">
             <Table className="happy-cleaning-print-table" aria-labelledby={id}>
               <TableHeader>
-                <TableRow className="table-header">{columns.map(column => <TableHead key={column.key} scope="col">{column.label}</TableHead>)}</TableRow>
+                <TableRow>{columns.map(column => <TableHead key={column.key} scope="col">{column.label}</TableHead>)}</TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map(child => (
@@ -753,7 +753,7 @@ function HappyCleaningPrintAction() {
       onClick={() => window.print()}
     >
       <span className="desktop-action-label">Drucken</span>
-      <Printer className="mobile-action-label" size={20} aria-hidden="true" />
+      <Printer className="mobile-action-label" aria-hidden="true" />
     </Button>
   );
 }

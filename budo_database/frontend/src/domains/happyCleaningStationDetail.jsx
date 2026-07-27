@@ -452,7 +452,7 @@ export function HappyCleaningStationDetailPage({
         </Button>
       )}
       <Card
-        className="happy-cleaning-station-detail-card mx-auto w-full max-w-[52rem]"
+        className="mx-auto w-full max-w-[52rem]"
         title={station.name}
         showToggleIcon={false}
         headerAction={onBack ? (
@@ -481,7 +481,7 @@ export function HappyCleaningStationDetailPage({
           />
         ) : (
           <>
-            <dl className="happy-cleaning-station-facts grid gap-2.5">
+            <dl className="grid gap-2.5">
               {station.responsible && (
                 <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[900px]:grid-cols-1 max-[900px]:gap-0.5"><dt className="font-medium">Hauptverantwortlich</dt><dd className="m-0">{station.responsible.name}</dd></div>
               )}
