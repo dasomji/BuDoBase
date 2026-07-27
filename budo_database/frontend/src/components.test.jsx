@@ -247,14 +247,14 @@ describe('reusable components', () => {
   });
 
   it('renders bottom actions in the shared print-hidden actions slot', () => {
-    const { container } = render(
+    render(
       <Card title="Gesundheit" actions={<button type="button">Speichern</button>}>
         <p>Details</p>
       </Card>,
     );
 
     const action = screen.getByRole('button', { name: 'Speichern' });
-    const actions = container.querySelector('[data-slot="card-actions"]');
+    const actions = document.querySelector('[data-slot="card-actions"]');
 
     expect(actions).toHaveAttribute('data-slot', 'card-actions');
     expect(actions).toContainElement(action);
