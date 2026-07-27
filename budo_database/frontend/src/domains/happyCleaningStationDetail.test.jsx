@@ -141,6 +141,15 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.queryByLabelText(/Name der Station|Treffpunkt der Station/)).not.toBeInTheDocument();
   });
 
+  it('gives the Aufgaben heading its annotated vertical padding', () => {
+    render(<HappyCleaningStationDetailPage data={detailData} mutate={vi.fn()} />);
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Aufgaben' })).toHaveStyle({
+      paddingTop: '12px',
+      paddingBottom: '8px',
+    });
+  });
+
   it('places edit and copy actions together at the end of the card body', () => {
     render(<HappyCleaningStationDetailPage data={{
       ...detailData,
@@ -472,7 +481,7 @@ describe('Happy Cleaning station detail', () => {
     ));
   });
 
-  it('guards dirty Escape and retains the draft when a structural save is stale', async () => {
+  it('guards dirty Escape with a backdrop and retains the draft when a structural save is stale', async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     const mutate = vi.fn().mockRejectedValue(Object.assign(new Error('failed'), {
@@ -497,6 +506,11 @@ describe('Happy Cleaning station detail', () => {
     const dirtyDialog = screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' });
     expect(dirtyDialog).toBeInTheDocument();
     expect(dirtyDialog.closest('.happy-cleaning-station-detail-card')).toBeNull();
+    const dirtyDialogViewport = dirtyDialog.parentElement;
+    const dirtyDialogBackdrop = dirtyDialogViewport?.previousElementSibling;
+    expect(dirtyDialogViewport).toHaveAttribute('role', 'presentation');
+    expect(dirtyDialogBackdrop).toHaveAttribute('role', 'presentation');
+    expect(dirtyDialogBackdrop).toHaveAttribute('data-open');
     screen.getByRole('button', { name: 'Weiter bearbeiten' }).focus();
     await user.keyboard('{Enter}');
     const closeDetail = screen.getByRole('button', { name: 'Detail schließen' });

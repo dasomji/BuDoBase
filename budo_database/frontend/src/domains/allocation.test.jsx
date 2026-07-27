@@ -37,7 +37,7 @@ describe('allocation page', () => {
     expect(screen.queryByText('Noch keine Kinder für diesen Schwerpunkt eingeteilt')).not.toBeInTheDocument();
   });
 
-  it('shows failed allocation writes as error toasts', async () => {
+  it('shows failed allocation writes as error toasts, never inline', async () => {
     const mutate = vi.fn().mockRejectedValue(new Error('network down'));
     render(<AllocationPage week="2" mutate={mutate} data={{
       focuses: [{ id: 2, name: 'Wald', week: 'w2', kid_ids: [], stats: null }],
@@ -48,8 +48,11 @@ describe('allocation page', () => {
     expect(assignment).toHaveAttribute('data-slot', 'native-select');
     fireEvent.change(assignment, { target: { value: '2' } });
 
-    const toast = await screen.findByText('Die Schwerpunktdaten konnten nicht gespeichert werden.', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    const message = 'Die Schwerpunktdaten konnten nicht gespeichert werden.';
+    const notifications = screen.getByRole('region', { name: 'Benachrichtigungen' });
+    const toast = await within(notifications).findByText(message);
+    expect(toast.closest('[data-type="error"]')).toBeInTheDocument();
+    expect(within(screen.getByRole('main')).queryByText(message)).not.toBeInTheDocument();
   });
 
   it('renders assignment stats above a two-column kid list and highlights selected choices', () => {

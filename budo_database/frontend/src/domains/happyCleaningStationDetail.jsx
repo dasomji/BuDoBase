@@ -490,7 +490,12 @@ export function HappyCleaningStationDetailPage({
               <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-4 max-[900px]:grid-cols-1 max-[900px]:gap-0.5"><dt className="font-medium">Wünsche</dt><dd className="m-0">{station.wishes || '—'}</dd></div>
             </dl>
             <section aria-labelledby={`station-tasks-${station.id}`}>
-              <h2 className="py-2 [padding-top:12px]" id={`station-tasks-${station.id}`}>Aufgaben</h2>
+              <h2
+                id={`station-tasks-${station.id}`}
+                style={{ paddingTop: 12, paddingBottom: 8 }}
+              >
+                Aufgaben
+              </h2>
               <ReadOnlyStationDocument
                 document={station.document}
                 canToggle={station.can_toggle_tasks}

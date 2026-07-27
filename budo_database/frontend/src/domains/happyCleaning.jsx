@@ -670,8 +670,14 @@ export function HappyCleaningOverviewPage({
       {overview}
       {selection && (
         <aside
-          className="happy-cleaning-overview-detail min-w-0 max-[900px]:fixed max-[900px]:inset-x-0 max-[900px]:bottom-0 max-[900px]:z-[15] max-[900px]:overflow-y-auto max-[900px]:bg-background max-[900px]:p-4 max-[900px]:top-[var(--app-header-height,0px)]"
+          className="happy-cleaning-overview-detail min-w-0 max-[900px]:fixed max-[900px]:z-[15] max-[900px]:overflow-y-auto max-[900px]:bg-background max-[900px]:p-4"
           aria-live="polite"
+          style={{
+            top: 'var(--app-header-height, 0px)',
+            right: 0,
+            bottom: 0,
+            left: 0,
+          }}
         >
           {detailLoading && !detail && <p role="status">Station wird geladen…</p>}
           {detail && (

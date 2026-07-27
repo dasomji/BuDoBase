@@ -331,7 +331,7 @@ describe('Happy Cleaning management', () => {
 
   });
 
-  it('opens and switches station detail locally, restores focus, and keeps the URL', async () => {
+  it('opens fullscreen station detail below the header, switches locally, and restores focus', async () => {
     const user = userEvent.setup();
     const originalPath = window.location.pathname;
     const fetchImpl = vi.fn().mockImplementation(async url => ({
@@ -375,7 +375,14 @@ describe('Happy Cleaning management', () => {
     const kitchen = screen.getByRole('button', { name: 'Station Küche öffnen' });
     kitchen.focus();
     await user.keyboard('{Enter}');
-    expect(await screen.findByRole('heading', { name: 'Küche' })).toBeInTheDocument();
+    const detailHeading = await screen.findByRole('heading', { name: 'Küche' });
+    const detailOverlay = detailHeading.closest('aside[aria-live="polite"]');
+    expect(detailOverlay).toHaveStyle({
+      top: 'var(--app-header-height, 0px)',
+      right: '0px',
+      bottom: '0px',
+      left: '0px',
+    });
     expect(document.querySelector('.happy-cleaning-overview-split')).toBeInTheDocument();
     expect(window.location.pathname).toBe(originalPath);
 
