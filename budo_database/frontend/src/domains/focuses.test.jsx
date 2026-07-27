@@ -127,7 +127,9 @@ describe('Schwerpunkte pages', () => {
     expect(screen.getByText('Beginnt am').closest('p')).toHaveTextContent('05.07.2026');
     expect(screen.queryByText('Geschätzte Abreise')).not.toBeInTheDocument();
     expect(screen.queryByText('Geschätzte Rückkehr')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ada Kind' })).toHaveAttribute('href', '/kid_details/21');
+    const kidRow = screen.getByRole('link', { name: 'Ada Kind' }).closest('tr');
+    expect(within(kidRow).getByText('🥳 14')).toBeInTheDocument();
+    expect(within(kidRow).getByRole('link', { name: 'Ada Kind' })).toHaveAttribute('href', '/kid_details/21');
     expect(screen.getByText('Asthmaspray')).toBeInTheDocument();
     expect(screen.getByText('Allergie')).toBeInTheDocument();
     const mealsCard = screen.getByRole('heading', { name: 'Essen' }).closest('.card');

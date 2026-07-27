@@ -263,7 +263,7 @@ export function Columns({ children, className = '' }) {
 
 export function ResponsiveCardGrid({ children, className = '' }) {
   return (
-    <Columns className={`grid grid-cols-1 items-start gap-4 min-[901px]:grid-cols-3 ${className}`}>
+    <Columns className={`grid min-w-0 grid-cols-1 items-start gap-4 min-[901px]:grid-cols-3 ${className}`}>
       {children}
     </Columns>
   );

@@ -290,6 +290,7 @@
 }
 
 .card {
+  min-width: 0;
   border-radius: var(--corner-rad);
   background-color: var(--color-surface);
   box-shadow:
@@ -323,8 +324,13 @@
 }
 
 .card-info-content {
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.card a {
+  overflow-wrap: anywhere;
 }
 
 .card p {
@@ -391,6 +397,9 @@
 
 .card-header-action {
   margin-left: auto;
+}
+
+.card-header-action:has(+ .icon) {
   margin-right: 8px;
 }
 
@@ -1142,6 +1151,10 @@
 
 [data-slot="table-head"]::after {
   content: none;
+}
+
+.number-cell {
+  text-align: right;
 }
 
 [data-slot="table-row"] {

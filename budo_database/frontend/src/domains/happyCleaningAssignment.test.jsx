@@ -167,9 +167,11 @@ describe('Happy Cleaning assignment', () => {
     expect(option).toHaveTextContent('#7');
     expect(option).toHaveTextContent('Speisesaal');
     expect(option).toHaveTextContent('Anwesend');
+    expect(option).toHaveAttribute('aria-selected', 'false');
 
     fireEvent.keyDown(search, { key: 'ArrowDown' });
     expect(search).toHaveAttribute('aria-activedescendant', 'happy-cleaning-child-1');
+    expect(option).toHaveAttribute('aria-selected', 'true');
     fireEvent.keyDown(search, { key: 'Enter' });
 
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();

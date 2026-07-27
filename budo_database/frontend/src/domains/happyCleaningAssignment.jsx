@@ -371,9 +371,7 @@ function ChildSearch({ children, selected, onSelect, inputRef }) {
           {results.map((child, index) => (
             <Button
               id={`happy-cleaning-child-${child.id}`}
-              className={`grid h-auto w-full rounded-none border-b border-black/10 px-2 py-2 text-left whitespace-normal max-[900px]:block ${
-                index === activeIndex ? 'bg-secondary' : 'bg-white'
-              } min-[901px]:grid-cols-[minmax(10rem,1fr)_minmax(20rem,2fr)]`}
+              className="grid h-auto w-full rounded-none border-b border-black/10 bg-white px-2 py-2 text-left whitespace-normal max-[900px]:block min-[901px]:grid-cols-[minmax(10rem,1fr)_minmax(20rem,2fr)]"
               variant="ghost"
               type="button"
               role="option"
@@ -566,7 +564,7 @@ function StationsTable({ stations, selected, busy, onActivate, onSelect, mobile 
             <TableHead scope="col" data-priority="low">Verantwortlich</TableHead>
             <TableHead scope="col">Plätze</TableHead>
             <TableHead scope="col" data-priority="low">Aufgaben</TableHead>
-            <TableHead scope="col" data-priority="low">
+            <TableHead scope="col">
               <div className="inline-flex items-center gap-1">
               <span>Kinder</span>
               <Button
@@ -587,7 +585,7 @@ function StationsTable({ stations, selected, busy, onActivate, onSelect, mobile 
         <TableBody>
           {stations.map(station => (
             <TableRow className={station.is_excused ? 'bg-white/20' : ''} key={station.id}>
-              <TableHead scope="row">
+              <TableHead className="bg-[var(--table-row-background)] font-bold whitespace-normal" scope="row">
                 <StationName station={station} selected={selected} busy={busy} onActivate={onActivate} />
               </TableHead>
               {station.is_excused
@@ -611,7 +609,7 @@ function StationsTable({ stations, selected, busy, onActivate, onSelect, mobile 
                     <TableCell data-priority="low">{station.responsible?.name || '—'}</TableCell>
                     <TableCell>{places(station)}</TableCell>
                     <TableCell data-priority="low">{progress(station)}</TableCell>
-                    <TableCell data-priority="low">
+                    <TableCell>
                       {!childrenVisible && (
                         <span
                           className="font-medium tabular-nums"
