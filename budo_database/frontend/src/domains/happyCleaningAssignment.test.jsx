@@ -221,6 +221,41 @@ describe('Happy Cleaning assignment', () => {
     expect(screen.getByText('Nummer').nextElementSibling).toHaveTextContent('3');
   });
 
+  it('keeps the child panel and number form reachable after repeated mobile assignments', async () => {
+    setViewport(true);
+    const mutate = vi.fn().mockResolvedValue({ ok: true });
+    render(<HappyCleaningAssignmentPage data={assignmentData} mutate={mutate} />);
+
+    const selectGrace = () => {
+      const search = screen.getByRole('combobox', { name: 'Kind suchen' });
+      fireEvent.change(search, { target: { value: 'Grace' } });
+      fireEvent.click(screen.getByRole('option', { name: 'Grace Hopper' }));
+    };
+
+    selectGrace();
+
+    let panelToggle = screen.getByRole('button', { name: 'Grace Hopper schließen' });
+    let numberInput = screen.getByRole('spinbutton', { name: 'Happy Cleaning Nummer für Grace Hopper' });
+    expect(panelToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(panelToggle).toHaveTextContent('−');
+    expect(numberInput.closest('.card-info-container')).not.toHaveAttribute('inert');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grace Hopper Entschuldigt zuweisen' }));
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/7/assignments/excuse/',
+      expect.objectContaining({ child_id: 2 }),
+    ));
+    expect(screen.queryByRole('heading', { name: 'Grace Hopper' })).not.toBeInTheDocument();
+
+    selectGrace();
+
+    panelToggle = screen.getByRole('button', { name: 'Grace Hopper schließen' });
+    numberInput = screen.getByRole('spinbutton', { name: 'Happy Cleaning Nummer für Grace Hopper' });
+    expect(panelToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(panelToggle).toHaveTextContent('−');
+    expect(numberInput.closest('.card-info-container')).not.toHaveAttribute('inert');
+  });
+
   it('opens present unassigned children in a closable dialog and selects one', async () => {
     setViewport(false);
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);

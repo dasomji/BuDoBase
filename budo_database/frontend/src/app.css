@@ -318,6 +318,10 @@
   padding-bottom: var(--str-padding);
 }
 
+.card.transparent > .card-info-container {
+  padding-inline: 0;
+}
+
 .card-info-content {
   min-height: 0;
   overflow: hidden;
@@ -353,11 +357,11 @@
   outline: none;
   text-align: left;
   white-space: normal;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, filter 0.2s ease;
 }
 
 .info-header-container.card-toggle:hover {
-  background-color: var(--color-surface-header);
+  filter: brightness(1.1);
 }
 
 .info-header-container.card-toggle > :is(h2, h3) {
