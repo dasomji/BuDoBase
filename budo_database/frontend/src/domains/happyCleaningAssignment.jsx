@@ -48,9 +48,12 @@ function PlaceholderChildDetails() {
 function ChildDetails({ child, busy, onNumber }) {
   const [number, setNumber] = useState(child.number === null ? '' : String(child.number));
   const [editingNumber, setEditingNumber] = useState(child.number === null);
+  const [expanded, setExpanded] = useState(true);
+  const mobile = useIsMobile();
   useEffect(() => {
     setNumber(child.number === null ? '' : String(child.number));
     setEditingNumber(child.number === null);
+    setExpanded(true);
   }, [child.id, child.number]);
   const numberForm = (
     <form className="flex flex-wrap items-stretch gap-1" onSubmit={event => {
@@ -87,7 +90,13 @@ function ChildDetails({ child, busy, onNumber }) {
   );
   return (
     <div className="min-w-0" role="region" aria-label="Ausgewähltes Kind">
-      <Card title={`${child.full_name}${!child.present ? ' ❌' : ''}`} className="m-0 w-full min-w-0">
+      <Card
+        title={`${child.full_name}${!child.present ? ' ❌' : ''}`}
+        className="m-0 w-full min-w-0"
+        expanded={expanded}
+        onExpandedChange={setExpanded}
+        showToggleIcon={mobile}
+      >
         <dl className="grid gap-2">
           <div className="min-w-0">
             <dt className="font-semibold">Nummer</dt>
@@ -752,7 +761,7 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
           <ChildSearch key={selectedId || 'empty'} children={data.children} selected={selected} onSelect={setSelected} inputRef={searchRef} />
         </div>
         {selected
-          ? <ChildDetails child={selected} busy={writeBusy} onNumber={saveNumber} />
+          ? <ChildDetails key={selected.id} child={selected} busy={writeBusy} onNumber={saveNumber} />
           : <PlaceholderChildDetails />}
       </div>
       {neighborhood.length > 0 && (
