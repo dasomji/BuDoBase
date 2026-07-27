@@ -227,16 +227,22 @@ describe('Happy Cleaning management', () => {
     expect(mutate.mock.calls[0][1]).toMatchObject({ expected_revision: 4 });
   });
 
-  it('prints one task page per station from the event actions', async () => {
+  it('prints one task page per station, then restores normal overview printing', async () => {
     let printedText = '';
     let printStylesMedia = '';
+    const printedViews = [];
     const stylesheet = document.createElement('link');
     stylesheet.id = 'react-app-styles';
     stylesheet.media = 'screen';
     document.head.append(stylesheet);
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
-      printedText = document.querySelector('.happy-cleaning-todo-print-pages')?.textContent || '';
+      const todoPrintPages = document.querySelector('.happy-cleaning-todo-print-pages');
+      printedText = todoPrintPages?.textContent || '';
       printStylesMedia = stylesheet.media;
+      printedViews.push({
+        overview: Boolean(document.querySelector('.happy-cleaning-overview-layout')),
+        todoPrintPages: Boolean(todoPrintPages),
+      });
     });
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
@@ -329,6 +335,17 @@ describe('Happy Cleaning management', () => {
     expect(stations[0]).toHaveTextContent('☒Tische wischen');
     expect(stations[1]).toHaveTextContent('Keine Aufgaben hinterlegt.');
 
+    fireEvent(window, new Event('afterprint'));
+    await waitFor(() => {
+      expect(document.querySelector('.happy-cleaning-todo-print-pages')).not.toBeInTheDocument();
+    });
+
+    window.print();
+    expect(print).toHaveBeenCalledTimes(2);
+    expect(printedViews).toEqual([
+      { overview: true, todoPrintPages: true },
+      { overview: true, todoPrintPages: false },
+    ]);
   });
 
   it('opens fullscreen station detail below the header, switches locally, and restores focus', async () => {

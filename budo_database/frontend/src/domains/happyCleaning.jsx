@@ -467,12 +467,17 @@ export function HappyCleaningOverviewPage({
   }, [restoreFocusKey, selection]);
   useEffect(() => {
     if (!todoPrintRequest) return undefined;
+    const resetTodoPrint = () => setTodoPrintRequest(null);
+    window.addEventListener('afterprint', resetTodoPrint, { once: true });
     // Let React commit the portal and Chromium complete print-media layout before
     // opening the native dialog.
     const printTimer = window.setTimeout(() => {
       window.print();
     }, 50);
-    return () => window.clearTimeout(printTimer);
+    return () => {
+      window.clearTimeout(printTimer);
+      window.removeEventListener('afterprint', resetTodoPrint);
+    };
   }, [todoPrintRequest]);
   useEffect(() => {
     setYears(current => data.years.map(group => (

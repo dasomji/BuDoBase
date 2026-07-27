@@ -1,0 +1,309 @@
+{
+  "pixel_difference": {
+    "hc-nummernliste": {
+      "frozen_before": "docs/evidence/design-system-refactor/before/hc-nummernliste--print.png",
+      "broken_after": "docs/evidence/design-system-refactor/after/hc-nummernliste--print.png",
+      "fixed_after": "docs/evidence/issue-118/hc-nummernliste--print.png",
+      "broken": {
+        "size": [
+          828,
+          1171
+        ],
+        "mean_absolute_rgb_delta": 20.1337,
+        "channel_mean_absolute_delta": [
+          21.1201,
+          20.0606,
+          19.2204
+        ],
+        "changed_pixel_percentage": 38.9173,
+        "difference_bbox": [
+          55,
+          55,
+          773,
+          1116
+        ]
+      },
+      "fixed": {
+        "size": [
+          828,
+          1171
+        ],
+        "mean_absolute_rgb_delta": 17.6919,
+        "channel_mean_absolute_delta": [
+          18.8635,
+          17.6585,
+          16.5538
+        ],
+        "changed_pixel_percentage": 36.5405,
+        "difference_bbox": [
+          55,
+          55,
+          773,
+          1116
+        ]
+      },
+      "mean_delta_reduction": 2.4418
+    },
+    "swp-einteilung-w1": {
+      "frozen_before": "docs/evidence/design-system-refactor/before/swp-einteilung-w1--print.png",
+      "broken_after": "docs/evidence/design-system-refactor/after/swp-einteilung-w1--print.png",
+      "fixed_after": "docs/evidence/issue-118/swp-einteilung-w1--print.png",
+      "broken": {
+        "size": [
+          828,
+          1171
+        ],
+        "mean_absolute_rgb_delta": 23.6824,
+        "channel_mean_absolute_delta": [
+          24.2834,
+          23.6603,
+          23.1033
+        ],
+        "changed_pixel_percentage": 77.7634,
+        "difference_bbox": [
+          55,
+          55,
+          773,
+          1116
+        ]
+      },
+      "fixed": {
+        "size": [
+          828,
+          1171
+        ],
+        "mean_absolute_rgb_delta": 23.4857,
+        "channel_mean_absolute_delta": [
+          24.0818,
+          23.4638,
+          22.9115
+        ],
+        "changed_pixel_percentage": 77.752,
+        "difference_bbox": [
+          55,
+          55,
+          773,
+          1116
+        ]
+      },
+      "mean_delta_reduction": 0.1967
+    },
+    "kitchen": {
+      "frozen_before": "docs/evidence/design-system-refactor/before/kitchen--print.png",
+      "broken_after": "docs/evidence/design-system-refactor/after/kitchen--print.png",
+      "fixed_after": "docs/evidence/issue-118/kitchen--print.png",
+      "broken": {
+        "size": [
+          828,
+          1171
+        ],
+        "mean_absolute_rgb_delta": 9.0944,
+        "channel_mean_absolute_delta": [
+          12.8315,
+          8.8577,
+          5.5939
+        ],
+        "changed_pixel_percentage": 32.0622,
+        "difference_bbox": [
+          55,
+          60,
+          773,
+          746
+        ]
+      },
+      "fixed": {
+        "size": [
+          828,
+          1171
+        ],
+        "mean_absolute_rgb_delta": 4.7466,
+        "channel_mean_absolute_delta": [
+          6.3632,
+          4.6847,
+          3.1918
+        ],
+        "changed_pixel_percentage": 17.7933,
+        "difference_bbox": [
+          55,
+          60,
+          384,
+          746
+        ]
+      },
+      "mean_delta_reduction": 4.3478
+    }
+  },
+  "layout_geometry": {
+    "hc_number_list_paper_panel": {
+      "before": {
+        "left": 55,
+        "top": 55,
+        "right": 772,
+        "bottom": 1100,
+        "width": 718
+      },
+      "broken": {
+        "left": 70,
+        "top": 55,
+        "right": 757,
+        "bottom": 1115,
+        "width": 688
+      },
+      "fixed": {
+        "left": 55,
+        "top": 55,
+        "right": 772,
+        "bottom": 1115,
+        "width": 718
+      },
+      "broken_edge_delta": {
+        "left": 15,
+        "right": -15,
+        "width": -30
+      },
+      "fixed_edge_delta": {
+        "left": 0,
+        "right": 0,
+        "width": 0
+      }
+    },
+    "allocation_heading": {
+      "before": {
+        "left": 57,
+        "top": 60,
+        "right": 392,
+        "bottom": 86
+      },
+      "broken": {
+        "left": 57,
+        "top": 119,
+        "right": 395,
+        "bottom": 144
+      },
+      "fixed": {
+        "left": 57,
+        "top": 63,
+        "right": 395,
+        "bottom": 88
+      },
+      "broken_top_delta": 59,
+      "fixed_top_delta": 3
+    },
+    "kitchen_first_menu_table": {
+      "before": {
+        "left": 55,
+        "top": 156,
+        "right": 382,
+        "bottom": 272,
+        "width": 328
+      },
+      "broken": {
+        "left": 55,
+        "top": 185,
+        "right": 772,
+        "bottom": 302,
+        "width": 718
+      },
+      "fixed": {
+        "left": 55,
+        "top": 185,
+        "right": 383,
+        "bottom": 302,
+        "width": 329
+      },
+      "broken_width_delta": 390,
+      "fixed_width_delta": 1
+    }
+  },
+  "pdf_geometry": {
+    "allocation": {
+      "before": {
+        "page_rect_points": [
+          0.0,
+          0.0,
+          595.92,
+          842.88
+        ],
+        "paper_rect_points": [
+          39.75,
+          39.75,
+          556.5,
+          803.25
+        ],
+        "first_text": {
+          "text": "Pi Screenshot Schwerpunkt",
+          "font": "Type3 (8 0 R)",
+          "size_points": 19.995,
+          "bbox_points": [
+            39.75,
+            42.7662,
+            283.2856,
+            62.7612
+          ],
+          "origin_points": [
+            39.75,
+            58.5
+          ]
+        }
+      },
+      "fixed": {
+        "page_rect_points": [
+          0.0,
+          0.0,
+          595.92,
+          842.88
+        ],
+        "paper_rect_points": [
+          39.75,
+          39.75,
+          556.5,
+          803.25
+        ],
+        "first_text": {
+          "text": "Pi Screenshot Schwerpunkt",
+          "font": "LiberationSans",
+          "size_points": 19.995,
+          "bbox_points": [
+            39.75,
+            41.8991,
+            285.3418,
+            64.2372
+          ],
+          "origin_points": [
+            39.75,
+            60.0
+          ]
+        }
+      },
+      "page_rect_delta_points": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "paper_rect_delta_points": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classification": "Equivalent page/paper geometry; residual PNG glyph edge is pre-existing font substitution, not heading box displacement."
+    },
+    "kitchen_first_menu_table": {
+      "before": {
+        "left_points": 39.75,
+        "right_points": 276.0,
+        "width_points": 236.25,
+        "ideal_width_at_100_dpi_pixels": 328.125
+      },
+      "fixed": {
+        "left_points": 39.75,
+        "right_points": 276.0,
+        "width_points": 236.25,
+        "ideal_width_at_100_dpi_pixels": 328.125
+      },
+      "width_delta_points": 0.0,
+      "classification": "Equivalent vector geometry; 328/329 PNG edge is 100 dpi raster coverage of a 328.125 px vector width."
+    }
+  }
+}
