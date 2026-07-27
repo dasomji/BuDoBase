@@ -13,6 +13,7 @@ import {
   TableScroll,
 } from '../components';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { useErrorToast } from '../components/ui/toast';
 import {
   HappyCleaningAssignmentPage,
@@ -58,10 +59,10 @@ function DeleteConfirmationDialog({ event, onCancel, onConfirm }) {
       >
         <h2 id={titleId}>{eventName} löschen</h2>
         <p>Diese Aktion kann nicht rückgängig gemacht werden.</p>
-        <label htmlFor={confirmationId}>
+        <label className="mt-4 mb-1 block font-medium" htmlFor={confirmationId}>
           „{eventName}“ zur Bestätigung eingeben
         </label>
-        <input
+        <Input
           id={confirmationId}
           autoComplete="off"
           autoFocus

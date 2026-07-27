@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card, Column, Columns, DataTable, FieldList, findById, RestForm } from '../components';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { FirstAidGallery } from './first-aid-gallery';
@@ -66,7 +67,7 @@ export function KidInteractionForm({ kid, token, onSaved }) {
             </p>
           </div>
           <div id="geld-form" className={field === 'amount' ? '' : 'hidden'}>
-            <p><label htmlFor="id_amount" onClick={show('first_aid')} title="Zu Erste Hilfe wechseln">Taschengeld</label><input id="id_amount" name="amount" type="number" min="0" step="0.01" placeholder="Taschengeld..." /></p>
+            <p><label htmlFor="id_amount" onClick={show('first_aid')} title="Zu Erste Hilfe wechseln">Taschengeld</label><Input id="id_amount" name="amount" type="number" min="0" step="0.01" placeholder="Taschengeld..." /></p>
           </div>
           <div id="erste-hilfe-form" className={field === 'first_aid' ? '' : 'hidden'}>
             <p className="first-aid-input-field">

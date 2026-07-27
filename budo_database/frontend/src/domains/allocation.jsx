@@ -2,6 +2,7 @@ import { EyeIcon, EyeOffIcon } from 'lucide-react';
 
 import { Card, Column, DataTable } from '../components';
 import { Button } from '../components/ui/button';
+import { NativeSelect } from '../components/ui/input';
 import { useErrorToast } from '../components/ui/toast';
 import { displayOrPlaceholder, linkKid } from './shared';
 
@@ -85,7 +86,7 @@ export function AllocationPage({ data, week, mutate, showKids = true }) {
       label: 'Einteilung',
       sortValue: kid => focuses.find(focus => kid.focus_ids.includes(focus.id))?.name || '',
       render: kid => (
-        <select
+        <NativeSelect
           value={kid.focus_ids.find(id => focuses.some(focus => focus.id === id)) || ''}
           onChange={event => event.target.value && save('/update-schwerpunkt-wahl/', {
             kid_id: kid.id,
@@ -95,7 +96,7 @@ export function AllocationPage({ data, week, mutate, showKids = true }) {
         >
           <option value="">Nicht zugeordnet</option>
           {focuses.map(focus => <option value={focus.id} key={focus.id}>{focus.name}</option>)}
-        </select>
+        </NativeSelect>
       ),
     },
     ...focuses.map(focus => ({

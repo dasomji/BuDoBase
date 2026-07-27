@@ -112,6 +112,7 @@ describe('operational report pages', () => {
     const noteForms = screen.getAllByRole('button', { name: 'Speichern' }).map(button => button.closest('form'));
     expect(noteForms[0]).toHaveAttribute('action', '/kindergeburtstage/');
     expect(noteForms[0]).toHaveFormValues({ kid_id: '1', notiz: '' });
+    expect(within(noteForms[0]).getByPlaceholderText('Notiz...')).toHaveAttribute('data-slot', 'input');
   });
 
   it('retains the standalone checked-in Kinder count and centering structure', () => {

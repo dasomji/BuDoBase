@@ -3,6 +3,7 @@ import { RefreshCwIcon } from 'lucide-react';
 
 import { Card, Column, Columns, DataTable, RestForm } from '../components';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { displayOrPlaceholder, formatGermanDate, linkKid, yesNo } from './shared';
 
 export function SerialLetterPage({ data }) {
@@ -41,7 +42,7 @@ export function BirthdaysPage({ data }) {
     { key: 'birthday', label: 'DB-Geburtstag', render: row => displayOrPlaceholder(row.birthday ? `${formatGermanDate(row.birthday)}${row.sv && row.sv !== row.birthday ? ' ❗' : ''}` : null) },
     { key: 'sv', label: 'SV-Geburtstag', render: row => displayOrPlaceholder(formatGermanDate(row.sv)) },
     { key: 'match', label: 'Check', sortValue: row => row.birthday && row.sv ? Number(row.birthday === row.sv) : -1, render: row => row.birthday && row.sv ? row.birthday === row.sv ? '✅' : '❌' : '---' },
-    { key: 'note', label: 'Notiz', sortable: false, render: row => <RestForm target="/kindergeburtstage/" token={data.csrf_token}><input type="hidden" name="kid_id" value={row.id} /><input name="notiz" placeholder="Notiz..." /><Button type="submit">Speichern</Button></RestForm> },
+    { key: 'note', label: 'Notiz', sortable: false, render: row => <RestForm target="/kindergeburtstage/" token={data.csrf_token}><input type="hidden" name="kid_id" value={row.id} /><Input name="notiz" placeholder="Notiz..." /><Button type="submit">Speichern</Button></RestForm> },
   ];
   return <main className="table-only" id="body-container"><DataTable columns={columns} rows={rows} showFilter /></main>;
 }

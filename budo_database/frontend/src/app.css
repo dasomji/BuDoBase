@@ -1230,18 +1230,14 @@
 }
 
 #headersearch input,
-.filter-table,
-input[name="notiz"],
-input[name="amount"] {
+.filter-table {
   background-color: white;
   color: var(--color-foreground);
   caret-color: var(--color-foreground);
 }
 
 #headersearch input::placeholder,
-.filter-table::placeholder,
-input[name="notiz"]::placeholder,
-input[name="amount"]::placeholder {
+.filter-table::placeholder {
   color: var(--color-foreground);
   opacity: 0.65;
 }
