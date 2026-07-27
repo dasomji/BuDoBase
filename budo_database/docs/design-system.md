@@ -96,10 +96,11 @@ Available variants are:
 | `ghost` | Low-emphasis action |
 | `link` | Link treatment; normally use with `href` |
 
-Available sizes are `default`, `xs`, `sm`, `lg`, `icon`, `icon-xs`,
-`icon-sm`, and `icon-lg`. `size="icon"` is the 32px circular icon action.
-Every icon-only action needs an `aria-label`; decorative icons must be hidden
-from assistive technology.
+Available sizes are `default`, `xs`, `sm`, `lg`, `responsive-icon`, `icon`,
+`icon-xs`, `icon-sm`, and `icon-lg`. `size="icon"` is the 32px circular icon
+action. `size="responsive-icon"` is a text action on desktop and a 32px
+circular icon action below 901px. Every icon-only action needs an `aria-label`;
+decorative icons must be hidden from assistive technology.
 
 ```jsx
 <Button size="icon" aria-label="Drucken" onClick={() => window.print()}>
@@ -107,12 +108,17 @@ from assistive technology.
 </Button>
 ```
 
-Header actions that keep text on desktop and become a circular icon on mobile
-use the shipped responsive label pattern:
+Header actions that keep text on desktop and become an icon on mobile use the
+shipped responsive label pattern. At the mobile boundary, every icon-only
+header action must be a 32px circle—never a square or rounded square. The shared
+`size="responsive-icon"` Button variant owns this responsive shape; the
+`mobile-icon-action` class only switches the label. Do not recreate or override
+its dimensions, padding, or border radius on individual pages.
 
 ```jsx
 <Button
   className="mobile-icon-action"
+  size="responsive-icon"
   type="button"
   aria-label="Drucken"
   onClick={() => window.print()}
@@ -165,6 +171,24 @@ that area from toggling the card.
 </Card>
 ```
 
+Put actions that belong at the bottom of the card in `actions`, not in an ad hoc
+wrapper inside `children`. Card renders them in a shared wrapping footer with
+top padding and end alignment. The footer is hidden when printing.
+
+```jsx
+<Card
+  title="Woche 1"
+  actions={(
+    <>
+      <Button variant="secondary" onClick={preview}>Vorschau</Button>
+      <Button onClick={save}>Speichern</Button>
+    </>
+  )}
+>
+  <WeekSummary />
+</Card>
+```
+
 Card props:
 
 | Prop | Contract |
@@ -174,6 +198,7 @@ Card props:
 | `id`, `className` | Optional DOM id and additional classes |
 | `initiallyClosed` | Start closed on desktop too |
 | `headerAction` | Contextual action that does not toggle the card |
+| `actions` | Bottom actions rendered with shared top padding, wrapping, end alignment, and print hiding |
 | `showToggleIcon` | Explicitly override icon visibility |
 | `as` | Container element/component; defaults to `section` |
 | `headingLevel` | Heading level number; defaults to `2` |
@@ -378,6 +403,7 @@ directly:
 ```jsx
 <Button
   className="mobile-icon-action"
+  size="responsive-icon"
   type="button"
   aria-label="Drucken"
   onClick={() => window.print()}

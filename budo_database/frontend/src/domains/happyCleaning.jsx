@@ -103,6 +103,7 @@ export function HappyCleaningCreateButton({ mutate }) {
     <>
       <Button
         className="mobile-icon-action"
+        size="responsive-icon"
         type="button"
         aria-label="Happy Cleaning hinzufügen"
         disabled={busy}
@@ -605,6 +606,38 @@ export function HappyCleaningOverviewPage({
               {loading && <p role="status">Stationstabellen werden geladen…</p>}
               {group.loaded && group.turnuses.flatMap(turnus => turnus.events.map(event => (
                 <Card
+                  actions={(
+                    <>
+                      {turnus.is_active && (
+                        <Button type="button" disabled={busy} onClick={() => createStationDraft(event)}>
+                          Station hinzufügen
+                        </Button>
+                      )}
+                      <Button
+                        variant="secondary"
+                        type="button"
+                        disabled={busy || printingEventId !== null || !event.stations.length}
+                        aria-label={`To-Dos für Happy Cleaning ${event.display_number} drucken`}
+                        onClick={() => printTodos(event)}
+                      >
+                        To-Dos drucken
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        type="button"
+                        disabled={busy || !event.stations.length}
+                        aria-label={`Stationen aus Happy Cleaning ${event.display_number} kopieren`}
+                        onClick={() => setCopySource(event)}
+                      >
+                        Stationen kopieren
+                      </Button>
+                      {event.can_delete && (
+                        <Button variant="destructive" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
+                          Löschen
+                        </Button>
+                      )}
+                    </>
+                  )}
                   as="article"
                   className="mb-4"
                   headingLevel={2}
@@ -620,40 +653,6 @@ export function HappyCleaningOverviewPage({
                     selection={selection}
                     rowRefs={rowRefs}
                   />
-                  <div className="flex flex-wrap gap-2">
-                    {turnus.is_active && (
-                      <Button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => createStationDraft(event)}
-                      >
-                        Station hinzufügen
-                      </Button>
-                    )}
-                    <Button
-                      variant="secondary"
-                      type="button"
-                      disabled={busy || printingEventId !== null || !event.stations.length}
-                      aria-label={`To-Dos für Happy Cleaning ${event.display_number} drucken`}
-                      onClick={() => printTodos(event)}
-                    >
-                      To-Dos drucken
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      type="button"
-                      disabled={busy || !event.stations.length}
-                      aria-label={`Stationen aus Happy Cleaning ${event.display_number} kopieren`}
-                      onClick={() => setCopySource(event)}
-                    >
-                      Stationen kopieren
-                    </Button>
-                    {event.can_delete && (
-                      <Button variant="destructive" type="button" disabled={busy} aria-label={`Happy Cleaning ${event.display_number} löschen`} onClick={() => setDeleteCandidate(event)}>
-                        Löschen
-                      </Button>
-                    )}
-                  </div>
                 </Card>
               )))}
             </Card>
@@ -737,6 +736,7 @@ function HappyCleaningPrintAction() {
     <Button
       aria-label="Drucken"
       className="mobile-icon-action"
+      size="responsive-icon"
       type="button"
       onClick={() => window.print()}
     >

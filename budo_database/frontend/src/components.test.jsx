@@ -246,6 +246,21 @@ describe('reusable components', () => {
     expect(screen.getByText('+')).toBeInTheDocument();
   });
 
+  it('renders bottom actions in the shared print-hidden actions slot', () => {
+    const { container } = render(
+      <Card title="Gesundheit" actions={<button type="button">Speichern</button>}>
+        <p>Details</p>
+      </Card>,
+    );
+
+    const action = screen.getByRole('button', { name: 'Speichern' });
+    const actions = container.querySelector('[data-slot="card-actions"]');
+
+    expect(actions).toHaveAttribute('data-slot', 'card-actions');
+    expect(actions).toContainElement(action);
+    expect(actions).toHaveClass('print:hidden');
+  });
+
   it('runs a header action without toggling the card', () => {
     const handleAction = vi.fn();
     render(

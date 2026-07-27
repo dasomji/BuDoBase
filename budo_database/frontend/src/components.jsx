@@ -189,6 +189,7 @@ export function Card({
   initiallyClosed = false,
   className = '',
   headerAction = null,
+  actions = null,
   showToggleIcon,
   as: Container = 'section',
   headingLevel = 2,
@@ -243,7 +244,14 @@ export function Card({
         )}
       </div>
       <div className="card-info-container" id={contentId} aria-hidden={closed} inert={closed || undefined}>
-        <div className="card-info-content">{children}</div>
+        <div className="card-info-content">
+          {children}
+          {actions && (
+            <footer className="flex flex-wrap justify-end gap-2 pt-3 print:hidden" data-slot="card-actions">
+              {actions}
+            </footer>
+          )}
+        </div>
       </div>
     </Container>
   );

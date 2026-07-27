@@ -192,6 +192,7 @@ export const allocationRoutes = [{
   headerAction: (_data, { pageState = {}, setPageState }) => (
     <Button
       className="mobile-icon-action"
+      size="responsive-icon"
       type="button"
       aria-label={pageState.showAllocationKids === false ? 'Kinder anzeigen' : 'Kinder ausblenden'}
       aria-pressed={pageState.showAllocationKids !== false}
