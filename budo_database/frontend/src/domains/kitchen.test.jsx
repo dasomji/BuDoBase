@@ -171,7 +171,12 @@ describe('Küche page', () => {
       readContractKey: 'kitchen',
     });
     window.history.pushState({}, '', '/kitchen');
-    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query === '(max-width: 900px)',
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(response({
         authenticated: true,
