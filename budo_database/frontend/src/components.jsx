@@ -142,7 +142,7 @@ export function Header({ title, authenticated, searchData, action }) {
   }, [searchOpen]);
   const titleNode = <div id="headertitle" key="title"><h1>{title}</h1></div>;
   const sidebarTrigger = (
-    <SidebarTrigger key="sidebar-trigger" id="menu-button" aria-label="Sidebar ein- oder ausklappen" />
+    <SidebarTrigger key="sidebar-trigger" id="menu-button" size="icon" aria-label="Sidebar ein- oder ausklappen" />
   );
   const searchToggle = (
     <Button
