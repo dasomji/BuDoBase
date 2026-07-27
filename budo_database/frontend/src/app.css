@@ -371,7 +371,7 @@
 }
 
 .info-header-container.card-toggle:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
 
@@ -1238,7 +1238,7 @@
 }
 
 .table-sort-button:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
 
@@ -1746,6 +1746,7 @@
   --color-primary: #ffdd9b;
   --color-primary-hover: #e6c78b;
   --color-primary-foreground: #373737;
+  --color-link: #725500;
   --color-secondary: #a9cfef;
   --color-secondary-hover: #8fb8d9;
   --color-secondary-foreground: #373737;
@@ -1753,13 +1754,13 @@
   --color-muted-foreground: #5f6368;
   --color-accent: rgb(179 202 217 / 95%);
   --color-accent-foreground: #373737;
-  --color-success: #4caf50;
+  --color-success: #54b958;
   --color-success-foreground: #373737;
-  --color-destructive: #d9534f;
+  --color-destructive: #b93f3b;
   --color-destructive-foreground: #ffffff;
   --color-border: #dddddd;
   --color-input: #dddddd;
-  --color-ring: #737373;
+  --color-ring: #686868;
   --color-surface: rgb(222 240 255 / 70%);
   --color-surface-solid: #def0ff;
   --color-surface-subtle: rgb(183 220 255 / 34%);

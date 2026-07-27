@@ -221,7 +221,7 @@ function StationSummaryTable({ event, stations, sort, onSort, onSelect, selectio
               }}
             >
               <TableCell><Button
-                className="h-auto justify-start p-0 text-left text-inherit no-underline hover:bg-transparent"
+                className="h-auto justify-start p-0 text-left no-underline hover:bg-transparent"
                 variant="link"
                 type="button"
                 ref={node => {

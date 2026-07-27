@@ -41,6 +41,7 @@ literals in component markup.
 | `primary` | `#ffdd9b` | Primary actions |
 | `primary-hover` | `#e6c78b` | Primary action hover |
 | `primary-foreground` | `#373737` | Text/icons on primary |
+| `link` | `#725500` | Readable amber link text on page and card surfaces |
 | `secondary` | `#a9cfef` | Supporting actions |
 | `secondary-hover` | `#8fb8d9` | Secondary action hover |
 | `secondary-foreground` | `#373737` | Text/icons on secondary |
@@ -48,13 +49,13 @@ literals in component markup.
 | `muted-foreground` | `#5f6368` | Muted text |
 | `accent` | `rgb(179 202 217 / 95%)` | Strong blue chrome/header surface |
 | `accent-foreground` | `#373737` | Text on accent |
-| `success` | `#4caf50` | Success and money-add actions |
+| `success` | `#54b958` | Success and money-add actions |
 | `success-foreground` | `#373737` | Text/icons on success |
-| `destructive` | `#d9534f` | Destructive and money-remove actions |
+| `destructive` | `#b93f3b` | Destructive and money-remove actions |
 | `destructive-foreground` | `#ffffff` | Text/icons on destructive |
 | `border` | `#dddddd` | Borders |
 | `input` | `#dddddd` | Input borders |
-| `ring` | `#737373` | Focus rings |
+| `ring` | `#686868` | Focus rings, including card headers and table sort controls |
 | `surface` | `rgb(222 240 255 / 70%)` | General translucent blue surface |
 | `surface-solid` | `#def0ff` | Opaque blue surface |
 | `surface-subtle` | `rgb(183 220 255 / 34%)` | Subtle blue surface/row |
