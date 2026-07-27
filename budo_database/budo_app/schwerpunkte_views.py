@@ -5,9 +5,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Prefetch
 from django.forms import modelformset_factory
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import redirect
-from django.template import loader
 from django.urls import reverse_lazy
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
@@ -26,6 +25,7 @@ from .models import (
     SchwerpunktWahl,
     Schwerpunktzeit,
 )
+from .react_views import ReactPageTemplateMixin, render_react_page
 from .utils import (
     cache_user_profile,
     get_active_kid_or_404,
@@ -36,10 +36,13 @@ from .utils import (
 )
 
 
-class SchwerpunkteUpdate(LoginRequiredMixin, UpdateView):
+class SchwerpunkteUpdate(
+    ReactPageTemplateMixin,
+    LoginRequiredMixin,
+    UpdateView,
+):
     model = Schwerpunkte
     form_class = SchwerpunktForm
-    template_name = "schwerpunkt-form.html"
 
     def get_queryset(self):
         return Schwerpunkte.objects.filter(
@@ -73,9 +76,12 @@ class SchwerpunkteUpdate(LoginRequiredMixin, UpdateView):
         return reverse_lazy('schwerpunkt-detail', kwargs={'pk': self.object.pk})
 
 
-class SchwerpunkteDetail(LoginRequiredMixin, DetailView):
+class SchwerpunkteDetail(
+    ReactPageTemplateMixin,
+    LoginRequiredMixin,
+    DetailView,
+):
     model = Schwerpunkte
-    template_name = 'schwerpunkt-detail.html'
     context_object_name = 'schwerpunkt'
 
     def get_queryset(self):
@@ -128,10 +134,13 @@ class SchwerpunkteDetail(LoginRequiredMixin, DetailView):
         return context
 
 
-class SchwerpunkteCreate(LoginRequiredMixin, CreateView):
+class SchwerpunkteCreate(
+    ReactPageTemplateMixin,
+    LoginRequiredMixin,
+    CreateView,
+):
     model = Schwerpunkte
     form_class = SchwerpunktForm
-    template_name = 'schwerpunkt-form.html'
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -151,10 +160,9 @@ class SchwerpunkteCreate(LoginRequiredMixin, CreateView):
         return reverse_lazy('schwerpunkt-detail', kwargs={'pk': self.object.pk})
 
 
-class MealUpdate(LoginRequiredMixin, UpdateView):
+class MealUpdate(ReactPageTemplateMixin, LoginRequiredMixin, UpdateView):
     model = Schwerpunkte
     form_class = MealChoiceForm
-    template_name = "swpmeals.html"
 
     def get_queryset(self):
         return Schwerpunkte.objects.filter(
@@ -189,8 +197,6 @@ class MealUpdate(LoginRequiredMixin, UpdateView):
 @login_required
 @cache_user_profile
 def swp_dashboard(request):
-    template = loader.get_template('swp-dashboard.html')
-
     if not request.user_profile:
         messages.error(
             request, "Profile not found. Please contact an administrator.")
@@ -226,12 +232,11 @@ def swp_dashboard(request):
         "schwerpunkte_u": schwerpunkte_u,
     }
 
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)
 
 
 @login_required
 def kitchen(request):
-    template = loader.get_template('kitchen.html')
     profil = Profil.objects.get(user=request.user)
     active_turnus = profil.turnus
     team = Profil.objects.filter(turnus=active_turnus)
@@ -289,7 +294,7 @@ def kitchen(request):
         "team": team,
         "meal_types": meal_types,
     }
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)
 
 
 @login_required
@@ -317,7 +322,6 @@ def swp_einteilung(request, week):
     auslagerorte = Auslagerorte.objects.all()
     ungrouped_count = sum(1 for kid in kids if not kid.schwerpunkt)
 
-    template = loader.get_template('swp-einteilung.html')
     context = {
         'kids': kids,
         'schwerpunkte': schwerpunkte,
@@ -325,7 +329,7 @@ def swp_einteilung(request, week):
         'ungrouped_count': ungrouped_count,
         'week_number': week,
     }
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)
 
 
 @login_required

@@ -41,7 +41,7 @@ class NoteSubmissionTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "errorlist")
+        self.assertTrue(response.form_errors)
         self.assertFalse(Notizen.objects.exists())
 
     def test_rejected_note_photo_reports_failure_through_form_submit_api(self):
@@ -67,7 +67,10 @@ class NoteSubmissionTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Bitte zu den Fotos eine Notiz eingeben.")
+        self.assertIn(
+            "Bitte zu den Fotos eine Notiz eingeben.",
+            response.form_errors,
+        )
         self.assertFalse(Notizen.objects.exists())
 
     def test_geld_only_submission_still_redirects(self):

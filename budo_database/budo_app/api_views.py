@@ -67,8 +67,10 @@ def submit_form(request):
             status=response.status_code,
         )
 
-    html = response.content.decode(response.charset)
-    errors = _response_errors(html)
+    errors = getattr(response, "form_errors", None)
+    if errors is None:
+        html = response.content.decode(response.charset)
+        errors = _response_errors(html)
     if errors:
         return Response({"ok": False, "errors": errors}, status=422)
     return Response({"ok": True, "redirect": target})
