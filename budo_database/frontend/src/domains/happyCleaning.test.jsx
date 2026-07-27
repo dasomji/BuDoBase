@@ -212,6 +212,9 @@ describe('Happy Cleaning management', () => {
     const dialog = within(screen.getByRole('dialog', { name: 'Happy Cleaning 2 löschen' }));
     const confirmation = dialog.getByLabelText('„Happy Cleaning 2“ zur Bestätigung eingeben');
     const deleteButton = dialog.getByRole('button', { name: 'Happy Cleaning 2 endgültig löschen' });
+    expect(confirmation).toHaveAttribute('data-slot', 'input');
+    expect(confirmation.labels).toHaveLength(1);
+    expect(confirmation.labels[0]).toHaveTextContent('„Happy Cleaning 2“ zur Bestätigung eingeben');
     expect(deleteButton).toBeDisabled();
     fireEvent.change(confirmation, { target: { value: 'Happy Cleaning 1' } });
     expect(deleteButton).toBeDisabled();
@@ -590,6 +593,7 @@ describe('Happy Cleaning management', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Stationen aus Happy Cleaning 1 kopieren' }));
     const dialog = within(screen.getByRole('dialog', { name: 'Stationen kopieren' }));
     expect(dialog.getByRole('option', { name: 'Happy Cleaning 1' })).toBeInTheDocument();
+    expect(dialog.getByLabelText('Ziel-Happy-Cleaning')).toHaveAttribute('data-slot', 'native-select');
     fireEvent.click(dialog.getByLabelText('Alle Stationen auswählen'));
     expect(dialog.getByLabelText('Station Küche auswählen')).toBeChecked();
     expect(dialog.getByLabelText('Station Bad auswählen')).toBeChecked();
@@ -719,6 +723,7 @@ describe('Happy Cleaning management', () => {
     expect(dialog.getByRole('radio', { name: 'Bestehende Station überschreiben' })).not.toBeChecked();
     expect(dialog.getByRole('button', { name: 'Auswahl verbindlich kopieren' })).toBeDisabled();
     await user.selectOptions(dialog.getByLabelText('Bestehende Station für Bad'), '90');
+    expect(dialog.getByLabelText('Bestehende Station für Bad')).toHaveAttribute('data-slot', 'native-select');
     expect(dialog.getByRole('radio', { name: /Bestehende Station überschreiben/ })).toBeDisabled();
     expect(dialog.getByText('Bereits zugeordnet.')).toBeInTheDocument();
     await user.selectOptions(dialog.getByLabelText('Bestehende Station für Bad'), '91');

@@ -51,6 +51,7 @@ describe('Kinder pages', () => {
 
     expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
     expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
+    expect(screen.getByPlaceholderText('Taschengeld...')).toHaveAttribute('data-slot', 'input');
     expect(document.cookie).toContain('interaction-bar=geld-form');
     expect(screen.getByPlaceholderText('Taschengeld...')).toHaveAttribute('min', '0');
     expect(screen.getByRole('button', { name: 'Abbuchen' })).toBeEnabled();

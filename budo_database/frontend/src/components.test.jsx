@@ -20,6 +20,7 @@ import {
   TableScroll,
 } from './components';
 import { Button } from './components/ui/button';
+import { Input, NativeSelect } from './components/ui/input';
 import { Toaster } from './components/ui/toast';
 
 describe('reusable components', () => {
@@ -77,6 +78,33 @@ describe('reusable components', () => {
     expect(button).toBeDisabled();
     fireEvent.click(button);
     expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('keeps shared native form controls labelable and interactive', () => {
+    const onInput = vi.fn();
+    const onSelect = vi.fn();
+    render(
+      <>
+        <label htmlFor="shared-note">Notiz</label>
+        <Input id="shared-note" onChange={onInput} />
+        <label htmlFor="shared-target">Ziel</label>
+        <NativeSelect id="shared-target" defaultValue="" onChange={onSelect}>
+          <option value="">Bitte wählen</option>
+          <option value="7">Happy Cleaning 7</option>
+        </NativeSelect>
+      </>,
+    );
+
+    const input = screen.getByRole('textbox', { name: 'Notiz' });
+    const select = screen.getByRole('combobox', { name: 'Ziel' });
+    expect(input).toHaveAttribute('data-slot', 'input');
+    expect(select).toHaveAttribute('data-slot', 'native-select');
+    fireEvent.change(input, { target: { value: 'Sichtbar' } });
+    fireEvent.change(select, { target: { value: '7' } });
+    expect(input).toHaveValue('Sichtbar');
+    expect(select).toHaveValue('7');
+    expect(onInput).toHaveBeenCalledOnce();
+    expect(onSelect).toHaveBeenCalledOnce();
   });
 
   it('exposes an icon action by its aria-label while hiding its icon', () => {

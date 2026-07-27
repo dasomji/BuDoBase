@@ -44,7 +44,9 @@ describe('allocation page', () => {
       kids: [{ id: 1, full_name: 'Ada', focus_ids: [], choices: [], age: 12, siblings: '' }],
     }} />);
 
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
+    const assignment = screen.getByRole('combobox');
+    expect(assignment).toHaveAttribute('data-slot', 'native-select');
+    fireEvent.change(assignment, { target: { value: '2' } });
 
     const toast = await screen.findByText('Die Schwerpunktdaten konnten nicht gespeichert werden.', { selector: '.app-toast-description' });
     expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');

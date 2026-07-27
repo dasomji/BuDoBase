@@ -2,6 +2,7 @@ import { Dialog } from '@base-ui/react/dialog';
 import { useState } from 'react';
 
 import { Button } from '../components/ui/button';
+import { NativeSelect } from '../components/ui/input';
 import { useErrorToast } from '../components/ui/toast';
 
 const requestId = () => globalThis.crypto?.randomUUID?.()
@@ -40,11 +41,11 @@ export function ConflictResolution({ preview, decisions, setDecisions }) {
         <p className="happy-cleaning-conflict-summary">
           {group.candidates.map(item => `${group.name} → ${item.target_name}`).join(', ')}
         </p>
-        <label>Bestehende Station
-          <select aria-label={`Bestehende Station für ${group.name}`} value={decision.target_station_id || ''} onChange={event => choose(group.id, { target_station_id: Number(event.target.value) || null, action: null })}>
+        <label className="grid gap-1 font-medium">Bestehende Station
+          <NativeSelect aria-label={`Bestehende Station für ${group.name}`} value={decision.target_station_id || ''} onChange={event => choose(group.id, { target_station_id: Number(event.target.value) || null, action: null })}>
             <option value="">Bitte wählen</option>
             {group.candidates.map(item => <option key={item.target_station_id} value={item.target_station_id}>{item.target_name} ({item.target_task_count ?? 0} Aufgaben)</option>)}
-          </select>
+          </NativeSelect>
         </label>
         <div className="grid grid-cols-2 gap-2 max-[900px]:grid-cols-1">
           {[
@@ -157,14 +158,14 @@ function StationCopyDialog({
           ))}
         </div>
       </>}
-      <label>
+      <label className="grid gap-1 font-medium">
         Ziel-Happy-Cleaning
-        <select aria-label="Ziel-Happy-Cleaning" value={targetId} onChange={event => { setState({ kind: 'ready' }); setDecisions({}); setTargetId(event.target.value); }}>
+        <NativeSelect aria-label="Ziel-Happy-Cleaning" value={targetId} onChange={event => { setState({ kind: 'ready' }); setDecisions({}); setTargetId(event.target.value); }}>
           <option value="">Bitte wählen</option>
           {availableTargets.map(target => (
             <option key={target.id} value={target.id}>{target.label}</option>
           ))}
-        </select>
+        </NativeSelect>
       </label>
       {state.kind === 'busy' && (
         <p role="status">

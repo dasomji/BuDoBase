@@ -208,6 +208,36 @@ Card props:
 Do not build a second collapse state around Card. Use `expanded` and
 `onExpandedChange` when another component must control it.
 
+## Native form controls
+
+Use the shared token-backed controls for standalone text-like inputs and native
+selects rendered outside `NativeForm`'s `.form-grid` seam:
+
+```jsx
+import { Input, NativeSelect } from '../components/ui/input';
+
+<label className="grid gap-1 font-medium">
+  Ziel
+  <NativeSelect name="target">
+    <option value="">Bitte wählen</option>
+  </NativeSelect>
+</label>
+
+<Input name="note" aria-label="Notiz" />
+```
+
+`Input` and `NativeSelect` share one visual contract: full width, visible
+`border-input` border, rounded corners, compact padding, `bg-popover`
+background, foreground/placeholder tokens, and the standard `ring` focus
+treatment. Both preserve native form semantics and expose stable
+`data-slot="input"` or `data-slot="native-select"` rendering hooks.
+
+Use ordinary layout utilities on the associated label or container. Do not
+restore global `input`, `select`, or `label` rules and do not recreate the
+control border, padding, radius, background, or focus treatment per page.
+Checkboxes, radios, file inputs, search widgets, and specialized controls keep
+their owning component or page contract.
+
 ## Tables: choose one of two tiers
 
 Both tiers share the same blue header, striped rows, borders, and horizontal
@@ -230,6 +260,7 @@ import {
   TableRow,
   TableScroll,
 } from '../components';
+import { Input } from '../components/ui/input';
 
 <TableScroll stickyHeader>
   <Table>
@@ -244,7 +275,7 @@ import {
         <TableRow key={child.id}>
           <TableCell>{child.full_name}</TableCell>
           <TableCell data-priority="low">
-            <input aria-label={`Notiz für ${child.full_name}`} />
+            <Input aria-label={`Notiz für ${child.full_name}`} />
           </TableCell>
         </TableRow>
       ))}
