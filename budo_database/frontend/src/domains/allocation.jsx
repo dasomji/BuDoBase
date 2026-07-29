@@ -159,7 +159,7 @@ export function AllocationPage({ data, week, mutate, showKids = true }) {
     { key: 'siblings', label: 'Geschwister', render: kid => displayOrPlaceholder(kid.siblings) },
   ];
   const overview = (
-    <div className="flex w-full items-start gap-3 overflow-x-auto [&>.card]:m-0 [&>.card]:min-w-[min(20rem,80vw)] [&>.card]:flex-[1_0_20rem]" aria-label="SWP-Übersicht">
+    <div className="flex w-full items-start gap-3 overflow-x-auto max-[900px]:flex-wrap max-[900px]:overflow-x-visible [&>.card]:m-0 [&>.card]:min-w-[min(20rem,80vw)] [&>.card]:flex-[1_0_20rem]" aria-label="SWP-Übersicht">
       {focuses.map(focus => (
         <AllocationCard focus={focus} kids={data.kids} showKids={showKids} key={focus.id} />
       ))}

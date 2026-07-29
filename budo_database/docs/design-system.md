@@ -14,7 +14,7 @@ not precedent for new work.
   [`frontend/src/app.css`](../frontend/src/app.css)
 - Button:
   [`frontend/src/components/ui/button.jsx`](../frontend/src/components/ui/button.jsx)
-- Card and DataTable:
+- Header, Card, DataTable, and shared layout/data helpers:
   [`frontend/src/components.jsx`](../frontend/src/components.jsx)
 - Table primitives:
   [`frontend/src/components/ui/table.jsx`](../frontend/src/components/ui/table.jsx)
@@ -41,7 +41,7 @@ literals in component markup.
 | `primary` | `#ffdd9b` | Primary actions |
 | `primary-hover` | `#e6c78b` | Primary action hover |
 | `primary-foreground` | `#373737` | Text/icons on primary |
-| `link` | `#725500` | Readable amber link text on page and card surfaces |
+| `link` | `#373737` | Neutral dark link text on page and card surfaces |
 | `secondary` | `#a9cfef` | Supporting actions |
 | `secondary-hover` | `#8fb8d9` | Secondary action hover |
 | `secondary-foreground` | `#373737` | Text/icons on secondary |
@@ -148,11 +148,55 @@ its dimensions, padding, or border radius on individual pages.
 Use `Button` instead of new `.button` anchors or bare button styling. Keep the
 native `type`, form, ARIA, and disabled semantics appropriate to the action.
 
+## Header
+
+`Header` owns the application title, sidebar trigger, global search, optional
+route action, responsive control order, and the application-chrome height
+contract. Pages do not render a second header. A route declares its optional
+action with a `headerAction(data, pageContext)` function:
+
+```jsx
+{
+  title: 'Auslagerorte',
+  headerAction: () => (
+    <Button
+      className="mobile-icon-action"
+      size="responsive-icon"
+      href="/auslagerorte/create"
+      aria-label="Ort hinzufügen"
+    >
+      <span className="desktop-action-label">Ort hinzufügen</span>
+      <Plus className="mobile-action-label" aria-hidden="true" />
+    </Button>
+  ),
+  render: ({ data }) => <PlacesPage data={data} />,
+}
+```
+
+`pageContext` supplies `pageState`, `setPageState`, and `mutate` when an action
+needs page-owned state or a mutation. Return the action node or `null`; do not
+imperatively mount into the header. Authenticated controls render in this order:
+
+| Mode | Control order |
+|---|---|
+| Desktop (at least 901px) | Sidebar trigger, title, global search, route action |
+| Mobile (below 901px) | Title, route action, search toggle, sidebar trigger, global-search region |
+
+The route action is omitted when absent. Unauthenticated headers render only the
+logo and title. On mobile, icon-only controls follow the 32px circular Button
+contract described above and require accessible names.
+
+`Header` measures itself on mount, resize, content resize, and search expansion,
+then publishes the result as `--app-header-height` on the document root. Sticky
+controls and viewport-height layouts consume that property instead of copying a
+header height. Header removes the property when it unmounts.
+
 ## Error feedback
 
-Errors surface as error toasts and never as inline text. This keeps failed
-actions from moving page layout or leaving stale banners after a successful
-retry. The duplicate-number recovery dialog in the Happy-Cleaning assignment
+Errors surface as error toasts and never as inline text. Successful asynchronous
+writes that have no sufficiently clear immediate result use the shared success
+toast for confirmation. This keeps action feedback consistent without moving
+page layout or leaving stale banners after a retry. The duplicate-number recovery dialog in the Happy-Cleaning assignment
 flow is the sole exception: its error title is an action prompt within the
 recovery flow. New pages inherit this rule.
 
@@ -233,6 +277,34 @@ Card props:
 Do not build a second collapse state around Card. Use `expanded` and
 `onExpandedChange` when another component must control it.
 
+### Responsive card grids
+
+Use `ResponsiveCardGrid` for responsive card collections. Its default Tailwind
+grid keeps source order. For dashboards whose cards expand and collapse, pass
+`independentColumns`. This variant is a Tailwind container-query layout: it uses
+one column below 41rem of available content width, two columns from 41rem, and
+three from 62rem. These widths are measured inside the application content area,
+so the sidebar is excluded. Cards are distributed left-to-right across stable
+columns. Each column stacks independently, so collapsing a card pulls up the
+cards below it without leaving gaps beneath cards in neighboring columns. Do not
+recreate this distribution at page call sites. Use `maxColumns={2}` for card
+collections, such as family lists, that should never grow beyond two columns.
+
+## Shared layout and data helpers
+
+The shared module also exports these load-bearing building blocks. Import them
+from `../components` rather than recreating their structure at page call sites.
+
+| Component | Contract |
+|---|---|
+| `Columns` | Page `<main id="body-container">`; accepts `className` for the page's grid or flow layout |
+| `Column` | Detail-column wrapper; accepts `id` and `className` |
+| `FieldList` | Renders `[label, value]` pairs and omits null, undefined, and empty values |
+| `ResponsiveCardGrid` | Responsive Card collection; use `independentColumns` and `maxColumns` as documented above |
+| `RestForm` | CSRF-aware asynchronous `FormData` POST through the shared form-submit endpoint; owns busy state and error toasts |
+| `NativeForm` | Schema-driven native GET form or POST form built on `RestForm` and the shared `.form-grid` seam |
+| `MapCard` | Transparent expandable Card containing the shared Leaflet map; accepts `places` and an optional `headerAction` |
+
 ## Native form controls
 
 Use the shared token-backed controls for standalone text-like inputs, textareas,
@@ -269,9 +341,26 @@ their owning component or page contract.
 
 ## Tables: choose one of two tiers
 
-Both tiers share the same blue header, striped rows, borders, and horizontal
-scroll boundary. Every table should be inside `TableScroll`; scrolling is a
-container behavior, never a page-wide minimum width.
+Both tiers share the same blue header, row borders, and horizontal scroll
+boundary. Every table should be inside `TableScroll`; scrolling is a container
+behavior, never a page-wide minimum width.
+
+Table surfaces are **opaque**, and must stay that way. The page paints a
+white-to-grey radial gradient plus a fixed illustration behind every table, so
+a translucent row composites over whatever it happens to sit on: the same row
+reads at 10.6:1 in the middle of the page and 5.4:1 near the edge, and links
+inside it drop below the AA floor. A translucent cell also lets the columns
+underneath show through when the first column is pinned during horizontal
+scroll. Use `--color-table-row`, `--color-table-row-excused` and
+`--color-table-header`; do not tint a row with an alpha utility such as
+`bg-white/20`. Rows are a single tint rather than a stripe — the 1px row border
+already separates them, and the previous two stripes differed by 1.01:1, which
+is invisible.
+
+To mark a row state, set `--table-row-background` from a data attribute on the
+row (see `[data-slot="table-row"][data-excused]`) rather than a background
+utility on the row element. Only the custom property reaches the pinned first
+column, so a utility leaves the sticky cell showing the wrong colour.
 
 ### Tier 1: table primitives
 
@@ -366,8 +455,9 @@ Each row must have a stable, unique `id`. A column supports:
 | `className` | Class added to body cells |
 
 `DataTable` accepts `empty` (default `Keine Einträge`), an optional explicit
-`id`, `beforeFilter`, and the three `TableScroll` behavior flags. It never
-generates a table id.
+`id`, `beforeFilter`, and the three `TableScroll` behavior flags. Its shared
+controls area provides consistent top spacing below application chrome and
+spacing between stacked controls. It never generates a table id.
 
 `showFilter` is not a general full-row search. It filters the first available
 value from `row.filterText`, `row.full_name`, or `row.name`, using German

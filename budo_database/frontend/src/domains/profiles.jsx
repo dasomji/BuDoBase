@@ -1,3 +1,5 @@
+import { PencilIcon } from 'lucide-react';
+
 import { Card, Column, Columns, FieldList, NativeForm, ResponsiveCardGrid } from '../components';
 import { Button } from '../components/ui/button';
 import { NotFoundPage } from './shared';
@@ -36,7 +38,7 @@ export function TeamPage({ data }) {
     <ResponsiveCardGrid>
       {data.team.map(person => {
         let updateHref = null;
-        if (person.id === ownProfileId) updateHref = '/profil/';
+        if (person.id === ownProfileId) updateHref = '/profil/bearbeiten/';
         else if (canChangeProfiles) updateHref = `/profil/${person.id}/`;
         return (
           <PersonCard
@@ -53,7 +55,13 @@ export function TeamPage({ data }) {
   );
 }
 
-export function ProfilePage({ data, target = '/profil/' }) {
+export function ProfilePage({ data }) {
+  const profile = data.profile;
+  if (!profile) return <NotFoundPage />;
+  return <Columns><Column id="single-column"><PersonCard person={profile} focuses={data.focuses} turnus={data.turnus} /></Column></Columns>;
+}
+
+export function ProfileEditPage({ data, target = '/profil/bearbeiten/' }) {
   const profile = data.profile;
   if (!profile) return <NotFoundPage />;
   const fields = [
@@ -68,7 +76,7 @@ export function ProfilePage({ data, target = '/profil/' }) {
   if (profile.can_change_turnus) {
     fields.push({ name: 'turnus', label: 'Turnus', type: 'select', value: data.turnus?.id, options: data.turnuses.map(item => ({ value: item.id, label: item.label })) });
   }
-  return <Columns><Column id="left-column"><PersonCard person={profile} focuses={data.focuses} turnus={data.turnus} /></Column><Column id="center-column"><Card title="Profil"><NativeForm token={data.csrf_token} action={target} fields={fields} /></Card></Column></Columns>;
+  return <Columns><Column id="single-column"><Card title="Profil"><NativeForm token={data.csrf_token} action={target} fields={fields} /></Card></Column></Columns>;
 }
 
 export const profileRoutes = [
@@ -87,16 +95,35 @@ export const profileRoutes = [
     domain: 'profiles',
     readContractKey: 'profile',
     resolveTitle: (route, data) => data.profile?.rufname || route.title,
+    headerAction: () => (
+      <Button
+        aria-label="Profil bearbeiten"
+        className="mobile-icon-action"
+        size="responsive-icon"
+        href="/profil/bearbeiten/"
+      >
+        <span className="desktop-action-label">Profil bearbeiten</span>
+        <PencilIcon className="mobile-action-label" aria-hidden="true" />
+      </Button>
+    ),
     render: ({ data }) => <ProfilePage data={data} />,
   },
   {
+    pattern: /^\/profil\/bearbeiten$/,
+    page: 'profile-edit',
+    title: 'Profil bearbeiten',
+    domain: 'profiles',
+    readContractKey: 'profile',
+    render: ({ data }) => <ProfileEditPage data={data} />,
+  },
+  {
     pattern: /^\/profil\/(\d+)$/,
-    page: 'profile',
+    page: 'profile-edit',
     title: 'Profil',
     domain: 'profiles',
     readContractKey: 'profile',
     params: match => ({ id: match[1] }),
     resolveTitle: (route, data) => data.profile?.rufname || route.title,
-    render: ({ route, data }) => <ProfilePage data={data} target={`/profil/${route.id}/`} />,
+    render: ({ route, data }) => <ProfileEditPage data={data} target={`/profil/${route.id}/`} />,
   },
 ];

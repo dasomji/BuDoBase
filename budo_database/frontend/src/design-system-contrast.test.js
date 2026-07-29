@@ -298,9 +298,41 @@ describe('design-system contrast contracts', () => {
     expect(appCss).toMatch(/--sidebar-ring:\s*var\(--color-ring\);/);
   });
 
+  it('keeps table surfaces opaque so readability does not depend on what is behind them', () => {
+    // The page paints a white-to-#999999 radial gradient plus a fixed
+    // illustration behind every table. A translucent row composites over
+    // whatever it happens to sit on, so its contrast changes with scroll
+    // position, and a sticky cell lets the columns underneath show through.
+    const foreground = token('foreground');
+    const link = token('link');
+
+    for (const name of ['table-row', 'table-row-excused', 'table-header']) {
+      const surface = token(name);
+      expect(surface.alpha, `--color-${name} must be fully opaque`).toBe(1);
+      expectContrast(foreground, surface, 4.5);
+    }
+
+    // Links render in body cells, and also on the header tint: the pinned
+    // first column carries it, and that column is the kid-name link on All
+    // Kids and on Schwerpunkt-Einteilung.
+    for (const name of ['table-row', 'table-row-excused', 'table-header']) {
+      expectContrast(link, token(name), 4.5);
+    }
+
+    // Row tints must stay distinguishable from one another, or the excused
+    // state silently stops reading as a state at all.
+    expect(
+      contrastRatio(token('table-row'), token('table-row-excused')),
+    ).toBeGreaterThan(1.1);
+
+    expect(appCss).toMatch(
+      /\[data-slot="table-row"\]\s*\{[^}]*--table-row-background:\s*var\(--color-table-row\)/s,
+    );
+  });
+
   it('keeps the documented token table synchronized with the source values', () => {
     for (const [name, exactValue] of [
-      ['link', '#725500'],
+      ['link', '#373737'],
       ['success', '#54b958'],
       ['destructive', '#b93f3b'],
       ['input', '#686868'],

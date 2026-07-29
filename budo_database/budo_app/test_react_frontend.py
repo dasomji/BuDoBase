@@ -233,6 +233,22 @@ class ReactShellTests(TestCase):
         self.assertNotContains(response, "data-react-print-page")
         self.assertNotContains(response, "legacy-print-root")
 
+    def test_own_profile_view_and_edit_deep_links_are_separate_and_protected(self):
+        user = User.objects.create_user("own-profile-routes", password="secret")
+        detail_url = reverse("profil")
+        edit_url = reverse("profil-edit")
+
+        for url in (detail_url, edit_url):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response.url, f"/login/?next={url}")
+
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(detail_url).status_code, 200)
+        self.assertEqual(self.client.get(edit_url).status_code, 200)
+        self.assertEqual(self.client.post(detail_url).status_code, 405)
+
     def test_selected_profile_edit_deep_link_requires_profile_permission(self):
         editor = User.objects.create_user("profile-editor", password="secret")
         selected = User.objects.create_user("selected-profile").profil
@@ -387,8 +403,10 @@ class ReactPageRouteSmokeTests(TestCase):
             "kindergeburtstage": reverse("kindergeburtstage"),
             "team": reverse("team"),
             "dashboard": reverse("dashboard"),
+            "good-to-know": reverse("good-to-know"),
             "register": reverse("register"),
             "profil": reverse("profil"),
+            "profil-edit": reverse("profil-edit"),
             "profil-admin": reverse("profil-admin", args=(self.user.profil.id,)),
         }
         registered_page_names = {

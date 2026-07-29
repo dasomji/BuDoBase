@@ -5,7 +5,7 @@ import App from '../App';
 import { Toaster } from '../components/ui/toast';
 import { parseRoute } from '../routes';
 import { expectErrorToastOnly } from '../test-support';
-import { DashboardPage } from './dashboard';
+import { DashboardPage, GoodToKnowPage } from './dashboard';
 
 const render = ui => testingLibraryRender(ui, {
   wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
@@ -82,22 +82,72 @@ describe('dashboard page', () => {
       'Meine BuDo-Familie',
       'Mein SWP 1',
       'Mein SWP 2',
+      'Taschengeldtransaktionen',
+    ]) {
+      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    }
+    for (const removed of [
+      'Mein Profil',
+      'Team',
+      'Finanzen',
+      'Speziallisten',
       'Erstes Mal im BuDO: 1/1',
       'Einwöchige: 1',
       'Gesundheitliches',
       'Essen & Allergien',
       'Geburtstagskinder: 1',
       'Verabschiedungsliste: 0',
-      'Taschengeldtransaktionen',
     ]) {
-      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
-    }
-    for (const removed of ['Mein Profil', 'Team', 'Finanzen', 'Speziallisten']) {
       expect(screen.queryByRole('heading', { name: removed })).not.toBeInTheDocument();
     }
     expect(screen.getAllByRole('link', { name: 'Grace Hopper' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/11/');
     expect(screen.getByRole('link', { name: 'See' })).toHaveAttribute('href', '/schwerpunkt/12/');
+  });
+
+  it('renders the moved informational cards on Gut zu wissen', () => {
+    render(<GoodToKnowPage data={dashboardData()} />);
+
+    for (const heading of [
+      'Erstes Mal im BuDO: 1/1',
+      'Einwöchige: 1',
+      'Gesundheitliches',
+      'Essen & Allergien',
+      'Geburtstagskinder: 1',
+      'Verabschiedungsliste: 0',
+    ]) {
+      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('heading', { name: 'Kinder: 1' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Grace Hopper' }).length).toBeGreaterThan(0);
+  });
+
+  it('owns the focused Gut zu wissen route contract', () => {
+    expect(parseRoute('/gut-zu-wissen/')).toMatchObject({
+      page: 'good-to-know',
+      title: 'Gut zu wissen',
+      readContractKey: 'gut-zu-wissen',
+    });
+  });
+
+  it('loads Gut zu wissen from its focused route endpoint', async () => {
+    window.history.pushState({}, '', '/gut-zu-wissen/');
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({
+        authenticated: true,
+        csrf_token: 'token',
+        messages: [],
+        profile: { id: 1, rufname: 'Ada' },
+        turnus: { id: 2, label: 'T2' },
+        permissions: {},
+        search_index: { kids: [], focuses: [], places: [] },
+      }))
+      .mockResolvedValueOnce(response(dashboardData()));
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByRole('heading', { name: 'Gesundheitliches' })).toBeInTheDocument();
+    expect(fetchImpl.mock.calls[1][0]).toBe('/api/route-data/gut-zu-wissen/');
   });
 
   it('waits to show each personal SWP until all present kids are assigned for that week', () => {

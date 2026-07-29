@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { parseRoute } from '../routes';
-import { ProfilePage, TeamPage } from './profiles';
+import { ProfileEditPage, ProfilePage, TeamPage } from './profiles';
 
 const profile = {
   id: 5,
@@ -51,10 +51,12 @@ describe('Profil and Team pages', () => {
     expect(within(details).getByRole('link', { name: '+4312345' })).toHaveAttribute('href', 'tel:+4312345');
     expect(within(details).getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/3/');
     expect(screen.queryByText(/Abrechnung/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Rufname')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
   });
 
-  it('retains own profile form values, choices, CSRF target, and active Turnus', () => {
-    render(<ProfilePage data={data} />);
+  it('retains own profile form values, choices, CSRF target, and active Turnus on the edit page', () => {
+    render(<ProfileEditPage data={data} />);
 
     expect(screen.getByLabelText('Rufname')).toHaveValue('Ada');
     expect(screen.getByLabelText('Allergien')).toHaveValue('Nüsse');
@@ -66,18 +68,18 @@ describe('Profil and Team pages', () => {
     expect(screen.getByLabelText('Telefonnummer')).toHaveValue('+4312345');
     expect(screen.getByLabelText('Turnus')).toHaveValue('2');
     expect(screen.getByRole('option', { name: 'T4-2026' })).toHaveValue('4');
-    expect(screen.getByLabelText('Rufname').form).toHaveAttribute('action', '/profil/');
+    expect(screen.getByLabelText('Rufname').form).toHaveAttribute('action', '/profil/bearbeiten/');
     expect(screen.getByLabelText('Rufname').form.elements.csrfmiddlewaretoken).toHaveValue('token');
   });
 
   it('targets the selected profile when an authorized admin edits a teammate', () => {
-    render(<ProfilePage data={data} target="/profil/5/" />);
+    render(<ProfileEditPage data={data} target="/profil/5/" />);
 
     expect(screen.getByLabelText('Rufname').form).toHaveAttribute('action', '/profil/5/');
   });
 
   it('does not render a Turnus control when existing permissions disallow it', () => {
-    render(<ProfilePage data={{
+    render(<ProfileEditPage data={{
       ...data,
       profile: { ...profile, can_change_turnus: false },
       turnuses: [],
@@ -107,7 +109,7 @@ describe('Profil and Team pages', () => {
     const adaCard = screen.getByRole('heading', { name: 'Ada' }).closest('section');
     expect(within(adaCard).getByText('Turnus').closest('p')).toHaveTextContent('T2-2026');
     expect(within(adaCard).getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/3/');
-    expect(within(adaCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/');
+    expect(within(adaCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/bearbeiten/');
     const graceCard = screen.getByRole('heading', { name: 'Grace' }).closest('section');
     expect(within(graceCard).getByText('Keine Schwerpunkte zugeteilt.')).toBeInTheDocument();
     expect(within(graceCard).queryByRole('link', { name: 'Informationen aktualisieren' })).not.toBeInTheDocument();
@@ -126,7 +128,7 @@ describe('Profil and Team pages', () => {
 
     const adaCard = screen.getByRole('heading', { name: 'Ada' }).closest('section');
     const graceCard = screen.getByRole('heading', { name: 'Grace' }).closest('section');
-    expect(within(adaCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/');
+    expect(within(adaCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/bearbeiten/');
     expect(within(graceCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/6/');
   });
 
@@ -161,13 +163,15 @@ describe('Profil and Team pages', () => {
     expect(screen.getByText('Kein Team für den aktiven Turnus vorhanden.')).toBeInTheDocument();
   });
 
-  it('declares own and admin profile editing plus Team routes, but no Teamer detail route', () => {
+  it('declares read-only, own-edit, admin-edit, and Team routes, but no Teamer detail route', () => {
     const ownProfileRoute = parseRoute('/profil');
+    const ownProfileEditRoute = parseRoute('/profil/bearbeiten');
     const selectedProfileRoute = parseRoute('/profil/5');
     const teamRoute = parseRoute('/team');
 
-    expect(ownProfileRoute.readContractKey).toBe('profile');
-    expect(selectedProfileRoute).toMatchObject({ page: 'profile', readContractKey: 'profile', id: '5' });
+    expect(ownProfileRoute).toMatchObject({ page: 'profile', readContractKey: 'profile' });
+    expect(ownProfileEditRoute).toMatchObject({ page: 'profile-edit', readContractKey: 'profile', title: 'Profil bearbeiten' });
+    expect(selectedProfileRoute).toMatchObject({ page: 'profile-edit', readContractKey: 'profile', id: '5' });
     expect(teamRoute).toMatchObject({ page: 'team', readContractKey: 'team', title: 'Team' });
     expect(parseRoute('/teamer/5').page).toBe('not-found');
   });

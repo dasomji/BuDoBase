@@ -588,7 +588,7 @@ function StationsTable({ stations, selected, busy, onActivate, onSelect, mobile 
         </TableHeader>
         <TableBody>
           {stations.map(station => (
-            <TableRow className={station.is_excused ? 'bg-white/20' : ''} key={station.id}>
+            <TableRow data-excused={station.is_excused ? '' : undefined} key={station.id}>
               <TableHead className="bg-[var(--table-row-background)] font-bold whitespace-normal" scope="row">
                 <StationName station={station} selected={selected} busy={busy} onActivate={onActivate} />
               </TableHead>

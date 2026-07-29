@@ -186,9 +186,11 @@ function StationSummaryTable({ event, stations, sort, onSort, onSelect, selectio
       return (sort.direction === 'asc' ? compared : -compared) || left.index - right.index;
     })
     .map(item => item.station), [stations, sort]);
+  if (!stations.length) return <p className="mb-0">Noch keine Stationen angelegt.</p>;
+
   return (
     <div>
-      <TableScroll>
+      <TableScroll stickyFirstColumn>
         <Table>
           <TableHeader>
             <TableRow>
@@ -246,7 +248,6 @@ function StationSummaryTable({ event, stations, sort, onSort, onSelect, selectio
           </TableBody>
         </Table>
       </TableScroll>
-      {!stations.length && <p className="mb-0">Noch keine Stationen angelegt.</p>}
     </div>
   );
 }

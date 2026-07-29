@@ -10,6 +10,7 @@ from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
 from budo_app.models import Kinder, Profil
 from budo_app.react_views import ReactPageTemplateMixin, render_react_page
+from django.views.decorators.http import require_GET
 from django.views.generic.edit import UpdateView
 from django.urls import reverse_lazy
 from django.conf import settings
@@ -73,7 +74,7 @@ def sign_up(request):
             user.save()
             messages.success(request, 'You have signed up successfully.')
             login(request, user)
-            return redirect('profil')
+            return redirect('profil-edit')
         else:
             if passphrase != settings.REGISTRATION_PASSPHRASE:
                 messages.error(
@@ -94,11 +95,27 @@ def dashboard(request):
     return render_react_page(request, context)
 
 
+@login_required
+def good_to_know(request):
+    return render_react_page(request)
+
+
+@login_required
+@require_GET
+def profile_detail(request):
+    return render_react_page(request)
+
+
 class ProfilUpdate(ReactPageTemplateMixin, UpdateView):
     model = Profil
     fields = ['rufname', 'allergien', 'coffee', 'rolle',
               'essen', 'telefonnummer', 'budo_family', 'turnus']
     success_url = reverse_lazy('dashboard')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        return super().dispatch(request, *args, **kwargs)
 
     def get_form_class(self):
         form_class = super().get_form_class()

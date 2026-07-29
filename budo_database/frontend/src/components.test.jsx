@@ -11,6 +11,7 @@ import {
   GlobalSearch,
   Header,
   Messages,
+  ResponsiveCardGrid,
   RestForm,
   Table,
   TableBody,
@@ -25,10 +26,25 @@ import { Input, NativeSelect, Textarea } from './components/ui/input';
 import { Toaster } from './components/ui/toast';
 import { expectErrorToastOnly } from './test-support';
 
+function mockContainerWidth(width) {
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback) {
+      this.callback = callback;
+    }
+
+    observe(target) {
+      this.callback([{ contentRect: { width }, target }]);
+    }
+
+    disconnect() {}
+  });
+}
+
 describe('reusable components', () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   beforeEach(() => {
@@ -314,6 +330,89 @@ describe('reusable components', () => {
 
     expect(screen.getAllByText('Willkommen zurück!', { selector: '.app-toast-description' })).toHaveLength(1);
     expect(screen.getAllByText('Speichern fehlgeschlagen.', { selector: '.app-toast-description' })).toHaveLength(1);
+  });
+
+  it('distributes cards across three independent container-sized columns in stable row order', async () => {
+    mockContainerWidth(1000);
+    render(
+      <ResponsiveCardGrid independentColumns>
+        {Array.from({ length: 7 }, (_, index) => (
+          <Card title={`Karte ${index + 1}`} key={index}>Inhalt</Card>
+        ))}
+      </ResponsiveCardGrid>,
+    );
+
+    const grid = screen.getByRole('main');
+    await waitFor(() => expect(grid.querySelectorAll('[data-card-column]')).toHaveLength(3));
+    const columns = Array.from(grid.querySelectorAll('[data-card-column]'));
+    expect(grid).toHaveClass('responsive-card-grid', 'grid', 'grid-cols-1');
+    expect(columns[0].parentElement).toHaveClass(
+      'grid',
+      'grid-cols-1',
+      'items-start',
+      'gap-4',
+      '@[41rem]:grid-cols-2',
+      '@[62rem]:grid-cols-3',
+    );
+    expect(columns.map(column => Array.from(column.querySelectorAll('h2'), heading => heading.textContent))).toEqual([
+      ['Karte 1', 'Karte 4', 'Karte 7'],
+      ['Karte 2', 'Karte 5'],
+      ['Karte 3', 'Karte 6'],
+    ]);
+    columns.forEach(column => expect(column).toHaveClass('flex', 'flex-col', 'gap-4'));
+  });
+
+  it('uses two independent columns at an intermediate available width', async () => {
+    mockContainerWidth(800);
+    render(
+      <ResponsiveCardGrid independentColumns>
+        {Array.from({ length: 5 }, (_, index) => (
+          <Card title={`Karte ${index + 1}`} key={index}>Inhalt</Card>
+        ))}
+      </ResponsiveCardGrid>,
+    );
+
+    const grid = screen.getByRole('main');
+    await waitFor(() => expect(grid.querySelectorAll('[data-card-column]')).toHaveLength(2));
+    const columns = Array.from(grid.querySelectorAll('[data-card-column]'));
+    expect(columns.map(column => Array.from(column.querySelectorAll('h2'), heading => heading.textContent))).toEqual([
+      ['Karte 1', 'Karte 3', 'Karte 5'],
+      ['Karte 2', 'Karte 4'],
+    ]);
+  });
+
+  it('respects a two-column cap even when the available width could fit three', async () => {
+    mockContainerWidth(1000);
+    render(
+      <ResponsiveCardGrid independentColumns maxColumns={2}>
+        <Card title="Karte 1">Eins</Card>
+        <Card title="Karte 2">Zwei</Card>
+        <Card title="Karte 3">Drei</Card>
+      </ResponsiveCardGrid>,
+    );
+
+    const grid = screen.getByRole('main');
+    await waitFor(() => expect(grid.querySelectorAll('[data-card-column]')).toHaveLength(2));
+    expect(grid.firstElementChild).not.toHaveClass('@[62rem]:grid-cols-3');
+  });
+
+  it('keeps cards in source order when the available width only fits one column', () => {
+    mockContainerWidth(500);
+    render(
+      <ResponsiveCardGrid independentColumns>
+        <Card title="Karte 1">Eins</Card>
+        <Card title="Karte 2">Zwei</Card>
+        <Card title="Karte 3">Drei</Card>
+      </ResponsiveCardGrid>,
+    );
+
+    const columns = screen.getByRole('main').querySelectorAll('[data-card-column]');
+    expect(columns).toHaveLength(1);
+    expect(Array.from(columns[0].querySelectorAll('h2'), heading => heading.textContent)).toEqual([
+      'Karte 1',
+      'Karte 2',
+      'Karte 3',
+    ]);
   });
 
   it('toggles card details accessibly', () => {

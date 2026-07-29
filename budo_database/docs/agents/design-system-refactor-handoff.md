@@ -80,7 +80,7 @@ Rules of engagement:
 
 ## Screenshot / review-page workflow
 
-Everything lives in `docs/evidence/design-system-refactor/`:
+The workflow lives in `docs/evidence/design-system-refactor/`:
 
 - `review.html` — the maintainer's verification page. Open it locally (no server needed). Tabs for
   Desktop / Mobile / Print; each page shows **before** and **after** side by side; clicking a shot
@@ -88,8 +88,9 @@ Everything lives in `docs/evidence/design-system-refactor/`:
   filename contract `before/<slug>--<viewport>.png` and `after/<slug>--<viewport>.png`.
 - `capture.cjs` — Playwright capture script. Slugs in it MUST stay in sync with the `MANIFEST`
   in `review.html`.
-- `before/` — **complete, already captured** at commit `98d6f48` (58 screen shots + 5 print PDFs
-  converted to PNG). Do not re-capture "before" — it is the frozen reference.
+- `before/` and `after/` contain generated local capture artifacts and are ignored by Git. The
+  frozen local `before/` set was captured at commit `98d6f48` (56 screen shots + 5 print PDFs
+  converted to PNG). Preserve that local set and do not re-capture it.
 
 To capture the **after** set (repeat after each visually-affecting ticket lands, at minimum after
 #92, #94, #96, #97, #98, and before closing #100):

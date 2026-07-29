@@ -76,6 +76,7 @@ describe('allocation page', () => {
     const overview = card.parentElement;
     const stickyControls = overview.parentElement;
     expect(overview).toHaveAccessibleName('SWP-Übersicht');
+    expect(overview).toHaveClass('max-[900px]:flex-wrap', 'max-[900px]:overflow-x-visible');
     expect(stickyControls).toHaveAttribute('data-slot', 'table-sticky-controls');
     expect(within(stickyControls).getByRole('searchbox', { name: 'Kinder filtern' })).toBeInTheDocument();
     expect(stickyControls.nextElementSibling).toHaveAttribute('data-slot', 'table-scroll');

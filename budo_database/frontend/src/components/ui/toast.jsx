@@ -62,14 +62,22 @@ function Toaster({ children, toastManager, ...props }) {
 const createToastManager = ToastPrimitive.createToastManager
 const useToastManager = ToastPrimitive.useToastManager
 
-function useErrorToast() {
+function useTypedToast(type, priority) {
   const contextManager = useContext(ErrorToastManagerContext)
   const manager = contextManager || toast
   return useCallback((description) => manager.add({
     description,
-    type: "error",
-    priority: "high",
-  }), [manager])
+    type,
+    priority,
+  }), [manager, priority, type])
 }
 
-export { createToastManager, toast, Toaster, useErrorToast, useToastManager }
+function useErrorToast() {
+  return useTypedToast("error", "high")
+}
+
+function useSuccessToast() {
+  return useTypedToast("success", "normal")
+}
+
+export { createToastManager, toast, Toaster, useErrorToast, useSuccessToast, useToastManager }

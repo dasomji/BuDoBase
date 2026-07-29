@@ -7,3 +7,7 @@ staticfiles/
 *.pyc
 __pycache__/
 .claude/
+
+# Generated design-system visual-review captures (local only)
+docs/evidence/design-system-refactor/before/
+docs/evidence/design-system-refactor/after/

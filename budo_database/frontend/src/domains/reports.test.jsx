@@ -74,6 +74,11 @@ describe('operational report pages', () => {
     const headings = screen.getAllByRole('heading').map(heading => heading.textContent);
     expect(headings).toEqual(['S (2)', 'L (1)']);
     const smallie = screen.getByRole('heading', { name: 'S (2)' }).closest('.card');
+    const layout = screen.getByRole('main');
+    expect(layout).toHaveClass('responsive-card-grid');
+    expect(layout.firstElementChild).toHaveClass('gap-4', '@[41rem]:grid-cols-2');
+    expect(layout.firstElementChild).not.toHaveClass('@[62rem]:grid-cols-3');
+    expect(within(smallie).getByRole('list')).toHaveClass('[grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr))]');
     expect(within(smallie).getAllByRole('listitem').map(item => item.textContent)).toEqual([
       'Aaron First ❌ – 13',
       'Abel Second – 12',

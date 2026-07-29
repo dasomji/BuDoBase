@@ -276,7 +276,11 @@
     padding: var(--l-padding);
   }
 
-  #body-container:where(:not(.grid):not(.kid-detail-grid)) {
+  .responsive-card-grid {
+    container-type: inline-size;
+  }
+
+  #body-container:where(:not(.grid)) {
     display: flex;
     flex-flow: row wrap;
     align-content: flex-start;
@@ -451,23 +455,6 @@
   background: transparent;
   font-size: 1.4rem;
   line-height: 1;
-}
-
-.kid-detail-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  gap: var(--l-padding);
-}
-
-.kid-detail-grid > .detail-column {
-  min-width: 0;
-}
-
-@media (min-width: 901px) {
-  .kid-detail-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 #interaction-bar #interaction-input {
@@ -964,7 +951,7 @@
 
   #interaction-bar form p {
     display: flex;
-    width: 60vw;
+    width: 100%;
     align-items: center;
     justify-content: space-between;
     margin: 0;
@@ -1140,7 +1127,7 @@
 [data-slot="table-head"] {
   position: relative;
   border-bottom: 1px solid #8f8f8f;
-  background: var(--color-surface-header);
+  background: var(--color-table-header);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -1154,12 +1141,12 @@
 }
 
 [data-slot="table-row"] {
-  --table-row-background: var(--color-surface);
+  --table-row-background: var(--color-table-row);
   background: var(--table-row-background);
 }
 
-[data-slot="table-body"] [data-slot="table-row"]:nth-child(even) {
-  --table-row-background: var(--color-surface-subtle);
+[data-slot="table-row"][data-excused] {
+  --table-row-background: var(--color-table-row-excused);
 }
 
 [data-slot="table-row"]:not(:last-child) > :is([data-slot="table-head"], [data-slot="table-cell"]) {
@@ -1177,12 +1164,15 @@
   position: sticky;
   left: 0;
   z-index: var(--z-headcol);
-  background: var(--table-row-background, var(--color-surface-header));
+  /* The pinned column reads as a row header, so it carries the header tint
+     rather than the row tint. */
+  background: var(--color-table-header);
 }
 
-[data-slot="table-scroll"][data-sticky-first-column] [data-slot="table-head"]:first-child {
+[data-slot="table-scroll"][data-sticky-first-column]
+  [data-slot="table-header"] [data-slot="table-head"]:first-child {
   z-index: var(--z-th-headcol);
-  background: var(--color-surface-header);
+  background: var(--color-table-header);
 }
 
 [data-slot="table"] a {
@@ -1198,6 +1188,12 @@
   [data-slot="table"] [data-priority="low"] {
     display: none;
   }
+}
+
+.table-controls {
+  display: grid;
+  gap: var(--l-padding);
+  padding-top: var(--l-padding);
 }
 
 .filter-table {
@@ -1814,7 +1810,7 @@
   --color-primary: #ffdd9b;
   --color-primary-hover: #e6c78b;
   --color-primary-foreground: #373737;
-  --color-link: #725500;
+  --color-link: #373737;
   --color-secondary: #a9cfef;
   --color-secondary-hover: #8fb8d9;
   --color-secondary-foreground: #373737;
@@ -1833,6 +1829,12 @@
   --color-surface-solid: #def0ff;
   --color-surface-subtle: rgb(183 220 255 / 34%);
   --color-surface-header: rgb(179 202 217 / 95%);
+  /* Table surfaces are opaque on purpose: the page paints a gradient and a
+     fixed illustration behind them, so a translucent row composites
+     differently depending on where it sits and shows through sticky cells. */
+  --color-table-row: #e8f4ff;
+  --color-table-row-excused: #d9e3ea;
+  --color-table-header: #b7cddb;
 }
 
 @theme inline {

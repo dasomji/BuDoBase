@@ -62,7 +62,11 @@ is not part of this decision.
 
 Application mobile behavior changes below 901px; desktop behavior starts at
 901px. React code uses the shared reactive `useIsMobile()` hook. Styling uses
-the matching 900/901 boundary. Older breakpoints are transitional legacy code,
+the matching 900/901 boundary. The specification proposed a registered custom
+Tailwind variant for that boundary, but the shipped implementation instead uses
+explicit `max-[900px]` and `min-[901px]` arbitrary variants. This is an accepted
+implementation deviation; new work uses those exact variants and does not
+introduce a second boundary. Older breakpoints are transitional legacy code,
 not choices for new work.
 
 ### Printing

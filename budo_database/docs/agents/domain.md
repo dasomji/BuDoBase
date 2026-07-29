@@ -21,4 +21,9 @@ If proposed work contradicts an existing ADR, identify the conflict explicitly i
 
 ## Frontend system
 
-`docs/design-system.md` is the agent-facing contract for frontend tokens, shared components, responsive behavior, tables, and printing. Treat older page-specific CSS and component patterns as migration context, not as alternatives to that guide.
+The [frontend design-system guide](../design-system.md) is the agent-facing
+contract for tokens, shared components, responsive behavior, tables, and
+printing. Its durable architectural decisions live in the
+[frontend design-system ADR](../adr/2026-07-26-frontend-design-system.md).
+Treat older page-specific CSS and component patterns as migration context, not
+as alternatives to that guide.

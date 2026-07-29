@@ -18,6 +18,20 @@ const response = (data, { ok = true, status = 200 } = {}) => ({
   json: vi.fn().mockResolvedValue(data),
 });
 
+function mockResponsiveContainerWidth(width) {
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback) {
+      this.callback = callback;
+    }
+
+    observe(target) {
+      this.callback([{ contentRect: { width }, target }]);
+    }
+
+    disconnect() {}
+  });
+}
+
 describe('Kinder pages', () => {
   afterEach(() => {
     cleanup();
@@ -180,6 +194,30 @@ describe('Kinder pages', () => {
     const checkAction = screen.getByRole('link', { name: action });
     expect(checkAction).toHaveAttribute('href', path);
     expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');
+  });
+
+  it('uses the dashboard card grid at its two-column available-width breakpoint', async () => {
+    mockResponsiveContainerWidth(800);
+    const kid = {
+      id: 7,
+      full_name: 'Ada Lovelace',
+      present: true,
+      weeks: 2,
+      notes: [],
+      first_aid_entries: [],
+      transactions: [],
+      remaining_money: 0,
+      deposit: 0,
+    };
+
+    render(<KidDetailPage data={{ kids: [kid], turnus: { label: 'T2' }, csrf_token: 'token' }} id="7" mutate={vi.fn()} />);
+
+    const main = screen.getByRole('main');
+    await waitFor(() => expect(main.querySelectorAll('[data-card-column]')).toHaveLength(2));
+    const cardColumns = main.querySelectorAll('[data-card-column]');
+    expect(cardColumns[0]).toHaveTextContent('Ada Lovelace');
+    expect(cardColumns[0]).toHaveTextContent('Notizen');
+    expect(cardColumns[1]).toHaveTextContent('Gesundheitsinfos');
   });
 
   it('shows failed deposit writes as error toasts, never inline', async () => {

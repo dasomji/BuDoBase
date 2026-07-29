@@ -28,6 +28,7 @@ describe('Küche page', () => {
 
     const layout = document.querySelector('.kitchen-layout');
     expect(layout).not.toBeNull();
+    expect(layout).toHaveClass('gap-4');
     expect([...layout.children].map(column => column.id)).toEqual(['left-column', 'right-column']);
     expect([...layout.querySelector('#right-column').querySelectorAll(':scope > .card > .card-toggle > h2')]
       .map(heading => heading.textContent)).toEqual([
@@ -36,6 +37,8 @@ describe('Küche page', () => {
       'Schwerpunktinfos Woche 1',
       'Schwerpunktinfos Woche 2',
     ]);
+    const focusWeekCard = screen.getByRole('heading', { name: 'Schwerpunktinfos Woche 1' }).closest('.card');
+    expect(focusWeekCard).toHaveClass('transparent');
   });
 
   it('renders attendance, food, allergies, meals, and Schwerpunkt context from the focused projection', () => {
@@ -92,13 +95,19 @@ describe('Küche page', () => {
     expect(page.getByText('Vegan').closest('p')).toHaveTextContent('Vegan: 1');
     expect(page.getByText('Ada Lovelace (Vegetarisch): glutenfrei')).toBeInTheDocument();
     expect(page.getByText('Kathi (Vegan): Haselnüsse')).toBeInTheDocument();
-    const focusInfo = page.getByRole('heading', { name: 'Waldküche' }).closest('.focus-kitchen-info');
-    expect(focusInfo.querySelector('.card-table-container')).not.toBeInTheDocument();
+    const focusHeading = page.getByRole('heading', { name: 'Waldküche' });
+    const focusCard = focusHeading.closest('.card');
+    expect(focusHeading.tagName).toBe('H3');
+    expect(focusCard).not.toHaveClass('transparent');
+    expect(focusCard.querySelector('.focus-kitchen-info')).toBeInTheDocument();
+    expect(focusCard.querySelector('.card-table-container')).not.toBeInTheDocument();
     expect(page.getAllByText('Waldküche (0 🥩, 1 🧀, 1 🌱)')).toHaveLength(3);
     expect(page.getByRole('heading', { name: 'Tag 1' })).toBeInTheDocument();
     const menuTable = page.getByRole('table', { name: 'Menüplan Tag 1' });
     expect(within(menuTable).getAllByText('2 (0 🥩, 1 🧀, 1 🌱)')).toHaveLength(2);
-    expect(page.getByLabelText('Menüplan Tag 1 horizontal scrollen')).toContainElement(menuTable);
+    const tableScroll = page.getByLabelText('Menüplan Tag 1 horizontal scrollen');
+    expect(tableScroll).toContainElement(menuTable);
+    expect(tableScroll).toHaveAttribute('data-sticky-first-column');
   });
 
   it('renders each Schwerpunkt in a meal cell on its own line', () => {

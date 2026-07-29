@@ -132,7 +132,7 @@ export function MealsPage({ data, id }) {
                 </TableHeader>
                 <TableBody>{days.map(day => (
                   <TableRow key={day}>
-                    <TableHead className="bg-surface font-bold whitespace-nowrap" scope="row">Tag {day}</TableHead>
+                    <TableHead className="font-bold whitespace-nowrap" scope="row">Tag {day}</TableHead>
                     {mealTypes.map(([type, label]) => {
                       const indexedMeal = indexedMeals.get(`${day}-${type}`);
                       if (!indexedMeal) return <TableCell key={type}>—</TableCell>;

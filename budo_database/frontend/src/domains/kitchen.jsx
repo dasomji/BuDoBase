@@ -69,6 +69,7 @@ function WeekMealPlan({ focuses }) {
       <h2>Tag {day}</h2>
       <TableScroll
         className="kitchen-meal-table-scroll focus-visible:outline-2 focus-visible:outline-offset-2"
+        stickyFirstColumn
         tabIndex={0}
         aria-label={`Menüplan Tag ${day} horizontal scrollen`}
       >
@@ -113,13 +114,13 @@ function IntoleranceList({ title, entries }) {
   );
 }
 
-function FocusKitchenInfo({ focus, headingLevel = 2 }) {
+function FocusKitchenInfo({ focus, headingLevel = 2, showHeading = true }) {
   const counts = focus.dietary_counts ?? {};
   const intolerances = focus.intolerances ?? { kids: [], team: [] };
   const Heading = `h${headingLevel}`;
   return (
-    <div className="focus-kitchen-info [&+&]:mt-4 [&+&]:border-t [&+&]:border-current [&+&]:pt-4 [&_h3]:mt-3 [&_h4]:mt-3">
-      <Heading>{focus.name}</Heading>
+    <div className="focus-kitchen-info [&_h3]:mt-3 [&_h4]:mt-3">
+      {showHeading && <Heading>{focus.name}</Heading>}
       <FieldList items={[
         ['Kinder', focus.kid_count],
         ['Betreuende', focus.carers],
@@ -175,7 +176,7 @@ export function KitchenPage({ data }) {
   const weeks = ['w1', 'w2'];
   return (
     <>
-      <Columns className="kitchen-layout grid grid-cols-1 items-start min-[901px]:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)] [&_.card-info-container]:min-w-0 [&_.card-info-content]:min-w-0 [&_.card]:min-w-0 [&_.detail-column]:min-w-0">
+      <Columns className="kitchen-layout grid grid-cols-1 items-start gap-4 min-[901px]:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)] [&_.card-info-container]:min-w-0 [&_.card-info-content]:min-w-0 [&_.card]:min-w-0 [&_.detail-column]:min-w-0">
         <Column id="left-column">
           {weeks.map(week => (
             <Card title={`Menüplan Woche ${week === 'w1' ? 1 : 2}`} key={week}>
@@ -200,10 +201,14 @@ export function KitchenPage({ data }) {
             ))}
           </Card>
           {weeks.map(week => (
-            <Card title={`Schwerpunktinfos Woche ${week === 'w1' ? 1 : 2}`} key={week}>
-              {data.focuses.filter(focus => focus.week === week).map(focus => (
-                <FocusKitchenInfo focus={focus} key={focus.id} />
-              ))}
+            <Card className="transparent" title={`Schwerpunktinfos Woche ${week === 'w1' ? 1 : 2}`} key={week}>
+              <div className="flex flex-col gap-4">
+                {data.focuses.filter(focus => focus.week === week).map(focus => (
+                  <Card headingLevel={3} title={focus.name} key={focus.id}>
+                    <FocusKitchenInfo focus={focus} showHeading={false} />
+                  </Card>
+                ))}
+              </div>
             </Card>
           ))}
         </Column>

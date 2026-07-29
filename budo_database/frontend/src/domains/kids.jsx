@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Column, Columns, DataTable, FieldList, findById, RestForm } from '../components';
+import { Card, Column, DataTable, FieldList, findById, ResponsiveCardGrid, RestForm } from '../components';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useErrorToast } from '../components/ui/toast';
@@ -134,22 +134,22 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
   };
   return (
     <FirstAidGallery entries={[...(kid.notes || []), ...(kid.first_aid_entries || [])]} childName={kid.full_name}>
-      <Columns className="kid-detail-grid">
-        <Column id="left-column">
+      <ResponsiveCardGrid independentColumns>
+        <Column id="left-column" className="min-w-0 gap-4">
           <Card title={`${kid.full_name}${kid.present ? '' : ' ❌'}`} id="kinderinfos"><FieldList items={[["Geschlecht", kid.sex], ["Alter", kid.age], ["Geburtstag", formatKidBirthday(kid)], ["Aufenthaltsdauer", `${kid.weeks}-wöchig`], ["Geschwister", kid.siblings], ["Zeltwunsch", kid.tent_request], ["War schon mal im Bunten Dorf", yesNo(kid.budo_experience)]]} /></Card>
           <Card title="BuDo" id="budo-container" actions={<Button href={`/${kid.present ? 'check_out' : 'check_in'}/${kid.id}`}>{kid.present ? 'Auschecken' : 'Einchecken'}</Button>}><FieldList items={[["Turnus", data.turnus?.label], ["Budo Familie", kid.budo_family], ["Haus", kid.special_family], ["SWP 1", kid.focus_w1], ["SWP 2", kid.focus_w2]]} /></Card>
         </Column>
-        <Column id="center-column">
+        <Column id="center-column" className="min-w-0 gap-4">
           <Card title="Gesundheitsinfos" id="health_info"><FieldList items={[["Sozialversicherungsnummer", kid.social_security_number], ["Krankheiten", displayOrPlaceholder(kid.illness)], ["Medikamente", displayOrPlaceholder(kid.drugs)], ["Vegetarisch", kid.vegetarian], ["Ernährungsvorgaben", kid.special_food], ["Schwimmkenntnisse", kid.swimmer], ["Einverständnis für ärztliche Behandlung", requiredHealthYesNo(kid.consent)], ["Rezeptfreie Medikamente", requiredHealthValue(kid.over_the_counter_medication)], ["Medikamente auf Rezept", requiredHealthValue(kid.prescription_medication)], ["Tetanusimpfung", requiredHealthValue(kid.tetanus)], ["Zeckenimpfung", requiredHealthValue(kid.tick_vaccine)]]} /></Card>
           <Card title="Familie" id="family_info"><FieldList items={[["Organisation", kid.organization], ["Anmelder:in", kid.registrant_name], ["Anmelder:in Email", <a href={`mailto:${kid.registrant_email}`}>{kid.registrant_email}</a>], ["Anmelder:in Mobil", <a href={`tel:${kid.registrant_phone}`}>{kid.registrant_phone}</a>], ["Hauptversichert bei", kid.insured_with], ["Notfallkontakte", kid.emergency_contacts]]} /></Card>
         </Column>
-        <Column id="right-column">
+        <Column id="right-column" className="min-w-0 gap-4">
           <Card title="Notizen" id="notizen"><FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} /><ul>{kid.notes.length ? kid.notes.map(note => <NoteEntry entry={note} childName={kid.full_name} key={note.id} />) : <li>Noch keine Notizen.</li>}</ul></Card>
           <Card title="Erste Hilfe" id="erste-hilfe"><ul>{kid.first_aid_entries?.length ? kid.first_aid_entries.map(entry => <FirstAidEntry entry={entry} childName={kid.full_name} key={entry.id} />) : <li>Noch keine EH-Einträge.</li>}</ul></Card>
           <Card title={`Taschengeld: ${money(kid.remaining_money)}${kid.remaining_money < 5 ? ' 🚨' : ''}`} id="taschengeld"><ul>{kid.transactions.length ? kid.transactions.map(item => <li key={item.id}>{item.author} am {formatGermanDate(item.date)}: {money(item.amount)}</li>) : <li>Dieses Kind ist arm.</li>}</ul></Card>
           <Card title={`Pfand: ${kid.deposit}`} id="pfand" actions={<><Button type="button" onClick={() => deposit('increase')}>+ Pfand</Button><Button type="button" variant="secondary" onClick={() => deposit('decrease')}>− Pfand</Button></>} />
         </Column>
-      </Columns>
+      </ResponsiveCardGrid>
       <KidInteractionForm kid={kid} token={data.csrf_token} onSaved={onSaved} />
     </FirstAidGallery>
   );

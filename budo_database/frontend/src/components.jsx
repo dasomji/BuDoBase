@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Children, useEffect, useId, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { SearchIcon } from 'lucide-react';
 
@@ -258,7 +258,60 @@ export function Columns({ children, className = '' }) {
   return <main className={className} id="body-container">{children}</main>;
 }
 
-export function ResponsiveCardGrid({ children, className = '' }) {
+const responsiveCardMinWidthRem = 20;
+const responsiveCardGapRem = 1;
+
+function responsiveCardColumnCount(width) {
+  const rootFontSize = typeof window === 'undefined'
+    ? 16
+    : Number.parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16;
+  const minimumCardWidth = responsiveCardMinWidthRem * rootFontSize;
+  const gap = responsiveCardGapRem * rootFontSize;
+  if (width >= minimumCardWidth * 3 + gap * 2) return 3;
+  if (width >= minimumCardWidth * 2 + gap) return 2;
+  return 1;
+}
+
+function IndependentResponsiveCardGrid({ children, className, maxColumns }) {
+  const gridRef = useRef(null);
+  const [columnCount, setColumnCount] = useState(1);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return undefined;
+    const updateColumnCount = width => setColumnCount(Math.min(maxColumns, responsiveCardColumnCount(width)));
+    updateColumnCount(grid.getBoundingClientRect().width);
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(entries => {
+      const entry = entries.find(item => item.target === grid);
+      if (entry) updateColumnCount(entry.contentRect.width);
+    });
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, [maxColumns]);
+
+  const cardsByColumn = Array.from({ length: columnCount }, () => []);
+  Children.toArray(children).forEach((child, index) => {
+    cardsByColumn[index % columnCount].push(child);
+  });
+
+  return (
+    <Columns className={`responsive-card-grid grid min-w-0 grid-cols-1 ${className}`}>
+      <div className={`grid min-w-0 grid-cols-1 items-start gap-4 ${maxColumns >= 2 ? '@[41rem]:grid-cols-2' : ''} ${maxColumns >= 3 ? '@[62rem]:grid-cols-3' : ''}`} ref={gridRef}>
+        {cardsByColumn.map((cards, index) => (
+          <div className="flex min-w-0 flex-col gap-4" data-card-column={index + 1} key={index}>
+            {cards}
+          </div>
+        ))}
+      </div>
+    </Columns>
+  );
+}
+
+export function ResponsiveCardGrid({ children, className = '', independentColumns = false, maxColumns = 3 }) {
+  if (independentColumns) {
+    return <IndependentResponsiveCardGrid className={className} maxColumns={maxColumns}>{children}</IndependentResponsiveCardGrid>;
+  }
   return (
     <Columns className={`grid min-w-0 grid-cols-1 items-start gap-4 min-[901px]:grid-cols-3 ${className}`}>
       {children}
@@ -326,7 +379,7 @@ export function DataTable({
     <>
       {(beforeFilter || showFilter) && (
         <div
-          className={beforeFilter ? 'max-[900px]:sticky max-[900px]:top-[var(--app-header-height,0px)] max-[900px]:z-5 max-[900px]:flex-none' : undefined}
+          className={`table-controls${beforeFilter ? ' max-[900px]:sticky max-[900px]:top-[var(--app-header-height,0px)] max-[900px]:z-5 max-[900px]:flex-none' : ''}`}
           data-slot={beforeFilter ? 'table-sticky-controls' : undefined}
         >
           {beforeFilter}

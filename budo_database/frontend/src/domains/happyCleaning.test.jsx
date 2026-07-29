@@ -168,9 +168,12 @@ describe('Happy Cleaning management', () => {
     expect(controlledContent).toHaveAttribute('inert');
     fireEvent.click(closedEventToggle);
 
-    const activeTable = screen.getAllByRole('table')[0];
+    expect(screen.getAllByRole('table')).toHaveLength(1);
+    expect(screen.getByText('Noch keine Stationen angelegt.')).toBeInTheDocument();
+    const activeTable = screen.getByRole('table');
     expect(activeTable).toHaveAttribute('data-slot', 'table');
     expect(activeTable.parentElement).toHaveAttribute('data-slot', 'table-scroll');
+    expect(activeTable.parentElement).toHaveAttribute('data-sticky-first-column', '');
     expect(within(activeTable).getAllByRole('columnheader').map(cell => cell.textContent)).toEqual([
       'Stationsname↑', 'Max Kinder', 'Treffpunkt', 'Verantwortlicher', 'To-Dos',
     ]);

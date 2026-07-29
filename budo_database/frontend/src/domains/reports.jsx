@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { RefreshCwIcon } from 'lucide-react';
+import { Printer, RefreshCwIcon } from 'lucide-react';
 
-import { Card, Column, Columns, DataTable, RestForm } from '../components';
+import { Card, DataTable, ResponsiveCardGrid, RestForm } from '../components';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { displayOrPlaceholder, formatGermanDate, linkKid, yesNo } from './shared';
@@ -21,17 +21,15 @@ export function FamiliesPage({ data, special = false }) {
     return result;
   }, {}), [data.kids, special]);
   return (
-    <Columns className="grid grid-cols-1 items-start min-[901px]:grid-cols-2">
+    <ResponsiveCardGrid independentColumns maxColumns={2}>
       {Object.entries(groups).map(([name, kids]) => (
-        <Column className="min-w-0 w-full [&>.card]:w-full" key={name}>
-          <Card title={`${name} (${kids.length})`}>
-            <ul className="m-0 grid grid-cols-1 gap-x-4 gap-y-1 pl-4 min-[901px]:grid-cols-2 [&>li]:min-w-0 [&>li]:[overflow-wrap:anywhere]">
-              {kids.map(kid => <li key={kid.id}>{linkKid(kid)} – {kid.age}</li>)}
-            </ul>
-          </Card>
-        </Column>
+        <Card title={`${name} (${kids.length})`} key={name}>
+          <ul className="m-0 grid [grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-x-4 gap-y-1 pl-4 [&>li]:min-w-0 [&>li]:[overflow-wrap:anywhere]">
+            {kids.map(kid => <li key={kid.id}>{linkKid(kid)} – {kid.age}</li>)}
+          </ul>
+        </Card>
       ))}
-    </Columns>
+    </ResponsiveCardGrid>
   );
 }
 
@@ -65,9 +63,20 @@ export const reportRoutes = [
     pattern: /^\/murdergame$/,
     page: 'murder',
     title: 'Mörderspiel',
-    standalone: true,
     domain: 'reports',
     readContractKey: 'murder-game',
+    headerAction: () => (
+      <Button
+        aria-label="Drucken"
+        className="mobile-icon-action"
+        size="responsive-icon"
+        type="button"
+        onClick={() => window.print()}
+      >
+        <span className="desktop-action-label">Drucken</span>
+        <Printer className="mobile-action-label" aria-hidden="true" />
+      </Button>
+    ),
     render: ({ data }) => <MurderPage data={data} />,
   },
   {
