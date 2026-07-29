@@ -585,6 +585,23 @@ describe('reusable components', () => {
     expect(noteCell).toHaveClass('number-cell');
   });
 
+  it('renders sticky controls with the mobile header-offset contract', () => {
+    render(
+      <DataTable
+        beforeFilter={<section>Übersicht</section>}
+        columns={[{ key: 'name', label: 'Name' }]}
+        rows={[]}
+      />,
+    );
+
+    const stickyControls = screen.getByText('Übersicht').parentElement;
+    expect(stickyControls).toHaveAttribute('data-slot', 'table-sticky-controls');
+    expect(stickyControls.classList).toContain('max-[900px]:sticky');
+    expect(stickyControls.classList).toContain(
+      'max-[900px]:top-[var(--app-header-height,0px)]',
+    );
+  });
+
   it('filters table pages by the first-column name only', () => {
     const columns = [{ key: 'name', label: 'Name' }];
     const rows = [

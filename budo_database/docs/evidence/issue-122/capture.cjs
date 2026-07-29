@@ -9,6 +9,10 @@ const evidenceDir = path.resolve('docs/evidence/issue-122');
 const screenshotPath = path.join(evidenceDir, 'swp-einteilung-w1--390-after-scroll.png');
 const runtimeIssues = [];
 
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
 function watchRuntime(page, viewport) {
   page.on('pageerror', error => runtimeIssues.push({
     viewport,
@@ -43,6 +47,7 @@ async function layout(page) {
     return {
       viewport: { width: innerWidth, height: innerHeight },
       headerBottom: headerRect.bottom,
+      headerHeight: headerRect.height,
       headerContract: getComputedStyle(document.documentElement)
         .getPropertyValue('--app-header-height')
         .trim(),
@@ -107,6 +112,11 @@ async function layout(page) {
   });
   await mobilePage.waitForTimeout(200);
   const mobileAfter = await layout(mobilePage);
+  const stickyTolerance = 1;
+  assert(
+    Math.abs(mobileAfter.controlsTop - mobileAfter.headerHeight) <= stickyTolerance,
+    `Sticky controls top was ${mobileAfter.controlsTop}px after scrolling; expected the measured ${mobileAfter.headerHeight}px header height within ${stickyTolerance}px`,
+  );
   await mobilePage.screenshot({ path: screenshotPath });
 
   const desktopContext = await browser.newContext({
@@ -124,7 +134,7 @@ async function layout(page) {
     screenshot: path.relative(process.cwd(), screenshotPath),
     mobileBefore,
     mobileAfter,
-    mobilePinnedBelowHeader: Math.abs(mobileAfter.controlsTop - mobileAfter.headerBottom) <= 1,
+    mobilePinnedBelowHeader: Math.abs(mobileAfter.controlsTop - mobileAfter.headerHeight) <= stickyTolerance,
     tableActuallyScrolled: mobileAfter.tableScrollTop > mobileBefore.tableScrollTop,
     desktop,
     runtimeIssues,

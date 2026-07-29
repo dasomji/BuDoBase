@@ -103,6 +103,56 @@ function cssBlock(source, marker) {
   throw new Error(`Unclosed CSS block: ${marker}`);
 }
 
+function countTopLevelLayerBlocks(source, layerName) {
+  let blockDepth = 0;
+  let quote = null;
+  let inComment = false;
+  let count = 0;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    const nextCharacter = source[index + 1];
+
+    if (inComment) {
+      if (character === '*' && nextCharacter === '/') {
+        inComment = false;
+        index += 1;
+      }
+      continue;
+    }
+    if (quote) {
+      if (character === '\\') {
+        index += 1;
+      } else if (character === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (character === '/' && nextCharacter === '*') {
+      inComment = true;
+      index += 1;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+
+    if (
+      blockDepth === 0
+      && source.slice(index).match(
+        new RegExp(`^@layer\\s+${layerName}\\s*\\{`),
+      )
+    ) {
+      count += 1;
+    }
+    if (character === '{') blockDepth += 1;
+    if (character === '}') blockDepth -= 1;
+  }
+
+  return count;
+}
+
 describe('design-system contrast contracts', () => {
   const page = token('background');
   const card = composite(token('card'), page);
@@ -203,6 +253,12 @@ describe('design-system contrast contracts', () => {
     ]) {
       expect(guide).toContain(`| \`${name}\` | \`${exactValue}\``);
     }
+  });
+});
+
+describe('stylesheet structure contracts', () => {
+  it('declares the components layer in exactly one top-level block', () => {
+    expect(countTopLevelLayerBlocks(appCss, 'components')).toBe(1);
   });
 });
 

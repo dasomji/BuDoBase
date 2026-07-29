@@ -325,7 +325,10 @@ export function DataTable({
   return (
     <>
       {(beforeFilter || showFilter) && (
-        <div data-slot={beforeFilter ? 'table-sticky-controls' : undefined}>
+        <div
+          className={beforeFilter ? 'max-[900px]:sticky max-[900px]:top-[var(--app-header-height,0px)] max-[900px]:z-5 max-[900px]:flex-none' : undefined}
+          data-slot={beforeFilter ? 'table-sticky-controls' : undefined}
+        >
           {beforeFilter}
           {showFilter && <input className="filter-table" type="search" placeholder="Kinder filtern..." aria-label="Kinder filtern" value={query} onChange={event => setQuery(event.target.value)} />}
         </div>

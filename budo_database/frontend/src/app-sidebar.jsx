@@ -212,7 +212,7 @@ function withHappyCleaningEvents(events) {
 export function AppSidebar({ happyCleaningEvents = [] }) {
   const items = withHappyCleaningEvents(happyCleaningEvents);
   return (
-    <Sidebar side="left" collapsible="icon" className="app-sidebar">
+    <Sidebar side="left" collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>

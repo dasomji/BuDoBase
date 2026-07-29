@@ -781,10 +781,6 @@
     border-radius: var(--corner-rad);
     padding: var(--xs-padding);
   }
-#headermenu #menu-button:hover {
-  background: rgba(255, 255, 255, 0.45);
-}
-
 #headerbutton {
   display: flex;
   align-items: center;
@@ -1005,10 +1001,6 @@
     flex: 0 0 auto;
     padding: 0;
   }
-#search-button {
-  display: none;
-}
-
 @media only screen and (max-width: 900px) {
   #headermenu {
     padding: 20px 20px 10px;
@@ -1203,13 +1195,6 @@
 }
 
 @media only screen and (max-width: 900px) {
-  .allocation-page [data-slot="table-sticky-controls"] {
-    position: sticky;
-    top: var(--app-header-height, 0px);
-    z-index: 5;
-    flex: 0 0 auto;
-  }
-
   [data-slot="table"] [data-priority="low"] {
     display: none;
   }
@@ -1328,6 +1313,64 @@
 
 .allocation-print-pages {
   display: none;
+}
+
+.attachment-input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.attachment-button {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 0;
+  cursor: pointer;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.note-input-field,
+.first-aid-input-field {
+  position: relative;
+}
+
+#interaction-bar form :is(.note-input-field, .first-aid-input-field) :is(input:not(.attachment-input), textarea) {
+  padding-right: 2.5rem;
+  background-color: white;
+}
+
+#interaction-bar form :is(.note-input-field, .first-aid-input-field) .attachment-button {
+  position: absolute;
+  top: 50%;
+  right: 0.25rem;
+  z-index: 1;
+  transform: translateY(-50%);
+  background: transparent;
+  color: #373737;
+  font-size: 1.5rem;
+}
+
+.attachment-count {
+  position: absolute;
+  right: -0.25rem;
+  bottom: -0.25rem;
+  display: grid;
+  min-width: 1rem;
+  height: 1rem;
+  place-items: center;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  background: #b42318;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 }
@@ -1886,65 +1929,4 @@
   html {
     @apply font-sans;
   }
-}
-
-@layer components {
-.attachment-input {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
-.attachment-button {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  inline-size: 2rem;
-  block-size: 2rem;
-  border: 0;
-  cursor: pointer;
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
-.note-input-field,
-.first-aid-input-field {
-  position: relative;
-}
-
-#interaction-bar form :is(.note-input-field, .first-aid-input-field) :is(input:not(.attachment-input), textarea) {
-  padding-right: 2.5rem;
-  background-color: white;
-}
-
-#interaction-bar form :is(.note-input-field, .first-aid-input-field) .attachment-button {
-  position: absolute;
-  top: 50%;
-  right: 0.25rem;
-  z-index: 1;
-  transform: translateY(-50%);
-  background: transparent;
-  color: #373737;
-  font-size: 1.5rem;
-}
-
-.attachment-count {
-  position: absolute;
-  right: -0.25rem;
-  bottom: -0.25rem;
-  display: grid;
-  min-width: 1rem;
-  height: 1rem;
-  place-items: center;
-  padding: 0 0.2rem;
-  border-radius: 999px;
-  background: #b42318;
-  color: white;
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
 }

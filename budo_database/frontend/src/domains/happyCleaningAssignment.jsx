@@ -116,7 +116,7 @@ function ChildDetails({ child, busy, onNumber }) {
                       title="Nummer bearbeiten"
                       onClick={() => setEditingNumber(true)}
                     >
-                      <Pencil size={18} aria-hidden="true" />
+                      <Pencil aria-hidden="true" />
                     </Button>
                   </span>
                 )}
@@ -153,7 +153,7 @@ function DuplicateNumberDialog({ error, neighborhood, busy, onSelect, onClose })
               render={<Button variant="ghost" size="icon" />}
               aria-label="Dialog schließen"
             >
-              <X size={20} aria-hidden="true" />
+              <X aria-hidden="true" />
             </Dialog.Close>
             <ul className="mt-4 grid list-none gap-1 p-0" aria-label="Freie Nummer auswählen">
               {neighborhood.map(item => (
@@ -261,7 +261,7 @@ export function HappyCleaningNumberBatchAction({
               aria-label="Dialog schließen"
               disabled={busy}
             >
-              <X size={20} aria-hidden="true" />
+              <X aria-hidden="true" />
             </Dialog.Close>
             <ul
               className="my-4 grid list-none gap-1 p-0"
@@ -418,7 +418,7 @@ function UnassignedCounter({ summary, children, onSelect, batchAction }) {
                 render={<Button variant="ghost" size="icon" />}
                 aria-label="Dialog schließen"
               >
-                <X size={20} aria-hidden="true" />
+                <X aria-hidden="true" />
               </Dialog.Close>
               <ul className="mt-4 grid list-none gap-1 p-0" aria-label="Anwesende nicht eingeteilte Kinder">
                 {unassigned.map(child => (
@@ -510,7 +510,7 @@ function StationDetailsDialog({ station, onSelect }) {
         aria-label={`Details zu ${station.name} anzeigen`}
         title={`Details zu ${station.name} anzeigen`}
       >
-        <Eye size={20} aria-hidden="true" />
+        <Eye aria-hidden="true" />
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Backdrop className={dialogBackdropClass} />
@@ -522,7 +522,7 @@ function StationDetailsDialog({ station, onSelect }) {
               render={<Button variant="ghost" size="icon" />}
               aria-label="Dialog schließen"
             >
-              <X size={20} aria-hidden="true" />
+              <X aria-hidden="true" />
             </Dialog.Close>
             <dl className="grid gap-2">
               <div><dt className="font-semibold">Wünsche</dt><dd className="m-0 wrap-anywhere">{station.wishes || '—'}</dd></div>
@@ -577,7 +577,9 @@ function StationsTable({ stations, selected, busy, onActivate, onSelect, mobile 
                 title={toggleLabel}
                 onClick={() => setChildrenVisible(value => !value)}
               >
-                {childrenVisible ? <Eye size={20} /> : <EyeOff size={20} />}
+                {childrenVisible
+                  ? <Eye aria-hidden="true" />
+                  : <EyeOff aria-hidden="true" />}
               </Button>
               </div>
             </TableHead>
