@@ -21,7 +21,7 @@ import {
   TableScroll,
 } from './components';
 import { Button } from './components/ui/button';
-import { Input, NativeSelect } from './components/ui/input';
+import { Input, NativeSelect, Textarea } from './components/ui/input';
 import { Toaster } from './components/ui/toast';
 import { expectErrorToastOnly } from './test-support';
 
@@ -85,10 +85,13 @@ describe('reusable components', () => {
   it('keeps shared native form controls labelable and interactive', () => {
     const onInput = vi.fn();
     const onSelect = vi.fn();
+    const onTextarea = vi.fn();
     render(
       <>
         <label htmlFor="shared-note">Notiz</label>
         <Input id="shared-note" onChange={onInput} />
+        <label htmlFor="shared-details">Details</label>
+        <Textarea id="shared-details" rows="2" onChange={onTextarea} />
         <label htmlFor="shared-target">Ziel</label>
         <NativeSelect id="shared-target" defaultValue="" onChange={onSelect}>
           <option value="">Bitte wählen</option>
@@ -98,14 +101,22 @@ describe('reusable components', () => {
     );
 
     const input = screen.getByRole('textbox', { name: 'Notiz' });
+    const textarea = screen.getByRole('textbox', { name: 'Details' });
     const select = screen.getByRole('combobox', { name: 'Ziel' });
     expect(input).toHaveAttribute('data-slot', 'input');
+    expect(textarea).toHaveAttribute('data-slot', 'textarea');
+    expect(textarea.tagName).toBe('TEXTAREA');
+    expect(textarea).toHaveClass('h-auto');
+    expect(textarea).not.toHaveClass('h-8');
     expect(select).toHaveAttribute('data-slot', 'native-select');
     fireEvent.change(input, { target: { value: 'Sichtbar' } });
+    fireEvent.change(textarea, { target: { value: 'Mehrzeilig' } });
     fireEvent.change(select, { target: { value: '7' } });
     expect(input).toHaveValue('Sichtbar');
+    expect(textarea).toHaveValue('Mehrzeilig');
     expect(select).toHaveValue('7');
     expect(onInput).toHaveBeenCalledOnce();
+    expect(onTextarea).toHaveBeenCalledOnce();
     expect(onSelect).toHaveBeenCalledOnce();
   });
 

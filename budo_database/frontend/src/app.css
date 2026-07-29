@@ -1827,7 +1827,7 @@
   --color-destructive: #b93f3b;
   --color-destructive-foreground: #ffffff;
   --color-border: #dddddd;
-  --color-input: #dddddd;
+  --color-input: #686868;
   --color-ring: #686868;
   --color-surface: rgb(222 240 255 / 70%);
   --color-surface-solid: #def0ff;
@@ -1915,7 +1915,7 @@
   --sidebar-accent: rgba(179, 202, 217, 0.72);
   --sidebar-accent-foreground: var(--color-foreground);
   --sidebar-border: rgba(55, 55, 55, 0.18);
-  --sidebar-ring: #737373;
+  --sidebar-ring: var(--color-ring);
 }
 }
 

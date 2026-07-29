@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -6,6 +6,10 @@ import { describe, expect, it } from 'vitest';
 const appCss = readFileSync(resolve('src/app.css'), 'utf8');
 const buttonSource = readFileSync(
   resolve('src/components/ui/button.jsx'),
+  'utf8',
+);
+const inputSource = readFileSync(
+  resolve('src/components/ui/input.jsx'),
   'utf8',
 );
 const happyCleaningSource = readFileSync(
@@ -86,6 +90,11 @@ function contrastRatio(first, second) {
 
 function expectContrast(first, second, minimum) {
   expect(contrastRatio(first, second)).toBeGreaterThanOrEqual(minimum);
+}
+
+function expectMeasuredContrast(first, second, expected) {
+  expectContrast(first, second, 3);
+  expect(contrastRatio(first, second)).toBeCloseTo(expected, 2);
 }
 
 function cssBlock(source, marker) {
@@ -244,15 +253,111 @@ describe('design-system contrast contracts', () => {
     }
   });
 
+  it('keeps the input boundary distinct from its fill and every supported surface', () => {
+    const boundary = token('input');
+    const ring = token('ring');
+    const fieldFill = token('popover');
+    const pageSurface = composite(token('surface'), page);
+    const solidSurface = token('surface-solid');
+    const headerSurface = composite(token('surface-header'), page);
+    const subtleSurface = composite(token('surface-subtle'), page);
+
+    expect(boundary).toEqual(ring);
+    expectMeasuredContrast(boundary, fieldFill, 5.57);
+    expectMeasuredContrast(boundary, pageSurface, 5.01);
+    expectMeasuredContrast(boundary, solidSurface, 4.78);
+    expectMeasuredContrast(boundary, headerSurface, 3.38);
+    expectMeasuredContrast(boundary, subtleSurface, 4.95);
+  });
+
+  it('keeps one full-opacity focus ring on every shared native control', () => {
+    const sharedClasses = inputSource
+      .match(/nativeControlClassName\s*=\s*"([^"]*)"/)?.[1]
+      .split(/\s+/);
+
+    expect(sharedClasses, 'Could not parse shared native control classes').toBeDefined();
+    expect(sharedClasses).toContain('border');
+    expect(sharedClasses).not.toContain('border-2');
+    expect(sharedClasses).toContain('focus-visible:ring-ring');
+    expect(
+      sharedClasses.some(className => /^focus-visible:ring-ring\//.test(className)),
+      'The shared native-control focus ring must use the ring token at full opacity',
+    ).toBe(false);
+  });
+
+  it('keeps the shared control disabled fill separate from its boundary token', () => {
+    const sharedClasses = inputSource
+      .match(/nativeControlClassName\s*=\s*"([^"]*)"/)?.[1]
+      .split(/\s+/);
+
+    expect(sharedClasses).toContain('disabled:bg-muted');
+    expect(sharedClasses.some(className => /^disabled:bg-input(?:\/|$)/.test(className))).toBe(false);
+  });
+
+  it('keeps the sidebar ring linked to the shared ring token', () => {
+    expect(appCss).toMatch(/--sidebar-ring:\s*var\(--color-ring\);/);
+  });
+
   it('keeps the documented token table synchronized with the source values', () => {
     for (const [name, exactValue] of [
       ['link', '#725500'],
       ['success', '#54b958'],
       ['destructive', '#b93f3b'],
+      ['input', '#686868'],
       ['ring', '#686868'],
     ]) {
       expect(guide).toContain(`| \`${name}\` | \`${exactValue}\``);
     }
+  });
+});
+
+describe('native form control ownership', () => {
+  const domainSources = readdirSync(resolve('src/domains'), { withFileTypes: true })
+    .filter(entry => entry.isFile() && entry.name.endsWith('.jsx'))
+    .map(entry => ({
+      fileName: entry.name,
+      source: readFileSync(resolve('src/domains', entry.name), 'utf8'),
+    }));
+
+  function isStylesheetOwnedClassName(className) {
+    if (className.trim().split(/\s+/).length !== 1) return false;
+    return appCss.includes(`.${className} {`);
+  }
+
+  function isVisuallyHiddenPlaceCommentAttachmentInput(control) {
+    return control.fileName === 'places.jsx'
+      && control.element === 'input'
+      && control.className === 'absolute size-px overflow-hidden [clip-path:inset(50%)]';
+  }
+
+  it('keeps page utility strings out of raw text-like controls', () => {
+    const controls = domainSources.flatMap(({ fileName, source }) => (
+      [...source.matchAll(/<(input|textarea|select)\b[^<>]*?\bclassName="([^"]+)"/g)]
+        .map(match => ({
+          fileName,
+          element: match[1],
+          className: match[2],
+        }))
+    ));
+    const attachmentExceptions = controls.filter(
+      isVisuallyHiddenPlaceCommentAttachmentInput,
+    );
+    const utilityOwnedControls = controls.filter(control => (
+      !isStylesheetOwnedClassName(control.className)
+      && !isVisuallyHiddenPlaceCommentAttachmentInput(control)
+    ));
+
+    expect(attachmentExceptions).toEqual([{
+      fileName: 'places.jsx',
+      element: 'input',
+      className: 'absolute size-px overflow-hidden [clip-path:inset(50%)]',
+    }]);
+    expect(
+      domainSources.find(({ fileName }) => fileName === 'places.jsx')?.source,
+    ).toMatch(
+      /<input id="id_place_comment_images"[^>]*aria-label="Kommentar-Bilder"[^>]*name="images"[^>]*type="file"/,
+    );
+    expect(utilityOwnedControls).toEqual([]);
   });
 });
 

@@ -4,6 +4,7 @@ import { Eye, EyeOff, Pencil, X } from 'lucide-react';
 
 import { Card } from '../components';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import {
   Table,
   TableBody,
@@ -62,8 +63,8 @@ function ChildDetails({ child, busy, onNumber }) {
       event.preventDefault();
       onNumber(Number(number));
     }}>
-      <input
-        className="w-[3.125rem] min-w-0 flex-none rounded-lg border-2 border-white bg-white p-1"
+      <Input
+        className="w-[3.125rem] flex-none"
         type="number"
         min="1"
         required
@@ -341,8 +342,7 @@ function ChildSearch({ children, selected, onSelect, inputRef }) {
   return (
     <div className="relative w-full min-w-0">
       <label className="sr-only" htmlFor="happy-cleaning-child-search">Kind suchen</label>
-      <input
-        className="w-full rounded-lg border-2 border-white bg-white p-2 text-foreground"
+      <Input
         id="happy-cleaning-child-search"
         type="search"
         role="combobox"

@@ -160,6 +160,7 @@ describe('Happy Cleaning assignment', () => {
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
 
     const search = screen.getByRole('combobox', { name: 'Kind suchen' });
+    expect(search).toHaveAttribute('type', 'search');
     fireEvent.change(search, { target: { value: 'Ada' } });
 
     expect(search).toHaveAttribute('aria-expanded', 'true');
@@ -596,6 +597,9 @@ describe('Happy Cleaning assignment', () => {
     const numberDetails = within(details).getByText('Nummer').nextElementSibling;
     const stationDetails = within(details).getByText('Station').nextElementSibling;
     const numberInput = screen.getByRole('spinbutton', { name: 'Happy Cleaning Nummer für Grace Hopper' });
+    expect(numberInput).toHaveAttribute('type', 'number');
+    expect(numberInput).toHaveAttribute('min', '1');
+    expect(numberInput).toBeRequired();
     expect(numberDetails).toContainElement(numberInput);
     expect(stationDetails).toHaveTextContent('Kann erst eingeteilt werden, wenn eine Nummer eingetragen wurde');
     expect(screen.queryByText('Noch keine Nummer')).not.toBeInTheDocument();

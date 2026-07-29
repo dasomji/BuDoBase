@@ -54,7 +54,7 @@ literals in component markup.
 | `destructive` | `#b93f3b` | Destructive and money-remove actions |
 | `destructive-foreground` | `#ffffff` | Text/icons on destructive |
 | `border` | `#dddddd` | Borders |
-| `input` | `#dddddd` | Input borders |
+| `input` | `#686868` | Input borders; shared with `ring` |
 | `ring` | `#686868` | Focus rings, including card headers and table sort controls |
 | `surface` | `rgb(222 240 255 / 70%)` | General translucent blue surface |
 | `surface-solid` | `#def0ff` | Opaque blue surface |
@@ -235,11 +235,11 @@ Do not build a second collapse state around Card. Use `expanded` and
 
 ## Native form controls
 
-Use the shared token-backed controls for standalone text-like inputs and native
-selects rendered outside `NativeForm`'s `.form-grid` seam:
+Use the shared token-backed controls for standalone text-like inputs, textareas,
+and native selects rendered outside `NativeForm`'s `.form-grid` seam:
 
 ```jsx
-import { Input, NativeSelect } from '../components/ui/input';
+import { Input, NativeSelect, Textarea } from '../components/ui/input';
 
 <label className="grid gap-1 font-medium">
   Ziel
@@ -249,13 +249,17 @@ import { Input, NativeSelect } from '../components/ui/input';
 </label>
 
 <Input name="note" aria-label="Notiz" />
+<Textarea className="min-h-[2lh]" name="details" aria-label="Details" />
 ```
 
-`Input` and `NativeSelect` share one visual contract: full width, visible
-`border-input` border, rounded corners, compact padding, `bg-popover`
+`Input`, `Textarea`, and `NativeSelect` share one visual contract: full width,
+visible `border-input` border, rounded corners, compact padding, `bg-popover`
 background, foreground/placeholder tokens, and the standard `ring` focus
-treatment. Both preserve native form semantics and expose stable
-`data-slot="input"` or `data-slot="native-select"` rendering hooks.
+treatment. The boundary clears 3:1 against the field fill and every supported
+surface; `input` and `ring` deliberately share the same color. All three
+preserve native form semantics and expose stable `data-slot="input"`,
+`data-slot="textarea"`, or `data-slot="native-select"` rendering hooks.
+`Textarea` does not set a fixed height; callers own its height constraints.
 
 Use ordinary layout utilities on the associated label or container. Do not
 restore global `input`, `select`, or `label` rules and do not recreate the

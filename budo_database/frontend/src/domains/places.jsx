@@ -3,6 +3,7 @@ import { PlusIcon } from 'lucide-react';
 
 import { Card, Column, Columns, DataTable, FieldList, findById, MapCard, NativeForm, RestForm } from '../components';
 import { Button } from '../components/ui/button';
+import { Textarea } from '../components/ui/input';
 import { formatGermanDate, NotFoundPage } from './shared';
 
 export function PlacesPage({ data }) {
@@ -28,7 +29,7 @@ function PlaceCommentForm({ place, token, onSaved }) {
       <RestForm className="mx-auto flex w-full max-w-5xl items-center gap-2" target={`/auslagerorte/${place.id}/`} token={token} encType="multipart/form-data" onSuccess={handleSaved} resetOnSuccess>
         <div className="min-w-0 flex-1">
           <p className="relative m-0">
-            <textarea className="max-h-[4lh] min-h-[2lh] w-full resize-none overflow-y-auto rounded-lg border-2 border-white bg-white py-1 pr-10 pl-1 font-light field-sizing-content" name="notiz" placeholder="Kommentar..." rows="2" aria-label="Kommentar" />
+            <Textarea className="max-h-[4lh] min-h-[2lh] resize-none overflow-y-auto pr-10 field-sizing-content" name="notiz" placeholder="Kommentar..." rows="2" aria-label="Kommentar" />
             <label className="absolute top-1/2 right-1 z-1 inline-grid size-8 -translate-y-1/2 place-items-center text-2xl" htmlFor="id_place_comment_images">
               <span className="sr-only">Kommentar-Bilder</span><span aria-hidden="true">+</span>
               {photoCount > 0 && <span className="absolute -right-1 -bottom-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#b42318] px-0.5 text-[0.65rem] leading-none font-bold text-white" aria-hidden="true">{photoCount}</span>}

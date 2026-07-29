@@ -19,6 +19,7 @@ import {
   TableScroll,
 } from '../components';
 import { Button } from '../components/ui/button';
+import { NativeSelect } from '../components/ui/input';
 import { displayOrPlaceholder, formatGermanDate, linkKid, MealTable, NotFoundPage, yesNo } from './shared';
 
 const focusKidColumns = [
@@ -141,11 +142,11 @@ export function MealsPage({ data, id }) {
                         <TableCell key={type}>
                           <input type="hidden" name={`form-${index}-id`} value={meal.id} />
                           <label className="sr-only" htmlFor={fieldId}>Tag {day} · {label}</label>
-                          <select className="w-full min-w-0 rounded-lg border-2 border-white bg-white p-1 font-light min-[901px]:min-w-36" id={fieldId} name={`form-${index}-meal_choice`} defaultValue={meal.choice}>
+                          <NativeSelect className="min-[901px]:min-w-36" id={fieldId} name={`form-${index}-meal_choice`} defaultValue={meal.choice}>
                             {data.meal_choices.map(choice => (
                               <option value={choice.value} key={choice.value}>{choice.label}</option>
                             ))}
-                          </select>
+                          </NativeSelect>
                         </TableCell>
                       );
                     })}

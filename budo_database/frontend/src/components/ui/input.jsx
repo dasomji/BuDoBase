@@ -3,7 +3,7 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 
 import { cn } from "@/lib/utils"
 
-const nativeControlClassName = "h-8 w-full min-w-0 rounded-lg border border-input bg-popover px-2.5 py-1 text-base text-foreground transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 min-[901px]:text-sm"
+const nativeControlClassName = "h-8 w-full min-w-0 rounded-lg border border-input bg-popover px-2.5 py-1 text-base text-foreground transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 min-[901px]:text-sm"
 
 function Input({
   className,
@@ -35,4 +35,16 @@ function NativeSelect({
   );
 }
 
-export { Input, NativeSelect }
+function Textarea({
+  className,
+  ...props
+}) {
+  return (
+    <textarea
+      data-slot="textarea"
+      className={cn(nativeControlClassName, "h-auto", className)}
+      {...props} />
+  );
+}
+
+export { Input, NativeSelect, Textarea }

@@ -214,10 +214,10 @@ describe('Schwerpunkte pages', () => {
       'Tag 1', 'Tag 2', 'Tag 3',
     ]);
     expect(screen.getAllByRole('combobox')).toHaveLength(9);
-    expect(screen.getByLabelText('Tag 1 · Frühstück')).toHaveValue('box');
-    expect(screen.getByLabelText('Tag 1 · Mittagessen')).toHaveValue('warm');
-    expect(screen.getByLabelText('Tag 3 · Abendessen')).toHaveValue('box');
-    expect(screen.getByLabelText('Tag 1 · Frühstück').form).toHaveAttribute('action', '/swpmeals/3');
+    expect(screen.getByRole('combobox', { name: 'Tag 1 · Frühstück' })).toHaveValue('box');
+    expect(screen.getByRole('combobox', { name: 'Tag 1 · Mittagessen' })).toHaveValue('warm');
+    expect(screen.getByRole('combobox', { name: 'Tag 3 · Abendessen' })).toHaveValue('box');
+    expect(screen.getByRole('combobox', { name: 'Tag 1 · Frühstück' }).form).toHaveAttribute('action', '/swpmeals/3');
     expect(screen.getAllByRole('option', { name: 'BuDo' })).toHaveLength(9);
     expect(screen.getAllByRole('option', { name: 'Box' })).toHaveLength(9);
     expect(screen.getAllByRole('option', { name: 'Warm' })).toHaveLength(9);

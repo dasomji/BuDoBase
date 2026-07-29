@@ -122,7 +122,7 @@ describe('Auslagerorte workflows', () => {
       places: [{ id: 4, name: 'Ada Hütte', coordinates: null, notes: [], images: [] }],
     }} id="4" onSaved={onSaved} />);
 
-    const comment = screen.getByPlaceholderText('Kommentar...');
+    const comment = screen.getByRole('textbox', { name: 'Kommentar' });
     expect(comment.tagName).toBe('TEXTAREA');
     expect(comment).toHaveAttribute('rows', '2');
     expect(comment.form).toHaveAttribute('enctype', 'multipart/form-data');
