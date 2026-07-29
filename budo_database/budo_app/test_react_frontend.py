@@ -2,12 +2,14 @@ from datetime import date
 from pathlib import Path
 
 from django.contrib.auth.models import Permission, User
+from django.http import HttpResponse
 from django.contrib.staticfiles import finders
 from django.template import TemplateDoesNotExist
 from django.template.loader import get_template
-from django.test import TestCase
-from django.urls import reverse
+from django.test import TestCase, override_settings
+from django.urls import path, reverse
 
+from .api_views import submit_form
 from .forms import GeldForm
 from .models import (
     Auslagerorte,
@@ -19,7 +21,26 @@ from .models import (
 )
 
 
+def unstructured_form_response(request):
+    return HttpResponse("<html><body>Validation failed.</body></html>")
+
+
+urlpatterns = [
+    path("api/form-submit/", submit_form, name="unstructured-form-submit-api"),
+    path("login/", unstructured_form_response),
+]
+
+
 class ReactShellTests(TestCase):
+    def test_request_renders_the_react_shell_once(self):
+        response = self.client.get(reverse("login"))
+
+        rendered_templates = [
+            template.name
+            for template in response.templates
+        ]
+        self.assertEqual(rendered_templates.count("react_app.html"), 1)
+
     def test_design_system_bundle_has_no_legacy_stylesheet_or_cascade_layer(self):
         project_root = Path(__file__).resolve().parent.parent
         source = (project_root / "frontend/src/app.css").read_text()
@@ -397,6 +418,17 @@ class ReactPageRouteSmokeTests(TestCase):
 
 
 class FormSubmitApiTests(TestCase):
+    @override_settings(ROOT_URLCONF=__name__)
+    def test_unstructured_form_errors_fail_loudly(self):
+        with self.assertRaisesMessage(
+            RuntimeError,
+            "did not provide structured form errors",
+        ):
+            self.client.post(
+                reverse("unstructured-form-submit-api"),
+                {"_target": "/login/"},
+            )
+
     def test_login_validation_is_returned_as_json(self):
         response = self.client.post(
             reverse("form-submit-api"),

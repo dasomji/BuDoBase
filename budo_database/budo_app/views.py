@@ -1,6 +1,6 @@
 from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.contrib import messages
 from .models import Kinder, SpezialFamilien, Profil
@@ -100,7 +100,7 @@ def update_pfand(request):
 @login_required
 @require_GET
 def happy_cleaning(request):
-    return HttpResponse("<html><body></body></html>")
+    return render_react_page(request)
 
 
 @login_required

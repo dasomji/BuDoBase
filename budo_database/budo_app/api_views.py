@@ -1,4 +1,3 @@
-from html import unescape
 import re
 
 from django.urls import resolve
@@ -16,19 +15,6 @@ FORM_TARGETS = (
     r"/upload_spezialfamilien/?", r"/kindergeburtstage/?",
     r"/update-birthdays-from-sv/?",
 )
-
-
-def _response_errors(html):
-    blocks = re.findall(
-        r'<(?:ul|li|small)[^>]*class="[^"]*(?:errorlist|error)[^"]*"[^>]*>(.*?)</(?:ul|li|small)>',
-        html,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-    return [
-        unescape(re.sub(r"<[^>]+>", " ", block)).strip()
-        for block in blocks
-        if re.sub(r"<[^>]+>", "", block).strip()
-    ]
 
 
 @api_view(["POST"])
@@ -68,9 +54,13 @@ def submit_form(request):
         )
 
     errors = getattr(response, "form_errors", None)
-    if errors is None:
-        html = response.content.decode(response.charset)
-        errors = _response_errors(html)
+    if not isinstance(errors, list) or not all(
+        isinstance(error, str)
+        for error in errors
+    ):
+        raise RuntimeError(
+            f"Form view {target!r} did not provide structured form errors."
+        )
     if errors:
         return Response({"ok": False, "errors": errors}, status=422)
     return Response({"ok": True, "redirect": target})

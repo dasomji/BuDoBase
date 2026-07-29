@@ -37,6 +37,7 @@ class HappyCleaningPrintPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"].split(";")[0], "text/html")
         self.assertNotIn("Content-Disposition", response)
+        self.assertTemplateUsed(response, "react_app.html")
         self.assertContains(response, "/static/frontend/app.js")
 
     def test_page_routes_are_read_only(self):
@@ -69,6 +70,7 @@ class HappyCleaningPrintPageTests(TestCase):
         response = self.client.get(reverse("happy-cleaning-print-page"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "react_app.html")
         self.assertContains(response, "/static/frontend/app.js")
         self.assertContains(response, 'id="react-app-styles"')
         self.assertContains(response, 'media="all"')
