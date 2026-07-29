@@ -88,6 +88,21 @@ function expectContrast(first, second, minimum) {
   expect(contrastRatio(first, second)).toBeGreaterThanOrEqual(minimum);
 }
 
+function cssBlock(source, marker) {
+  const markerIndex = source.indexOf(marker);
+  if (markerIndex === -1) throw new Error(`Missing CSS block: ${marker}`);
+
+  const openingBrace = source.indexOf('{', markerIndex);
+  let depth = 0;
+  for (let index = openingBrace; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    if (source[index] === '}') depth -= 1;
+    if (depth === 0) return source.slice(openingBrace + 1, index);
+  }
+
+  throw new Error(`Unclosed CSS block: ${marker}`);
+}
+
 describe('design-system contrast contracts', () => {
   const page = token('background');
   const card = composite(token('card'), page);
@@ -188,5 +203,28 @@ describe('design-system contrast contracts', () => {
     ]) {
       expect(guide).toContain(`| \`${name}\` | \`${exactValue}\``);
     }
+  });
+});
+
+describe('print stylesheet contracts', () => {
+  it('keeps transparent-card inline padding after the general card print rule', () => {
+    const printCss = cssBlock(appCss, '@media print');
+    const generalRule = printCss.match(
+      /\.card > \.card-info-container\s*\{[^}]*padding-inline:\s*var\(--str-padding\);[^}]*\}/s,
+    );
+    const transparentRule = printCss.match(
+      /\.card\.transparent > \.card-info-container\s*\{[^}]*padding-inline:\s*0;[^}]*\}/s,
+    );
+
+    expect(generalRule, 'Missing the general card print rule').not.toBeNull();
+    expect(transparentRule, 'Missing the transparent-card print override').not.toBeNull();
+    expect(transparentRule.index).toBeGreaterThan(generalRule.index);
+    expect(
+      printCss.slice(
+        generalRule.index + generalRule[0].length,
+        transparentRule.index,
+      ).trim(),
+      'Keep the transparent-card override immediately after the general rule',
+    ).toBe('');
   });
 });

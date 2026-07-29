@@ -397,13 +397,15 @@ forces black content on white. A page that does not need a distinct paper
 document should add no bespoke print architecture.
 
 The global `@media print` block in `app.css` is intentionally outside every
-named cascade layer. Unlayered author rules outrank Tailwind's layered
-utilities, so its plain declarations reliably replace screen utilities such as
-`flex`, fixed widths, padding, and minimum widths. Keep shared and bespoke raw
-print rules in that unlayered block; never move it into `@layer components` (or
-any other named layer). Element-local `print:` utilities remain appropriate
-for simple visibility switches, but they do not replace the global unlayered
-print contract.
+named cascade layer. Normal unlayered author declarations outrank Tailwind's
+normal layered utilities, so its plain declarations reliably replace screen
+utilities such as `flex`, fixed widths, padding, and minimum widths. For
+`!important` declarations, that layer precedence inverts: a layered declaration
+outranks an unlayered one. Keep shared and bespoke raw print rules in that
+unlayered block; never move it into `@layer components` (or any other named
+layer). Element-local `print:` utilities remain appropriate for simple
+visibility switches, but they do not replace the global unlayered print
+contract.
 
 When a route genuinely needs a bespoke layout, render a print section from the
 same React data and business logic as the screen page. Keep it in the same page

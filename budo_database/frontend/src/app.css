@@ -1333,9 +1333,9 @@
 }
 
 /*
- * Keep the global print cascade unlayered. Unlayered author rules outrank
- * Tailwind's layered utilities, so plain print declarations reliably replace
- * their screen-layout counterparts.
+ * Keep the global print cascade unlayered. Normal unlayered author declarations
+ * outrank Tailwind's normal layered utilities. For !important declarations,
+ * that precedence inverts: a layered declaration outranks an unlayered one.
  */
 @media print {
   @page {
@@ -1390,6 +1390,14 @@
     padding-top: var(--str-padding);
     padding-bottom: var(--str-padding);
     transition: none;
+  }
+
+  .card.transparent > .card-info-container {
+    padding-inline: 0;
+  }
+
+  #pfand .card-info-container {
+    padding-top: 0;
   }
 
   .card > .card-info-container > .card-info-content {
