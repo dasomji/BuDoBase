@@ -1,4 +1,3 @@
-from html import unescape
 import re
 
 from django.urls import resolve
@@ -7,7 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 FORM_TARGETS = (
-    r"/login/?", r"/register/?", r"/profil/?", r"/profil/\d+/?", r"/upload/?",
+    r"/login/?", r"/register/?", r"/profil/bearbeiten/?", r"/profil/\d+/?", r"/upload/?",
     r"/upload_excel/\d+/?", r"/kid_details/\d+/?", r"/check_in/\d+/?",
     r"/check_out/\d+/?", r"/schwerpunkt/create/?",
     r"/schwerpunkt/\d+/update/?", r"/swpmeals/\d+/?",
@@ -16,19 +15,6 @@ FORM_TARGETS = (
     r"/upload_spezialfamilien/?", r"/kindergeburtstage/?",
     r"/update-birthdays-from-sv/?",
 )
-
-
-def _response_errors(html):
-    blocks = re.findall(
-        r'<(?:ul|li|small)[^>]*class="[^"]*(?:errorlist|error)[^"]*"[^>]*>(.*?)</(?:ul|li|small)>',
-        html,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-    return [
-        unescape(re.sub(r"<[^>]+>", " ", block)).strip()
-        for block in blocks
-        if re.sub(r"<[^>]+>", "", block).strip()
-    ]
 
 
 @api_view(["POST"])
@@ -67,8 +53,14 @@ def submit_form(request):
             status=response.status_code,
         )
 
-    html = response.content.decode(response.charset)
-    errors = _response_errors(html)
+    errors = getattr(response, "form_errors", None)
+    if not isinstance(errors, list) or not all(
+        isinstance(error, str)
+        for error in errors
+    ):
+        raise RuntimeError(
+            f"Form view {target!r} did not provide structured form errors."
+        )
     if errors:
         return Response({"ok": False, "errors": errors}, status=422)
     return Response({"ok": True, "redirect": target})

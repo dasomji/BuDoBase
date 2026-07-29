@@ -5,9 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
-from django.template import loader
 from django.urls import reverse_lazy
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, FormView, UpdateView
@@ -21,14 +19,18 @@ from .models import (
     Profil,
     Schwerpunkte,
 )
+from .react_views import ReactPageTemplateMixin, render_react_page
 
 logger = logging.getLogger(__name__)
 
 
-class AuslagerorteUpdate(LoginRequiredMixin, UpdateView):
+class AuslagerorteUpdate(
+    ReactPageTemplateMixin,
+    LoginRequiredMixin,
+    UpdateView,
+):
     model = Auslagerorte
     form_class = AuslagerForm
-    template_name = "auslagerorte-form.html"
 
     def get_context_data(self, **kwargs):
         profil = Profil.objects.get(user=self.request.user)
@@ -53,9 +55,12 @@ class AuslagerorteUpdate(LoginRequiredMixin, UpdateView):
         return reverse_lazy('auslagerorte-detail', kwargs={'pk': self.object.pk})
 
 
-class AuslagerorteDetail(LoginRequiredMixin, DetailView):
+class AuslagerorteDetail(
+    ReactPageTemplateMixin,
+    LoginRequiredMixin,
+    DetailView,
+):
     model = Auslagerorte
-    template_name = 'auslagerorte-detail.html'
     context_object_name = 'ort'
 
     def get_context_data(self, **kwargs):
@@ -150,10 +155,13 @@ class AuslagerorteDetail(LoginRequiredMixin, DetailView):
         return self.render_to_response(context)
 
 
-class AuslagerorteCreate(LoginRequiredMixin, CreateView):
+class AuslagerorteCreate(
+    ReactPageTemplateMixin,
+    LoginRequiredMixin,
+    CreateView,
+):
     model = Auslagerorte
     form_class = AuslagerForm
-    template_name = 'auslagerorte-form.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -169,9 +177,12 @@ class AuslagerorteCreate(LoginRequiredMixin, CreateView):
         return reverse_lazy('auslagerorte-detail', kwargs={'pk': self.object.pk})
 
 
-class AuslagerorteImageUpload(LoginRequiredMixin, FormView):
+class AuslagerorteImageUpload(
+    ReactPageTemplateMixin,
+    LoginRequiredMixin,
+    FormView,
+):
     form_class = AuslagerorteImageForm
-    template_name = 'auslagerorte-image-upload.html'
 
     def form_valid(self, form):
         auslagerort = get_object_or_404(Auslagerorte, pk=self.kwargs['pk'])
@@ -216,8 +227,6 @@ class AuslagerorteImageUpload(LoginRequiredMixin, FormView):
 
 @login_required
 def auslagerorte_list(request):
-    template = loader.get_template('auslagerorte-list.html')
-
     profil = Profil.objects.get(user=request.user)
     active_turnus = profil.turnus
     kids = models.Kinder.objects.all().values()
@@ -242,4 +251,4 @@ def auslagerorte_list(request):
         }),
     }
 
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)

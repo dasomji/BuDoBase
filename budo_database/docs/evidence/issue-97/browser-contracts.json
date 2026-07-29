@@ -1,0 +1,84 @@
+{
+  "desktop": {
+    "readMode": {
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "detailTop": 71.1875,
+      "headerBottom": 55.1875,
+      "tableClientWidth": 440,
+      "tableScrollWidth": 676,
+      "closeButtonSlot": "button",
+      "yearIndicator": "−"
+    },
+    "editorMode": {
+      "viewportWidth": 1280,
+      "documentWidth": 1280,
+      "saveButtonSlot": "button"
+    }
+  },
+  "mobile": {
+    "readMode": {
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "detailTop": 66,
+      "headerBottom": 66,
+      "tableClientWidth": 0,
+      "tableScrollWidth": 0,
+      "closeButtonSlot": "button",
+      "yearIndicator": "−"
+    },
+    "editorMode": {
+      "viewportWidth": 390,
+      "documentWidth": 390,
+      "saveButtonSlot": "button"
+    }
+  },
+  "print": {
+    "viewportWidth": 1280,
+    "documentWidth": 1280,
+    "smallPaddingToken": "12px",
+    "title": {
+      "top": 0,
+      "bottom": 53.5625,
+      "height": 53.5625,
+      "fontSize": "14.6667px",
+      "fontWeight": "300",
+      "marginBottom": "30.2362px",
+      "paddingTop": "0px",
+      "paddingBottom": "7.33333px"
+    },
+    "heading": {
+      "top": 0,
+      "bottom": 42.234375,
+      "height": 42.234375,
+      "fontSize": "35.2px",
+      "fontWeight": "700",
+      "marginBottom": "0px",
+      "paddingTop": "0px",
+      "paddingBottom": "0px"
+    },
+    "sectionHeading": {
+      "top": 83.796875,
+      "bottom": 113.203125,
+      "height": 29.40625,
+      "fontSize": "19.8px",
+      "fontWeight": "700",
+      "marginBottom": "7.33333px",
+      "paddingTop": "0px",
+      "paddingBottom": "3.66667px"
+    },
+    "empty": {
+      "top": 120.53125,
+      "bottom": 156.984375,
+      "height": 36.453125,
+      "fontSize": "14.6667px",
+      "fontWeight": "300",
+      "marginBottom": "14.6667px",
+      "paddingTop": "7.33333px",
+      "paddingBottom": "7.33333px"
+    },
+    "mainBackgroundImage": "radial-gradient(59.33% 87.53% at 38.82% 60.76%, rgb(255, 255, 255) 0%, rgb(247, 235, 224) 22%, rgb(153, 153, 153) 100%)",
+    "tableFontSize": "14.6667px",
+    "tableCellPadding": "5.66929px 7.55906px"
+  }
+}

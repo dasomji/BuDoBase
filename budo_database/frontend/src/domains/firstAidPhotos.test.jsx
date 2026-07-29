@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -234,12 +231,11 @@ describe('EH photo upload and card strips', () => {
 
   it('renders the same bounded, lazy, labelled photo-strip shape on kid detail and dashboard', () => {
     const assertPhotoEntry = card => {
-      const entry = card.querySelector('.first-aid-entry');
       const strip = within(card).getByRole('region', { name: /EH-Fotos.*Ada Lovelace/i });
+      const entry = strip.closest('li');
       const images = within(strip).getAllByRole('img');
 
       expect(entry).not.toBeNull();
-      expect(strip).toHaveClass('first-aid-photo-strip');
       expect(strip).toHaveAttribute('tabindex', '0');
       expect(images).toHaveLength(2);
       expect(images[0]).toHaveAttribute('src', photos[0].url);
@@ -250,7 +246,11 @@ describe('EH photo upload and card strips', () => {
       expect(images[0]).not.toHaveAccessibleName(/Private medizinische Beschreibung/i);
       expect(within(entry).queryByRole('button', { name: /bearbeiten|löschen/i })).not.toBeInTheDocument();
       expect(within(entry).queryByRole('link', { name: /bearbeiten|löschen/i })).not.toBeInTheDocument();
-      return { entryClass: entry.className, stripClass: strip.className };
+      return images.map(image => ({
+        alt: image.getAttribute('alt'),
+        height: image.getAttribute('height'),
+        width: image.getAttribute('width'),
+      }));
     };
 
     const kidRender = render(<KidDetailPage
@@ -299,38 +299,5 @@ describe('EH photo upload and card strips', () => {
 
     await waitFor(() => expect(onFirstAidItemsChange).toHaveBeenLastCalledWith([firstAidEntry, older]));
     expect(fetchImpl).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('EH photo strip CSS contract', () => {
-  const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
-  const declarationsFor = selector => {
-    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const match = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
-    expect(match, `Missing CSS rule for ${selector}`).not.toBeNull();
-    return match[1].replace(/\s+/g, '').toLocaleLowerCase();
-  };
-
-  it('contains photos inside an internal horizontal scroller without widening cards or pages', () => {
-    const entry = declarationsFor('.first-aid-entry');
-    const strip = declarationsFor('.first-aid-photo-strip');
-    const trigger = declarationsFor('.first-aid-photo-trigger');
-    const image = declarationsFor('.first-aid-photo');
-    const galleryImage = declarationsFor('.first-aid-gallery-image');
-
-    expect(entry).toContain('min-width:0');
-    expect(entry).toContain('max-width:100%');
-    expect(strip).toContain('width:100%');
-    expect(strip).toContain('max-width:100%');
-    expect(strip).toContain('min-width:0');
-    expect(strip).toContain('overflow-x:auto');
-    expect(trigger).toContain('flex:00auto');
-    expect(trigger).toContain('max-width:100%');
-    expect(image).toContain('width:auto');
-    expect(image).toContain('height:auto');
-    expect(image).toContain('max-width:100%');
-    expect(image).toContain('max-height:200px');
-    expect(image).toContain('object-fit:contain');
-    expect(galleryImage).toContain('touch-action:pan-y');
   });
 });

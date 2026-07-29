@@ -1,6 +1,25 @@
 import { useState } from 'react';
+import { PlusIcon } from 'lucide-react';
 
-import { Card, Column, Columns, findById, MapCard, NativeForm, RestForm, SearchTable } from '../components';
+import {
+  Card,
+  Column,
+  Columns,
+  DataTable,
+  findById,
+  MapCard,
+  NativeForm,
+  RestForm,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+} from '../components';
+import { Button } from '../components/ui/button';
+import { NativeSelect } from '../components/ui/input';
 import { displayOrPlaceholder, formatGermanDate, linkKid, MealTable, NotFoundPage, yesNo } from './shared';
 
 const focusKidColumns = [
@@ -40,15 +59,15 @@ export function FocusDashboardPage({ data }) {
     { key: 'kids', label: 'Kinder', render: focus => focus.kid_count, sortValue: focus => focus.kid_count },
   ];
   const tables = [['u', 'Unklar Wann'], ['w1', 'Woche 1'], ['w2', 'Woche 2']].filter(([week]) => group(week).length || week !== 'u');
-  return <Columns className="focus-dashboard">
-    <Column id="left-column" className="focus-weeks-column">
-      {tables.map(([week, title]) => <Card title={title} className="transparent" key={week} headerAction={week !== 'u' ? <a className="button" href={`/swp-einteilung-${week}`}>Kinder einteilen</a> : null}><SearchTable columns={columns} rows={group(week)} /></Card>)}
+  return <Columns className="grid grid-cols-1 items-start min-[901px]:h-[calc(100svh-var(--app-header-height,0px))] min-[901px]:min-h-0 min-[901px]:grid-cols-[auto_minmax(0,1fr)] min-[901px]:overflow-hidden">
+    <Column id="left-column" className="min-w-0 min-[901px]:overflow-y-auto">
+      {tables.map(([week, title]) => <Card title={title} className="transparent" key={week} headerAction={week !== 'u' ? <Button href={`/swp-einteilung-${week}`}>Kinder einteilen</Button> : null}><DataTable columns={columns} rows={group(week)} /></Card>)}
     </Column>
-    <Column id="right-column" className="focus-map-column">
+    <Column id="right-column" className="min-w-0 min-[901px]:[&_.card-info-container]:min-h-0 min-[901px]:[&_.card-info-content]:min-h-0 min-[901px]:[&_.interactive-map]:h-full min-[901px]:[&_.interactive-map]:min-h-70 min-[901px]:[&>#swp-map]:flex min-[901px]:[&>#swp-map]:h-full min-[901px]:[&>#swp-map]:min-h-0 min-[901px]:[&>#swp-map]:flex-col min-[901px]:[&>#swp-map:not(.closed-card)>.card-info-container]:flex-1">
       <MapCard
         places={data.focuses.filter(focus => focus.week === mapWeek && focus.coordinates).map(focus => ({ id: focus.id, name: focus.name, coordinates: focus.coordinates, href: `/schwerpunkt/${focus.id}/` }))}
-        headerAction={<span className="map-week-switch" role="group" aria-label="Kartenwoche">
-          {['w1', 'w2'].map(week => <button key={week} type="button" className="button" aria-pressed={mapWeek === week} onClick={() => selectMapWeek(week)}>Woche {week.slice(1)}</button>)}
+        headerAction={<span className="inline-flex gap-1" role="group" aria-label="Kartenwoche">
+          {['w1', 'w2'].map(week => <Button key={week} type="button" variant={mapWeek === week ? 'default' : 'outline'} aria-pressed={mapWeek === week} onClick={() => selectMapWeek(week)}>Woche {week.slice(1)}</Button>)}
         </span>}
       />
     </Column>
@@ -65,7 +84,7 @@ function FocusDetails({ focus, kidCount }) {
     ['Beginnt am', formatGermanDate(focus.start)],
     ['Beschreibung', focus.description, 'full-width'],
   ];
-  return <div className="focus-detail-fields">{fields.map(([label, value, className]) => <p className={className || ''} key={label}><span className="label">{label}</span>: {value}</p>)}</div>;
+  return <div className="flex flex-wrap gap-x-6">{fields.map(([label, value, className]) => <p className={`${className ? 'basis-full' : 'min-w-56 flex-[1_1_calc(50%-0.75rem)]'}`} key={label}><span className="label">{label}</span>: {value}</p>)}</div>;
 }
 
 export function FocusDetailPage({ data, id }) {
@@ -73,7 +92,7 @@ export function FocusDetailPage({ data, id }) {
   if (!focus) return <NotFoundPage />;
   const kids = data.kids;
   const mapPlaces = focus.place_id ? [{ id: focus.place_id, name: focus.place, coordinates: focus.coordinates }] : [];
-  return <Columns><Column id="left-column"><Card title={focus.name}><FocusDetails focus={focus} kidCount={kids.length} /><div className="react-actions focus-detail-actions"><a className="button" href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</a></div></Card><Card title="Essen" className="focus-meals-card"><MealTable focus={focus} /><div className="react-actions"><a className="button" href={`/swpmeals/${focus.id}`}>Essen bearbeiten</a></div></Card><MapCard places={mapPlaces} /></Column><Column id="right-column"><SearchTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
+  return <Columns><Column id="left-column"><Card title={focus.name} actions={<Button href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</Button>}><FocusDetails focus={focus} kidCount={kids.length} /></Card><Card title="Essen" actions={<Button href={`/swpmeals/${focus.id}`}>Essen bearbeiten</Button>}><MealTable focus={focus} /></Card><MapCard places={mapPlaces} /></Column><Column id="right-column"><DataTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
 }
 
 export function FocusFormPage({ data, id }) {
@@ -86,7 +105,7 @@ export function FocusFormPage({ data, id }) {
     { name: 'betreuende', label: 'Betreuende', type: 'checkbox-group', value: focus?.carer_ids || [], options: data.team.map(item => ({ value: item.id, label: item.rufname })) },
     { name: 'beschreibung', label: 'Beschreibung', type: 'textarea', value: focus?.description },
   ];
-  return <Columns><Column id="single-column"><Card title={`Schwerpunkt ${focus ? 'updaten' : 'erstellen'}`}><NativeForm token={data.csrf_token} action={focus ? `/schwerpunkt/${focus.id}/update` : '/schwerpunkt/create'} fields={fields}><a className="button" href="/swp-dashboard/">Cancel</a></NativeForm></Card></Column></Columns>;
+  return <Columns><Column id="single-column"><Card title={`Schwerpunkt ${focus ? 'updaten' : 'erstellen'}`}><NativeForm token={data.csrf_token} action={focus ? `/schwerpunkt/${focus.id}/update` : '/schwerpunkt/create'} fields={fields}><Button href="/swp-dashboard/" variant="secondary">Cancel</Button></NativeForm></Card></Column></Columns>;
 }
 
 export function MealsPage({ data, id }) {
@@ -97,45 +116,45 @@ export function MealsPage({ data, id }) {
   const mealTypes = Object.entries(data.meal_types);
   const indexedMeals = new Map(entries.map((meal, index) => [`${meal.day}-${meal.type}`, { meal, index }]));
   return (
-    <Columns className="focus-meals-page">
-      <Column id="single-column" className="focus-meals-column">
-        <Card title="Wann esst ihr wo?">
-          <RestForm target={`/swpmeals/${focus.id}`} token={data.csrf_token} className="form-grid focus-meals-form">
+    <Columns>
+      <Column id="single-column" className="min-w-0 w-full max-w-5xl">
+        <Card title="Wann esst ihr wo?" className="min-w-0">
+          <RestForm target={`/swpmeals/${focus.id}`} token={data.csrf_token} className="form-grid min-w-0">
             <input type="hidden" name="form-TOTAL_FORMS" value={entries.length} />
             <input type="hidden" name="form-INITIAL_FORMS" value={entries.length} />
-            <div className="focus-meals-table-scroll">
-              <table className="focus-meals-form-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Tag</th>
-                    {mealTypes.map(([type, label]) => <th scope="col" key={type}>{label}</th>)}
-                  </tr>
-                </thead>
-                <tbody>{days.map(day => (
-                  <tr key={day}>
-                    <th scope="row">Tag {day}</th>
+            <TableScroll className="min-w-0 max-w-full">
+              <Table className="min-w-full min-[901px]:min-w-[40rem]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead scope="col">Tag</TableHead>
+                    {mealTypes.map(([type, label]) => <TableHead scope="col" key={type}>{label}</TableHead>)}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>{days.map(day => (
+                  <TableRow key={day}>
+                    <TableHead className="font-bold whitespace-nowrap" scope="row">Tag {day}</TableHead>
                     {mealTypes.map(([type, label]) => {
                       const indexedMeal = indexedMeals.get(`${day}-${type}`);
-                      if (!indexedMeal) return <td key={type}>—</td>;
+                      if (!indexedMeal) return <TableCell key={type}>—</TableCell>;
                       const { meal, index } = indexedMeal;
                       const fieldId = `meal-${meal.id}`;
                       return (
-                        <td key={type}>
+                        <TableCell key={type}>
                           <input type="hidden" name={`form-${index}-id`} value={meal.id} />
                           <label className="sr-only" htmlFor={fieldId}>Tag {day} · {label}</label>
-                          <select id={fieldId} name={`form-${index}-meal_choice`} defaultValue={meal.choice}>
+                          <NativeSelect className="min-[901px]:min-w-36" id={fieldId} name={`form-${index}-meal_choice`} defaultValue={meal.choice}>
                             {data.meal_choices.map(choice => (
                               <option value={choice.value} key={choice.value}>{choice.label}</option>
                             ))}
-                          </select>
-                        </td>
+                          </NativeSelect>
+                        </TableCell>
                       );
                     })}
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
-            <input className="button" type="submit" value="Speichern" />
+                  </TableRow>
+                ))}</TableBody>
+              </Table>
+            </TableScroll>
+            <Button className="justify-self-end" type="submit">Speichern</Button>
           </RestForm>
         </Card>
       </Column>
@@ -191,10 +210,10 @@ export const focusRoutes = [
     domain: 'focuses',
     readContractKey: 'focus-dashboard',
     headerAction: () => (
-      <a className="button mobile-icon-action" href="/schwerpunkt/create" aria-label="SWP hinzufügen">
+      <Button className="mobile-icon-action" size="responsive-icon" href="/schwerpunkt/create" aria-label="SWP hinzufügen">
         <span className="desktop-action-label">SWP hinzufügen</span>
-        <span className="mobile-action-label" aria-hidden="true">+</span>
-      </a>
+        <PlusIcon className="mobile-action-label" aria-hidden="true" />
+      </Button>
     ),
     render: ({ data }) => <FocusDashboardPage data={data} />,
   },

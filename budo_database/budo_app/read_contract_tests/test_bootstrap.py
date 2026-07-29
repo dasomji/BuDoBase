@@ -130,7 +130,7 @@ class BootstrapContractTests(TestCase):
     def test_only_bootstrap_consumes_each_queued_message_once(self):
         self.client.force_login(self.user)
         response = self.client.post(
-            reverse("profil"),
+            reverse("profil-edit"),
             {
                 "rufname": "Bootstrap Teamer",
                 "allergien": "",

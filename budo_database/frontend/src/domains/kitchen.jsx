@@ -1,4 +1,19 @@
-import { Card, Column, Columns, FieldList } from '../components';
+import { Printer } from 'lucide-react';
+
+import {
+  Card,
+  Column,
+  Columns,
+  FieldList,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+} from '../components';
+import { Button } from '../components/ui/button';
 import { linkKid } from './shared';
 
 const mealTypes = [
@@ -37,7 +52,7 @@ function MealFocusList({ focuses }) {
   if (!focuses.length) return '---';
 
   return focuses.map(focus => (
-    <div className="kitchen-meal-focus" key={focus.id}>
+    <div key={focus.id}>
       {focus.name} ({formatDietaryPortions(dietaryPortions([focus]))})
     </div>
   ));
@@ -50,32 +65,33 @@ function WeekMealPlan({ focuses }) {
   ));
 
   return <>{Array.from({ length: maxDays }, (_, index) => index + 1).map(day => (
-    <div className="print-nobreak kitchen-meal-day" key={day}>
+    <div className="print-nobreak grid gap-3 py-4 first:pt-0" key={day}>
       <h2>Tag {day}</h2>
-      <div
-        className="kitchen-meal-table-scroll"
+      <TableScroll
+        className="kitchen-meal-table-scroll focus-visible:outline-2 focus-visible:outline-offset-2"
+        stickyFirstColumn
         tabIndex={0}
         aria-label={`Menüplan Tag ${day} horizontal scrollen`}
       >
-        <table className="meal-table" aria-label={`Menüplan Tag ${day}`}>
-          <thead><tr><th>Essen</th><th>Box</th><th>BuDo</th><th>Warm</th><th>Kochportionen</th></tr></thead>
-          <tbody>{mealTypes.map(([type, label]) => {
+        <Table className="meal-table min-w-[36rem]" aria-label={`Menüplan Tag ${day}`}>
+          <TableHeader><TableRow><TableHead scope="col">Essen</TableHead><TableHead scope="col">Box</TableHead><TableHead scope="col">BuDo</TableHead><TableHead scope="col">Warm</TableHead><TableHead scope="col">Kochportionen</TableHead></TableRow></TableHeader>
+          <TableBody>{mealTypes.map(([type, label]) => {
             const cookingFocuses = matchingFocuses(day, type, ['budo', 'warm']);
             const portions = cookingFocuses
               .reduce((sum, focus) => sum + participantCount(focus), 0);
             const cookingPortions = dietaryPortions(cookingFocuses);
             return (
-              <tr key={type}>
-                <td>{label}</td>
-                <td><MealFocusList focuses={matchingFocuses(day, type, ['box'])} /></td>
-                <td><MealFocusList focuses={matchingFocuses(day, type, ['budo'])} /></td>
-                <td><MealFocusList focuses={matchingFocuses(day, type, ['warm'])} /></td>
-                <td>{portions ? `${portions} (${formatDietaryPortions(cookingPortions)})` : '---'}</td>
-              </tr>
+              <TableRow key={type}>
+                <TableCell>{label}</TableCell>
+                <TableCell><MealFocusList focuses={matchingFocuses(day, type, ['box'])} /></TableCell>
+                <TableCell><MealFocusList focuses={matchingFocuses(day, type, ['budo'])} /></TableCell>
+                <TableCell><MealFocusList focuses={matchingFocuses(day, type, ['warm'])} /></TableCell>
+                <TableCell>{portions ? `${portions} (${formatDietaryPortions(cookingPortions)})` : '---'}</TableCell>
+              </TableRow>
             );
-          })}</tbody>
-        </table>
-      </div>
+          })}</TableBody>
+        </Table>
+      </TableScroll>
     </div>
   ))}</>;
 }
@@ -85,7 +101,7 @@ function IntoleranceList({ title, entries }) {
     <div>
       <h4>{title}</h4>
       {entries.length ? (
-        <ul>{entries.map(entry => {
+        <ul className="list-disc pl-4">{entries.map(entry => {
           const diet = dietaryLabels[entry.diet];
           return (
             <li key={`${entry.name}-${entry.details}`}>
@@ -98,13 +114,13 @@ function IntoleranceList({ title, entries }) {
   );
 }
 
-function FocusKitchenInfo({ focus, headingLevel = 2 }) {
+function FocusKitchenInfo({ focus, headingLevel = 2, showHeading = true }) {
   const counts = focus.dietary_counts ?? {};
   const intolerances = focus.intolerances ?? { kids: [], team: [] };
   const Heading = `h${headingLevel}`;
   return (
-    <div className="focus-kitchen-info">
-      <Heading>{focus.name}</Heading>
+    <div className="focus-kitchen-info [&_h3]:mt-3 [&_h4]:mt-3">
+      {showHeading && <Heading>{focus.name}</Heading>}
       <FieldList items={[
         ['Kinder', focus.kid_count],
         ['Betreuende', focus.carers],
@@ -160,15 +176,15 @@ export function KitchenPage({ data }) {
   const weeks = ['w1', 'w2'];
   return (
     <>
-      <Columns className="kitchen-layout">
-        <Column id="left-column" className="kitchen-menu-column">
+      <Columns className="kitchen-layout grid grid-cols-1 items-start gap-4 min-[901px]:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)] [&_.card-info-container]:min-w-0 [&_.card-info-content]:min-w-0 [&_.card]:min-w-0 [&_.detail-column]:min-w-0">
+        <Column id="left-column">
           {weeks.map(week => (
             <Card title={`Menüplan Woche ${week === 'w1' ? 1 : 2}`} key={week}>
               <WeekMealPlan focuses={data.focuses.filter(focus => focus.week === week)} />
             </Card>
           ))}
         </Column>
-        <Column id="right-column" className="kitchen-info-column">
+        <Column id="right-column">
           <Card title="Essen & Allergien bei Kindern">
             {data.kids.filter(kid => kid.special_food).map(kid => (
               <div className="print-nobreak" key={kid.id}>
@@ -185,10 +201,14 @@ export function KitchenPage({ data }) {
             ))}
           </Card>
           {weeks.map(week => (
-            <Card title={`Schwerpunktinfos Woche ${week === 'w1' ? 1 : 2}`} key={week}>
-              {data.focuses.filter(focus => focus.week === week).map(focus => (
-                <FocusKitchenInfo focus={focus} key={focus.id} />
-              ))}
+            <Card className="transparent" title={`Schwerpunktinfos Woche ${week === 'w1' ? 1 : 2}`} key={week}>
+              <div className="flex flex-col gap-4">
+                {data.focuses.filter(focus => focus.week === week).map(focus => (
+                  <Card headingLevel={3} title={focus.name} key={focus.id}>
+                    <FocusKitchenInfo focus={focus} showHeading={false} />
+                  </Card>
+                ))}
+              </div>
             </Card>
           ))}
         </Column>
@@ -205,9 +225,16 @@ export const kitchenRoutes = [{
   domain: 'kitchen',
   readContractKey: 'kitchen',
   headerAction: () => (
-    <button className="button kitchen-print-button" type="button" onClick={() => window.print()}>
-      Drucken
-    </button>
+    <Button
+      aria-label="Drucken"
+      className="mobile-icon-action"
+      size="responsive-icon"
+      type="button"
+      onClick={() => window.print()}
+    >
+      <span className="desktop-action-label">Drucken</span>
+      <Printer className="mobile-action-label" aria-hidden="true" />
+    </Button>
   ),
   render: ({ data }) => <KitchenPage data={data} />,
 }];

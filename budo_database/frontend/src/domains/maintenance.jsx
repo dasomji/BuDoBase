@@ -1,9 +1,10 @@
-import { Card, Column, Columns, findById, NativeForm, SearchTable } from '../components';
+import { Card, Column, Columns, DataTable, findById, NativeForm } from '../components';
+import { Button } from '../components/ui/button';
 import { formatGermanDate } from './shared';
 
 export function TurnusUploadPage({ data, id }) {
   const turnus = id ? findById(data.turnuses, id) : null;
-  return <Columns><Column id="single-column"><Card title={turnus ? `Excel-Datei hochladen für Turnus ${turnus.number}` : 'Turnis'}><NativeForm token={data.csrf_token} action={turnus ? `/upload_excel/${turnus.id}/` : '/upload/'} encType="multipart/form-data" fields={[{ name: 'turnus_nr', label: 'Turnus Nummer', type: 'number', value: turnus?.number, required: true }, { name: 'turnus_beginn', label: 'Beginn des Turnus', type: 'date', value: turnus?.start, required: true }, { name: 'uploadedFile', label: 'Excel-File', type: 'file' }]} submit={turnus ? 'Hochladen' : 'Turnus hinzufügen'} /></Card>{!turnus && <SearchTable columns={[{ key: 'label', label: 'Turnus' }, { key: 'id', label: 'ID' }, { key: 'start', label: 'Turnusbeginn', render: row => formatGermanDate(row.start) }, { key: 'actions', label: 'Aktionen', sortable: false, render: row => <a className="button" href={`/upload_excel/${row.id}/`}>Excel hochladen</a> }]} rows={data.turnuses} />}</Column></Columns>;
+  return <Columns><Column id="single-column"><Card title={turnus ? `Excel-Datei hochladen für Turnus ${turnus.number}` : 'Turnis'}><NativeForm token={data.csrf_token} action={turnus ? `/upload_excel/${turnus.id}/` : '/upload/'} encType="multipart/form-data" fields={[{ name: 'turnus_nr', label: 'Turnus Nummer', type: 'number', value: turnus?.number, required: true }, { name: 'turnus_beginn', label: 'Beginn des Turnus', type: 'date', value: turnus?.start, required: true }, { name: 'uploadedFile', label: 'Excel-File', type: 'file' }]} submit={turnus ? 'Hochladen' : 'Turnus hinzufügen'} /></Card>{!turnus && <DataTable columns={[{ key: 'label', label: 'Turnus' }, { key: 'id', label: 'ID' }, { key: 'start', label: 'Turnusbeginn', render: row => formatGermanDate(row.start) }, { key: 'actions', label: 'Aktionen', sortable: false, render: row => <Button href={`/upload_excel/${row.id}/`}>Excel hochladen</Button> }]} rows={data.turnuses} />}</Column></Columns>;
 }
 
 export function SimpleUploadPage({ data }) {

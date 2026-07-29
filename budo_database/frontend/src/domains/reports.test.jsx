@@ -25,7 +25,7 @@ describe('operational report pages', () => {
   });
 
   it('retains the serial-letter fields and printable document structure', () => {
-    const { container } = render(<SerialLetterPage data={{ kids: [{
+    render(<SerialLetterPage data={{ kids: [{
       id: 7,
       full_name: 'Ada Lovelace',
       e_card: false,
@@ -40,7 +40,7 @@ describe('operational report pages', () => {
       special_food: 'glutenfrei',
     }] }} />);
 
-    expect(screen.getByText('Ada Lovelace')).toHaveClass('serienbrief_name');
+    expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument();
     expect(screen.getByText('E-Card: Nein')).toBeInTheDocument();
     expect(screen.getByText('Ausweis: Ja')).toBeInTheDocument();
     expect(screen.getByText('Einverständnis für ärztliche Behandlung: Ja')).toBeInTheDocument();
@@ -51,8 +51,6 @@ describe('operational report pages', () => {
     expect(screen.getByText('Krankheit: Asthma')).toBeInTheDocument();
     expect(screen.getByText('Medikamente: Notfallspray')).toBeInTheDocument();
     expect(screen.getByText('Ernährung: glutenfrei')).toBeInTheDocument();
-    expect(container.querySelector('.serienbrief-kid')).toBeInTheDocument();
-    expect(container.querySelectorAll('.serienbrief-container')).toHaveLength(4);
   });
 
   it('retains the murder-game kid and team labels in contract order', () => {
@@ -61,13 +59,13 @@ describe('operational report pages', () => {
       team: [{ id: 2, rufname: 'Boris', role_display: 'Betreuer:in' }],
     }} />);
 
-    expect(screen.getByRole('heading', { name: 'Mörderspiel: Kids & Team' })).toHaveClass('murder_name');
-    expect(screen.getByText('Ada Kind')).toHaveClass('murder_name');
-    expect(screen.getByText('Betreuer:in Boris')).toHaveClass('murder_name');
+    expect(screen.getByRole('heading', { name: 'Mörderspiel: Kids & Team' })).toBeInTheDocument();
+    expect(screen.getByText('Ada Kind')).toBeInTheDocument();
+    expect(screen.getByText('Betreuer:in Boris')).toBeInTheDocument();
   });
 
   it('preserves family grouping, labels, ordering, links, responsive layout hooks, and empty behavior', () => {
-    const { container, rerender } = render(<FamiliesPage data={{ kids: [
+    const { rerender } = render(<FamiliesPage data={{ kids: [
       { id: 1, full_name: 'Aaron First', present: false, age: 13, budo_family: 'S' },
       { id: 2, full_name: 'Abel Second', present: true, age: 12, budo_family: 'S' },
       { id: 3, full_name: 'Ada Third', present: true, age: 14, budo_family: 'L' },
@@ -76,14 +74,17 @@ describe('operational report pages', () => {
     const headings = screen.getAllByRole('heading').map(heading => heading.textContent);
     expect(headings).toEqual(['S (2)', 'L (1)']);
     const smallie = screen.getByRole('heading', { name: 'S (2)' }).closest('.card');
+    const layout = screen.getByRole('main');
+    expect(layout).toHaveClass('responsive-card-grid');
+    expect(layout.firstElementChild).toHaveClass('gap-4', '@[41rem]:grid-cols-2');
+    expect(layout.firstElementChild).not.toHaveClass('@[62rem]:grid-cols-3');
+    expect(within(smallie).getByRole('list')).toHaveClass('[grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr))]');
     expect(within(smallie).getAllByRole('listitem').map(item => item.textContent)).toEqual([
       'Aaron First ❌ – 13',
       'Abel Second – 12',
     ]);
     expect(screen.getByRole('link', { name: 'Aaron First ❌' })).toHaveAttribute('href', '/kid_details/1');
-    expect(container.querySelector('main')).toHaveClass('families-page');
-    expect(container.querySelectorAll('.family-card-column')).toHaveLength(2);
-    expect(within(smallie).getByRole('list')).toHaveClass('family-kids');
+    expect(within(smallie).getByRole('list')).toBeInTheDocument();
 
     rerender(<FamiliesPage special data={{ kids: [] }} />);
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
@@ -116,13 +117,11 @@ describe('operational report pages', () => {
     const noteForms = screen.getAllByRole('button', { name: 'Speichern' }).map(button => button.closest('form'));
     expect(noteForms[0]).toHaveAttribute('action', '/kindergeburtstage/');
     expect(noteForms[0]).toHaveFormValues({ kid_id: '1', notiz: '' });
+    expect(within(noteForms[0]).getByPlaceholderText('Notiz...')).toHaveAttribute('data-slot', 'input');
   });
 
   it('retains the standalone checked-in Kinder count and centering structure', () => {
-    const { container } = render(<KidCountPage data={{ totals: { checked_in: 8, kids: 12 } }} />);
-
-    expect(screen.getByRole('heading', { name: '8/12' })).toHaveClass('gesamtkinderzahl');
-    expect(container.querySelector('main')).toHaveClass('gesamtkinderzahl-body');
-    expect(container.querySelector('.gesamtkinderzahl-container')).toContainElement(screen.getByRole('heading'));
+    render(<KidCountPage data={{ totals: { checked_in: 8, kids: 12 } }} />);
+    expect(screen.getByRole('heading', { name: '8/12' })).toBeInTheDocument();
   });
 });

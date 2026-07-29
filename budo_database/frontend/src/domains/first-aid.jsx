@@ -5,7 +5,7 @@ export function FirstAidPhotoStrip({ childName, entryId, photos = [] }) {
   if (!photos.length) return null;
   return (
     <div
-      className="first-aid-photo-strip"
+      className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overflow-y-hidden py-1 overscroll-x-contain touch-pan-x"
       role="region"
       aria-label={`EH-Fotos von ${childName}`}
       tabIndex={0}
@@ -22,7 +22,7 @@ export function FirstAidPhotoStrip({ childName, entryId, photos = [] }) {
             key={photo.id}
           >
             <img
-              className="first-aid-photo"
+              className="block h-auto max-h-50 w-auto max-w-full object-contain"
               src={photo.url}
               width={photo.width}
               height={photo.height}
@@ -40,7 +40,7 @@ export function FirstAidPhotoStrip({ childName, entryId, photos = [] }) {
 export function FirstAidEntry({ entry, childName, showChildLink = false }) {
   const name = childName || entry.kid;
   return (
-    <li className="first-aid-entry">
+    <li className="min-w-0 max-w-full">
       <p>
         <strong>{entry.author}</strong> am {formatGermanDate(entry.date)}:{' '}
         {showChildLink
@@ -56,7 +56,7 @@ export function FirstAidEntry({ entry, childName, showChildLink = false }) {
 export function NoteEntry({ entry, childName, showChildLink = false }) {
   const name = childName || entry.kid;
   return (
-    <li className="first-aid-entry">
+    <li className="min-w-0 max-w-full">
       <p>
         <strong>{entry.author}</strong> am {formatGermanDate(entry.date)}:{' '}
         {showChildLink

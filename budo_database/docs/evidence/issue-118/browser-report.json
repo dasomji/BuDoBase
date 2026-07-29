@@ -1,0 +1,122 @@
+{
+  "baseURL": "http://127.0.0.1:8018",
+  "printDocuments": {
+    "hc-nummernliste": {
+      "route": "/happy-cleaning/print/",
+      "status": 200,
+      "heading": "Nummernliste · Happy Cleaning",
+      "layout": {
+        "page": {
+          "display": "block",
+          "left": 0,
+          "top": 0,
+          "width": 1280,
+          "minWidth": "0px",
+          "paddingInline": "0px"
+        },
+        "firstSection": {
+          "display": "block",
+          "left": 0,
+          "top": 93.75,
+          "width": 1280,
+          "minWidth": "0px",
+          "paddingInline": "0px"
+        }
+      }
+    },
+    "swp-einteilung-w1": {
+      "route": "/swp-einteilung-w1",
+      "status": 200,
+      "heading": "SWP-Einteilung Woche 1",
+      "layout": {
+        "page": {
+          "display": "block",
+          "left": 0,
+          "top": 0,
+          "width": 1280,
+          "minWidth": "0px",
+          "paddingInline": "0px"
+        },
+        "printPage": {
+          "display": "block",
+          "left": 0,
+          "top": 0,
+          "width": 1280,
+          "minWidth": "0px",
+          "paddingInline": "0px"
+        },
+        "heading": {
+          "display": "block",
+          "left": 0,
+          "top": 0,
+          "width": 1280,
+          "minWidth": "0px",
+          "paddingInline": "0px"
+        }
+      }
+    },
+    "kitchen": {
+      "route": "/kitchen",
+      "status": 200,
+      "heading": "Küche",
+      "layout": {
+        "printPages": {
+          "display": "block",
+          "left": 0,
+          "top": 0,
+          "width": 1280,
+          "minWidth": "0px",
+          "paddingInline": "0px"
+        },
+        "tableScroll": {
+          "display": "block",
+          "left": 0,
+          "top": 125.4375,
+          "width": 1280,
+          "minWidth": "0px",
+          "paddingInline": "0px"
+        },
+        "table": {
+          "display": "table",
+          "left": 0,
+          "top": 125.4375,
+          "width": 315.109375,
+          "minWidth": "0px",
+          "paddingInline": "0px"
+        }
+      }
+    }
+  },
+  "browserContracts": {
+    "card": {
+      "collapsedBeforePrint": "false",
+      "display": "block",
+      "paddingInlineStart": "24px",
+      "paddingInlineEnd": "24px",
+      "expectedPadding": "24px"
+    },
+    "cascade": {
+      "stylesheet": "http://127.0.0.1:8018/static/frontend/app.css",
+      "globalPrintRules": [
+        {
+          "ancestors": [],
+          "descriptor": "CSSMediaRule:print"
+        }
+      ]
+    }
+  },
+  "todoPortal": {
+    "portalBeforeAfterPrint": 1,
+    "portalAfterAfterPrint": 0,
+    "printViews": [
+      {
+        "overview": true,
+        "todoPrintPages": true
+      },
+      {
+        "overview": true,
+        "todoPrintPages": false
+      }
+    ]
+  }
+}

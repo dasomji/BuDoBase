@@ -1,0 +1,66 @@
+[
+  {
+    "slug": "kid-detail",
+    "path": "/kid_details/21",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/kid_details/21",
+    "heading": "Kind"
+  },
+  {
+    "slug": "kid-detail",
+    "path": "/kid_details/21",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/kid_details/21",
+    "heading": "Kind"
+  },
+  {
+    "slug": "happy-cleaning",
+    "path": "/happy-cleaning/",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/happy-cleaning/",
+    "heading": "Happy Cleaning"
+  },
+  {
+    "slug": "happy-cleaning",
+    "path": "/happy-cleaning/",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/happy-cleaning/",
+    "heading": "Happy Cleaning"
+  },
+  {
+    "slug": "hc-nummernliste",
+    "path": "/happy-cleaning/print/",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/happy-cleaning/print/",
+    "heading": "Nummernliste · Happy Cleaning"
+  },
+  {
+    "slug": "hc-nummernliste",
+    "path": "/happy-cleaning/print/",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/happy-cleaning/print/",
+    "heading": "Nummernliste · Happy Cleaning"
+  },
+  {
+    "slug": "kitchen",
+    "path": "/kitchen",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/kitchen",
+    "heading": "Küche"
+  },
+  {
+    "slug": "kitchen",
+    "path": "/kitchen",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8010/kitchen",
+    "heading": "Küche"
+  }
+]

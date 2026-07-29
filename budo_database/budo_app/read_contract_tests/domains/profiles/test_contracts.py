@@ -284,7 +284,7 @@ class ProfileContractTests(TestCase):
         submitted = self.client.post(
             reverse("form-submit-api"),
             {
-                "_target": "/profil/",
+                "_target": "/profil/bearbeiten/",
                 "rufname": "Ada Test",
                 "allergien": "Haselnüsse",
                 "coffee": "Schwarz",
@@ -315,7 +315,7 @@ class ProfileContractTests(TestCase):
         normal_submission = self.client.post(
             reverse("form-submit-api"),
             {
-                "_target": "/profil/",
+                "_target": "/profil/bearbeiten/",
                 "rufname": "Normal user",
                 "allergien": "",
                 "coffee": "",
@@ -335,7 +335,7 @@ class ProfileContractTests(TestCase):
         invalid = self.client.post(
             reverse("form-submit-api"),
             {
-                "_target": "/profil/",
+                "_target": "/profil/bearbeiten/",
                 "rufname": "Not saved",
                 "allergien": "Neu",
                 "coffee": "Milch",
@@ -356,7 +356,7 @@ class ProfileContractTests(TestCase):
         saved = self.client.post(
             reverse("form-submit-api"),
             {
-                "_target": "/profil/",
+                "_target": "/profil/bearbeiten/",
                 "rufname": "Ada Neu",
                 "allergien": "Keine",
                 "coffee": "Milch",

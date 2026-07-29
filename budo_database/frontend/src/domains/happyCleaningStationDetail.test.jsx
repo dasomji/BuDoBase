@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Editor } from '@tiptap/core';
@@ -13,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toaster } from '../components/ui/toast';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute } from '../routes';
+import { expectErrorToastOnly } from '../test-support';
 import {
   HappyCleaningStationDetailPage,
   StableTaskItem,
@@ -98,13 +96,13 @@ describe('Happy Cleaning station detail', () => {
     render(<HappyCleaningStationDetailPage data={detailData} mutate={vi.fn()} onBack={onBack} />);
 
     const stationHeading = screen.getByRole('heading', { level: 2, name: 'Speisesaal' });
-    const stationCard = stationHeading.closest('.happy-cleaning-station-detail-card');
+    const stationCard = stationHeading.closest('.card');
     const stationToggle = stationHeading.closest('.card-toggle');
     expect(stationCard).toHaveClass('card');
     expect(stationToggle).toHaveAttribute('aria-expanded', 'true');
     expect(stationToggle.querySelector('.icon')).not.toBeInTheDocument();
     const close = screen.getByRole('button', { name: 'Detail schließen' });
-    expect(close).toHaveClass('happy-cleaning-detail-close');
+    expect(close).toHaveAttribute('data-slot', 'button');
     fireEvent.click(close);
     expect(onBack).toHaveBeenCalledOnce();
     expect(stationToggle).toHaveAttribute('aria-expanded', 'true');
@@ -117,7 +115,7 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.getByText('4')).toBeInTheDocument();
     expect(screen.getByText('Fenster nicht vergessen')).toBeInTheDocument();
     expect(screen.getByText('Mira')).toBeInTheDocument();
-    const facts = stationCard.querySelector('.happy-cleaning-station-facts');
+    const facts = screen.getByText('Hauptverantwortlich').closest('dl');
     expect([...facts.querySelectorAll('dt')].map(term => term.textContent)).toEqual([
       'Hauptverantwortlich', 'Max Kinder', 'Treffpunkt', 'Wünsche',
     ]);
@@ -139,21 +137,18 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.queryByText('Dieser Projektionsinhalt darf nicht erscheinen')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Inhalt' })).not.toBeInTheDocument();
     const tasksHeading = screen.getByRole('heading', { level: 2, name: 'Aufgaben' });
-    expect(tasksHeading).toHaveClass('happy-cleaning-station-tasks-heading');
     expect(tasksHeading.nextElementSibling).toContainElement(document);
     expect(screen.queryByRole('button', { name: /löschen|bearbeiten|nach oben|nach unten/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Name der Station|Treffpunkt der Station/)).not.toBeInTheDocument();
   });
 
-  it('gives the Aufgaben heading the annotated vertical padding', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/domains/happyCleaningStationDetail.css'), 'utf8');
+  it('gives the Aufgaben heading its annotated vertical padding', () => {
+    render(<HappyCleaningStationDetailPage data={detailData} mutate={vi.fn()} />);
 
-    expect(css).toMatch(
-      /\.happy-cleaning-station-tasks-heading\s*\{[^}]*padding:\s*12px 0 8px;/s,
-    );
-    expect(css).toMatch(
-      /\.happy-cleaning-station-facts dt\s*\{[^}]*font-weight:\s*500;/s,
-    );
+    expect(screen.getByRole('heading', { level: 2, name: 'Aufgaben' })).toHaveStyle({
+      paddingTop: '12px',
+      paddingBottom: '8px',
+    });
   });
 
   it('places edit and copy actions together at the end of the card body', () => {
@@ -163,13 +158,14 @@ describe('Happy Cleaning station detail', () => {
     }} mutate={vi.fn()} />);
 
     const stationCard = screen.getByRole('heading', { level: 2, name: 'Speisesaal' })
-      .closest('.happy-cleaning-station-detail-card');
+      .closest('.card');
     const cardBody = stationCard.querySelector('.card-info-content');
     const actions = cardBody.lastElementChild;
-    expect(actions).toHaveClass('react-actions', 'happy-cleaning-detail-actions');
-    expect(within(actions).getAllByRole('button').map(button => button.textContent)).toEqual([
+    const actionButtons = within(actions).getAllByRole('button');
+    expect(actionButtons.map(button => button.textContent)).toEqual([
       'Bearbeiten', 'Station kopieren',
     ]);
+    actionButtons.forEach(button => expect(button).toHaveAttribute('data-slot', 'button'));
     expect(actions.previousElementSibling).toContainElement(
       screen.getByRole('heading', { level: 2, name: 'Aufgaben' }),
     );
@@ -199,7 +195,7 @@ describe('Happy Cleaning station detail', () => {
     expect(completed).toBeChecked();
   });
 
-  it('refreshes a stale task conflict so the same item can be retried', async () => {
+  it('shows failed station-detail writes as error toasts, never inline', async () => {
     const stale = new Error('Update failed');
     stale.payload = { code: 'stale', current_version: 2 };
     const mutate = vi.fn().mockRejectedValue(stale);
@@ -212,11 +208,12 @@ describe('Happy Cleaning station detail', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Boden kehren erledigen' }));
+    const completed = screen.getByRole('checkbox', { name: 'Boden kehren erledigen' });
+    fireEvent.click(completed);
 
-    const toast = await screen.findByText(/erneut versuchen/, { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(document.querySelector('.happy-cleaning-station-detail-card .error')).not.toBeInTheDocument();
+    await expectErrorToastOnly(
+      'Die Daten wurden inzwischen geändert. Bitte erneut versuchen.',
+    );
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
     expect(screen.getByRole('checkbox', { name: 'Boden kehren erledigen' })).toBeEnabled();
   });
@@ -284,7 +281,9 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.queryByLabelText('Alle Stationen auswählen')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Station .* auswählen/)).not.toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Ziel-Happy-Cleaning'), '8');
-    screen.getByRole('button', { name: 'Prüfen und kopieren' }).focus();
+    const copyButton = screen.getByRole('button', { name: 'Prüfen und kopieren' });
+    expect(copyButton).toHaveAttribute('data-slot', 'button');
+    copyButton.focus();
     await user.keyboard('{Enter}');
 
     expect(screen.getByRole('status')).toHaveTextContent('Stationen werden geprüft');
@@ -307,14 +306,16 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.getByRole('heading', { name: 'Speisesaal', hidden: true })).toBeInTheDocument();
     expect(onBack).not.toHaveBeenCalled();
 
-    screen.getByRole('button', { name: 'Schließen' }).focus();
+    const closeButton = screen.getByRole('button', { name: 'Schließen' });
+    expect(closeButton).toHaveAttribute('data-slot', 'button');
+    closeButton.focus();
     await user.keyboard('{Enter}');
     expect(screen.queryByRole('dialog', { name: 'Station kopieren' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Speisesaal', hidden: true })).toBeInTheDocument();
     expect(onBack).not.toHaveBeenCalled();
   });
 
-  it('shares bulk validation, conflict actions, responsive classes, and stale errors', async () => {
+  it('shares bulk validation, conflict actions, and stale errors', async () => {
     const stale = Object.assign(new Error('stale'), {
       payload: { code: 'stale', current_version: 4 },
     });
@@ -347,15 +348,15 @@ describe('Happy Cleaning station detail', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Speisesaal → Speisesaal groß');
-    expect(alert.querySelector('.happy-cleaning-conflict-card')).toBeInTheDocument();
-    expect(alert.querySelector('.happy-cleaning-conflict-actions')).toBeInTheDocument();
+    expect(within(alert).getByRole('group', { name: 'Speisesaal (2 Aufgaben)' })).toBeInTheDocument();
     expect(screen.getAllByRole('radio')).toHaveLength(4);
     fireEvent.click(screen.getByRole('radio', { name: 'Als eigene Station kopieren' }));
     expect(screen.getByRole('button', { name: 'Auswahl verbindlich kopieren' })).toBeEnabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Erneut prüfen' }));
-    const toast = await screen.findByText(/inzwischen geändert/, { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    await expectErrorToastOnly(
+      'Die Daten wurden inzwischen geändert. Bitte neu laden.',
+    );
     expect(screen.getByRole('heading', { name: 'Speisesaal', hidden: true })).toBeInTheDocument();
   });
 
@@ -384,7 +385,7 @@ describe('Happy Cleaning station detail', () => {
     }} mutate={mutate} refresh={refresh} onBack={vi.fn()} />);
 
     const stationCard = screen.getByRole('heading', { level: 2, name: 'Speisesaal' })
-      .closest('.happy-cleaning-station-detail-card');
+      .closest('.card');
     const stationToggle = stationCard.querySelector('.card-toggle');
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
     expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
@@ -483,7 +484,7 @@ describe('Happy Cleaning station detail', () => {
     ));
   });
 
-  it('guards dirty Escape and retains the draft when a structural save is stale', async () => {
+  it('guards dirty Escape with a backdrop and retains the draft when a structural save is stale', async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     const mutate = vi.fn().mockRejectedValue(Object.assign(new Error('failed'), {
@@ -501,14 +502,25 @@ describe('Happy Cleaning station detail', () => {
     screen.getByRole('button', { name: 'Bearbeiten' }).focus();
     await user.keyboard('{Enter}');
     const name = screen.getByLabelText('Name der Station');
+    const stationCard = name.closest('.card');
     name.focus();
     await user.clear(name);
     await user.keyboard('Entwurf');
     await user.keyboard('{Escape}');
     const dirtyDialog = screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' });
     expect(dirtyDialog).toBeInTheDocument();
-    expect(dirtyDialog.closest('.happy-cleaning-station-detail-card')).toBeNull();
-    expect(document.querySelector('.happy-cleaning-dialog-backdrop')).toBeInTheDocument();
+    const dirtyDialogTitle = within(dirtyDialog).getByRole('heading', {
+      level: 2,
+      name: 'Ungespeicherte Änderungen',
+    });
+    expect(dirtyDialogTitle).toHaveClass('text-xl');
+    expect(dirtyDialogTitle).toHaveClass('font-semibold');
+    expect(stationCard).not.toContainElement(dirtyDialog);
+    const dirtyDialogViewport = dirtyDialog.parentElement;
+    const dirtyDialogBackdrop = dirtyDialogViewport?.previousElementSibling;
+    expect(dirtyDialogViewport).toHaveAttribute('role', 'presentation');
+    expect(dirtyDialogBackdrop).toHaveAttribute('role', 'presentation');
+    expect(dirtyDialogBackdrop).toHaveAttribute('data-open');
     screen.getByRole('button', { name: 'Weiter bearbeiten' }).focus();
     await user.keyboard('{Enter}');
     const closeDetail = screen.getByRole('button', { name: 'Detail schließen' });
@@ -522,9 +534,9 @@ describe('Happy Cleaning station detail', () => {
     screen.getByRole('button', { name: 'Speichern und weiter' }).focus();
     await user.keyboard('{Enter}');
 
-    const toast = await screen.findByText(/inzwischen geändert/, { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(document.querySelector('.happy-cleaning-editor .error')).not.toBeInTheDocument();
+    await expectErrorToastOnly(
+      'Die Daten wurden inzwischen geändert. Bitte erneut versuchen.',
+    );
     expect(screen.getByLabelText('Name der Station')).toHaveValue('Entwurf');
     expect(onBack).not.toHaveBeenCalled();
   });

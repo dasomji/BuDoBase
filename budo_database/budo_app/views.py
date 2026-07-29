@@ -1,9 +1,10 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.contrib import messages
 from .models import Kinder, SpezialFamilien, Profil
+from .react_views import render_react_page
 from .forms import CSVUploadForm, BirthdayNotizForm
 from django.views.decorators.http import require_GET, require_POST
 from django.db import transaction
@@ -99,7 +100,7 @@ def update_pfand(request):
 @login_required
 @require_GET
 def happy_cleaning(request):
-    return HttpResponse("<html><body></body></html>")
+    return render_react_page(request)
 
 
 @login_required
@@ -114,7 +115,7 @@ def kindergesamtzahl(request):
         'checked_in_count': checked_in_count,
         'total_kids': total_kids,
     }
-    return render(request, 'kindergesamtzahl.html', context)
+    return render_react_page(request, context)
 
 
 @login_required
@@ -184,12 +185,12 @@ def upload_spezialfamilien(request):
     else:
         form = CSVUploadForm()
 
-    return render(request, 'uploadspezialfamilien.html', {'form': form})
+    return render_react_page(request, {'form': form})
 
 
 @login_required
 def team(request):
-    return render(request, 'users/team.html')
+    return render_react_page(request)
 
 
 @login_required
@@ -255,7 +256,7 @@ def kindergeburtstage(request):
         'auslagerorte': turnus_data['auslagerorte'],
     }
 
-    return render(request, 'kindergeburtstage.html', context)
+    return render_react_page(request, context)
 
 
 @login_required

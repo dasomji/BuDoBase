@@ -1,14 +1,50 @@
 import { StrictMode } from 'react';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Printer } from 'lucide-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Card, GlobalSearch, Messages, RestForm, SearchTable } from './components';
+import { AppSidebar, ApplicationShell } from './app-sidebar';
+import {
+  Card,
+  DataTable,
+  GlobalSearch,
+  Header,
+  Messages,
+  ResponsiveCardGrid,
+  RestForm,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+} from './components';
+import { Button } from './components/ui/button';
+import { Input, NativeSelect, Textarea } from './components/ui/input';
 import { Toaster } from './components/ui/toast';
+import { expectErrorToastOnly } from './test-support';
+
+function mockContainerWidth(width) {
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback) {
+      this.callback = callback;
+    }
+
+    observe(target) {
+      this.callback([{ contentRect: { width }, target }]);
+    }
+
+    disconnect() {}
+  });
+}
 
 describe('reusable components', () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   beforeEach(() => {
@@ -18,6 +54,257 @@ describe('reusable components', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     }));
+  });
+
+  it('renders the link variant as a named link', () => {
+    render(<Button variant="link" href="/profil/">Profil öffnen</Button>);
+
+    expect(screen.getByRole('link', { name: 'Profil öffnen' })).toHaveAttribute('href', '/profil/');
+  });
+
+  it('prevents disabled links from activating', () => {
+    const onClick = vi.fn();
+    render(<Button variant="link" href="/profil/" disabled onClick={onClick}>Profil öffnen</Button>);
+
+    const link = screen.getByRole('link', { name: 'Profil öffnen' });
+    expect(link).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(link);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('renders each action variant as a named button', () => {
+    render(
+      <>
+        <Button>Primäraktion</Button>
+        <Button variant="secondary">Sekundäraktion</Button>
+        <Button variant="success">Erfolgsaktion</Button>
+        <Button variant="destructive">Löschaktion</Button>
+        <Button variant="ghost">Leise Aktion</Button>
+      </>,
+    );
+
+    for (const name of ['Primäraktion', 'Sekundäraktion', 'Erfolgsaktion', 'Löschaktion', 'Leise Aktion']) {
+      expect(screen.getByRole('button', { name })).toBeEnabled();
+    }
+  });
+
+  it('keeps disabled actions named and inactive', () => {
+    const onClick = vi.fn();
+    render(<Button disabled onClick={onClick}>Speichern</Button>);
+
+    const button = screen.getByRole('button', { name: 'Speichern' });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('keeps shared native form controls labelable and interactive', () => {
+    const onInput = vi.fn();
+    const onSelect = vi.fn();
+    const onTextarea = vi.fn();
+    render(
+      <>
+        <label htmlFor="shared-note">Notiz</label>
+        <Input id="shared-note" onChange={onInput} />
+        <label htmlFor="shared-details">Details</label>
+        <Textarea id="shared-details" rows="2" onChange={onTextarea} />
+        <label htmlFor="shared-target">Ziel</label>
+        <NativeSelect id="shared-target" defaultValue="" onChange={onSelect}>
+          <option value="">Bitte wählen</option>
+          <option value="7">Happy Cleaning 7</option>
+        </NativeSelect>
+      </>,
+    );
+
+    const input = screen.getByRole('textbox', { name: 'Notiz' });
+    const textarea = screen.getByRole('textbox', { name: 'Details' });
+    const select = screen.getByRole('combobox', { name: 'Ziel' });
+    expect(input).toHaveAttribute('data-slot', 'input');
+    expect(textarea).toHaveAttribute('data-slot', 'textarea');
+    expect(textarea.tagName).toBe('TEXTAREA');
+    expect(textarea).toHaveClass('h-auto');
+    expect(textarea).not.toHaveClass('h-8');
+    expect(select).toHaveAttribute('data-slot', 'native-select');
+    fireEvent.change(input, { target: { value: 'Sichtbar' } });
+    fireEvent.change(textarea, { target: { value: 'Mehrzeilig' } });
+    fireEvent.change(select, { target: { value: '7' } });
+    expect(input).toHaveValue('Sichtbar');
+    expect(textarea).toHaveValue('Mehrzeilig');
+    expect(select).toHaveValue('7');
+    expect(onInput).toHaveBeenCalledOnce();
+    expect(onTextarea).toHaveBeenCalledOnce();
+    expect(onSelect).toHaveBeenCalledOnce();
+  });
+
+  it('exposes an icon action by its aria-label while hiding its icon', () => {
+    render(
+      <Button size="icon" aria-label="Drucken">
+        <Printer />
+      </Button>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Drucken' });
+    expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('orders mobile header controls as title, action, search, and burger', async () => {
+    const runAction = vi.fn();
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query.includes('max-width'),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    render(
+      <ApplicationShell
+        sidebar={<AppSidebar />}
+        header={(
+          <Header
+            title="Küche"
+            authenticated
+            searchData={{ search_index: { kids: [], focuses: [], places: [] } }}
+            action={(
+              <Button className="mobile-icon-action" size="responsive-icon" aria-label="Drucken" onClick={runAction}>
+                <span className="desktop-action-label">Drucken</span>
+                <Printer className="mobile-action-label" aria-hidden="true" />
+              </Button>
+            )}
+          />
+        )}
+      >
+        <div>Inhalt</div>
+      </ApplicationShell>,
+    );
+
+    const title = screen.getByRole('heading', { name: 'Küche' });
+    const action = screen.getByRole('button', { name: 'Drucken' });
+    const search = await screen.findByRole('button', { name: 'Suche öffnen' });
+    const burger = await screen.findByRole('button', { name: 'Sidebar ein- oder ausklappen' });
+
+    for (const control of [action, search]) {
+      expect(control).toHaveAttribute('data-slot', 'button');
+    }
+    expect(burger).toHaveAttribute('data-sidebar', 'trigger');
+
+    await waitFor(() => {
+      expect(title.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(action.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(search.compareDocumentPosition(burger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    fireEvent.click(action);
+    expect(runAction).toHaveBeenCalledOnce();
+
+    fireEvent.click(search);
+    expect(screen.getByRole('button', { name: 'Suche schließen' })).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Suche schließen' }));
+    expect(screen.getByRole('button', { name: 'Suche öffnen' })).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(burger);
+    expect(await screen.findByRole('dialog', { name: 'Sidebar' })).toBeInTheDocument();
+  });
+
+  it('renders mobile Card and Header behavior in the first frame', () => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(390);
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query === '(max-width: 900px)',
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+
+    const markup = renderToStaticMarkup(
+      <ApplicationShell
+        header={(
+          <Header
+            title="Küche"
+            authenticated
+            searchData={{ search_index: { kids: [], focuses: [], places: [] } }}
+            action={<Button aria-label="Drucken">Drucken</Button>}
+          />
+        )}
+      >
+        <Card title="Gesundheit"><p>Details</p></Card>
+      </ApplicationShell>,
+    );
+    const template = document.createElement('template');
+    template.innerHTML = markup;
+
+    const card = template.content.querySelector('.card');
+    expect(card.classList.contains('closed-card')).toBe(true);
+    expect(card.querySelector('.card-toggle').getAttribute('aria-expanded')).toBe('false');
+    expect(card.querySelector('.card-info-container').hasAttribute('inert')).toBe(true);
+
+    const headerChildren = Array.from(
+      template.content.querySelector('#header-content').children,
+      child => child.id,
+    );
+    expect(headerChildren).toEqual([
+      'headertitle',
+      'headerbutton',
+      'search-button',
+      'menu-button',
+      'headersearch',
+    ]);
+  });
+
+  it('orders desktop header controls as trigger, title, search, and action', async () => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1280);
+    render(
+      <ApplicationShell
+        sidebar={<AppSidebar />}
+        header={(
+          <Header
+            title="Küche"
+            authenticated
+            searchData={{ search_index: { kids: [], focuses: [], places: [] } }}
+            action={<Button aria-label="Drucken">Drucken</Button>}
+          />
+        )}
+      >
+        <div>Inhalt</div>
+      </ApplicationShell>,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Sidebar ein- oder ausklappen' });
+    const title = screen.getByRole('heading', { name: 'Küche' });
+    const search = screen.getByRole('combobox', { name: 'Suche' });
+    const action = screen.getByRole('button', { name: 'Drucken' });
+
+    await waitFor(() => {
+      expect(trigger.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(title.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(search.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+    expect(screen.queryByRole('button', { name: 'Suche öffnen' })).not.toBeInTheDocument();
+  });
+
+  it('publishes and cleans up the measured header height contract', () => {
+    const bounds = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 800,
+      height: 64,
+      top: 0,
+      right: 800,
+      bottom: 64,
+      left: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    const view = render(
+      <ApplicationShell
+        header={<Header title="Dashboard" authenticated={false} />}
+      >
+        <div>Inhalt</div>
+      </ApplicationShell>,
+    );
+
+    expect(document.documentElement.style.getPropertyValue('--app-header-height')).toBe('64px');
+
+    view.unmount();
+    expect(document.documentElement.style.getPropertyValue('--app-header-height')).toBe('');
+    bounds.mockRestore();
   });
 
   it('publishes Django messages as typed toasts only once', async () => {
@@ -35,9 +322,8 @@ describe('reusable components', () => {
     const view = render(toastTree(messages));
 
     const success = await screen.findByText('Willkommen zurück!', { selector: '.app-toast-description' });
-    const error = await screen.findByText('Speichern fehlgeschlagen.', { selector: '.app-toast-description' });
     expect(success.closest('.app-toast')).toHaveAttribute('data-type', 'success');
-    expect(error.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    await expectErrorToastOnly('Speichern fehlgeschlagen.');
     expect(document.querySelector('.messages')).not.toBeInTheDocument();
 
     view.rerender(toastTree(messages.map(message => ({ ...message }))));
@@ -46,15 +332,100 @@ describe('reusable components', () => {
     expect(screen.getAllByText('Speichern fehlgeschlagen.', { selector: '.app-toast-description' })).toHaveLength(1);
   });
 
+  it('distributes cards across three independent container-sized columns in stable row order', async () => {
+    mockContainerWidth(1000);
+    render(
+      <ResponsiveCardGrid independentColumns>
+        {Array.from({ length: 7 }, (_, index) => (
+          <Card title={`Karte ${index + 1}`} key={index}>Inhalt</Card>
+        ))}
+      </ResponsiveCardGrid>,
+    );
+
+    const grid = screen.getByRole('main');
+    await waitFor(() => expect(grid.querySelectorAll('[data-card-column]')).toHaveLength(3));
+    const columns = Array.from(grid.querySelectorAll('[data-card-column]'));
+    expect(grid).toHaveClass('responsive-card-grid', 'grid', 'grid-cols-1');
+    expect(columns[0].parentElement).toHaveClass(
+      'grid',
+      'grid-cols-1',
+      'items-start',
+      'gap-4',
+      '@[41rem]:grid-cols-2',
+      '@[62rem]:grid-cols-3',
+    );
+    expect(columns.map(column => Array.from(column.querySelectorAll('h2'), heading => heading.textContent))).toEqual([
+      ['Karte 1', 'Karte 4', 'Karte 7'],
+      ['Karte 2', 'Karte 5'],
+      ['Karte 3', 'Karte 6'],
+    ]);
+    columns.forEach(column => expect(column).toHaveClass('flex', 'flex-col', 'gap-4'));
+  });
+
+  it('uses two independent columns at an intermediate available width', async () => {
+    mockContainerWidth(800);
+    render(
+      <ResponsiveCardGrid independentColumns>
+        {Array.from({ length: 5 }, (_, index) => (
+          <Card title={`Karte ${index + 1}`} key={index}>Inhalt</Card>
+        ))}
+      </ResponsiveCardGrid>,
+    );
+
+    const grid = screen.getByRole('main');
+    await waitFor(() => expect(grid.querySelectorAll('[data-card-column]')).toHaveLength(2));
+    const columns = Array.from(grid.querySelectorAll('[data-card-column]'));
+    expect(columns.map(column => Array.from(column.querySelectorAll('h2'), heading => heading.textContent))).toEqual([
+      ['Karte 1', 'Karte 3', 'Karte 5'],
+      ['Karte 2', 'Karte 4'],
+    ]);
+  });
+
+  it('respects a two-column cap even when the available width could fit three', async () => {
+    mockContainerWidth(1000);
+    render(
+      <ResponsiveCardGrid independentColumns maxColumns={2}>
+        <Card title="Karte 1">Eins</Card>
+        <Card title="Karte 2">Zwei</Card>
+        <Card title="Karte 3">Drei</Card>
+      </ResponsiveCardGrid>,
+    );
+
+    const grid = screen.getByRole('main');
+    await waitFor(() => expect(grid.querySelectorAll('[data-card-column]')).toHaveLength(2));
+    expect(grid.firstElementChild).not.toHaveClass('@[62rem]:grid-cols-3');
+  });
+
+  it('keeps cards in source order when the available width only fits one column', () => {
+    mockContainerWidth(500);
+    render(
+      <ResponsiveCardGrid independentColumns>
+        <Card title="Karte 1">Eins</Card>
+        <Card title="Karte 2">Zwei</Card>
+        <Card title="Karte 3">Drei</Card>
+      </ResponsiveCardGrid>,
+    );
+
+    const columns = screen.getByRole('main').querySelectorAll('[data-card-column]');
+    expect(columns).toHaveLength(1);
+    expect(Array.from(columns[0].querySelectorAll('h2'), heading => heading.textContent)).toEqual([
+      'Karte 1',
+      'Karte 2',
+      'Karte 3',
+    ]);
+  });
+
   it('toggles card details accessibly', () => {
     render(<Card title="Gesundheit"><p>Details</p></Card>);
     const button = screen.getByRole('button', { name: 'Gesundheit schließen' });
 
     expect(button).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.queryByText('−')).not.toBeInTheDocument();
     fireEvent.click(button);
 
     expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByText('Details').closest('.card-info-container')).toHaveAttribute('inert');
+    expect(screen.queryByText('+')).not.toBeInTheDocument();
   });
 
   it('toggles a card from anywhere in its header', () => {
@@ -65,12 +436,91 @@ describe('reusable components', () => {
     expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('shows the open and closed state on transparent cards', () => {
+    render(<Card title="Karte" className="transparent"><p>Orte</p></Card>);
+
+    expect(screen.getByText('−')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('heading', { name: 'Karte' }));
+
+    expect(screen.getByText('+')).toBeInTheDocument();
+  });
+
+  it('renders bottom actions in the shared print-hidden actions slot', () => {
+    render(
+      <Card title="Gesundheit" actions={<button type="button">Speichern</button>}>
+        <p>Details</p>
+      </Card>,
+    );
+
+    const action = screen.getByRole('button', { name: 'Speichern' });
+    const actions = document.querySelector('[data-slot="card-actions"]');
+
+    expect(actions).toHaveAttribute('data-slot', 'card-actions');
+    expect(actions).toContainElement(action);
+    expect(actions).toHaveClass('print:hidden');
+  });
+
+  it('runs a header action without toggling the card', () => {
+    const handleAction = vi.fn();
+    render(
+      <Card
+        title="Woche 1"
+        headerAction={<button type="button" onClick={handleAction}>Kinder einteilen</button>}
+      >
+        <p>Details</p>
+      </Card>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Kinder einteilen' }));
+
+    expect(handleAction).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Woche 1 schließen' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Details').closest('[aria-hidden]')).not.toHaveAttribute('inert');
+  });
+
   it('toggles a card header with the keyboard', () => {
     render(<Card title="Gesundheit"><p>Details</p></Card>);
+    const details = screen.getByText('Details').closest('[aria-hidden]');
 
     fireEvent.keyDown(screen.getByRole('button', { name: 'Gesundheit schließen' }), { key: ' ' });
 
     expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
+    expect(details).toHaveAttribute('aria-hidden', 'true');
+    expect(details).toHaveAttribute('inert');
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Gesundheit öffnen' }), { key: 'Enter' });
+
+    expect(screen.getByRole('button', { name: 'Gesundheit schließen' })).toHaveAttribute('aria-expanded', 'true');
+    expect(details).toHaveAttribute('aria-hidden', 'false');
+    expect(details).not.toHaveAttribute('inert');
+  });
+
+  it('reacts to the shared mobile boundary at 901px', () => {
+    let viewportWidth = 901;
+    const listeners = new Set();
+    vi.spyOn(window, 'innerWidth', 'get').mockImplementation(() => viewportWidth);
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: viewportWidth < 901,
+      media: query,
+      addEventListener: (_event, listener) => listeners.add(listener),
+      removeEventListener: (_event, listener) => listeners.delete(listener),
+    }));
+
+    render(<Card title="Gesundheit"><p>Details</p></Card>);
+    expect(screen.getByRole('button', { name: 'Gesundheit schließen' })).toHaveAttribute('aria-expanded', 'true');
+
+    act(() => {
+      viewportWidth = 900;
+      listeners.forEach(listener => listener({ matches: true }));
+    });
+    expect(screen.getByRole('button', { name: 'Gesundheit öffnen' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Details').closest('[aria-hidden]')).toHaveAttribute('inert');
+
+    act(() => {
+      viewportWidth = 901;
+      listeners.forEach(listener => listener({ matches: false }));
+    });
+    expect(screen.getByRole('button', { name: 'Gesundheit schließen' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('shows selectable results from kids, focuses, and places', () => {
@@ -193,6 +643,75 @@ describe('reusable components', () => {
     expect(search).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('renders table primitives inside the shared scroll boundary with optional sticky behavior', () => {
+    render(
+      <TableScroll stickyHeader stickyFirstColumn verticalScroll>
+        <Table>
+          <TableHeader>
+            <TableRow><TableHead>Name</TableHead></TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow><TableCell>Ada</TableCell></TableRow>
+          </TableBody>
+        </Table>
+      </TableScroll>,
+    );
+
+    const table = screen.getByRole('table');
+    expect(table.parentElement).toHaveAttribute('data-slot', 'table-scroll');
+    expect(table.parentElement).toHaveAttribute('data-sticky-header');
+    expect(table.parentElement).toHaveAttribute('data-sticky-first-column');
+    expect(table.parentElement).toHaveAttribute('data-vertical-scroll');
+  });
+
+  it('wraps DataTables by default without generating ids and exposes sticky and priority options', () => {
+    const columns = [
+      { key: 'name', label: 'Name' },
+      { key: 'note', label: 'Notiz', priority: 'low', className: 'number-cell' },
+    ];
+    const rows = [{ id: 1, name: 'Ada', note: 'Vegetarisch' }];
+
+    render(
+      <>
+        <DataTable columns={columns} rows={rows} />
+        <DataTable columns={columns} rows={rows} stickyHeader stickyFirstColumn verticalScroll />
+      </>,
+    );
+
+    const tables = screen.getAllByRole('table');
+    expect(tables).toHaveLength(2);
+    expect(tables.every(table => !table.hasAttribute('id'))).toBe(true);
+    expect(tables[0].parentElement).toHaveAttribute('data-slot', 'table-scroll');
+    expect(tables[0].parentElement).not.toHaveAttribute('data-sticky-header');
+    expect(tables[1].parentElement).toHaveAttribute('data-sticky-header');
+    expect(tables[1].parentElement).toHaveAttribute('data-sticky-first-column');
+    expect(tables[1].parentElement).toHaveAttribute('data-vertical-scroll');
+    const noteHeader = screen.getAllByRole('columnheader', { name: /Notiz/ })[0];
+    const noteCell = screen.getAllByRole('cell', { name: 'Vegetarisch' })[0];
+    expect(noteHeader).toHaveAttribute('scope', 'col');
+    expect(noteHeader).toHaveAttribute('data-priority', 'low');
+    expect(noteHeader).toHaveClass('number-cell');
+    expect(noteCell).toHaveAttribute('data-priority', 'low');
+    expect(noteCell).toHaveClass('number-cell');
+  });
+
+  it('renders sticky controls with the mobile header-offset contract', () => {
+    render(
+      <DataTable
+        beforeFilter={<section>Übersicht</section>}
+        columns={[{ key: 'name', label: 'Name' }]}
+        rows={[]}
+      />,
+    );
+
+    const stickyControls = screen.getByText('Übersicht').parentElement;
+    expect(stickyControls).toHaveAttribute('data-slot', 'table-sticky-controls');
+    expect(stickyControls.classList).toContain('max-[900px]:sticky');
+    expect(stickyControls.classList).toContain(
+      'max-[900px]:top-[var(--app-header-height,0px)]',
+    );
+  });
+
   it('filters table pages by the first-column name only', () => {
     const columns = [{ key: 'name', label: 'Name' }];
     const rows = [
@@ -200,7 +719,7 @@ describe('reusable components', () => {
       { id: 2, name: 'Grace', filterText: 'Grace Hopper', searchText: 'Grace Ada' },
     ];
 
-    render(<SearchTable columns={columns} rows={rows} showFilter />);
+    render(<DataTable columns={columns} rows={rows} showFilter />);
     fireEvent.change(screen.getByPlaceholderText('Kinder filtern...'), { target: { value: 'ada' } });
 
     expect(screen.getByText('Ada')).toBeInTheDocument();
@@ -208,7 +727,7 @@ describe('reusable components', () => {
   });
 
   it('does not add the child filter to ordinary tables', () => {
-    render(<SearchTable columns={[{ key: 'name', label: 'Name' }]} rows={[]} />);
+    render(<DataTable columns={[{ key: 'name', label: 'Name' }]} rows={[]} />);
 
     expect(screen.queryByPlaceholderText('Kinder filtern...')).not.toBeInTheDocument();
   });
@@ -225,7 +744,7 @@ describe('reusable components', () => {
     ];
     const firstColumn = () => screen.getAllByRole('row').slice(1).map(row => row.querySelector('td').textContent);
 
-    render(<SearchTable columns={columns} rows={rows} />);
+    render(<DataTable columns={columns} rows={rows} />);
     fireEvent.click(screen.getByRole('button', { name: 'Name sortieren' }));
     expect(firstColumn()).toEqual(['Ada', 'Zora']);
     expect(screen.getByRole('columnheader', { name: /Name/ })).toHaveAttribute('aria-sort', 'ascending');
@@ -238,7 +757,7 @@ describe('reusable components', () => {
     expect(firstColumn()).toEqual(['Ada', 'Zora']);
   });
 
-  it('keeps form state in React and shows REST validation errors as a toast', async () => {
+  it('shows failed REST forms as error toasts, never inline', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       json: async () => ({ ok: false, errors: ['Dieses Feld ist erforderlich.'] }),
@@ -248,9 +767,7 @@ describe('reusable components', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-    const toast = await screen.findByText('Dieses Feld ist erforderlich.', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(document.querySelector('.errorlist')).not.toBeInTheDocument();
+    await expectErrorToastOnly('Dieses Feld ist erforderlich.');
     expect(screen.getByDisplayValue('Ada')).toBeInTheDocument();
     expect(fetchMock.mock.calls[0][1].body.get('money_action')).toBe('withdraw');
     vi.unstubAllGlobals();

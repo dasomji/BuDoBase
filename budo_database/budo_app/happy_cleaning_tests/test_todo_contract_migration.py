@@ -5,6 +5,10 @@ from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TransactionTestCase
 
+from budo_app.happy_cleaning_tests.migration_fixtures import (
+    restore_latest_migration_state,
+)
+
 
 class HappyCleaningTodoContractMigrationTests(TransactionTestCase):
     migrate_from = ("budo_app", "0080_happy_cleaning_station_documents")
@@ -121,5 +125,5 @@ class HappyCleaningTodoContractMigrationTests(TransactionTestCase):
         }
 
     def tearDown(self):
-        MigrationExecutor(connection).migrate([self.migrate_to])
+        restore_latest_migration_state()
         super().tearDown()

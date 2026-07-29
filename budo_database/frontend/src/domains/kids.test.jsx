@@ -1,12 +1,10 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
 import { Toaster } from '../components/ui/toast';
 import { parseRoute } from '../routes';
+import { expectErrorToastOnly } from '../test-support';
 import { KidDetailPage, KidInteractionForm, KidsPage } from './kids';
 import { formatGermanDate, formatKidBirthday } from './shared';
 
@@ -19,6 +17,20 @@ const response = (data, { ok = true, status = 200 } = {}) => ({
   status,
   json: vi.fn().mockResolvedValue(data),
 });
+
+function mockResponsiveContainerWidth(width) {
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback) {
+      this.callback = callback;
+    }
+
+    observe(target) {
+      this.callback([{ contentRect: { width }, target }]);
+    }
+
+    disconnect() {}
+  });
+}
 
 describe('Kinder pages', () => {
   afterEach(() => {
@@ -54,10 +66,11 @@ describe('Kinder pages', () => {
 
     expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
     expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
+    expect(screen.getByPlaceholderText('Taschengeld...')).toHaveAttribute('data-slot', 'input');
     expect(document.cookie).toContain('interaction-bar=geld-form');
     expect(screen.getByPlaceholderText('Taschengeld...')).toHaveAttribute('min', '0');
-    expect(screen.getByRole('button', { name: 'Abbuchen' })).toHaveClass('money-withdraw');
-    expect(screen.getByRole('button', { name: 'Aufladen' })).toHaveClass('money-topup');
+    expect(screen.getByRole('button', { name: 'Abbuchen' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Aufladen' })).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Senden' })).not.toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('Taschengeld...'), { target: { value: '5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Abbuchen' }));
@@ -131,8 +144,7 @@ describe('Kinder pages', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'EH-Eintrag senden' }));
 
-    const toast = await screen.findByText('Bitte eine Beschreibung eingeben.', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    await expectErrorToastOnly('Bitte eine Beschreibung eingeben.');
   });
 
   it('restores the saved Taschengeld mode from its cookie', () => {
@@ -184,7 +196,31 @@ describe('Kinder pages', () => {
     expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');
   });
 
-  it('shows failed deposit writes as error toasts', async () => {
+  it('uses the dashboard card grid at its two-column available-width breakpoint', async () => {
+    mockResponsiveContainerWidth(800);
+    const kid = {
+      id: 7,
+      full_name: 'Ada Lovelace',
+      present: true,
+      weeks: 2,
+      notes: [],
+      first_aid_entries: [],
+      transactions: [],
+      remaining_money: 0,
+      deposit: 0,
+    };
+
+    render(<KidDetailPage data={{ kids: [kid], turnus: { label: 'T2' }, csrf_token: 'token' }} id="7" mutate={vi.fn()} />);
+
+    const main = screen.getByRole('main');
+    await waitFor(() => expect(main.querySelectorAll('[data-card-column]')).toHaveLength(2));
+    const cardColumns = main.querySelectorAll('[data-card-column]');
+    expect(cardColumns[0]).toHaveTextContent('Ada Lovelace');
+    expect(cardColumns[0]).toHaveTextContent('Notizen');
+    expect(cardColumns[1]).toHaveTextContent('Gesundheitsinfos');
+  });
+
+  it('shows failed deposit writes as error toasts, never inline', async () => {
     const mutate = vi.fn().mockRejectedValue(new Error('network down'));
     const kid = {
       id: 7,
@@ -201,8 +237,7 @@ describe('Kinder pages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '+ Pfand' }));
 
-    const toast = await screen.findByText('Das Pfand konnte nicht gespeichert werden.', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    await expectErrorToastOnly('Das Pfand konnte nicht gespeichert werden.');
   });
 
   it('keeps the directory columns, filtering, sorting, links, and empty state on focused rows', () => {
@@ -247,6 +282,12 @@ describe('Kinder pages', () => {
       },
     ] }} />);
 
+    const table = screen.getByRole('table');
+    expect(table).not.toHaveAttribute('id');
+    expect(table.parentElement).toHaveAttribute('data-sticky-header');
+    expect(table.parentElement).toHaveAttribute('data-sticky-first-column');
+    expect(table.parentElement).toHaveAttribute('data-vertical-scroll');
+    expect(screen.getByRole('columnheader', { name: /Zeltwunsch/ })).toHaveAttribute('data-priority', 'low');
     expect(screen.getByRole('link', { name: 'Ada Lovelace ❌' })).toHaveAttribute('href', '/kid_details/7');
     expect(screen.getByRole('columnheader', { name: /Anmerkungen \(Buchung\)/ })).toBeInTheDocument();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Kinder filtern' }), { target: { value: 'grace' } });
@@ -319,15 +360,6 @@ describe('Kinder pages', () => {
     expect(fetchImpl.mock.calls.some(([url]) => url.startsWith('/api/app-data/'))).toBe(false);
   });
 
-  it('keeps interaction textareas to two through four lines and right-aligns Pfand actions', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
-
-    expect(css).toMatch(/\.interaction-textarea\s*\{[^}]*field-sizing:\s*content;[^}]*min-height:\s*2lh;[^}]*max-height:\s*4lh;[^}]*overflow-y:\s*auto;/s);
-    expect(css).toMatch(/#pfand \.card-info-container\s*\{[^}]*padding-top:\s*0;/s);
-    expect(css).toMatch(/#pfand \.deposit-actions\s*\{[^}]*justify-content:\s*flex-end;[^}]*margin-top:\s*0;/s);
-    expect(css).toMatch(/@media \(max-width: 600px\)[\s\S]*#interaction-bar form:has\(\.interaction-send-button\)\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;/);
-    expect(css).toMatch(/\.interaction-textarea\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;/s);
-  });
 });
 
 describe('Kinder date formatting', () => {

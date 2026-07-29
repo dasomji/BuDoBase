@@ -1,0 +1,23 @@
+{
+  "dashboard": {
+    "width901Expanded": "true",
+    "solidIndicatorCount": 0,
+    "shadow": "rgba(55, 55, 55, 0.14) 0px 4px 12px 0px, rgba(55, 55, 55, 0.12) 0px 1px 3.2px 0px",
+    "width900Expanded": "false",
+    "width900BodyInert": true,
+    "returnedTo901Expanded": "true",
+    "spaceExpanded": "false",
+    "spaceBodyInert": true,
+    "enterExpanded": "true"
+  },
+  "transparent": {
+    "mapIndicator": "−",
+    "beforeActionExpanded": "true",
+    "afterActionExpanded": "true",
+    "week2Pressed": "true"
+  },
+  "reducedMotion": {
+    "transitionDuration": "0s",
+    "transitionProperty": "none"
+  }
+}

@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -8,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toaster } from '../components/ui/toast';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute, resolveRouteTitle, routeHeaderAction } from '../routes';
+import { expectErrorToastOnly } from '../test-support';
 import {
   HappyCleaningCreateButton,
   HappyCleaningManagementPage,
@@ -67,20 +65,6 @@ describe('Happy Cleaning management', () => {
     document.getElementById('react-app-styles')?.remove();
     localStorage.clear();
     vi.restoreAllMocks();
-  });
-
-  it('keeps fullscreen station detail below the measured mobile header', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
-    const mobileRule = css.match(
-      /@media \(max-width: 900px\) \{[\s\S]*?\.happy-cleaning-overview-detail \{([^}]*)\}/,
-    )?.[1];
-
-    expect(mobileRule).toBeDefined();
-    expect(mobileRule).toContain('top: var(--app-header-height, 0px);');
-    expect(mobileRule).toContain('right: 0;');
-    expect(mobileRule).toContain('bottom: 0;');
-    expect(mobileRule).toContain('left: 0;');
-    expect(mobileRule).not.toContain('inset: 0;');
   });
 
   it('owns refreshable event management and one Turnus-wide number-list route', () => {
@@ -166,20 +150,30 @@ describe('Happy Cleaning management', () => {
     expect(activeYearToggle.querySelector('.icon')).toHaveTextContent('−');
     expect(screen.getByRole('button', { name: '2025 öffnen' })).toHaveAttribute('aria-expanded', 'false');
 
-    const eventHeading = screen.getByRole('heading', {
+    expect(screen.getByRole('heading', {
       level: 2,
       name: '3. Turnus 2026 · Happy Cleaning 1',
+    })).toBeInTheDocument();
+    const eventToggle = screen.getByRole('button', {
+      name: '3. Turnus 2026 · Happy Cleaning 1 schließen',
     });
-    const eventCard = eventHeading.closest('article');
-    const eventToggle = eventHeading.closest('.card-toggle');
-    expect(eventCard).toHaveClass('card', 'happy-cleaning-event');
+    const controlledContent = document.getElementById(eventToggle.getAttribute('aria-controls'));
     expect(eventToggle).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.click(eventHeading);
-    expect(eventToggle).toHaveAttribute('aria-expanded', 'false');
-    expect(eventCard.querySelector('.card-info-container')).toHaveAttribute('inert');
+    expect(controlledContent).toHaveAttribute('aria-hidden', 'false');
     fireEvent.click(eventToggle);
+    const closedEventToggle = screen.getByRole('button', {
+      name: '3. Turnus 2026 · Happy Cleaning 1 öffnen',
+    });
+    expect(closedEventToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(controlledContent).toHaveAttribute('inert');
+    fireEvent.click(closedEventToggle);
 
-    const activeTable = screen.getAllByRole('table')[0];
+    expect(screen.getAllByRole('table')).toHaveLength(1);
+    expect(screen.getByText('Noch keine Stationen angelegt.')).toBeInTheDocument();
+    const activeTable = screen.getByRole('table');
+    expect(activeTable).toHaveAttribute('data-slot', 'table');
+    expect(activeTable.parentElement).toHaveAttribute('data-slot', 'table-scroll');
+    expect(activeTable.parentElement).toHaveAttribute('data-sticky-first-column', '');
     expect(within(activeTable).getAllByRole('columnheader').map(cell => cell.textContent)).toEqual([
       'Stationsname↑', 'Max Kinder', 'Treffpunkt', 'Verantwortlicher', 'To-Dos',
     ]);
@@ -222,6 +216,9 @@ describe('Happy Cleaning management', () => {
     const dialog = within(screen.getByRole('dialog', { name: 'Happy Cleaning 2 löschen' }));
     const confirmation = dialog.getByLabelText('„Happy Cleaning 2“ zur Bestätigung eingeben');
     const deleteButton = dialog.getByRole('button', { name: 'Happy Cleaning 2 endgültig löschen' });
+    expect(confirmation).toHaveAttribute('data-slot', 'input');
+    expect(confirmation.labels).toHaveLength(1);
+    expect(confirmation.labels[0]).toHaveTextContent('„Happy Cleaning 2“ zur Bestätigung eingeben');
     expect(deleteButton).toBeDisabled();
     fireEvent.change(confirmation, { target: { value: 'Happy Cleaning 1' } });
     expect(deleteButton).toBeDisabled();
@@ -234,16 +231,22 @@ describe('Happy Cleaning management', () => {
     expect(mutate.mock.calls[0][1]).toMatchObject({ expected_revision: 4 });
   });
 
-  it('prints one task page per station from the event actions', async () => {
+  it('prints one task page per station, then restores normal overview printing', async () => {
     let printedText = '';
     let printStylesMedia = '';
+    const printedViews = [];
     const stylesheet = document.createElement('link');
     stylesheet.id = 'react-app-styles';
     stylesheet.media = 'screen';
     document.head.append(stylesheet);
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
-      printedText = document.querySelector('.happy-cleaning-todo-print-pages')?.textContent || '';
+      const todoPrintPages = document.querySelector('.happy-cleaning-todo-print-pages');
+      printedText = todoPrintPages?.textContent || '';
       printStylesMedia = stylesheet.media;
+      printedViews.push({
+        overview: Boolean(document.querySelector('#body-container')),
+        todoPrintPages: Boolean(todoPrintPages),
+      });
     });
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
@@ -319,7 +322,7 @@ describe('Happy Cleaning management', () => {
     await waitFor(() => expect(print).toHaveBeenCalledOnce());
     expect(printedText).toContain('Küche');
     expect(printedText).toContain('Boden kehren');
-    expect(printStylesMedia).toBe('all');
+    expect(printStylesMedia).toBe('screen');
     expect(stylesheet).toHaveAttribute('media', 'screen');
     stylesheet.remove();
     expect(fetchImpl).toHaveBeenCalledWith(
@@ -336,16 +339,20 @@ describe('Happy Cleaning management', () => {
     expect(stations[0]).toHaveTextContent('☒Tische wischen');
     expect(stations[1]).toHaveTextContent('Keine Aufgaben hinterlegt.');
 
-    const css = readFileSync(resolve(process.cwd(), 'src/app.css'), 'utf8');
-    expect(css).toMatch(/@page happy-cleaning-todos\s*\{[^}]*margin:\s*0;/s);
-    expect(css).toMatch(/body:has\(> \.happy-cleaning-todo-print-pages\) > \*:not\(\.happy-cleaning-todo-print-pages\)\s*\{[^}]*display:\s*none !important;/s);
-    expect(css).toMatch(/\.happy-cleaning-todo-print-station\s*\{[^}]*page:\s*happy-cleaning-todos;[^}]*break-before:\s*page;[^}]*break-after:\s*page;[^}]*page-break-before:\s*always;[^}]*page-break-after:\s*always;/s);
-    expect(css).toMatch(/\.happy-cleaning-todo-print-station:first-child\s*\{[^}]*break-before:\s*auto;[^}]*page-break-before:\s*auto;/s);
-    expect(css).toMatch(/\.happy-cleaning-todo-print-station:last-child\s*\{[^}]*break-after:\s*auto;[^}]*page-break-after:\s*auto;/s);
-    expect(css).toMatch(/\.happy-cleaning-todo-print-station li::marker\s*\{[^}]*content:\s*"";/s);
+    fireEvent(window, new Event('afterprint'));
+    await waitFor(() => {
+      expect(document.querySelector('.happy-cleaning-todo-print-pages')).not.toBeInTheDocument();
+    });
+
+    window.print();
+    expect(print).toHaveBeenCalledTimes(2);
+    expect(printedViews).toEqual([
+      { overview: true, todoPrintPages: true },
+      { overview: true, todoPrintPages: false },
+    ]);
   });
 
-  it('opens and switches station detail locally, restores focus, and keeps the URL', async () => {
+  it('opens fullscreen station detail below the header, switches locally, and restores focus', async () => {
     const user = userEvent.setup();
     const originalPath = window.location.pathname;
     const fetchImpl = vi.fn().mockImplementation(async url => ({
@@ -389,8 +396,14 @@ describe('Happy Cleaning management', () => {
     const kitchen = screen.getByRole('button', { name: 'Station Küche öffnen' });
     kitchen.focus();
     await user.keyboard('{Enter}');
-    expect(await screen.findByRole('heading', { name: 'Küche' })).toBeInTheDocument();
-    expect(document.querySelector('.happy-cleaning-overview-split')).toBeInTheDocument();
+    const detailHeading = await screen.findByRole('heading', { name: 'Küche' });
+    const detailOverlay = detailHeading.closest('aside[aria-live="polite"]');
+    expect(detailOverlay).toHaveStyle({
+      top: 'var(--app-header-height, 0px)',
+      right: '0px',
+      bottom: '0px',
+      left: '0px',
+    });
     expect(window.location.pathname).toBe(originalPath);
 
     screen.getByRole('row', { name: 'Station Bad' }).focus();
@@ -607,13 +620,14 @@ describe('Happy Cleaning management', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Stationen aus Happy Cleaning 1 kopieren' }));
     const dialog = within(screen.getByRole('dialog', { name: 'Stationen kopieren' }));
     expect(dialog.getByRole('option', { name: 'Happy Cleaning 1' })).toBeInTheDocument();
+    expect(dialog.getByLabelText('Ziel-Happy-Cleaning')).toHaveAttribute('data-slot', 'native-select');
     fireEvent.click(dialog.getByLabelText('Alle Stationen auswählen'));
     expect(dialog.getByLabelText('Station Küche auswählen')).toBeChecked();
     expect(dialog.getByLabelText('Station Bad auswählen')).toBeChecked();
     fireEvent.change(dialog.getByLabelText('Ziel-Happy-Cleaning'), { target: { value: '9' } });
     fireEvent.click(dialog.getByRole('button', { name: 'Prüfen und kopieren' }));
     expect(dialog.getByRole('status')).toHaveTextContent('Stationen werden geprüft');
-    expect(dialog.getByRole('status').querySelector('.happy-cleaning-copy-spinner')).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: 'Prüfen und kopieren' })).toBeDisabled();
     expect(mutate).toHaveBeenCalledWith(
       '/api/happy-cleaning/events/9/stations/copy/',
       expect.objectContaining({
@@ -663,7 +677,7 @@ describe('Happy Cleaning management', () => {
     expect(trigger).toHaveFocus();
   });
 
-  it('keeps copy conflicts and errors in the overview dialog', async () => {
+  it('shows failed station copies as error toasts, never inline', async () => {
     const conflict = {
       ok: true, result: 'conflicts', target_revision: 4,
       conflicts: [{ source_station_id: 50, source_name: 'Bad', target_station_id: 90, target_name: 'Bad Kinder' }],
@@ -689,9 +703,7 @@ describe('Happy Cleaning management', () => {
     expect(await dialog.findByRole('alert')).toHaveTextContent('Bad → Bad Kinder');
     expect(dialog.getByText(/Zielversion 4/)).toBeInTheDocument();
     fireEvent.click(dialog.getByRole('button', { name: 'Erneut prüfen' }));
-    const toast = await screen.findByText('network down', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(dialog.queryByText('network down')).not.toBeInTheDocument();
+    await expectErrorToastOnly('network down');
   });
 
   it('requires an accessible explicit conflict decision and one eligible candidate', async () => {
@@ -736,6 +748,7 @@ describe('Happy Cleaning management', () => {
     expect(dialog.getByRole('radio', { name: 'Bestehende Station überschreiben' })).not.toBeChecked();
     expect(dialog.getByRole('button', { name: 'Auswahl verbindlich kopieren' })).toBeDisabled();
     await user.selectOptions(dialog.getByLabelText('Bestehende Station für Bad'), '90');
+    expect(dialog.getByLabelText('Bestehende Station für Bad')).toHaveAttribute('data-slot', 'native-select');
     expect(dialog.getByRole('radio', { name: /Bestehende Station überschreiben/ })).toBeDisabled();
     expect(dialog.getByText('Bereits zugeordnet.')).toBeInTheDocument();
     await user.selectOptions(dialog.getByLabelText('Bestehende Station für Bad'), '91');
@@ -758,9 +771,10 @@ describe('Happy Cleaning management', () => {
     render(<HappyCleaningCreateButton mutate={mutate} />);
 
     const createButton = screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' });
+    expect(createButton).toHaveAttribute('data-slot', 'button');
     expect(createButton).toHaveClass('mobile-icon-action');
     expect(createButton.querySelector('.desktop-action-label')).toHaveTextContent('Happy Cleaning hinzufügen');
-    expect(createButton.querySelector('.mobile-action-label')).toHaveTextContent('+');
+    expect(createButton.querySelector('.mobile-action-label')).toHaveAttribute('aria-hidden', 'true');
     fireEvent.click(createButton);
 
     await waitFor(() => expect(mutate).toHaveBeenCalledWith(
@@ -769,15 +783,13 @@ describe('Happy Cleaning management', () => {
     ));
   });
 
-  it('shows create failures as error toasts instead of header text', async () => {
+  it('shows failed overview writes as error toasts, never inline', async () => {
     const mutate = vi.fn().mockRejectedValue(new Error('network down'));
     render(<HappyCleaningCreateButton mutate={mutate} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' }));
 
-    const toast = await screen.findByText('network down', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(document.querySelector('.header-action-error')).not.toBeInTheDocument();
+    await expectErrorToastOnly('network down');
   });
 
   it('restores the current user overview preference and lazy loads remembered open years', async () => {
@@ -828,6 +840,10 @@ describe('Happy Cleaning management', () => {
     const numbered = within(screen.getByRole('table', { name: 'Anwesend mit Nummer' }));
     const numberless = within(screen.getByRole('table', { name: 'Anwesend ohne Nummer' }));
     const absent = within(screen.getByRole('table', { name: 'Abwesend' }));
+    for (const table of screen.getAllByRole('table')) {
+      expect(table).toHaveAttribute('data-slot', 'table');
+      expect(table.parentElement).toHaveAttribute('data-slot', 'table-scroll');
+    }
     expect(numbered.getAllByRole('columnheader').map(cell => cell.textContent)).toEqual([
       'Nummer',
       'Name',
@@ -911,9 +927,8 @@ describe('Happy Cleaning management', () => {
     render(routeHeaderAction(parseRoute('/happy-cleaning/print/'), {}));
 
     const printButton = screen.getByRole('button', { name: 'Drucken' });
-    expect(printButton).toHaveClass('mobile-icon-action');
-    expect(printButton.querySelector('.desktop-action-label')).toHaveTextContent('Drucken');
-    expect(printButton.querySelector('.lucide-printer')).toBeInTheDocument();
+    expect(printButton).toHaveTextContent('Drucken');
+    expect(printButton.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     expect(printButton).not.toHaveTextContent('Nummernliste');
 
     fireEvent.click(printButton);

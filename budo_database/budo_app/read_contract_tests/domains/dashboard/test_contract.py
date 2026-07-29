@@ -221,6 +221,40 @@ class DashboardContractTests(TestCase):
         ):
             self.assertNotIn(private_value, response_text)
 
+    def test_good_to_know_returns_only_the_moved_card_fields_for_the_active_turnus(self):
+        response = self.client.get(reverse(
+            "route-data-api",
+            kwargs={"contract_key": "gut-zu-wissen"},
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {
+            "totals": {"kids": 1},
+            "kids": [{
+                "id": self.kid.id,
+                "full_name": "Grace Hopper",
+                "present": True,
+                "age": 14.0,
+                "weeks": 1,
+                "budo_experience": False,
+                "birthday": "2012-07-02",
+                "birthday_during_turnus": True,
+                "food": "🌱 - glutenfrei",
+                "special_food": "glutenfrei",
+                "drugs": "Asthmaspray",
+                "illness": "Allergie",
+            }],
+        })
+        response_text = response.content.decode()
+        for private_value in (
+            "PRIVATE-SVNR",
+            "PRIVATE-CONTACT",
+            "PRIVATE-DESCRIPTION",
+            "OTHER-PRIVATE-NOTE",
+            "Other private teamer",
+        ):
+            self.assertNotIn(private_value, response_text)
+
     def test_focus_completion_requires_every_present_kid_but_ignores_absent_kids(self):
         week_two_focus = Schwerpunkte.objects.create(
             swp_name="See",

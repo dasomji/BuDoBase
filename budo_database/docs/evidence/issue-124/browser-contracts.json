@@ -1,0 +1,147 @@
+{
+  "numberCells": {
+    "allKids": [
+      {
+        "value": "16.62",
+        "textAlign": "right",
+        "contentRight": 584.15625,
+        "cellRight": 596.15625
+      },
+      {
+        "value": "16.52",
+        "textAlign": "right",
+        "contentRight": 584.15625,
+        "cellRight": 596.15625
+      },
+      {
+        "value": "12.94",
+        "textAlign": "right",
+        "contentRight": 584.15625,
+        "cellRight": 596.15625
+      },
+      {
+        "value": "14.34",
+        "textAlign": "right",
+        "contentRight": 584.15625,
+        "cellRight": 596.15625
+      },
+      {
+        "value": "12.46",
+        "textAlign": "right",
+        "contentRight": 584.15625,
+        "cellRight": 596.15625
+      },
+      {
+        "value": "15.49",
+        "textAlign": "right",
+        "contentRight": 584.15625,
+        "cellRight": 596.15625
+      },
+      {
+        "value": "14.36",
+        "textAlign": "right",
+        "contentRight": 584.15625,
+        "cellRight": 596.15625
+      },
+      {
+        "value": "13.93",
+        "textAlign": "right",
+        "contentRight": 584.15625,
+        "cellRight": 596.15625
+      }
+    ],
+    "focus": {
+      "ageHeader": "Alter",
+      "renderedAgeCells": 0,
+      "emptyState": true
+    }
+  },
+  "longEmail": {
+    "value": "pi-screenshot-with-an-intentionally-long-unbreakable-address-for-mobile-overflow-verification-issue-124@example.test",
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "bodyWidth": 390,
+    "overflowWrap": "anywhere",
+    "cardWidth": 350,
+    "cardMinWidth": "0px",
+    "contentMinWidth": "0px"
+  },
+  "stationDetail": {
+    "action": {
+      "marginRight": "0px",
+      "right": 1240,
+      "headerRight": 1264,
+      "headerPaddingRight": "24px",
+      "hasToggleIcon": false
+    },
+    "dirtyDialog": {
+      "marginTop": "0px",
+      "headingTop": 402,
+      "popupTop": 378,
+      "popupPaddingTop": "24px",
+      "gap": 24
+    }
+  },
+  "assignment": {
+    "639": {
+      "viewportWidth": 639,
+      "toggleVisible": true,
+      "childrenHeaderDisplay": "table-cell",
+      "rowHeader": {
+        "value": "Speisesaal",
+        "background": "rgba(222, 240, 255, 0.7)",
+        "whiteSpace": "normal"
+      },
+      "columnHeader": {
+        "background": "rgba(179, 202, 217, 0.95)",
+        "whiteSpace": "nowrap"
+      }
+    },
+    "640": {
+      "viewportWidth": 640,
+      "toggleVisible": true,
+      "childrenHeaderDisplay": "table-cell",
+      "rowHeader": {
+        "value": "Speisesaal",
+        "background": "rgba(222, 240, 255, 0.7)",
+        "whiteSpace": "normal"
+      },
+      "columnHeader": {
+        "background": "rgba(179, 202, 217, 0.95)",
+        "whiteSpace": "nowrap"
+      }
+    },
+    "800": {
+      "viewportWidth": 800,
+      "toggleVisible": true,
+      "childrenHeaderDisplay": "table-cell",
+      "rowHeader": {
+        "value": "Speisesaal",
+        "background": "rgba(222, 240, 255, 0.7)",
+        "whiteSpace": "normal"
+      },
+      "columnHeader": {
+        "background": "rgba(179, 202, 217, 0.95)",
+        "whiteSpace": "nowrap"
+      },
+      "activeOption": {
+        "selectedBackground": "rgb(169, 207, 239)",
+        "hoveredBackground": "rgb(169, 207, 239)"
+      }
+    },
+    "900": {
+      "viewportWidth": 900,
+      "toggleVisible": true,
+      "childrenHeaderDisplay": "table-cell",
+      "rowHeader": {
+        "value": "Speisesaal",
+        "background": "rgba(222, 240, 255, 0.7)",
+        "whiteSpace": "normal"
+      },
+      "columnHeader": {
+        "background": "rgba(179, 202, 217, 0.95)",
+        "whiteSpace": "nowrap"
+      }
+    }
+  }
+}
