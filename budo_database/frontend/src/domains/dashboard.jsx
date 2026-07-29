@@ -1,6 +1,8 @@
-import { Children, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-import { Card, Column, Columns } from '../components';
+import { Card, ResponsiveCardGrid } from '../components';
+import { Button } from '../components/ui/button';
+import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { FirstAidGallery } from './first-aid-gallery';
 import { formatGermanDate, formatKidBirthday, linkKid, money } from './shared';
@@ -13,14 +15,13 @@ function appendUnique(current, incoming) {
 function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const showError = useErrorToast();
   const textActivity = kind !== 'transactions';
   const label = kind === 'notes' ? 'Notizen' : kind === 'first_aid' ? 'EH-Einträge' : 'Transaktionen';
 
   useEffect(() => {
     setPage(initialPage);
     setLoading(false);
-    setError(false);
   }, [initialPage]);
 
   useEffect(() => {
@@ -29,7 +30,6 @@ function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
 
   const loadMore = async () => {
     setLoading(true);
-    setError(false);
     try {
       const query = new URLSearchParams({ activity: kind, cursor: page.next_cursor });
       const response = await fetchImpl(`/api/route-data/dashboard/?${query}`, {
@@ -42,7 +42,7 @@ function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
         items: appendUnique(current.items, nextPage.items),
       }));
     } catch {
-      setError(true);
+      showError(`Ältere ${label} konnten nicht geladen werden.`);
     } finally {
       setLoading(false);
     }
@@ -60,11 +60,10 @@ function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
             <p>{textActivity ? item.text : `Betrag: ${money(item.amount)}`}</p>
           </li>
       ))}</ul>
-      {error && <p className="activity-error" role="alert">Ältere {label} konnten nicht geladen werden.</p>}
       {page.has_more && (
-        <button className="button" type="button" disabled={loading} onClick={loadMore}>
+        <Button type="button" disabled={loading} onClick={loadMore}>
           {loading ? `Ältere ${label} werden geladen…` : `Ältere ${label} laden`}
-        </button>
+        </Button>
       )}
     </>
   );
@@ -77,56 +76,63 @@ const familyLabels = {
   XL: 'X-largie',
 };
 
+function GoodToKnowKidList({ kids }) {
+  return <>{kids.map(kid => (
+    <div className="print-nobreak" key={kid.id}>
+      <p><span className="label">{linkKid(kid)}</span>: {kid.age}</p>
+      {kid.illness && <p>Krankheiten: {kid.illness}</p>}
+      {kid.drugs && <p>Medikamente: {kid.drugs}</p>}
+    </div>
+  ))}</>;
+}
+
+export function GoodToKnowPage({ data }) {
+  const { kids, totals } = data;
+  const firstTimers = kids.filter(kid => kid.budo_experience === false);
+  const oneWeek = kids.filter(kid => kid.weeks === 1);
+  const health = kids.filter(kid => kid.drugs || kid.illness);
+  const food = kids.filter(kid => kid.special_food);
+  const birthdays = kids.filter(kid => kid.birthday_during_turnus);
+  const goodbyes = kids.filter(kid => kid.age > 14.8).sort((left, right) => left.age - right.age);
+
+  return (
+    <ResponsiveCardGrid independentColumns>
+      <Card title={`Erstes Mal im BuDO: ${firstTimers.length}/${totals.kids}`} id="db-ersties" initiallyClosed>
+        <GoodToKnowKidList kids={firstTimers} />
+      </Card>
+      <Card title={`Einwöchige: ${oneWeek.length}`} id="db-einwöchig" initiallyClosed>
+        <GoodToKnowKidList kids={oneWeek} />
+      </Card>
+      <Card title="Gesundheitliches" id="db-gesundheit" initiallyClosed>
+        <GoodToKnowKidList kids={health} />
+      </Card>
+      <Card title="Essen & Allergien" id="db-essen" initiallyClosed>
+        {food.map(kid => (
+          <div className="print-nobreak" key={kid.id}>
+            <p>{linkKid(kid)}: {kid.age}</p>
+            <p>{kid.food} · {kid.special_food}</p>
+          </div>
+        ))}
+      </Card>
+      <Card title={`Geburtstagskinder: ${birthdays.length}`} id="db-geburtstagskinder">
+        {birthdays.map(kid => <p key={kid.id}>{linkKid(kid)}: {formatKidBirthday(kid)}</p>)}
+      </Card>
+      <Card title={`Verabschiedungsliste: ${goodbyes.length}`} id="db-sechzehner">
+        {goodbyes.map(kid => <p key={kid.id}>{linkKid(kid)}: {kid.age} – {formatKidBirthday(kid)}</p>)}
+      </Card>
+    </ResponsiveCardGrid>
+  );
+}
+
 function FocusAssignment({ focus, kidsById }) {
   const assignedKids = (focus.kid_ids || []).map(id => kidsById.get(Number(id))).filter(Boolean);
   return (
-    <section className="dashboard-focus" aria-labelledby={`dashboard-focus-${focus.id}`}>
-      <h3 id={`dashboard-focus-${focus.id}`}><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a></h3>
+    <section className="[&+&]:mt-3 [&+&]:border-t [&+&]:border-foreground/20 [&+&]:pt-3" aria-labelledby={`dashboard-focus-${focus.id}`}>
+      <h3 className="m-0 text-base" id={`dashboard-focus-${focus.id}`}><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a></h3>
       {assignedKids.length
         ? <ul>{assignedKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul>
         : <p>Keine Kinder eingeteilt.</p>}
     </section>
-  );
-}
-
-const dashboardMediaQueries = ['(max-width: 900px)', '(max-width: 1200px)'];
-
-function dashboardColumnCount() {
-  if (typeof window === 'undefined' || !window.matchMedia) return 3;
-  if (window.matchMedia(dashboardMediaQueries[0]).matches) return 1;
-  if (window.matchMedia(dashboardMediaQueries[1]).matches) return 2;
-  return 3;
-}
-
-function useDashboardColumnCount() {
-  const [count, setCount] = useState(dashboardColumnCount);
-
-  useEffect(() => {
-    const mediaQueries = dashboardMediaQueries.map(query => window.matchMedia(query));
-    const update = () => setCount(dashboardColumnCount());
-    mediaQueries.forEach(query => query.addEventListener('change', update));
-    update();
-    return () => mediaQueries.forEach(query => query.removeEventListener('change', update));
-  }, []);
-
-  return count;
-}
-
-function DashboardColumns({ children }) {
-  const columnCount = useDashboardColumnCount();
-  const columns = Array.from({ length: columnCount }, () => []);
-  Children.toArray(children).forEach((card, index) => {
-    columns[index % columnCount].push(card);
-  });
-
-  return (
-    <Columns className="dashboard-page">
-      {columns.map((cards, index) => (
-        <Column className="dashboard-column" id={`dashboard-column-${index + 1}`} key={index}>
-          {cards}
-        </Column>
-      ))}
-    </Columns>
   );
 }
 
@@ -145,18 +151,11 @@ export function DashboardPage({ data, fetchImpl = fetch, onFirstAidItemsChange }
     setFirstAidItems(items);
     onFirstAidItemsChange?.(items);
   }, [onFirstAidItemsChange]);
-  const firstTimers = kids.filter(kid => kid.budo_experience === false);
-  const oneWeek = kids.filter(kid => kid.weeks === 1);
-  const health = kids.filter(kid => kid.drugs || kid.illness);
-  const food = kids.filter(kid => kid.special_food);
-  const birthdays = kids.filter(kid => kid.birthday_during_turnus);
-  const goodbyes = kids.filter(kid => kid.age > 14.8).sort((a, b) => a.age - b.age);
   const familyKids = profile?.budo_family
     ? kids.filter(kid => kid.budo_family === profile.budo_family)
     : [];
   const kidsById = new Map(kids.map(kid => [Number(kid.id), kid]));
   const focusesByWeek = week => focuses.filter(focus => focus.week === week);
-  const kidList = list => <>{list.map(kid => <div className="print-nobreak" key={kid.id}><p><span className="label">{linkKid(kid)}</span>: {kid.age}</p>{kid.illness && <p>Krankheiten: {kid.illness}</p>}{kid.drugs && <p>Medikamente: {kid.drugs}</p>}</div>)}</>;
   const personalFocusCard = (week, number) => assignmentsComplete[week] && (
     <Card title={`Mein SWP ${number}`} id={`db-swp-${number}`}>
       {focusesByWeek(week).length
@@ -166,7 +165,7 @@ export function DashboardPage({ data, fetchImpl = fetch, onFirstAidItemsChange }
   );
   return (
     <FirstAidGallery entries={[...noteItems, ...firstAidItems]}>
-      <DashboardColumns>
+      <ResponsiveCardGrid independentColumns>
       <Card title={`Kinder: ${totals.checked_in}`} id="db-kinderübersicht">
         <p><span className="label">Eingecheckt</span>: {totals.checked_in}/{totals.kids}</p>
         <p><span className="label">Geschlechter</span>: {kids.filter(kid => kid.sex === 'männlich').length} ♂ // {kids.filter(kid => kid.sex === 'weiblich').length} ♀ // {kids.filter(kid => !['männlich', 'weiblich'].includes(kid.sex)).length} ⚧</p>
@@ -183,23 +182,27 @@ export function DashboardPage({ data, fetchImpl = fetch, onFirstAidItemsChange }
       </Card>
       {personalFocusCard('w1', 1)}
       {personalFocusCard('w2', 2)}
-      <Card title={`Erstes Mal im BuDO: ${firstTimers.length}/${totals.kids}`} id="db-ersties" initiallyClosed>{kidList(firstTimers)}</Card>
-      <Card title={`Einwöchige: ${oneWeek.length}`} id="db-einwöchig" initiallyClosed>{kidList(oneWeek)}</Card>
-      <Card title="Gesundheitliches" id="db-gesundheit" initiallyClosed>{kidList(health)}</Card>
-      <Card title="Essen & Allergien" id="db-essen" initiallyClosed>{food.map(kid => <div className="print-nobreak" key={kid.id}><p>{linkKid(kid)}: {kid.age}</p><p>{kid.food} · {kid.special_food}</p></div>)}</Card>
-      <Card title={`Geburtstagskinder: ${birthdays.length}`} id="db-geburtstagskinder">{birthdays.map(kid => <p key={kid.id}>{linkKid(kid)}: {formatKidBirthday(kid)}</p>)}</Card>
-      <Card title={`Verabschiedungsliste: ${goodbyes.length}`} id="db-sechzehner">{goodbyes.map(kid => <p key={kid.id}>{linkKid(kid)}: {kid.age} – {formatKidBirthday(kid)}</p>)}</Card>
       <Card title="Taschengeldtransaktionen" id="db-geld"><ActivityList kind="transactions" initialPage={activity.transactions} fetchImpl={fetchImpl} /></Card>
-      </DashboardColumns>
+      </ResponsiveCardGrid>
     </FirstAidGallery>
   );
 }
 
-export const dashboardRoutes = [{
-  pattern: /^\/$|^\/dashboard$/,
-  page: 'dashboard',
-  title: 'BuDo Dashboard',
-  domain: 'dashboard',
-  readContractKey: 'dashboard',
-  render: ({ data, fetchImpl }) => <DashboardPage data={data} fetchImpl={fetchImpl} />,
-}];
+export const dashboardRoutes = [
+  {
+    pattern: /^\/$|^\/dashboard$/,
+    page: 'dashboard',
+    title: 'BuDo Dashboard',
+    domain: 'dashboard',
+    readContractKey: 'dashboard',
+    render: ({ data, fetchImpl }) => <DashboardPage data={data} fetchImpl={fetchImpl} />,
+  },
+  {
+    pattern: /^\/gut-zu-wissen$/,
+    page: 'good-to-know',
+    title: 'Gut zu wissen',
+    domain: 'dashboard',
+    readContractKey: 'gut-zu-wissen',
+    render: ({ data }) => <GoodToKnowPage data={data} />,
+  },
+];

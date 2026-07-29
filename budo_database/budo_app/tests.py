@@ -318,7 +318,10 @@ class AuslagerorteImageUploadTest(TestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "konnten nicht gespeichert werden")
+        self.assertIn(
+            "Die Bilder konnten nicht gespeichert werden. Bitte erneut versuchen.",
+            response.form_errors,
+        )
         self.assertEqual(self.location.images.count(), 0)
         self.assertEqual(self.stored_file_names(), [])
 

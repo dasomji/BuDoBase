@@ -7,9 +7,8 @@ import toml
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
-from django.template import loader
+from django.http import JsonResponse
+from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
@@ -23,6 +22,7 @@ from .forms import (
     NotizForm,
 )
 from .models import Auslagerorte, Kinder, Profil, Schwerpunkte
+from .react_views import render_react_page
 from .utils import (
     cache_user_profile,
     get_active_kid_or_404,
@@ -46,13 +46,12 @@ def kids_list(request):
         return redirect('dashboard')
 
     turnus_data = get_turnus_data_optimized(request.active_turnus)
-    template = loader.get_template('kids_list.html')
     context = {
         'kids': turnus_data['kids'],
         'schwerpunkte': turnus_data['schwerpunkte'],
         'auslagerorte': turnus_data['auslagerorte'],
     }
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)
 
 
 @login_required
@@ -82,7 +81,7 @@ def budo_families(request):
         'auslagerorte': turnus_data['auslagerorte'],
         'kids': kids,
     }
-    return render(request, 'budo_familien.html', context)
+    return render_react_page(request, context)
 
 
 @login_required
@@ -111,7 +110,7 @@ def spezial_familien(request):
         'auslagerorte': auslagerorte,
         'kids': kids,
     }
-    return render(request, 'spezial_familien.html', context)
+    return render_react_page(request, context)
 
 
 @login_required
@@ -125,14 +124,13 @@ def zugabreise(request):
     auslagerorte = Auslagerorte.objects.all()
     zugabreise_count = models.Kinder.get_zugabreise_count(
         turnus=active_turnus)
-    template = loader.get_template('zugabreise.html')
     context = {
         'kids': kids,
         'zugabreise_count': zugabreise_count,
         'schwerpunkte': schwerpunkte,
         'auslagerorte': auslagerorte,
     }
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)
 
 
 @login_required
@@ -151,7 +149,6 @@ def zuganreise(request):
     zuganreise_count = models.Kinder.get_zuganreise_count(
         turnus=active_turnus)
     busunternehmen = info['busunternehmen']
-    template = loader.get_template('zuganreise.html')
     context = {
         'kids': kids,
         'zuganreise_count': zuganreise_count,
@@ -161,7 +158,7 @@ def zuganreise(request):
         'kids_without_top_jugendticket_count': kids_without_top_jugendticket_count,
         'busunternehmen': busunternehmen,
     }
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)
 
 
 @login_required
@@ -215,7 +212,6 @@ def kid_details(request, id):
     kids = turnus_data['kids']
     schwerpunkte = turnus_data['schwerpunkte']
     auslagerorte = turnus_data['auslagerorte']
-    template = loader.get_template('kids_data.html')
     today = datetime.today().strftime('%Y-%m-%d')
     notizen = this_kid.notizen.all()
 
@@ -303,7 +299,7 @@ def kid_details(request, id):
         context["geld_form"] = geld_form
         context["erste_hilfe_form"] = erste_hilfe_form
 
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)
 
 
 @login_required
@@ -321,7 +317,6 @@ def check_in(request, id):
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=request.active_turnus)
     auslagerorte = Auslagerorte.objects.all()
-    template = loader.get_template('check_in.html')
     today = datetime.today().strftime('%Y-%m-%d')
     context = {
         "today_date": today,
@@ -370,7 +365,7 @@ def check_in(request, id):
         context["notiz_form"] = notiz_form
         context["geld_form"] = geld_form
 
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)
 
 
 @login_required
@@ -386,7 +381,6 @@ def check_out(request, id):
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=request.active_turnus)
     auslagerorte = Auslagerorte.objects.all()
-    template = loader.get_template('check_out.html')
     today = datetime.today().strftime('%Y-%m-%d')
     context = {
         "today_date": today,
@@ -443,7 +437,7 @@ def check_out(request, id):
         context["notiz_form"] = notiz_form
         context["geld_form"] = geld_form
 
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)
 
 
 @login_required
@@ -452,12 +446,11 @@ def serienbrief(request):
     active_turnus = profil.turnus
     kids = models.Kinder.objects.filter(
         turnus=active_turnus).order_by('kid_vorname')
-    template = loader.get_template('serienbrief.html')
     context = {
         "kids": kids,
     }
 
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)
 
 
 @login_required
@@ -466,10 +459,9 @@ def murdergame(request):
     active_turnus = profil.turnus
     kids = models.Kinder.objects.filter(turnus=active_turnus, anwesend=True)
     team = models.Profil.objects.filter(turnus=active_turnus)
-    template = loader.get_template('murdergame.html')
     context = {
         "kids": kids,
         "team": team,
     }
 
-    return HttpResponse(template.render(context, request))
+    return render_react_page(request, context)

@@ -1,0 +1,50 @@
+[
+  {
+    "slug": "dashboard",
+    "path": "/dashboard/",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8012/dashboard/",
+    "heading": "BuDo Dashboard"
+  },
+  {
+    "slug": "dashboard",
+    "path": "/dashboard/",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8012/dashboard/",
+    "heading": "BuDo Dashboard"
+  },
+  {
+    "slug": "swp-dashboard",
+    "path": "/swp-dashboard/",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8012/swp-dashboard/",
+    "heading": "Schwerpunkte"
+  },
+  {
+    "slug": "swp-dashboard",
+    "path": "/swp-dashboard/",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8012/swp-dashboard/",
+    "heading": "Schwerpunkte"
+  },
+  {
+    "slug": "happy-cleaning",
+    "path": "/happy-cleaning/",
+    "viewport": "desktop",
+    "status": 200,
+    "url": "http://127.0.0.1:8012/happy-cleaning/",
+    "heading": "Happy Cleaning"
+  },
+  {
+    "slug": "happy-cleaning",
+    "path": "/happy-cleaning/",
+    "viewport": "mobile",
+    "status": 200,
+    "url": "http://127.0.0.1:8012/happy-cleaning/",
+    "heading": "Happy Cleaning"
+  }
+]

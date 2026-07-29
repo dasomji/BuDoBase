@@ -14,6 +14,10 @@ from .storage_lifecycle import (
     delete_field_file_on_commit,
     delete_storage_object_on_commit,
 )
+from .happy_cleaning_station_documents import (
+    empty_station_document,
+    validate_station_document,
+)
 from .text_cleaning import (
     clean_optional_text,
     DEFAULT_EMPTY_VALUES,
@@ -665,6 +669,10 @@ class HappyCleaningStation(models.Model):
     position = models.PositiveIntegerField()
     version = models.PositiveIntegerField(default=1)
     has_ever_had_assignment = models.BooleanField(default=False)
+    content_document = models.JSONField(
+        default=empty_station_document,
+        validators=[validate_station_document],
+    )
 
     def clean(self):
         super().clean()
@@ -681,6 +689,7 @@ class HappyCleaningStation(models.Model):
             })
 
     def save(self, *args, **kwargs):
+        validate_station_document(self.content_document)
         if (
             self.pk
             and not self.has_ever_had_assignment
@@ -701,8 +710,8 @@ class HappyCleaningStation(models.Model):
         ordering = ("position", "id")
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(max_kids__gt=0),
-                name="hc_station_capacity_positive",
+                condition=models.Q(max_kids__gte=0),
+                name="hc_station_capacity_nonnegative",
             ),
             models.CheckConstraint(
                 condition=models.Q(version__gt=0),
@@ -711,40 +720,6 @@ class HappyCleaningStation(models.Model):
             models.UniqueConstraint(
                 fields=("happy_cleaning", "position"),
                 name="hc_station_event_position_uniq",
-            ),
-        ]
-
-
-class HappyCleaningTodo(models.Model):
-    station = models.ForeignKey(
-        HappyCleaningStation,
-        on_delete=models.CASCADE,
-        related_name="todos",
-    )
-    text = models.CharField(max_length=500)
-    position = models.PositiveIntegerField()
-    checked = models.BooleanField(default=False)
-    version = models.PositiveIntegerField(default=1)
-
-    def save(self, *args, **kwargs):
-        with transaction.atomic():
-            result = super().save(*args, **kwargs)
-            if self.checked:
-                HappyCleaning.objects.filter(
-                    pk=self.station.happy_cleaning_id,
-                ).update(has_operational_activity=True)
-            return result
-
-    class Meta:
-        ordering = ("position", "id")
-        constraints = [
-            models.CheckConstraint(
-                condition=models.Q(version__gt=0),
-                name="hc_todo_version_positive",
-            ),
-            models.UniqueConstraint(
-                fields=("station", "position"),
-                name="hc_todo_station_position_uniq",
             ),
         ]
 

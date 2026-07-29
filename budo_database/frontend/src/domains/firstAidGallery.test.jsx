@@ -280,8 +280,7 @@ describe('page-level EH photo gallery', () => {
     await user.tab();
     await waitFor(() => expect(close).toHaveFocus());
 
-    const backdrop = document.querySelector('.first-aid-gallery-backdrop');
-    expect(backdrop).not.toBeNull();
+    const backdrop = screen.getByTestId('first-aid-gallery-backdrop');
     await user.click(backdrop);
     expect(gallery()).toBeInTheDocument();
 

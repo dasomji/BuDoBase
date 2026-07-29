@@ -37,6 +37,7 @@ class HappyCleaningAssignmentPageTests(TestCase):
         ))
 
         self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "react_app.html")
         self.assertContains(response, "/static/frontend/app.js")
 
     def test_foreign_turnus_deep_link_is_not_found_without_event_details(self):

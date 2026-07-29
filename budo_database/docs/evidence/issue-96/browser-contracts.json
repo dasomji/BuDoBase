@@ -1,0 +1,89 @@
+{
+  "route": "/happy-cleaning/1/assignment/",
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8015,
+    "database": "sqlite:////home/dev/Development/BuDoBase/budo_database/.artifacts/design-system-review.sqlite3"
+  },
+  "viewports": [
+    {
+      "name": "minimum-supported",
+      "width": 320,
+      "height": 700,
+      "status": 200,
+      "pageClientWidth": 320,
+      "pageScrollWidth": 320,
+      "bodyClientWidth": 320,
+      "bodyScrollWidth": 320,
+      "pageOverflowsHorizontally": false,
+      "tableScroll": {
+        "clientWidth": 304,
+        "scrollWidth": 304,
+        "overflowX": "auto",
+        "containsSharedTable": true
+      }
+    },
+    {
+      "name": "phone",
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "pageClientWidth": 390,
+      "pageScrollWidth": 390,
+      "bodyClientWidth": 390,
+      "bodyScrollWidth": 390,
+      "pageOverflowsHorizontally": false,
+      "tableScroll": {
+        "clientWidth": 374,
+        "scrollWidth": 374,
+        "overflowX": "auto",
+        "containsSharedTable": true,
+        "tableWidth": 374
+      }
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024,
+      "status": 200,
+      "pageClientWidth": 768,
+      "pageScrollWidth": 768,
+      "bodyClientWidth": 768,
+      "bodyScrollWidth": 768,
+      "pageOverflowsHorizontally": false,
+      "tableScroll": {
+        "clientWidth": 752,
+        "scrollWidth": 752,
+        "overflowX": "auto",
+        "containsSharedTable": true,
+        "tableWidth": 752
+      }
+    },
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 900,
+      "status": 200,
+      "pageClientWidth": 1280,
+      "pageScrollWidth": 1280,
+      "bodyClientWidth": 1280,
+      "bodyScrollWidth": 1280,
+      "pageOverflowsHorizontally": false,
+      "tableScroll": {
+        "clientWidth": 1008,
+        "scrollWidth": 1008,
+        "overflowX": "auto",
+        "containsSharedTable": true,
+        "tableWidth": 1008
+      }
+    }
+  ],
+  "renderedDom": {
+    "tableSlot": "table",
+    "scrollSlot": "table-scroll",
+    "childPillBackground": "rgb(169, 207, 239)",
+    "selectedChildCardUpdated": true,
+    "numberGatedStationTargetsDisabled": true,
+    "excusedTargetEnabled": true
+  }
+}

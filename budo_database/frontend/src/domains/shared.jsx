@@ -1,4 +1,16 @@
-import { Card, Column, Columns } from '../components';
+import {
+  Card,
+  Column,
+  Columns,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+} from '../components';
+import { Button } from '../components/ui/button';
 
 export const displayOrPlaceholder = value => value ?? '---';
 export const yesNo = value => value ? 'Ja' : 'Nein';
@@ -35,11 +47,11 @@ export function formatKidBirthday(kid) {
 }
 
 export function MealTable({ focus }) {
-  return <div className="card-table-container"><table className="card-table"><thead><tr><th /><th>Frühstück</th><th>Mittagessen</th><th>Abendessen</th></tr></thead><tbody>{Object.entries(focus.meals).map(([day, meals]) => <tr key={day}><th className="meal-day" scope="row">Tag {day}</th><td>{displayOrPlaceholder(meals.breakfast)}</td><td>{displayOrPlaceholder(meals.lunch)}</td><td>{displayOrPlaceholder(meals.dinner)}</td></tr>)}</tbody></table></div>;
+  return <TableScroll><Table><TableHeader><TableRow><TableHead scope="col" /><TableHead scope="col">Frühstück</TableHead><TableHead scope="col">Mittagessen</TableHead><TableHead scope="col">Abendessen</TableHead></TableRow></TableHeader><TableBody>{Object.entries(focus.meals).map(([day, meals]) => <TableRow key={day}><TableHead scope="row">Tag {day}</TableHead><TableCell>{displayOrPlaceholder(meals.breakfast)}</TableCell><TableCell>{displayOrPlaceholder(meals.lunch)}</TableCell><TableCell>{displayOrPlaceholder(meals.dinner)}</TableCell></TableRow>)}</TableBody></Table></TableScroll>;
 }
 
 export function NotFoundPage() {
-  return <Columns><Column id="single-column"><Card title="Seite nicht gefunden"><p>Für diese Adresse gibt es keine React-Seite.</p><a className="button" href="/dashboard/">Zum Dashboard</a></Card></Column></Columns>;
+  return <Columns><Column id="single-column"><Card title="Seite nicht gefunden"><p>Für diese Adresse gibt es keine React-Seite.</p><Button href="/dashboard/">Zum Dashboard</Button></Card></Column></Columns>;
 }
 
 export const notFoundRoute = {

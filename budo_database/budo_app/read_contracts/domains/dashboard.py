@@ -217,6 +217,54 @@ def _kid_payload(kid):
     }
 
 
+def _good_to_know_kid_payload(kid):
+    return {
+        "id": kid.id,
+        "full_name": kid_full_name(kid.kid_vorname, kid.kid_nachname),
+        "present": kid.anwesend,
+        "age": kid.get_alter(),
+        "weeks": kid.turnus_dauer,
+        "budo_experience": kid.budo_erfahrung,
+        "birthday": kid.kid_birthday.isoformat() if kid.kid_birthday else None,
+        "birthday_during_turnus": kid.is_birthday_during_turnus(),
+        "food": kid.get_food(),
+        "special_food": kid.get_clean_special_food(),
+        "drugs": kid.get_clean_drugs(),
+        "illness": kid.get_clean_illness(),
+    }
+
+
+def build_good_to_know_contract(request):
+    profile = Profil.objects.filter(user_id=request.user.id).only("turnus_id").first()
+    if profile is None or profile.turnus_id is None:
+        return {"totals": {"kids": 0}, "kids": []}
+
+    kids = list(
+        Kinder.objects.filter(turnus_id=profile.turnus_id)
+        .select_related("turnus")
+        .only(
+            "id",
+            "kid_vorname",
+            "kid_nachname",
+            "kid_birthday",
+            "turnus_id",
+            "turnus__turnus_beginn",
+            "anwesend",
+            "turnus_dauer",
+            "budo_erfahrung",
+            "vegetarisch",
+            "special_food_description",
+            "drugs",
+            "illness",
+        )
+        .order_by("kid_vorname", "kid_nachname", "id")
+    )
+    return {
+        "totals": {"kids": len(kids)},
+        "kids": [_good_to_know_kid_payload(kid) for kid in kids],
+    }
+
+
 def _empty_summary(profile):
     return {
         "profile": _profile_payload(profile, []),
@@ -415,4 +463,5 @@ def build_dashboard_contract(request):
 
 CONTRACTS = {
     "dashboard": build_dashboard_contract,
+    "gut-zu-wissen": build_good_to_know_contract,
 }

@@ -44,6 +44,9 @@ COMMON_DETAIL_FIELDS = {
     "station_name": (str,),
     "source_happy_cleaning_id": (int,),
     "copied_station_count": (int,),
+    "source_station_ids": (list,),
+    "station_copy_decisions": (list,),
+    "station_copy_result_counts": (dict,),
     "todo_id": (int,),
     "child_id": (int,),
     "child_name": (str,),
@@ -54,6 +57,9 @@ COMMON_DETAIL_FIELDS = {
     "expected_version": (int,),
     "current_version": (int,),
     "changed_fields": (list,),
+    "old_capacity": (int,),
+    "new_capacity": (int,),
+    "overbooked_count": (int,),
     "result_count": (int,),
     "filter_count": (int,),
 }
@@ -129,6 +135,24 @@ def _contains_sensitive_key(key):
     lowered = key.casefold()
     return any(part in lowered for part in SENSITIVE_KEY_PARTS)
 
+def _valid_json_detail(value, *, depth=0):
+    if depth > 3:
+        return False
+    if value is None or isinstance(value, (str, int, bool)):
+        return not isinstance(value, str) or len(value) <= MAX_DETAIL_STRING
+    if isinstance(value, list):
+        return len(value) <= 50 and all(
+            _valid_json_detail(item, depth=depth + 1) for item in value
+        )
+    if isinstance(value, dict):
+        return len(value) <= 50 and all(
+            isinstance(key, str)
+            and not _contains_sensitive_key(key)
+            and _valid_json_detail(item, depth=depth + 1)
+            for key, item in value.items()
+        )
+    return False
+
 
 def _validate_details(action, details):
     if not isinstance(details, Mapping):
@@ -149,11 +173,8 @@ def _validate_details(action, details):
             raise ValidationError({"details": f"Invalid value for {key}."})
         if isinstance(value, str) and len(value) > MAX_DETAIL_STRING:
             raise ValidationError({"details": f"Value for {key} is too large."})
-        if isinstance(value, list):
-            if len(value) > 50 or not all(
-                isinstance(item, str) and len(item) <= 100 for item in value
-            ):
-                raise ValidationError({"details": f"Invalid value for {key}."})
+        if not _valid_json_detail(value):
+            raise ValidationError({"details": f"Invalid value for {key}."})
         validated[key] = value
     encoded = json.dumps(validated, sort_keys=True, separators=(",", ":"))
     if len(encoded.encode("utf-8")) > MAX_DETAILS_BYTES:

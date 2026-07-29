@@ -6,22 +6,20 @@ from budo_app.happy_cleaning_commands import (
     CommandError,
     audit_rejection,
     command_context,
+    copy_single_station,
     copy_stations,
     create_station,
-    create_todo,
     create_event,
     delete_station,
-    delete_todo,
     delete_event,
     reorder_stations,
-    reorder_todos,
     required_id_list,
     required_positive_integer,
     required_text,
     station_fields,
     update_station,
-    update_todo,
 )
+from budo_app.happy_cleaning_station_documents import empty_station_document
 
 
 def _error_response(error):
@@ -117,6 +115,7 @@ def station_create(request, event_id):
             event_id,
             required_positive_integer(request.data, "expected_revision"),
             station_fields(request.data),
+            request.data.get("document", empty_station_document()),
         ),
     )
 
@@ -136,6 +135,8 @@ def station_update(request, event_id, station_id):
             station_id,
             required_positive_integer(request.data, "expected_version"),
             station_fields(request.data),
+            request.data.get("document"),
+            request.data.get("overbooking_confirmation"),
         ),
     )
 
@@ -178,98 +179,16 @@ def station_reorder(request, event_id):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def todo_create(request, event_id, station_id):
-    return _run_command(
-        request,
-        action="happy_cleaning.todo.create",
-        resource_type="station",
-        resource_id=station_id,
-        resource_label=f"Station #{station_id}",
-        created=True,
-        operation=lambda context: create_todo(
-            context,
-            event_id,
-            station_id,
-            required_positive_integer(request.data, "expected_version"),
-            required_text(request.data, "text", 500),
-        ),
-    )
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def todo_update(request, event_id, station_id, todo_id):
-    return _run_command(
-        request,
-        action="happy_cleaning.todo.update",
-        resource_type="todo",
-        resource_id=todo_id,
-        resource_label=f"Todo #{todo_id}",
-        operation=lambda context: update_todo(
-            context,
-            event_id,
-            station_id,
-            todo_id,
-            required_positive_integer(request.data, "expected_version"),
-            required_text(request.data, "text", 500),
-        ),
-    )
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def todo_delete(request, event_id, station_id, todo_id):
-    return _run_command(
-        request,
-        action="happy_cleaning.todo.delete",
-        resource_type="todo",
-        resource_id=todo_id,
-        resource_label=f"Todo #{todo_id}",
-        operation=lambda context: delete_todo(
-            context,
-            event_id,
-            station_id,
-            todo_id,
-            required_positive_integer(request.data, "expected_version"),
-        ),
-    )
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def todo_reorder(request, event_id, station_id):
-    return _run_command(
-        request,
-        action="happy_cleaning.todo.reorder",
-        resource_type="station",
-        resource_id=station_id,
-        resource_label=f"Station #{station_id}",
-        operation=lambda context: reorder_todos(
-            context,
-            event_id,
-            station_id,
-            required_positive_integer(request.data, "expected_version"),
-            required_id_list(request.data, "todo_ids"),
-        ),
-    )
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
 def station_copy(request, event_id):
     def operation(context):
-        copy_all = request.data.get("copy_all") is True
-        station_ids = request.data.get("station_ids")
-        if not copy_all:
-            station_ids = required_id_list(request.data, "station_ids")
+        station_ids = required_id_list(request.data, "station_ids")
         return copy_stations(
             context,
             event_id,
             required_positive_integer(request.data, "expected_revision"),
             required_positive_integer(request.data, "source_event_id"),
-            copy_all=copy_all,
             station_ids=station_ids,
-            duplicate_strategy=request.data.get("duplicate_strategy"),
+            resolutions=request.data.get("resolutions"),
         )
 
     return _run_command(
@@ -279,4 +198,23 @@ def station_copy(request, event_id):
         resource_id=event_id,
         resource_label=f"Happy Cleaning #{event_id}",
         operation=operation,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def single_station_copy(request, event_id, source_station_id):
+    return _run_command(
+        request,
+        action="happy_cleaning.station.copy",
+        resource_type="happy_cleaning",
+        resource_id=event_id,
+        resource_label=f"Happy Cleaning #{event_id}",
+        operation=lambda context: copy_single_station(
+            context,
+            event_id,
+            required_positive_integer(request.data, "expected_revision"),
+            source_station_id=source_station_id,
+            resolutions=request.data.get("resolutions"),
+        ),
     )

@@ -28,6 +28,7 @@ describe('Küche page', () => {
 
     const layout = document.querySelector('.kitchen-layout');
     expect(layout).not.toBeNull();
+    expect(layout).toHaveClass('gap-4');
     expect([...layout.children].map(column => column.id)).toEqual(['left-column', 'right-column']);
     expect([...layout.querySelector('#right-column').querySelectorAll(':scope > .card > .card-toggle > h2')]
       .map(heading => heading.textContent)).toEqual([
@@ -36,6 +37,8 @@ describe('Küche page', () => {
       'Schwerpunktinfos Woche 1',
       'Schwerpunktinfos Woche 2',
     ]);
+    const focusWeekCard = screen.getByRole('heading', { name: 'Schwerpunktinfos Woche 1' }).closest('.card');
+    expect(focusWeekCard).toHaveClass('transparent');
   });
 
   it('renders attendance, food, allergies, meals, and Schwerpunkt context from the focused projection', () => {
@@ -92,13 +95,19 @@ describe('Küche page', () => {
     expect(page.getByText('Vegan').closest('p')).toHaveTextContent('Vegan: 1');
     expect(page.getByText('Ada Lovelace (Vegetarisch): glutenfrei')).toBeInTheDocument();
     expect(page.getByText('Kathi (Vegan): Haselnüsse')).toBeInTheDocument();
-    const focusInfo = page.getByRole('heading', { name: 'Waldküche' }).closest('.focus-kitchen-info');
-    expect(focusInfo.querySelector('.card-table-container')).not.toBeInTheDocument();
+    const focusHeading = page.getByRole('heading', { name: 'Waldküche' });
+    const focusCard = focusHeading.closest('.card');
+    expect(focusHeading.tagName).toBe('H3');
+    expect(focusCard).not.toHaveClass('transparent');
+    expect(focusCard.querySelector('.focus-kitchen-info')).toBeInTheDocument();
+    expect(focusCard.querySelector('.card-table-container')).not.toBeInTheDocument();
     expect(page.getAllByText('Waldküche (0 🥩, 1 🧀, 1 🌱)')).toHaveLength(3);
     expect(page.getByRole('heading', { name: 'Tag 1' })).toBeInTheDocument();
     const menuTable = page.getByRole('table', { name: 'Menüplan Tag 1' });
     expect(within(menuTable).getAllByText('2 (0 🥩, 1 🧀, 1 🌱)')).toHaveLength(2);
-    expect(page.getByLabelText('Menüplan Tag 1 horizontal scrollen')).toContainElement(menuTable);
+    const tableScroll = page.getByLabelText('Menüplan Tag 1 horizontal scrollen');
+    expect(tableScroll).toContainElement(menuTable);
+    expect(tableScroll).toHaveAttribute('data-sticky-first-column');
   });
 
   it('renders each Schwerpunkt in a meal cell on its own line', () => {
@@ -122,7 +131,7 @@ describe('Küche page', () => {
       .getByRole('table', { name: 'Menüplan Tag 1' });
     const boxCell = within(menuTable).getByText('Frühstück').closest('tr').children[1];
 
-    expect([...boxCell.querySelectorAll(':scope > .kitchen-meal-focus')]
+    expect([...boxCell.children]
       .map(entry => entry.textContent)).toEqual([
       'Blubb (1 🥩, 0 🧀, 0 🌱)',
       'Test (1 🥩, 0 🧀, 0 🌱)',
@@ -171,6 +180,12 @@ describe('Küche page', () => {
       readContractKey: 'kitchen',
     });
     window.history.pushState({}, '', '/kitchen');
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query === '(max-width: 900px)',
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(response({
         authenticated: true,
@@ -188,8 +203,11 @@ describe('Küche page', () => {
 
     expect(await screen.findByRole('heading', { name: 'Menüplan Woche 1' })).toBeInTheDocument();
     const printButton = screen.getByRole('button', { name: 'Drucken' });
-    const search = screen.getByRole('combobox', { name: 'Suche' });
-    expect(search.compareDocumentPosition(printButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const searchButton = await screen.findByRole('button', { name: 'Suche öffnen' });
+    const burger = await screen.findByRole('button', { name: 'Sidebar ein- oder ausklappen' });
+    expect(printButton.querySelector('.lucide-printer')).toHaveAttribute('aria-hidden', 'true');
+    expect(printButton.compareDocumentPosition(searchButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(searchButton.compareDocumentPosition(burger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(printButton);
     expect(print).toHaveBeenCalledOnce();
     expect(fetchImpl.mock.calls[1][0]).toBe('/api/route-data/kitchen/');

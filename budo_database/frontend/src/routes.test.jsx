@@ -9,11 +9,13 @@ describe('route inventory', () => {
   it.each([
     ['/', 'dashboard', 'dashboard', 'dashboard'],
     ['/dashboard/', 'dashboard', 'dashboard', 'dashboard'],
+    ['/gut-zu-wissen/', 'good-to-know', 'dashboard', 'gut-zu-wissen'],
     ['/audit/', 'audit', 'audit', 'audit-events'],
     ['/login', 'login', 'auth', null],
     ['/register', 'register', 'auth', null],
     ['/profil', 'profile', 'profiles', 'profile'],
-    ['/profil/5', 'profile', 'profiles', 'profile'],
+    ['/profil/bearbeiten', 'profile-edit', 'profiles', 'profile'],
+    ['/profil/5', 'profile-edit', 'profiles', 'profile'],
     ['/team', 'team', 'profiles', 'team'],
     ['/upload', 'turnus-upload', 'maintenance', 'turnus-list'],
     ['/upload_excel/9', 'turnus-upload', 'maintenance', 'turnus-upload'],
@@ -81,13 +83,15 @@ describe('route inventory', () => {
     expect(resolveRouteTitle(parseRoute('/schwerpunkt/3'), data)).toBe('Wald SWP');
     expect(resolveRouteTitle(parseRoute('/auslagerorte/4'), data)).toBe('Berghütte');
     expect(resolveRouteTitle(parseRoute('/profil'), data)).toBe('Mein Profil');
+    expect(resolveRouteTitle(parseRoute('/profil/bearbeiten'), data)).toBe('Profil bearbeiten');
     expect(resolveRouteTitle(parseRoute('/profil/5'), data)).toBe('Mein Profil');
   });
 
   it.each([
+    ['/profil', 'link', 'Profil bearbeiten', 'href', '/profil/bearbeiten/'],
     ['/swp-dashboard', 'link', 'SWP hinzufügen', 'href', '/schwerpunkt/create'],
     ['/auslagerorte-list', 'link', 'Ort hinzufügen', 'href', '/auslagerorte/create'],
-    ['/kindergeburtstage', 'button', '🔄 Geburtstage aktualisieren', 'formAction', '/update-birthdays-from-sv/'],
+    ['/kindergeburtstage', 'button', 'Geburtstage aktualisieren', 'formAction', '/update-birthdays-from-sv/'],
   ])('keeps the header action for %s', (path, role, label, attribute, target) => {
     render(routeHeaderAction(parseRoute(path), { csrf_token: 'token' }));
     const action = screen.getByRole(role, { name: label });
@@ -95,6 +99,7 @@ describe('route inventory', () => {
   });
 
   it.each([
+    ['/profil', 'Profil bearbeiten'],
     ['/swp-dashboard', 'SWP hinzufügen'],
     ['/auslagerorte-list', 'Ort hinzufügen'],
   ])('marks the create action on %s for compact mobile placement', (path, label) => {
@@ -102,12 +107,33 @@ describe('route inventory', () => {
 
     const action = screen.getByRole('link', { name: label });
     expect(action).toHaveClass('mobile-icon-action');
-    expect(action.querySelector('.mobile-action-label')).toHaveTextContent('+');
+    expect(action.querySelector('.mobile-action-label')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it.each([
+    ['/profil', 'link', 'Profil bearbeiten'],
+    ['/swp-dashboard', 'link', 'SWP hinzufügen'],
+    ['/auslagerorte-list', 'link', 'Ort hinzufügen'],
+    ['/kindergeburtstage', 'button', 'Geburtstage aktualisieren'],
+    ['/kitchen', 'button', 'Drucken'],
+    ['/murdergame', 'button', 'Drucken'],
+    ['/swp-einteilung-w1', 'button', 'Kinder ausblenden'],
+    ['/happy-cleaning', 'button', 'Happy Cleaning hinzufügen'],
+    ['/happy-cleaning/print', 'button', 'Drucken'],
+  ])('renders the header action on %s as a labeled icon affordance', (path, role, name) => {
+    render(routeHeaderAction(
+      parseRoute(path),
+      { csrf_token: 'token' },
+      { mutate: () => Promise.resolve(), pageState: {} },
+    ));
+
+    const action = screen.getByRole(role, { name });
+    expect(action.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('keeps standalone and not-found layout behavior declared in routing', () => {
     expect(parseRoute('/serienbrief').standalone).toBe(true);
-    expect(parseRoute('/murdergame').standalone).toBe(true);
+    expect(parseRoute('/murdergame').standalone).toBeFalsy();
     expect(parseRoute('/kindergesamtzahl').standalone).toBe(true);
 
     render(renderRoute(parseRoute('/does-not-exist'), { data: {} }));

@@ -4,11 +4,12 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from budo_app.happy_cleaning_tests.task_fixtures import CanonicalTask
+
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningAssignment,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Kinder,
     Turnus,
 )
@@ -66,14 +67,14 @@ class HappyCleaningContractTests(TestCase):
             position=2,
             version=2,
         )
-        self.checked_todo = HappyCleaningTodo.objects.create(
+        self.checked_todo = CanonicalTask.objects.create(
             station=self.station,
             text="Tische wischen",
             position=1,
             checked=True,
             version=3,
         )
-        self.open_todo = HappyCleaningTodo.objects.create(
+        self.open_todo = CanonicalTask.objects.create(
             station=self.station,
             text="Boden kehren",
             position=2,
@@ -149,27 +150,163 @@ class HappyCleaningContractTests(TestCase):
             )
         return path
 
-    def test_overview_lists_only_active_turnus_events_with_revisions(self):
+    def test_overview_orders_all_turni_and_only_eager_loads_the_active_year(self):
+        older_turnus = Turnus.objects.create(
+            turnus_nr=4,
+            turnus_beginn=date(2025, 8, 1),
+        )
+        earlier_same_year = Turnus.objects.create(
+            turnus_nr=1,
+            turnus_beginn=date(2026, 6, 1),
+        )
+        oldest_turnus = Turnus.objects.create(
+            turnus_nr=2,
+            turnus_beginn=date(2024, 7, 1),
+        )
+        HappyCleaning.objects.create(
+            turnus=earlier_same_year,
+            display_number=1,
+        )
+        HappyCleaning.objects.create(
+            turnus=oldest_turnus,
+            display_number=1,
+        )
+        older_event = HappyCleaning.objects.create(
+            turnus=older_turnus,
+            display_number=1,
+            revision=5,
+        )
+        historical_profile = User.objects.create_user(
+            username="historical-happy-cleaning-carer",
+        ).profil
+        historical_profile.rufname = "Historical carer"
+        historical_profile.turnus = older_turnus
+        historical_profile.save(update_fields=["rufname", "turnus"])
+        HappyCleaningStation.objects.create(
+            happy_cleaning=older_event,
+            name="Historische Küche",
+            max_kids=9,
+            meeting_point="Altbau",
+            responsible_profile=historical_profile,
+            position=1,
+            content_document={
+                "type": "doc",
+                "content": [{
+                    "type": "taskList",
+                    "content": [
+                        {"type": "taskItem", "attrs": {"id": 9001, "checked": False, "version": 1}, "content": [{"type": "paragraph", "content": []}]},
+                        {"type": "taskItem", "attrs": {"id": 9002, "checked": True, "version": 1}, "content": [{"type": "paragraph", "content": []}]},
+                    ],
+                }],
+            },
+        )
+        same_year_private_station = HappyCleaningStation.objects.create(
+            happy_cleaning=self.other_event,
+            name="Other station",
+            max_kids=4,
+            meeting_point="Other meeting point",
+            responsible_profile=self.other_profile,
+            position=1,
+        )
         response = self.client.get(self.url("happy-cleaning-overview"))
 
         self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["user_id"], self.user.id)
+        self.assertEqual(payload["active_year"], 2026)
+        self.assertEqual(
+            [
+                (target["id"], target["display_number"], target["revision"])
+                for target in payload["copy_targets"]
+            ],
+            [
+                (self.event.id, 1, self.event.revision),
+                (self.empty_event.id, 2, self.empty_event.revision),
+            ],
+        )
+        self.assertEqual([group["year"] for group in payload["years"]], [2026, 2025, 2024])
+        active = payload["years"][0]
+        self.assertTrue(active["loaded"])
+        self.assertEqual(
+            [turnus["id"] for turnus in active["turnuses"]],
+            [self.turnus.id, self.other_turnus.id, earlier_same_year.id],
+        )
+        self.assertEqual(
+            [event["display_number"] for event in active["turnuses"][0]["events"]],
+            [1, 2],
+        )
+        self.assertEqual(
+            active["turnuses"][0]["events"][0]["stations"][0],
+            {
+                "id": self.station.id,
+                "name": "Speisesaal",
+                "max_kids": 3,
+                "meeting_point": "Vor dem Speisesaal",
+                "responsible": {
+                    "id": self.user.profil.id,
+                    "name": "Mira",
+                },
+                "task_item_count": 2,
+                "assigned_count": 2,
+                "overbooked_count": 0,
+            },
+        )
+        same_year_private = active["turnuses"][1]["events"][0]["stations"][0]
+        self.assertEqual(same_year_private["id"], same_year_private_station.id)
+        self.assertIsNone(same_year_private["responsible"])
+        historical = payload["years"][1]
+        self.assertFalse(historical["loaded"])
+        self.assertNotIn("stations", historical["turnuses"][0]["events"][0])
+        serialized = response.content.decode()
+        self.assertNotIn("Historische Küche", serialized)
+        self.assertNotIn("Other carer", serialized)
+        self.assertNotIn("Historical carer", serialized)
+        self.assertNotIn("Other Child", serialized)
+
+        loaded = self.client.get(self.url("happy-cleaning-overview", year=2025))
+        self.assertEqual(loaded.status_code, 200)
+        loaded_payload = loaded.json()
+        self.assertEqual([group["year"] for group in loaded_payload["years"]], [2025])
+        self.assertTrue(loaded_payload["years"][0]["loaded"])
+        station = loaded_payload["years"][0]["turnuses"][0]["events"][0]["stations"][0]
+        self.assertEqual(station["name"], "Historische Küche")
+        self.assertEqual(station["task_item_count"], 2)
+        self.assertIsNone(station["responsible"])
+        loaded_serialized = loaded.content.decode()
+        self.assertNotIn("Other carer", loaded_serialized)
+        self.assertNotIn("Historical carer", loaded_serialized)
+        self.assertNotIn("Other Child", loaded_serialized)
+
+    def test_todo_print_contract_returns_ordered_station_documents_without_people(self):
+        response = self.client.get(self.url(
+            "happy-cleaning-todo-print",
+            event_id=self.event.id,
+        ))
+
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {
-            "events": [
+            "event": {
+                "id": self.event.id,
+                "display_number": self.event.display_number,
+                "revision": self.event.revision,
+            },
+            "stations": [
                 {
-                    "id": self.event.id,
-                    "display_number": 1,
-                    "revision": 7,
-                    "can_delete": False,
+                    "id": self.station.id,
+                    "name": "Speisesaal",
+                    "document": self.station.content_document,
                 },
                 {
-                    "id": self.empty_event.id,
-                    "display_number": 2,
-                    "revision": 2,
-                    "can_delete": True,
+                    "id": self.empty_station.id,
+                    "name": "Küche",
+                    "document": self.empty_station.content_document,
                 },
             ],
         })
-        self.assertNotContains(response, "99")
+        serialized = response.content.decode()
+        self.assertNotIn("Mira", serialized)
+        self.assertNotIn("Ada Lovelace", serialized)
+        self.assertNotIn("Private Krankheit", serialized)
 
     def test_assignment_snapshot_exposes_only_search_station_child_and_presence_fields(self):
         response = self.client.get(self.url(
@@ -251,6 +388,7 @@ class HappyCleaningContractTests(TestCase):
                     "max_kids": 3,
                     "assigned_count": 2,
                     "free_seats": 1,
+                    "overbooked_count": 0,
                     "todo_progress_percentage": 50,
                     "children": [
                         {
@@ -281,6 +419,7 @@ class HappyCleaningContractTests(TestCase):
                     "max_kids": 2,
                     "assigned_count": 0,
                     "free_seats": 2,
+                    "overbooked_count": 0,
                     "todo_progress_percentage": None,
                     "children": [],
                 },
@@ -320,69 +459,20 @@ class HappyCleaningContractTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertNotContains(response, "Other Child", status_code=404)
 
-    def test_station_management_returns_editable_station_and_todo_projection(self):
-        HappyCleaningStation.objects.filter(pk=self.empty_station.pk).update(
-            responsible_profile=self.other_profile,
+    def test_retired_management_and_detail_pages_return_not_found(self):
+        self.assertEqual(
+            self.client.get(
+                f"/happy-cleaning/{self.event.id}/stations/"
+            ).status_code,
+            404,
         )
-
-        response = self.client.get(self.url(
-            "happy-cleaning-stations",
-            event_id=self.event.id,
-        ))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {
-            "event": {"id": self.event.id, "display_number": 1, "revision": 7},
-            "responsible_profiles": [
-                {"id": self.user.profil.id, "name": "Mira"},
-            ],
-            "copy_sources": [],
-            "stations": [
-                {
-                    "id": self.station.id,
-                    "version": 4,
-                    "name": "Speisesaal",
-                    "max_kids": 3,
-                    "meeting_point": "Vor dem Speisesaal",
-                    "wishes": "Fenster nicht vergessen",
-                    "responsible_profile_id": self.user.profil.id,
-                    "position": 1,
-                    "has_ever_had_assignment": True,
-                    "todo_progress_percentage": 50,
-                    "todos": [
-                        {
-                            "id": self.checked_todo.id,
-                            "text": "Tische wischen",
-                            "position": 1,
-                            "checked": True,
-                            "version": 3,
-                        },
-                        {
-                            "id": self.open_todo.id,
-                            "text": "Boden kehren",
-                            "position": 2,
-                            "checked": False,
-                            "version": 1,
-                        },
-                    ],
-                },
-                {
-                    "id": self.empty_station.id,
-                    "version": 2,
-                    "name": "Küche",
-                    "max_kids": 2,
-                    "meeting_point": "Vor der Küche",
-                    "wishes": "",
-                    "responsible_profile_id": None,
-                    "position": 2,
-                    "has_ever_had_assignment": False,
-                    "todo_progress_percentage": None,
-                    "todos": [],
-                },
-            ],
-        })
-        self.assertNotContains(response, "Other carer")
-
+        self.assertEqual(
+            self.client.get(
+                f"/happy-cleaning/{self.event.id}/stations/"
+                f"{self.station.id}/"
+            ).status_code,
+            404,
+        )
     def test_station_detail_returns_operational_fields_with_versions(self):
         HappyCleaningAssignment.objects.bulk_create([
             HappyCleaningAssignment(
@@ -394,7 +484,7 @@ class HappyCleaningContractTests(TestCase):
         ])
 
         response = self.client.get(self.url(
-            "happy-cleaning-station-detail",
+            "happy-cleaning-overview-station",
             event_id=self.event.id,
             station_id=self.station.id,
         ))
@@ -406,8 +496,34 @@ class HappyCleaningContractTests(TestCase):
                 "id": self.station.id,
                 "version": 4,
                 "name": "Speisesaal",
+                "max_kids": 3,
                 "meeting_point": "Vor dem Speisesaal",
                 "wishes": "Fenster nicht vergessen",
+                "has_ever_had_assignment": True,
+                "assigned_count": 2,
+                "overbooked_count": 0,
+                "content": [{
+                    "type": "task_list",
+                    "items": [
+                        {
+                            "id": self.checked_todo.id,
+                            "text": "Tische wischen",
+                            "checked": True,
+                            "version": 3,
+                        },
+                        {
+                            "id": self.open_todo.id,
+                            "text": "Boden kehren",
+                            "checked": False,
+                            "version": 1,
+                        },
+                    ],
+                }],
+                "document": self.station.content_document,
+                "is_historical": False,
+                "can_edit": True,
+                "can_delete": False,
+                "can_toggle_tasks": True,
                 "responsible": {"id": self.user.profil.id, "name": "Mira"},
                 "todo_checked_count": 1,
                 "todo_total_count": 2,
@@ -441,9 +557,149 @@ class HappyCleaningContractTests(TestCase):
                     },
                 ],
             },
+            "responsible_profiles": [
+                {"id": self.user.profil.id, "name": "Mira"},
+            ],
+            "copy_targets": [{
+                "id": self.empty_event.id,
+                "display_number": 2,
+                "revision": 2,
+                "label": "Happy Cleaning 2",
+            }],
         })
         self.assertNotContains(response, "Other Child")
         self.assertNotContains(response, "Private Krankheit")
+
+    def test_overbooked_count_is_exact_across_read_contracts(self):
+        HappyCleaningStation.objects.filter(pk=self.station.pk).update(max_kids=1)
+
+        assignment = self.client.get(self.url(
+            "happy-cleaning-assignment",
+            event_id=self.event.id,
+        )).json()
+        overview = self.client.get(self.url(
+            "happy-cleaning-overview",
+        )).json()
+        detail = self.client.get(self.url(
+            "happy-cleaning-overview-station",
+            event_id=self.event.id,
+            station_id=self.station.id,
+        )).json()
+
+        assignment_station = next(
+            station for station in assignment["stations"]
+            if station["id"] == self.station.id
+        )
+        overview_station = overview["years"][0]["turnuses"][0]["events"][0]["stations"][0]
+        self.assertEqual(assignment_station["overbooked_count"], 1)
+        self.assertEqual(assignment_station["free_seats"], 0)
+        self.assertEqual(overview_station["overbooked_count"], 1)
+        self.assertEqual(detail["station"]["overbooked_count"], 1)
+
+    def test_historical_station_detail_redacts_people_from_response(self):
+        historical_turnus = Turnus.objects.create(
+            turnus_nr=3,
+            turnus_beginn=date(2025, 7, 1),
+        )
+        historical_event = HappyCleaning.objects.create(
+            turnus=historical_turnus,
+            display_number=1,
+        )
+        historical_profile = User.objects.create_user(
+            username="historical-carer",
+        ).profil
+        historical_profile.rufname = "Private Carer"
+        historical_profile.turnus = historical_turnus
+        historical_profile.save(update_fields=["rufname", "turnus"])
+        historical_child = Kinder.objects.create(
+            kid_index="HIST-1",
+            kid_vorname="Private",
+            kid_nachname="Child",
+            turnus=historical_turnus,
+        )
+        historical_station = HappyCleaningStation.objects.create(
+            happy_cleaning=historical_event,
+            name="Historische Küche",
+            max_kids=7,
+            meeting_point="Altbau",
+            wishes="Leise arbeiten",
+            responsible_profile=historical_profile,
+            position=1,
+            content_document={
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [{"type": "text", "text": "Fenster öffnen"}],
+                    },
+                    {
+                        "type": "taskList",
+                        "content": [{
+                            "type": "taskItem",
+                            "attrs": {"id": 901, "checked": True, "version": 2},
+                            "content": [{
+                                "type": "paragraph",
+                                "content": [{"type": "text", "text": "Boden kehren"}],
+                            }],
+                        }],
+                    },
+                ],
+            },
+        )
+        HappyCleaningAssignment.objects.create(
+            happy_cleaning=historical_event,
+            station=historical_station,
+            child=historical_child,
+        )
+
+        response = self.client.get(self.url(
+            "happy-cleaning-overview-station",
+            event_id=historical_event.id,
+            station_id=historical_station.id,
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        station = response.json()["station"]
+        self.assertEqual(station["content"], [
+            {"type": "paragraph", "text": "Fenster öffnen"},
+            {
+                "type": "task_list",
+                "items": [{
+                    "id": 901,
+                    "text": "Boden kehren",
+                    "checked": True,
+                    "version": 2,
+                }],
+            },
+        ])
+        self.assertEqual(station["todos"], [{
+            "id": 901,
+            "text": "Boden kehren",
+            "checked": True,
+            "version": 2,
+            "position": 1,
+        }])
+        self.assertTrue(station["is_historical"])
+        self.assertFalse(station["can_toggle_tasks"])
+        self.assertNotIn("responsible", station)
+        self.assertNotIn("children", station)
+        self.assertEqual(response.json()["copy_targets"], [
+            {
+                "id": self.event.id,
+                "display_number": 1,
+                "revision": 7,
+                "label": "Happy Cleaning 1",
+            },
+            {
+                "id": self.empty_event.id,
+                "display_number": 2,
+                "revision": 2,
+                "label": "Happy Cleaning 2",
+            },
+        ])
+        serialized = response.content.decode()
+        self.assertNotIn("Private Carer", serialized)
+        self.assertNotIn("Private Child", serialized)
 
     def test_station_detail_hides_station_ids_outside_the_event(self):
         other_station = HappyCleaningStation.objects.create(
@@ -455,7 +711,7 @@ class HappyCleaningContractTests(TestCase):
         )
 
         response = self.client.get(self.url(
-            "happy-cleaning-station-detail",
+            "happy-cleaning-overview-station",
             event_id=self.event.id,
             station_id=other_station.id,
         ))

@@ -40,6 +40,7 @@ export const sidebarItems = [
     icon: ClipboardList,
     children: [
       { label: 'Alle Kinder', href: '/all_kids' },
+      { label: 'Gut zu wissen', href: '/gut-zu-wissen/' },
       { label: 'Mörderspielliste', href: '/murdergame' },
       { label: 'Zugabreise', href: '/zugabreise' },
       { label: 'Zuganreise', href: '/zuganreise' },
@@ -48,9 +49,10 @@ export const sidebarItems = [
     ],
   },
   {
-    label: 'Einteilungen',
+    label: 'Schwerpunkte',
     icon: ListChecks,
     children: [
+      { label: 'Übersicht', href: '/swp-dashboard/' },
       { label: 'SWP 1', href: '/swp-einteilung-w1' },
       { label: 'SWP 2', href: '/swp-einteilung-w2' },
     ],
@@ -63,7 +65,6 @@ export const sidebarItems = [
       { label: 'Nummernliste', href: '/happy-cleaning/print/' },
     ],
   },
-  { label: 'SWPs', href: '/swp-dashboard/', icon: Sparkles },
   { label: 'Auslagerorte', href: '/auslagerorte-list/', icon: MapPinned },
   { label: 'Küche', href: '/kitchen', icon: ChefHat },
   { label: 'Spiele', href: gamesUrl, icon: Gamepad2, external: true },
@@ -212,7 +213,7 @@ function withHappyCleaningEvents(events) {
 export function AppSidebar({ happyCleaningEvents = [] }) {
   const items = withHappyCleaningEvents(happyCleaningEvents);
   return (
-    <Sidebar side="left" collapsible="icon" className="app-sidebar">
+    <Sidebar side="left" collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -249,7 +250,7 @@ export function AppSidebar({ happyCleaningEvents = [] }) {
           <SidebarMenuItem>
             <SidebarMenuButton
               render={<a href="/profil/" />}
-              isActive={isCurrent('/profil/')}
+              isActive={isCurrent('/profil/', '/profil/')}
               tooltip="Profil"
             >
               <UserRound aria-hidden="true" />

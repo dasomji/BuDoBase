@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { Card, Column, Columns, FieldList, findById, RestForm, SearchTable } from '../components';
+import { Card, Column, DataTable, FieldList, findById, ResponsiveCardGrid, RestForm } from '../components';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { FirstAidGallery } from './first-aid-gallery';
 import {
@@ -64,7 +67,7 @@ export function KidInteractionForm({ kid, token, onSaved }) {
             </p>
           </div>
           <div id="geld-form" className={field === 'amount' ? '' : 'hidden'}>
-            <p><label htmlFor="id_amount" onClick={show('first_aid')} title="Zu Erste Hilfe wechseln">Taschengeld</label><input id="id_amount" name="amount" type="number" min="0" step="0.01" placeholder="Taschengeld..." /></p>
+            <p><label htmlFor="id_amount" onClick={show('first_aid')} title="Zu Erste Hilfe wechseln">Taschengeld</label><Input id="id_amount" name="amount" type="number" min="0" step="0.01" placeholder="Taschengeld..." /></p>
           </div>
           <div id="erste-hilfe-form" className={field === 'first_aid' ? '' : 'hidden'}>
             <p className="first-aid-input-field">
@@ -87,7 +90,7 @@ export function KidInteractionForm({ kid, token, onSaved }) {
             </p>
           </div>
           {field === 'amount'
-            ? <><button className="money-action money-withdraw" type="submit" name="money_action" value="withdraw">Abbuchen</button><button className="money-action money-topup" type="submit" name="money_action" value="topup">Aufladen</button></>
+            ? <><Button className="money-action" variant="success" type="submit" name="money_action" value="withdraw">Abbuchen</Button><Button className="money-action" variant="destructive" type="submit" name="money_action" value="topup">Aufladen</Button></>
             : <button className="interaction-send-button" type="submit" name={field === 'first_aid' ? 'interaction_kind' : undefined} value={field === 'first_aid' ? 'first_aid' : undefined} aria-label={field === 'first_aid' ? 'EH-Eintrag senden' : undefined}><img src="/static/img/send-button.svg" alt={field === 'first_aid' ? '' : 'Senden'} /></button>}
         </RestForm>
       </div>
@@ -98,48 +101,55 @@ export function KidInteractionForm({ kid, token, onSaved }) {
 export const kidColumns = [
   { key: 'name', label: 'Name', render: linkKid },
   { key: 'budo_family', label: 'Familie', render: row => displayOrPlaceholder(row.budo_family) },
-  { key: 'special_family', label: 'Haus', render: row => displayOrPlaceholder(row.special_family) },
-  { key: 'sex_short', label: '⚧' },
+  { key: 'special_family', label: 'Haus', priority: 'low', render: row => displayOrPlaceholder(row.special_family) },
+  { key: 'sex_short', label: '⚧', priority: 'low' },
   { key: 'age', label: 'Alter', className: 'number-cell', render: row => <>{row.birthday_during_turnus && '🥳 '}{displayOrPlaceholder(row.age)}</> },
-  { key: 'weeks', label: 'Wochen' },
+  { key: 'weeks', label: 'Wochen', priority: 'low' },
   { key: 'focus_w1', label: 'SWP 1' },
   { key: 'focus_w2', label: 'SWP 2' },
-  { key: 'siblings', label: 'Geschwister', render: row => displayOrPlaceholder(row.siblings) },
-  { key: 'tent_request', label: 'Zeltwunsch', render: row => displayOrPlaceholder(row.tent_request) },
+  { key: 'siblings', label: 'Geschwister', priority: 'low', render: row => displayOrPlaceholder(row.siblings) },
+  { key: 'tent_request', label: 'Zeltwunsch', priority: 'low', render: row => displayOrPlaceholder(row.tent_request) },
   { key: 'food', label: 'Ernährung' },
   { key: 'drugs', label: 'Medikamente', render: row => displayOrPlaceholder(row.drugs) },
   { key: 'illness', label: 'Gesundheitliches', render: row => displayOrPlaceholder(row.illness) },
-  { key: 'note', label: 'Anmerkungen', render: row => <TrustedHtml value={row.note} /> },
-  { key: 'booking_note', label: 'Anmerkungen (Buchung)', render: row => <TrustedHtml value={row.booking_note} /> },
+  { key: 'note', label: 'Anmerkungen', priority: 'low', render: row => <TrustedHtml value={row.note} /> },
+  { key: 'booking_note', label: 'Anmerkungen (Buchung)', priority: 'low', render: row => <TrustedHtml value={row.booking_note} /> },
 ];
 
 export function KidsPage({ data }) {
   const rows = data.kids.map(kid => ({ ...kid, filterText: kid.full_name }));
-  return <main className="table-only" id="body-container"><SearchTable columns={kidColumns} rows={rows} showFilter /></main>;
+  return <main className="all-kids-page table-only" id="body-container"><DataTable columns={kidColumns} rows={rows} showFilter stickyHeader stickyFirstColumn verticalScroll /></main>;
 }
 
 export function KidDetailPage({ data, id, mutate, onSaved }) {
+  const showError = useErrorToast();
   const kid = findById(data.kids, id);
   if (!kid) return <NotFoundPage />;
-  const deposit = action => mutate('/update_pfand/', { id: kid.id, action });
+  const deposit = async action => {
+    try {
+      await mutate('/update_pfand/', { id: kid.id, action });
+    } catch {
+      showError('Das Pfand konnte nicht gespeichert werden.');
+    }
+  };
   return (
     <FirstAidGallery entries={[...(kid.notes || []), ...(kid.first_aid_entries || [])]} childName={kid.full_name}>
-      <Columns className="kid-detail-grid">
-        <Column id="left-column">
+      <ResponsiveCardGrid independentColumns>
+        <Column id="left-column" className="min-w-0 gap-4">
           <Card title={`${kid.full_name}${kid.present ? '' : ' ❌'}`} id="kinderinfos"><FieldList items={[["Geschlecht", kid.sex], ["Alter", kid.age], ["Geburtstag", formatKidBirthday(kid)], ["Aufenthaltsdauer", `${kid.weeks}-wöchig`], ["Geschwister", kid.siblings], ["Zeltwunsch", kid.tent_request], ["War schon mal im Bunten Dorf", yesNo(kid.budo_experience)]]} /></Card>
-          <Card title="BuDo" id="budo-container"><FieldList items={[["Turnus", data.turnus?.label], ["Budo Familie", kid.budo_family], ["Haus", kid.special_family], ["SWP 1", kid.focus_w1], ["SWP 2", kid.focus_w2]]} /><div className="react-actions"><a className="button" href={`/${kid.present ? 'check_out' : 'check_in'}/${kid.id}`}>{kid.present ? 'Auschecken' : 'Einchecken'}</a></div></Card>
+          <Card title="BuDo" id="budo-container" actions={<Button href={`/${kid.present ? 'check_out' : 'check_in'}/${kid.id}`}>{kid.present ? 'Auschecken' : 'Einchecken'}</Button>}><FieldList items={[["Turnus", data.turnus?.label], ["Budo Familie", kid.budo_family], ["Haus", kid.special_family], ["SWP 1", kid.focus_w1], ["SWP 2", kid.focus_w2]]} /></Card>
         </Column>
-        <Column id="center-column">
+        <Column id="center-column" className="min-w-0 gap-4">
           <Card title="Gesundheitsinfos" id="health_info"><FieldList items={[["Sozialversicherungsnummer", kid.social_security_number], ["Krankheiten", displayOrPlaceholder(kid.illness)], ["Medikamente", displayOrPlaceholder(kid.drugs)], ["Vegetarisch", kid.vegetarian], ["Ernährungsvorgaben", kid.special_food], ["Schwimmkenntnisse", kid.swimmer], ["Einverständnis für ärztliche Behandlung", requiredHealthYesNo(kid.consent)], ["Rezeptfreie Medikamente", requiredHealthValue(kid.over_the_counter_medication)], ["Medikamente auf Rezept", requiredHealthValue(kid.prescription_medication)], ["Tetanusimpfung", requiredHealthValue(kid.tetanus)], ["Zeckenimpfung", requiredHealthValue(kid.tick_vaccine)]]} /></Card>
           <Card title="Familie" id="family_info"><FieldList items={[["Organisation", kid.organization], ["Anmelder:in", kid.registrant_name], ["Anmelder:in Email", <a href={`mailto:${kid.registrant_email}`}>{kid.registrant_email}</a>], ["Anmelder:in Mobil", <a href={`tel:${kid.registrant_phone}`}>{kid.registrant_phone}</a>], ["Hauptversichert bei", kid.insured_with], ["Notfallkontakte", kid.emergency_contacts]]} /></Card>
         </Column>
-        <Column id="right-column">
+        <Column id="right-column" className="min-w-0 gap-4">
           <Card title="Notizen" id="notizen"><FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} /><ul>{kid.notes.length ? kid.notes.map(note => <NoteEntry entry={note} childName={kid.full_name} key={note.id} />) : <li>Noch keine Notizen.</li>}</ul></Card>
           <Card title="Erste Hilfe" id="erste-hilfe"><ul>{kid.first_aid_entries?.length ? kid.first_aid_entries.map(entry => <FirstAidEntry entry={entry} childName={kid.full_name} key={entry.id} />) : <li>Noch keine EH-Einträge.</li>}</ul></Card>
           <Card title={`Taschengeld: ${money(kid.remaining_money)}${kid.remaining_money < 5 ? ' 🚨' : ''}`} id="taschengeld"><ul>{kid.transactions.length ? kid.transactions.map(item => <li key={item.id}>{item.author} am {formatGermanDate(item.date)}: {money(item.amount)}</li>) : <li>Dieses Kind ist arm.</li>}</ul></Card>
-          <Card title={`Pfand: ${kid.deposit}`} id="pfand"><div className="react-actions deposit-actions"><button className="button" type="button" onClick={() => deposit('increase')}>+ Pfand</button><button className="button" type="button" onClick={() => deposit('decrease')}>− Pfand</button></div></Card>
+          <Card title={`Pfand: ${kid.deposit}`} id="pfand" actions={<><Button type="button" onClick={() => deposit('increase')}>+ Pfand</Button><Button type="button" variant="secondary" onClick={() => deposit('decrease')}>− Pfand</Button></>} />
         </Column>
-      </Columns>
+      </ResponsiveCardGrid>
       <KidInteractionForm kid={kid} token={data.csrf_token} onSaved={onSaved} />
     </FirstAidGallery>
   );

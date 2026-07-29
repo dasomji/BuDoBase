@@ -1,9 +1,14 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { Toaster } from '../components/ui/toast';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute } from '../routes';
 import { SimpleUploadPage, TurnusUploadPage } from './maintenance';
+
+const render = ui => testingLibraryRender(ui, {
+  wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
+});
 
 describe('maintenance upload pages', () => {
   afterEach(() => {
@@ -97,7 +102,8 @@ describe('maintenance upload pages', () => {
     });
 
     resolveRequest({ ok: false, json: async () => ({ ok: false, errors: ['Arbeitsmappe ungültig.'] }) });
-    expect(await screen.findByRole('alert')).toHaveTextContent('Arbeitsmappe ungültig.');
+    const toast = await screen.findByText('Arbeitsmappe ungültig.', { selector: '.app-toast-description' });
+    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
     await waitFor(() => expect(submit).not.toBeDisabled());
     expect(screen.getByLabelText('Excel-File').files[0]).toBe(file);
   });

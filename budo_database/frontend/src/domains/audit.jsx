@@ -1,6 +1,19 @@
 import { useState } from 'react';
 
-import { Card, Column, Columns } from '../components';
+import {
+  Card,
+  Column,
+  Columns,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+} from '../components';
+import { Button } from '../components/ui/button';
+import { useErrorToast } from '../components/ui/toast';
 
 
 function queryUrl(filters, page, pageSize) {
@@ -26,7 +39,7 @@ function FilterField({ label, name, value, children, type = 'text' }) {
 function AuditFilters({ data }) {
   const { filters = {}, filter_options: options = {} } = data;
   return (
-    <form action="/audit/" method="get" className="form-grid audit-filters">
+    <form action="/audit/" method="get" className="form-grid grid-cols-[repeat(auto-fit,minmax(11.25rem,1fr))] items-end">
       <FilterField label="Turnus" name="turnus">
         <select name="turnus" defaultValue={filters.turnus || ''}>
           {(options.turnuses || []).map(turnus => (
@@ -56,50 +69,50 @@ function AuditFilters({ data }) {
         </select>
       </FilterField>
       <FilterField label="Ressourcen-ID" name="resource_id" value={filters.resource_id} />
-      <div className="react-actions">
-        <button className="button" type="submit">Filtern</button>
-        <a className="button" href="/audit/">Zurücksetzen</a>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button type="submit">Filtern</Button>
+        <Button href="/audit/" variant="secondary">Zurücksetzen</Button>
       </div>
     </form>
   );
 }
 
 function AuditTable({ events }) {
-  if (!events.length) return <p className="audit-empty">Keine Audit-Ereignisse gefunden.</p>;
+  if (!events.length) return <p>Keine Audit-Ereignisse gefunden.</p>;
   return (
-    <div className="table-container">
-      <table id="audit-table">
-        <thead><tr className="table-header">
-          <th>Zeit</th><th>Akteur:in</th><th>Aktion</th><th>Ergebnis</th>
-          <th>Ressource</th><th>IP</th><th>User-Agent</th><th>Details</th>
-        </tr></thead>
-        <tbody>{events.map(event => (
-          <tr className="table_row" key={event.id}>
-            <td>{event.timestamp}</td>
-            <td>{event.actor.label}{event.actor.id ? ` (#${event.actor.id})` : ''}</td>
-            <td>{event.action}</td>
-            <td>{event.outcome}</td>
-            <td>{event.resource.label} ({event.resource.type} #{event.resource.id})</td>
-            <td>{event.client_ip || '—'}</td>
-            <td>{event.user_agent || '—'}</td>
-            <td><code>{JSON.stringify(event.details)}</code></td>
-          </tr>
-        ))}</tbody>
-      </table>
-    </div>
+    <TableScroll stickyHeader>
+      <Table>
+        <TableHeader><TableRow>
+          <TableHead scope="col">Zeit</TableHead><TableHead scope="col">Akteur:in</TableHead><TableHead scope="col">Aktion</TableHead><TableHead scope="col">Ergebnis</TableHead>
+          <TableHead scope="col">Ressource</TableHead><TableHead scope="col">IP</TableHead><TableHead scope="col">User-Agent</TableHead><TableHead scope="col">Details</TableHead>
+        </TableRow></TableHeader>
+        <TableBody>{events.map(event => (
+          <TableRow key={event.id}>
+            <TableCell>{event.timestamp}</TableCell>
+            <TableCell>{event.actor.label}{event.actor.id ? ` (#${event.actor.id})` : ''}</TableCell>
+            <TableCell>{event.action}</TableCell>
+            <TableCell>{event.outcome}</TableCell>
+            <TableCell>{event.resource.label} ({event.resource.type} #{event.resource.id})</TableCell>
+            <TableCell>{event.client_ip || '—'}</TableCell>
+            <TableCell>{event.user_agent || '—'}</TableCell>
+            <TableCell><code className="whitespace-pre-wrap [overflow-wrap:anywhere]">{JSON.stringify(event.details)}</code></TableCell>
+          </TableRow>
+        ))}</TableBody>
+      </Table>
+    </TableScroll>
   );
 }
 
 function Pagination({ filters, pagination }) {
   if (!pagination || pagination.pages <= 1) return null;
   return (
-    <nav className="audit-pagination" aria-label="Audit-Seiten">
+    <nav className="flex items-center justify-center gap-3 p-3" aria-label="Audit-Seiten">
       {pagination.has_previous && (
-        <a className="button" href={queryUrl(filters, pagination.page - 1, pagination.page_size)}>Vorherige Seite</a>
+        <Button href={queryUrl(filters, pagination.page - 1, pagination.page_size)} variant="secondary">Vorherige Seite</Button>
       )}
       <span>Seite {pagination.page} von {pagination.pages}</span>
       {pagination.has_next && (
-        <a className="button" href={queryUrl(filters, pagination.page + 1, pagination.page_size)}>Nächste Seite</a>
+        <Button href={queryUrl(filters, pagination.page + 1, pagination.page_size)} variant="secondary">Nächste Seite</Button>
       )}
     </nav>
   );
@@ -114,14 +127,13 @@ function exportFilename(response) {
 export function AuditPage({ data, fetchImpl = fetch }) {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState('');
+  const showError = useErrorToast();
   if (!data.authorized) {
     return <Columns><Column id="single-column"><Card title="Kein Zugriff"><p>Dir fehlt die Berechtigung, Audit-Ereignisse anzusehen.</p></Card></Column></Columns>;
   }
   const download = async () => {
     if (!privacyAccepted || exporting) return;
     setExporting(true);
-    setExportError('');
     try {
       const response = await fetchImpl(data.export_url, { credentials: 'same-origin' });
       if (!response.ok) throw new Error(`Export fehlgeschlagen (${response.status})`);
@@ -132,28 +144,26 @@ export function AuditPage({ data, fetchImpl = fetch }) {
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setExportError(error.message || 'Export fehlgeschlagen');
+      showError(error.message || 'Export fehlgeschlagen');
     } finally {
       setExporting(false);
     }
   };
   return (
-    <main className="audit-page" id="body-container">
-      <section className="card audit-controls">
-        <h2>Audit-Ereignisse filtern</h2>
+    <main className="block p-3" id="body-container">
+      <Card title="Audit-Ereignisse filtern">
         <AuditFilters data={data} />
-        <div className="audit-export">
+        <div className="mt-3 border-t border-current pt-3">
           <p><strong>Datenschutzhinweis:</strong> Der Export enthält personenbezogene Daten wie Namen, IP-Adressen und User-Agents. Vor einer externen Weitergabe oder einem Upload zu einer KI prüfen.</p>
-          <label className="checkbox-row">
+          <label className="checkbox-row mb-2">
             <input type="checkbox" checked={privacyAccepted} onChange={event => setPrivacyAccepted(event.target.checked)} />
             Ich habe verstanden, dass der Export personenbezogene Daten enthält.
           </label>
-          <button className="button" type="button" disabled={!privacyAccepted || exporting} onClick={download}>
+          <Button type="button" disabled={!privacyAccepted || exporting} onClick={download}>
             {exporting ? 'Export wird erstellt…' : 'Audit-Log herunterladen'}
-          </button>
-          {exportError && <p role="alert" className="error">{exportError}</p>}
+          </Button>
         </div>
-      </section>
+      </Card>
       <p>{data.pagination.total} Ereignisse</p>
       <AuditTable events={data.events} />
       <Pagination filters={data.filters} pagination={data.pagination} />

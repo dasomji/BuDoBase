@@ -1,0 +1,37 @@
+{
+  "baseUrl": "http://127.0.0.1:8010",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "database": "disposable copy of design-system-review.sqlite3",
+  "selected": {
+    "title": "QA Mobile",
+    "expanded": "true",
+    "icon": "−",
+    "contentInert": false,
+    "numberInputVisible": true,
+    "headerFilterBeforeHover": "none",
+    "headerCenter": {
+      "x": 195,
+      "y": 279.9609375
+    },
+    "headerFilterOnHover": "brightness(1.1)"
+  },
+  "assignmentCompleted": true,
+  "reselected": {
+    "title": "QA Mobile",
+    "expanded": "true",
+    "icon": "−",
+    "contentInert": false,
+    "numberInputVisible": true
+  },
+  "transparent": {
+    "title": "Woche 1",
+    "expanded": "true",
+    "paddingInlineStart": "0px",
+    "paddingInlineEnd": "0px",
+    "cardLeft": 20,
+    "contentLeft": 20
+  }
+}

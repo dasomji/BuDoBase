@@ -1,10 +1,30 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Children, useEffect, useId, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { SearchIcon } from 'lucide-react';
-import 'leaflet/dist/leaflet.css';
 
+import { Button, buttonVariants } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { useToastManager } from '@/components/ui/toast';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+} from '@/components/ui/table';
+import { useErrorToast, useToastManager } from '@/components/ui/toast';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+export {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+};
 
 export function findById(items, id) {
   return items.find(item => Number(item.id) === Number(id));
@@ -103,6 +123,7 @@ export function GlobalSearch({ data, onNavigate = path => window.location.assign
 export function Header({ title, authenticated, searchData, action }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const headerRef = useRef(null);
+  const mobile = useIsMobile();
   useEffect(() => {
     const updateHeaderHeight = () => {
       const height = headerRef.current?.getBoundingClientRect().height || 0;
@@ -118,52 +139,94 @@ export function Header({ title, authenticated, searchData, action }) {
       document.documentElement.style.removeProperty('--app-header-height');
     };
   }, [searchOpen]);
+  const titleNode = <div id="headertitle" key="title"><h1>{title}</h1></div>;
+  const sidebarTrigger = (
+    <SidebarTrigger key="sidebar-trigger" id="menu-button" size="icon" aria-label="Sidebar ein- oder ausklappen" />
+  );
+  const searchToggle = (
+    <Button
+      key="search-toggle"
+      id="search-button"
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label={searchOpen ? 'Suche schließen' : 'Suche öffnen'}
+      aria-controls="headersearch"
+      aria-expanded={searchOpen}
+      onClick={() => setSearchOpen(open => !open)}
+    >
+      <SearchIcon aria-hidden="true" />
+    </Button>
+  );
+  const search = <GlobalSearch key="search" data={searchData} />;
+  const actionNode = action ? <div id="headerbutton" key="action">{action}</div> : null;
+  const authenticatedContent = mobile
+    ? [titleNode, actionNode, searchToggle, sidebarTrigger, search]
+    : [sidebarTrigger, titleNode, search, actionNode];
+
   return (
     <header id="headermenu" ref={headerRef}>
-      <div id="header-content" className={searchOpen ? 'search-open' : ''}>
+      <div
+        id="header-content"
+        className={[
+          searchOpen ? 'search-open' : '',
+          action ? 'has-action' : '',
+        ].filter(Boolean).join(' ')}
+      >
         {authenticated
-          ? <SidebarTrigger id="menu-button" aria-label="Sidebar ein- oder ausklappen" />
-          : <div id="logo"><a href="/dashboard/"><Logo /></a></div>}
-        <div id="headertitle"><h1>{title}</h1></div>
-        {authenticated && (
-          <button
-            id="search-button"
-            type="button"
-            aria-label={searchOpen ? 'Suche schließen' : 'Suche öffnen'}
-            aria-controls="headersearch"
-            aria-expanded={searchOpen}
-            onClick={() => setSearchOpen(open => !open)}
-          >
-            <SearchIcon aria-hidden="true" />
-          </button>
-        )}
-        {authenticated && <GlobalSearch data={searchData} />}
-        {authenticated && action && <div id="headerbutton">{action}</div>}
+          ? authenticatedContent
+          : [<div id="logo" key="logo"><a href="/dashboard/"><Logo /></a></div>, titleNode]}
       </div>
     </header>
   );
 }
 
-export function Card({ title, children, id, initiallyClosed = false, className = '', headerAction = null }) {
-  const mobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 759px)').matches;
-  const [closed, setClosed] = useState(initiallyClosed || mobile);
+export function Card({
+  title,
+  children,
+  id,
+  initiallyClosed = false,
+  className = '',
+  headerAction = null,
+  actions = null,
+  showToggleIcon,
+  as: Container = 'section',
+  headingLevel = 2,
+  expanded,
+  onExpandedChange,
+}) {
+  const mobile = useIsMobile();
+  const contentId = useId();
+  const [internallyClosed, setInternallyClosed] = useState(initiallyClosed || mobile);
+  const controlled = expanded !== undefined;
+  const closed = controlled ? !expanded : internallyClosed;
+  const toggleIconVisible = showToggleIcon ?? className.split(/\s+/).includes('transparent');
+  useEffect(() => {
+    if (!controlled) setInternallyClosed(initiallyClosed || mobile);
+  }, [controlled, initiallyClosed, mobile]);
+  const Heading = `h${headingLevel}`;
+  const toggle = () => {
+    if (controlled) onExpandedChange?.(!expanded);
+    else setInternallyClosed(value => !value);
+  };
   return (
-    <section className={`card ${closed ? 'closed-card' : ''} ${className}`} id={id}>
+    <Container className={`card ${closed ? 'closed-card' : ''} ${className}`} id={id}>
       <div
         className="info-header-container card-toggle"
         role="button"
         tabIndex={0}
         aria-expanded={!closed}
+        aria-controls={contentId}
         aria-label={`${title} ${closed ? 'öffnen' : 'schließen'}`}
-        onClick={() => setClosed(value => !value)}
+        onClick={toggle}
         onKeyDown={event => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            setClosed(value => !value);
+            toggle();
           }
         }}
       >
-        <h2>{title}</h2>
+        <Heading>{title}</Heading>
         {headerAction && (
           <span
             className="card-header-action"
@@ -173,19 +236,87 @@ export function Card({ title, children, id, initiallyClosed = false, className =
             {headerAction}
           </span>
         )}
-        <span className="icon" aria-hidden="true">
-          <span className="open-icon">{closed ? '+' : '−'}</span>
-        </span>
+        {toggleIconVisible && (
+          <span className="icon" aria-hidden="true">{closed ? '+' : '−'}</span>
+        )}
       </div>
-      <div className="card-info-container" aria-hidden={closed} inert={closed || undefined}>
-        <div className="card-info-content">{children}</div>
+      <div className="card-info-container" id={contentId} aria-hidden={closed} inert={closed || undefined}>
+        <div className="card-info-content">
+          {children}
+          {actions && (
+            <footer className="flex flex-wrap justify-end gap-2 pt-3 print:hidden" data-slot="card-actions">
+              {actions}
+            </footer>
+          )}
+        </div>
       </div>
-    </section>
+    </Container>
   );
 }
 
 export function Columns({ children, className = '' }) {
-  return <main className={`flex-container ${className}`} id="body-container">{children}</main>;
+  return <main className={className} id="body-container">{children}</main>;
+}
+
+const responsiveCardMinWidthRem = 20;
+const responsiveCardGapRem = 1;
+
+function responsiveCardColumnCount(width) {
+  const rootFontSize = typeof window === 'undefined'
+    ? 16
+    : Number.parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16;
+  const minimumCardWidth = responsiveCardMinWidthRem * rootFontSize;
+  const gap = responsiveCardGapRem * rootFontSize;
+  if (width >= minimumCardWidth * 3 + gap * 2) return 3;
+  if (width >= minimumCardWidth * 2 + gap) return 2;
+  return 1;
+}
+
+function IndependentResponsiveCardGrid({ children, className, maxColumns }) {
+  const gridRef = useRef(null);
+  const [columnCount, setColumnCount] = useState(1);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return undefined;
+    const updateColumnCount = width => setColumnCount(Math.min(maxColumns, responsiveCardColumnCount(width)));
+    updateColumnCount(grid.getBoundingClientRect().width);
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(entries => {
+      const entry = entries.find(item => item.target === grid);
+      if (entry) updateColumnCount(entry.contentRect.width);
+    });
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, [maxColumns]);
+
+  const cardsByColumn = Array.from({ length: columnCount }, () => []);
+  Children.toArray(children).forEach((child, index) => {
+    cardsByColumn[index % columnCount].push(child);
+  });
+
+  return (
+    <Columns className={`responsive-card-grid grid min-w-0 grid-cols-1 ${className}`}>
+      <div className={`grid min-w-0 grid-cols-1 items-start gap-4 ${maxColumns >= 2 ? '@[41rem]:grid-cols-2' : ''} ${maxColumns >= 3 ? '@[62rem]:grid-cols-3' : ''}`} ref={gridRef}>
+        {cardsByColumn.map((cards, index) => (
+          <div className="flex min-w-0 flex-col gap-4" data-card-column={index + 1} key={index}>
+            {cards}
+          </div>
+        ))}
+      </div>
+    </Columns>
+  );
+}
+
+export function ResponsiveCardGrid({ children, className = '', independentColumns = false, maxColumns = 3 }) {
+  if (independentColumns) {
+    return <IndependentResponsiveCardGrid className={className} maxColumns={maxColumns}>{children}</IndependentResponsiveCardGrid>;
+  }
+  return (
+    <Columns className={`grid min-w-0 grid-cols-1 items-start gap-4 min-[901px]:grid-cols-3 ${className}`}>
+      {children}
+    </Columns>
+  );
 }
 
 export function Column({ children, id, className = '' }) {
@@ -213,7 +344,17 @@ function compareTableValues(left, right) {
   return leftText.localeCompare(rightText, 'de', { numeric: true, sensitivity: 'base' });
 }
 
-export function SearchTable({ columns, rows, showFilter = false, id = 'kids-table', empty = 'Keine Einträge', beforeFilter = null }) {
+export function DataTable({
+  columns,
+  rows,
+  showFilter = false,
+  id,
+  empty = 'Keine Einträge',
+  beforeFilter = null,
+  stickyHeader = false,
+  stickyFirstColumn = false,
+  verticalScroll = false,
+}) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState(null);
   const visibleRows = useMemo(() => {
@@ -237,24 +378,31 @@ export function SearchTable({ columns, rows, showFilter = false, id = 'kids-tabl
   return (
     <>
       {(beforeFilter || showFilter) && (
-        <div className={beforeFilter ? 'table-sticky-controls' : ''}>
+        <div
+          className={`table-controls${beforeFilter ? ' max-[900px]:sticky max-[900px]:top-[var(--app-header-height,0px)] max-[900px]:z-5 max-[900px]:flex-none' : ''}`}
+          data-slot={beforeFilter ? 'table-sticky-controls' : undefined}
+        >
           {beforeFilter}
           {showFilter && <input className="filter-table" type="search" placeholder="Kinder filtern..." aria-label="Kinder filtern" value={query} onChange={event => setQuery(event.target.value)} />}
         </div>
       )}
-      <div className="table-container">
-        <table className="data-table" id={id}>
-          <thead><tr className="table-header">{columns.map((column, index) => {
+      <TableScroll
+        stickyHeader={stickyHeader}
+        stickyFirstColumn={stickyFirstColumn}
+        verticalScroll={verticalScroll}
+      >
+        <Table id={id}>
+          <TableHeader><TableRow>{columns.map(column => {
             const direction = sort?.key === column.key ? sort.direction : undefined;
             const nextDirection = direction === 'ascending' ? 'absteigend' : direction === 'descending' ? 'aufsteigend' : '';
-            return <th key={column.key} className={index === 0 ? 'headcol' : ''} aria-sort={direction}>{column.sortable === false ? column.label : <button className="table-sort-button" type="button" aria-label={`${column.label}${nextDirection ? ` ${nextDirection}` : ''} sortieren`} onClick={() => sortBy(column.key)}><span>{column.label}</span>{direction && <span className="sort-indicator" aria-hidden="true">{direction === 'ascending' ? '▲' : '▼'}</span>}</button>}</th>;
-          })}</tr></thead>
-          <tbody>
-            {visibleRows.map(row => <tr className="table_row" key={row.id}>{columns.map((column, index) => <td className={`${column.className || 'text-cell'} ${index === 0 ? 'headcol' : ''}`} key={column.key}>{column.render ? column.render(row) : row[column.key]}</td>)}</tr>)}
-            {!visibleRows.length && <tr><td colSpan={columns.length}>{empty}</td></tr>}
-          </tbody>
-        </table>
-      </div>
+            return <TableHead className={column.className} key={column.key} scope="col" data-priority={column.priority} aria-sort={direction}>{column.sortable === false ? column.label : <button className="table-sort-button" type="button" aria-label={`${column.label}${nextDirection ? ` ${nextDirection}` : ''} sortieren`} onClick={() => sortBy(column.key)}><span>{column.label}</span>{direction && <span className="sort-indicator" aria-hidden="true">{direction === 'ascending' ? '▲' : '▼'}</span>}</button>}</TableHead>;
+          })}</TableRow></TableHeader>
+          <TableBody>
+            {visibleRows.map(row => <TableRow key={row.id}>{columns.map(column => <TableCell className={column.className} data-priority={column.priority} key={column.key}>{column.render ? column.render(row) : row[column.key]}</TableCell>)}</TableRow>)}
+            {!visibleRows.length && <TableRow><TableCell colSpan={columns.length}>{empty}</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </TableScroll>
     </>
   );
 }
@@ -264,8 +412,8 @@ export function CsrfInput({ token }) {
 }
 
 export function RestForm({ target, token, children, className = '', encType, onSuccess, resetOnSuccess = false }) {
-  const [errors, setErrors] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const showError = useErrorToast();
   const submittingRef = useRef(false);
   const submit = async event => {
     event.preventDefault();
@@ -273,7 +421,6 @@ export function RestForm({ target, token, children, className = '', encType, onS
     submittingRef.current = true;
     const form = event.currentTarget;
     setSubmitting(true);
-    setErrors([]);
     const body = new FormData(form);
     form.querySelectorAll('input[type="file"][multiple][name]').forEach(input => {
       body.delete(input.name);
@@ -291,7 +438,7 @@ export function RestForm({ target, token, children, className = '', encType, onS
       });
       const result = await response.json();
       if (!response.ok || !result.ok) {
-        setErrors(result.errors || ['Das Formular konnte nicht gespeichert werden.']);
+        showError((result.errors || ['Das Formular konnte nicht gespeichert werden.']).join(' '));
         return;
       }
       if (onSuccess) {
@@ -301,13 +448,13 @@ export function RestForm({ target, token, children, className = '', encType, onS
       }
       window.location.assign(result.redirect || target);
     } catch (error) {
-      setErrors([error.message]);
+      showError(error.message);
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
     }
   };
-  return <form action={target} method="post" encType={encType} className={className} onSubmit={submit} aria-busy={submitting}><CsrfInput token={token} />{errors.length > 0 && <ul className="errorlist" role="alert">{errors.map(error => <li key={error}>{error}</li>)}</ul>}{typeof children === 'function' ? children({ submitting }) : children}{submitting && <p aria-live="polite">Wird gespeichert…</p>}</form>;
+  return <form action={target} method="post" encType={encType} className={className} onSubmit={submit} aria-busy={submitting}><CsrfInput token={token} />{typeof children === 'function' ? children({ submitting }) : children}{submitting && <p aria-live="polite">Wird gespeichert…</p>}</form>;
 }
 
 export function NativeForm({ action = '', method = 'post', token, encType, fields, submit = 'Speichern', children }) {
@@ -330,7 +477,7 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
         }
         return <label key={field.name}>{field.label}<input name={field.name} type={field.type || 'text'} defaultValue={field.type === 'file' ? undefined : field.value ?? ''} required={field.required} multiple={field.multiple} accept={field.accept} min={field.min} step={field.step} /></label>;
       })}
-      <div className="form-buttons">{children}<input className="button" type="submit" value={submit} disabled={submitting} /></div>
+      <div className="form-buttons">{children}<input className={buttonVariants()} type="submit" value={submit} disabled={submitting} /></div>
     </>
   );
   if (method.toLowerCase() === 'post') {

@@ -1,9 +1,15 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
+import { Toaster } from '../components/ui/toast';
 import { parseRoute } from '../routes';
-import { DashboardPage } from './dashboard';
+import { expectErrorToastOnly } from '../test-support';
+import { DashboardPage, GoodToKnowPage } from './dashboard';
+
+const render = ui => testingLibraryRender(ui, {
+  wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
+});
 
 const emptyPage = { items: [], next_cursor: null, has_more: false, limit: 20 };
 
@@ -59,18 +65,6 @@ const response = (data, { ok = true, status = 200 } = {}) => ({
   json: vi.fn().mockResolvedValue(data),
 });
 
-function setDashboardViewport(width) {
-  vi.spyOn(window, 'matchMedia').mockImplementation(query => {
-    const maxWidth = Number(query.match(/max-width:\s*(\d+)px/)?.[1]);
-    return {
-      matches: Number.isFinite(maxWidth) && width <= maxWidth,
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    };
-  });
-}
-
 describe('dashboard page', () => {
   afterEach(() => {
     cleanup();
@@ -88,17 +82,22 @@ describe('dashboard page', () => {
       'Meine BuDo-Familie',
       'Mein SWP 1',
       'Mein SWP 2',
+      'Taschengeldtransaktionen',
+    ]) {
+      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    }
+    for (const removed of [
+      'Mein Profil',
+      'Team',
+      'Finanzen',
+      'Speziallisten',
       'Erstes Mal im BuDO: 1/1',
       'Einwöchige: 1',
       'Gesundheitliches',
       'Essen & Allergien',
       'Geburtstagskinder: 1',
       'Verabschiedungsliste: 0',
-      'Taschengeldtransaktionen',
     ]) {
-      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
-    }
-    for (const removed of ['Mein Profil', 'Team', 'Finanzen', 'Speziallisten']) {
       expect(screen.queryByRole('heading', { name: removed })).not.toBeInTheDocument();
     }
     expect(screen.getAllByRole('link', { name: 'Grace Hopper' }).length).toBeGreaterThan(0);
@@ -106,29 +105,49 @@ describe('dashboard page', () => {
     expect(screen.getByRole('link', { name: 'See' })).toHaveAttribute('href', '/schwerpunkt/12/');
   });
 
-  it.each([
-    [1400, [
-      ['db-kinderübersicht', 'db-budo-familie', 'db-ersties', 'db-essen', 'db-geld'],
-      ['db-notizen', 'db-swp-1', 'db-einwöchig', 'db-geburtstagskinder'],
-      ['db-erste-hilfe', 'db-swp-2', 'db-gesundheit', 'db-sechzehner'],
-    ]],
-    [1000, [
-      ['db-kinderübersicht', 'db-erste-hilfe', 'db-swp-1', 'db-ersties', 'db-gesundheit', 'db-geburtstagskinder', 'db-geld'],
-      ['db-notizen', 'db-budo-familie', 'db-swp-2', 'db-einwöchig', 'db-essen', 'db-sechzehner'],
-    ]],
-    [700, [[
-      'db-kinderübersicht', 'db-notizen', 'db-erste-hilfe', 'db-budo-familie', 'db-swp-1', 'db-swp-2',
-      'db-ersties', 'db-einwöchig', 'db-gesundheit', 'db-essen', 'db-geburtstagskinder', 'db-sechzehner', 'db-geld',
-    ]]],
-  ])('stacks cards without row gaps in fixed flex columns at %ipx', (width, expectedColumns) => {
-    setDashboardViewport(width);
+  it('renders the moved informational cards on Gut zu wissen', () => {
+    render(<GoodToKnowPage data={dashboardData()} />);
 
-    const { container } = render(<DashboardPage data={dashboardData()} />);
-    const actualColumns = Array.from(container.querySelectorAll('.dashboard-column'), column => (
-      Array.from(column.children, card => card.id)
-    ));
+    for (const heading of [
+      'Erstes Mal im BuDO: 1/1',
+      'Einwöchige: 1',
+      'Gesundheitliches',
+      'Essen & Allergien',
+      'Geburtstagskinder: 1',
+      'Verabschiedungsliste: 0',
+    ]) {
+      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('heading', { name: 'Kinder: 1' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Grace Hopper' }).length).toBeGreaterThan(0);
+  });
 
-    expect(actualColumns).toEqual(expectedColumns);
+  it('owns the focused Gut zu wissen route contract', () => {
+    expect(parseRoute('/gut-zu-wissen/')).toMatchObject({
+      page: 'good-to-know',
+      title: 'Gut zu wissen',
+      readContractKey: 'gut-zu-wissen',
+    });
+  });
+
+  it('loads Gut zu wissen from its focused route endpoint', async () => {
+    window.history.pushState({}, '', '/gut-zu-wissen/');
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({
+        authenticated: true,
+        csrf_token: 'token',
+        messages: [],
+        profile: { id: 1, rufname: 'Ada' },
+        turnus: { id: 2, label: 'T2' },
+        permissions: {},
+        search_index: { kids: [], focuses: [], places: [] },
+      }))
+      .mockResolvedValueOnce(response(dashboardData()));
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByRole('heading', { name: 'Gesundheitliches' })).toBeInTheDocument();
+    expect(fetchImpl.mock.calls[1][0]).toBe('/api/route-data/gut-zu-wissen/');
   });
 
   it('waits to show each personal SWP until all present kids are assigned for that week', () => {
@@ -214,7 +233,7 @@ describe('dashboard page', () => {
     expect(await screen.findByText('Hand gekühlt')).toBeInTheDocument();
   });
 
-  it('shows a recoverable error when an activity continuation fails', async () => {
+  it('shows failed dashboard loads as error toasts, never inline', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(response({}, { ok: false, status: 503 }));
     render(<DashboardPage
       data={dashboardData({
@@ -230,7 +249,7 @@ describe('dashboard page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Ältere Transaktionen laden' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Ältere Transaktionen konnten nicht geladen werden.');
+    await expectErrorToastOnly('Ältere Transaktionen konnten nicht geladen werden.');
     expect(screen.getByRole('button', { name: 'Ältere Transaktionen laden' })).toBeEnabled();
   });
 

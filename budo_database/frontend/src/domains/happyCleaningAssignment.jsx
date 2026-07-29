@@ -1,22 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Eye, EyeOff, Pencil, X } from 'lucide-react';
-import { useToastManager } from '../components/ui/toast';
+
+import { Card } from '../components';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroll,
+} from '../components/ui/table';
+import { useErrorToast, useToastManager } from '../components/ui/toast';
+import { useIsMobile } from '../hooks/use-mobile';
 
 
 const requestId = () => globalThis.crypto?.randomUUID?.()
   || `happy-cleaning-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-function useMobileViewport() {
-  const media = globalThis.matchMedia?.('(max-width: 639px)');
-  const [mobile, setMobile] = useState(Boolean(media?.matches));
-  useEffect(() => {
-    const update = event => setMobile(event.matches);
-    media?.addEventListener?.('change', update);
-    return () => media?.removeEventListener?.('change', update);
-  }, [media]);
-  return mobile;
-}
+const dialogBackdropClass = 'fixed inset-0 z-[var(--z-modal)] bg-black/[.45]';
+const dialogViewportClass = 'fixed inset-0 z-[calc(var(--z-modal)+1)] grid place-items-center p-4';
+const dialogPopupClass = 'relative max-h-[calc(100dvh-2rem)] w-full max-w-[37.5rem] overflow-y-auto rounded-lg bg-surface-solid p-6 shadow-xl';
+const dialogCloseClass = 'absolute right-2 top-2';
 
 function presenceLabel(child) {
   if (child.present) return 'Anwesend';
@@ -27,29 +35,36 @@ function presenceLabel(child) {
 
 function PlaceholderChildDetails() {
   return (
-    <section className="card happy-cleaning-selected-child" aria-label="Platzhalter Kind">
-      <h2>Carlos</h2>
-      <dl>
-        <div><dt>Nummer</dt><dd>∞</dd></div>
-        <div><dt>Station</dt><dd>überall und nirgends</dd></div>
-      </dl>
-    </section>
+    <div className="min-w-0" role="region" aria-label="Platzhalter Kind">
+      <Card title="Carlos" className="m-0 w-full min-w-0">
+        <dl className="grid gap-2">
+          <div className="min-w-0"><dt className="font-semibold">Nummer</dt><dd className="m-0 wrap-anywhere">∞</dd></div>
+          <div className="min-w-0"><dt className="font-semibold">Station</dt><dd className="m-0 wrap-anywhere">überall und nirgends</dd></div>
+        </dl>
+      </Card>
+    </div>
   );
 }
 
 function ChildDetails({ child, busy, onNumber }) {
   const [number, setNumber] = useState(child.number === null ? '' : String(child.number));
   const [editingNumber, setEditingNumber] = useState(child.number === null);
+  const [expanded, setExpanded] = useState(true);
+  const mobile = useIsMobile();
   useEffect(() => {
     setNumber(child.number === null ? '' : String(child.number));
     setEditingNumber(child.number === null);
   }, [child.id, child.number]);
+  useEffect(() => {
+    setExpanded(true);
+  }, [child.id]);
   const numberForm = (
-    <form className="happy-cleaning-number-form" onSubmit={event => {
+    <form className="flex flex-wrap items-stretch gap-1" onSubmit={event => {
       event.preventDefault();
       onNumber(Number(number));
     }}>
-      <input
+      <Input
+        className="w-[3.125rem] flex-none"
         type="number"
         min="1"
         required
@@ -58,12 +73,12 @@ function ChildDetails({ child, busy, onNumber }) {
         value={number}
         onChange={event => setNumber(event.target.value)}
       />
-      <button className="button" type="submit" disabled={busy}>
+      <Button type="submit" disabled={busy}>
         {child.number === null ? 'Nummer speichern' : 'Nummer aktualisieren'}
-      </button>
+      </Button>
       {child.number !== null && (
-        <button
-          className="button happy-cleaning-number-cancel"
+        <Button
+          variant="secondary"
           type="button"
           disabled={busy}
           onClick={() => {
@@ -72,46 +87,54 @@ function ChildDetails({ child, busy, onNumber }) {
           }}
         >
           Abbrechen
-        </button>
+        </Button>
       )}
     </form>
   );
   return (
-    <section className="card happy-cleaning-selected-child" aria-label="Ausgewähltes Kind">
-      <h2>{child.full_name}{!child.present && ' ❌'}</h2>
-      <dl>
-        <div>
-          <dt>Nummer</dt>
-          <dd>
-            {editingNumber
-              ? numberForm
-              : (
-                <span className="happy-cleaning-number-value">
-                  {child.number}
-                  <button
-                    className="happy-cleaning-number-edit"
-                    type="button"
-                    aria-label={`Nummer für ${child.full_name} bearbeiten`}
-                    title="Nummer bearbeiten"
-                    onClick={() => setEditingNumber(true)}
-                  >
-                    <Pencil size={18} aria-hidden="true" />
-                  </button>
-                </span>
-              )}
-          </dd>
-        </div>
-        <div>
-          <dt>Station</dt>
-          <dd>
-            {child.assigned_station?.name
-              || (child.number === null
-                ? 'Kann erst eingeteilt werden, wenn eine Nummer eingetragen wurde'
-                : 'Auf den Stationsnamen in der Liste klicken zum einteilen')}
-          </dd>
-        </div>
-      </dl>
-    </section>
+    <div className="min-w-0" role="region" aria-label="Ausgewähltes Kind">
+      <Card
+        title={`${child.full_name}${!child.present ? ' ❌' : ''}`}
+        className="m-0 w-full min-w-0"
+        expanded={expanded}
+        onExpandedChange={setExpanded}
+        showToggleIcon={mobile}
+      >
+        <dl className="grid gap-2">
+          <div className="min-w-0">
+            <dt className="font-semibold">Nummer</dt>
+            <dd className="m-0 wrap-anywhere">
+              {editingNumber
+                ? numberForm
+                : (
+                  <span className="inline-flex items-center gap-1">
+                    {child.number}
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      type="button"
+                      aria-label={`Nummer für ${child.full_name} bearbeiten`}
+                      title="Nummer bearbeiten"
+                      onClick={() => setEditingNumber(true)}
+                    >
+                      <Pencil aria-hidden="true" />
+                    </Button>
+                  </span>
+                )}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="font-semibold">Station</dt>
+            <dd className="m-0 wrap-anywhere">
+              {child.assigned_station?.name
+                || (child.number === null
+                  ? 'Kann erst eingeteilt werden, wenn eine Nummer eingetragen wurde'
+                  : 'Auf den Stationsnamen in der Liste klicken zum einteilen')}
+            </dd>
+          </div>
+        </dl>
+      </Card>
+    </div>
   );
 }
 
@@ -119,22 +142,28 @@ function DuplicateNumberDialog({ error, neighborhood, busy, onSelect, onClose })
   return (
     <Dialog.Root open onOpenChange={open => { if (!open) onClose(); }}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="happy-cleaning-dialog-backdrop" />
-        <Dialog.Viewport className="happy-cleaning-dialog-viewport">
-          <Dialog.Popup className="card happy-cleaning-number-dialog">
-            <Dialog.Title>{error}</Dialog.Title>
+        <Dialog.Backdrop className={dialogBackdropClass} />
+        <Dialog.Viewport className={dialogViewportClass}>
+          <Dialog.Popup className={dialogPopupClass}>
+            <Dialog.Title className="mr-10 text-xl font-semibold">{error}</Dialog.Title>
             <Dialog.Description>
               Klicke auf eine freie Zahl zum zuweisen
             </Dialog.Description>
-            <Dialog.Close className="happy-cleaning-dialog-close" aria-label="Dialog schließen">
-              <X size={20} aria-hidden="true" />
+            <Dialog.Close
+              className={dialogCloseClass}
+              render={<Button variant="ghost" size="icon" />}
+              aria-label="Dialog schließen"
+            >
+              <X aria-hidden="true" />
             </Dialog.Close>
-            <ul className="happy-cleaning-number-neighborhood" aria-label="Freie Nummer auswählen">
+            <ul className="mt-4 grid list-none gap-1 p-0" aria-label="Freie Nummer auswählen">
               {neighborhood.map(item => (
                 <li key={item.number}>
                   {item.free
                     ? (
-                      <button
+                      <Button
+                        className="grid h-auto w-full grid-cols-[minmax(3rem,auto)_minmax(0,1fr)] justify-normal gap-2 p-2 text-left"
+                        variant="secondary"
                         type="button"
                         disabled={busy}
                         aria-label={`${item.number} als Nummer zuweisen`}
@@ -142,10 +171,10 @@ function DuplicateNumberDialog({ error, neighborhood, busy, onSelect, onClose })
                       >
                         <strong>{item.number}</strong>
                         <span>frei</span>
-                      </button>
+                      </Button>
                     )
                     : (
-                      <span className="happy-cleaning-number-occupied">
+                      <span className="grid w-full grid-cols-[minmax(3rem,auto)_minmax(0,1fr)] items-center gap-2 rounded-lg bg-black/8 p-2 text-left text-black/65">
                         <strong>{item.number}</strong>
                         <span>{item.child?.display_name}</span>
                       </span>
@@ -169,7 +198,7 @@ export function HappyCleaningNumberBatchAction({
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const showError = useErrorToast();
   if (!numberBatch?.available) return null;
 
   const assignments = numberBatch.children.map(child => ({
@@ -179,7 +208,6 @@ export function HappyCleaningNumberBatchAction({
   }));
   const confirm = async () => {
     setBusy(true);
-    setError('');
     try {
       const result = await mutate(`/api/happy-cleaning/events/${eventId}/numbers/assign-missing/`, {
         request_id: requestId(),
@@ -196,7 +224,7 @@ export function HappyCleaningNumberBatchAction({
       if (code === 'stale' || code === 'batch_locked' || code === 'nothing_to_assign') {
         await refresh?.({ preserveData: true });
       }
-      setError(code === 'stale'
+      showError(code === 'stale'
         ? 'Die Nummernvorschläge sind nicht mehr aktuell. Die Daten wurden neu geladen.'
         : code === 'batch_locked'
           ? 'Die automatische Nummernvergabe ist nicht mehr verfügbar.'
@@ -209,43 +237,56 @@ export function HappyCleaningNumberBatchAction({
   };
   const changeOpen = nextOpen => {
     if (!nextOpen && busy) return;
-    setError('');
     setOpen(nextOpen);
   };
 
   return (
     <Dialog.Root open={open} onOpenChange={changeOpen}>
       <Dialog.Trigger
-        className="button happy-cleaning-batch-trigger"
+        render={<Button className="h-auto max-w-full py-2 text-center whitespace-normal" variant="secondary" />}
         disabled={disabled}
       >
         Kindern ohne Nummern, Nummern zuteilen
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Backdrop className="happy-cleaning-dialog-backdrop" />
-        <Dialog.Viewport className="happy-cleaning-dialog-viewport">
-          <Dialog.Popup className="card happy-cleaning-number-dialog happy-cleaning-batch-dialog">
-            <Dialog.Title>Nummern zuteilen</Dialog.Title>
+        <Dialog.Backdrop className={dialogBackdropClass} />
+        <Dialog.Viewport className={dialogViewportClass}>
+          <Dialog.Popup className={dialogPopupClass}>
+            <Dialog.Title className="mr-10 text-xl font-semibold">Nummern zuteilen</Dialog.Title>
             <Dialog.Description>
               Die vorgeschlagenen Nummern werden gemeinsam zugeteilt.
             </Dialog.Description>
-            <Dialog.Close className="happy-cleaning-dialog-close" aria-label="Dialog schließen" disabled={busy}>
-              <X size={20} aria-hidden="true" />
+            <Dialog.Close
+              className={dialogCloseClass}
+              render={<Button variant="ghost" size="icon" />}
+              aria-label="Dialog schließen"
+              disabled={busy}
+            >
+              <X aria-hidden="true" />
             </Dialog.Close>
-            <ul className="happy-cleaning-batch-list" aria-label="Vorgeschlagene Nummern">
+            <ul
+              className="my-4 grid list-none gap-1 p-0"
+              aria-label="Vorgeschlagene Nummern"
+            >
               {numberBatch.children.map(child => (
-                <li key={child.id}>
+                <li
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-white/55 p-2"
+                  key={child.id}
+                >
                   <span>{child.full_name}</span>
-                  <strong>{child.number}</strong>
+                  <strong className="min-w-[2ch] text-right tabular-nums">{child.number}</strong>
                 </li>
               ))}
             </ul>
-            {error && <p className="error" role="alert">{error}</p>}
-            <div className="happy-cleaning-batch-actions" role="group" aria-label="Dialogaktionen">
-              <Dialog.Close className="button" disabled={busy}>Abbrechen</Dialog.Close>
-              <button className="button" type="button" disabled={busy || disabled} onClick={confirm}>
+            <div
+              className="mt-4 flex flex-wrap justify-end gap-2"
+              role="group"
+              aria-label="Dialogaktionen"
+            >
+              <Dialog.Close render={<Button variant="secondary" />} disabled={busy}>Abbrechen</Dialog.Close>
+              <Button type="button" disabled={busy || disabled} onClick={confirm}>
                 {busy ? 'Wird zugeteilt…' : 'Bestätigen'}
-              </button>
+              </Button>
             </div>
           </Dialog.Popup>
         </Dialog.Viewport>
@@ -255,7 +296,7 @@ export function HappyCleaningNumberBatchAction({
 }
 
 function ChildSearch({ children, selected, onSelect, inputRef }) {
-  const mobile = useMobileViewport();
+  const mobile = useIsMobile();
   const [query, setQuery] = useState(selected?.full_name || '');
   const [activeIndex, setActiveIndex] = useState(-1);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -299,9 +340,9 @@ function ChildSearch({ children, selected, onSelect, inputRef }) {
     }
   };
   return (
-    <div className="happy-cleaning-child-search">
+    <div className="relative w-full min-w-0">
       <label className="sr-only" htmlFor="happy-cleaning-child-search">Kind suchen</label>
-      <input
+      <Input
         id="happy-cleaning-child-search"
         type="search"
         role="combobox"
@@ -324,11 +365,16 @@ function ChildSearch({ children, selected, onSelect, inputRef }) {
         {open ? `${results.length} Suchergebnisse` : ''}
       </span>
       {open && (
-        <div id="happy-cleaning-child-results" className="happy-cleaning-child-results" role="listbox">
+        <div
+          id="happy-cleaning-child-results"
+          className="absolute inset-x-0 top-[calc(100%+0.25rem)] z-[calc(var(--z-table-header)+1)] max-h-[min(60vh,28rem)] overflow-y-auto rounded-lg bg-white shadow-lg"
+          role="listbox"
+        >
           {results.map((child, index) => (
-            <button
+            <Button
               id={`happy-cleaning-child-${child.id}`}
-              className={index === activeIndex ? 'selected' : ''}
+              className="grid h-auto w-full rounded-none border-b border-black/10 bg-white px-2 py-2 text-left whitespace-normal max-[900px]:block min-[901px]:grid-cols-[minmax(10rem,1fr)_minmax(20rem,2fr)]"
+              variant="ghost"
               type="button"
               role="option"
               aria-selected={index === activeIndex}
@@ -337,13 +383,13 @@ function ChildSearch({ children, selected, onSelect, inputRef }) {
             >
               <strong>{child.full_name}</strong>
               {!mobile && (
-                <span>
+                <span className="grid grid-cols-3 gap-2">
                   <span>#{child.number ?? '—'}</span>
                   <span>{child.assigned_station?.name || 'Nicht eingeteilt'}</span>
                   <span>{presenceLabel(child)}</span>
                 </span>
               )}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -356,26 +402,36 @@ function UnassignedCounter({ summary, children, onSelect, batchAction }) {
   const unassigned = children.filter(child => child.present && !child.assigned_station);
   const count = `Eingeteilt: ${summary.assigned_present}/${summary.present_total}`;
   return (
-    <div className="happy-cleaning-counter-row">
-      <span className="happy-cleaning-counter-info">{count}</span>
+    <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Einteilungsaktionen">
+      <span className="rounded-lg bg-surface-header px-2 py-[.45rem] font-medium">{count}</span>
       <Dialog.Root open={open} onOpenChange={setOpen}>
-        <Dialog.Trigger className="button happy-cleaning-counter">
+        <Dialog.Trigger render={<Button variant="secondary" />}>
           Nicht eingeteilte Kinder anzeigen
         </Dialog.Trigger>
         <Dialog.Portal>
-          <Dialog.Backdrop className="happy-cleaning-dialog-backdrop" />
-          <Dialog.Viewport className="happy-cleaning-dialog-viewport">
-            <Dialog.Popup className="card happy-cleaning-unassigned-dialog">
-              <Dialog.Title>Anwesende nicht eingeteilte Kinder</Dialog.Title>
-              <Dialog.Close className="happy-cleaning-dialog-close" aria-label="Dialog schließen">
-                <X size={20} aria-hidden="true" />
+          <Dialog.Backdrop className={dialogBackdropClass} />
+          <Dialog.Viewport className={dialogViewportClass}>
+            <Dialog.Popup className={dialogPopupClass}>
+              <Dialog.Title className="mr-10 text-xl font-semibold">Anwesende nicht eingeteilte Kinder</Dialog.Title>
+              <Dialog.Close
+                className={dialogCloseClass}
+                render={<Button variant="ghost" size="icon" />}
+                aria-label="Dialog schließen"
+              >
+                <X aria-hidden="true" />
               </Dialog.Close>
-              <ul aria-label="Anwesende nicht eingeteilte Kinder">
+              <ul className="mt-4 grid list-none gap-1 p-0" aria-label="Anwesende nicht eingeteilte Kinder">
                 {unassigned.map(child => (
                   <li key={child.id}>
-                    <button type="button" aria-label={`${child.full_name} auswählen`} onClick={() => { onSelect(child); setOpen(false); }}>
+                    <Button
+                      className="w-full justify-start"
+                      variant="secondary"
+                      type="button"
+                      aria-label={`${child.full_name} auswählen`}
+                      onClick={() => { onSelect(child); setOpen(false); }}
+                    >
                       {child.full_name}
-                    </button>
+                    </Button>
                   </li>
                 ))}
                 {!unassigned.length && <li>Alle anwesenden Kinder sind eingeteilt.</li>}
@@ -389,34 +445,41 @@ function UnassignedCounter({ summary, children, onSelect, batchAction }) {
   );
 }
 
-function StationName({ eventId, station, selected, busy, onActivate }) {
+function StationName({ station, selected, busy, onActivate }) {
   const full = !station.is_excused && station.free_seats === 0;
   const label = `${station.name}${full ? ' 🚫' : ''}`;
   if (!selected) {
-    return station.is_excused
-      ? <span>{label}</span>
-      : <a href={`/happy-cleaning/${eventId}/stations/${station.id}/`}>{label}</a>;
+    return <span>{label}</span>;
   }
   const currentTarget = selected.assigned_station?.id === station.id;
   const fullTarget = full && !currentTarget;
   return (
-    <button
+    <Button
+      className="h-auto justify-start p-0 text-left whitespace-normal"
+      variant="ghost"
       type="button"
       aria-label={`${selected.full_name} ${station.name} zuweisen`}
       disabled={busy || (!station.is_excused && selected.number === null) || fullTarget || currentTarget}
       onClick={() => onActivate(station)}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
-function ChildPills({ station, onSelect }) {
+function ChildPills({ station, onSelect, hidden = false }) {
   return (
-    <div className="happy-cleaning-child-pills">
+    <div
+      className="flex flex-wrap gap-1"
+      role="group"
+      aria-label="Eingeteilte Kinder"
+      aria-hidden={hidden}
+      hidden={hidden}
+    >
       {station.children.map(child => (
-        <button
-          className="happy-cleaning-child-pill"
+        <Button
+          className="h-auto min-w-0 max-w-full rounded-full border border-current px-2 py-[.2rem] whitespace-normal"
+          variant="secondary"
           type="button"
           aria-label={`${child.full_name} auswählen`}
           title={`${child.full_name} #${child.number ?? '—'}`}
@@ -424,7 +487,7 @@ function ChildPills({ station, onSelect }) {
           key={child.id}
         >
           {child.short_name}{!child.present && ' ❌'}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -434,34 +497,42 @@ const progress = station => station.todo_progress_percentage === null
   ? '—'
   : `${station.todo_progress_percentage}%`;
 
+const places = station => station.overbooked_count > 0
+  ? `${station.overbooked_count} überbelegt`
+  : `${station.free_seats} / ${station.max_kids} frei`;
+
 function StationDetailsDialog({ station, onSelect }) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger
-        className="happy-cleaning-station-details-trigger"
+        render={<Button variant="ghost" size="icon" />}
         aria-label={`Details zu ${station.name} anzeigen`}
         title={`Details zu ${station.name} anzeigen`}
       >
-        <Eye size={20} aria-hidden="true" />
+        <Eye aria-hidden="true" />
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Backdrop className="happy-cleaning-dialog-backdrop" />
-        <Dialog.Viewport className="happy-cleaning-dialog-viewport">
-          <Dialog.Popup className="card happy-cleaning-station-dialog">
-            <Dialog.Title>{station.name}</Dialog.Title>
-            <Dialog.Close className="happy-cleaning-dialog-close" aria-label="Dialog schließen">
-              <X size={20} aria-hidden="true" />
+        <Dialog.Backdrop className={dialogBackdropClass} />
+        <Dialog.Viewport className={dialogViewportClass}>
+          <Dialog.Popup className={dialogPopupClass}>
+            <Dialog.Title className="mr-10 text-xl font-semibold">{station.name}</Dialog.Title>
+            <Dialog.Close
+              className={dialogCloseClass}
+              render={<Button variant="ghost" size="icon" />}
+              aria-label="Dialog schließen"
+            >
+              <X aria-hidden="true" />
             </Dialog.Close>
-            <dl>
-              <div><dt>Wünsche</dt><dd>{station.wishes || '—'}</dd></div>
-              <div><dt>Treffpunkt</dt><dd>{station.meeting_point}</dd></div>
-              <div><dt>Verantwortlich</dt><dd>{station.responsible?.name || '—'}</dd></div>
-              <div><dt>Plätze</dt><dd>{station.free_seats} / {station.max_kids} frei</dd></div>
-              <div><dt>Aufgaben</dt><dd>{progress(station)}</dd></div>
+            <dl className="grid gap-2">
+              <div><dt className="font-semibold">Wünsche</dt><dd className="m-0 wrap-anywhere">{station.wishes || '—'}</dd></div>
+              <div><dt className="font-semibold">Treffpunkt</dt><dd className="m-0 wrap-anywhere">{station.meeting_point}</dd></div>
+              <div><dt className="font-semibold">Verantwortlich</dt><dd className="m-0 wrap-anywhere">{station.responsible?.name || '—'}</dd></div>
+              <div><dt className="font-semibold">Plätze</dt><dd className="m-0 wrap-anywhere">{places(station)}</dd></div>
+              <div><dt className="font-semibold">Aufgaben</dt><dd className="m-0 wrap-anywhere">{progress(station)}</dd></div>
               <div>
-                <dt>Kinder</dt>
-                <dd>
+                <dt className="font-semibold">Kinder</dt>
+                <dd className="m-0 wrap-anywhere">
                   <ChildPills station={station} onSelect={child => {
                     onSelect(child);
                     setOpen(false);
@@ -476,88 +547,109 @@ function StationDetailsDialog({ station, onSelect }) {
   );
 }
 
-function DesktopStations({ eventId, stations, selected, busy, onActivate, onSelect, mobile }) {
+function StationsTable({ stations, selected, busy, onActivate, onSelect, mobile }) {
   const [childrenVisible, setChildrenVisible] = useState(true);
   const toggleLabel = childrenVisible ? 'Kindernamen verbergen' : 'Kindernamen anzeigen';
   return (
-    <div className="table-container happy-cleaning-assignment-table-wrap">
-      <table className={`data-table${childrenVisible ? '' : ' happy-cleaning-children-hidden'}${mobile ? ' happy-cleaning-mobile-table' : ''}`} aria-label="Happy Cleaning Stationen">
-        <thead><tr className="table-header">
-          <th>{mobile ? 'SWP' : 'Station'}</th>
-          <th className="happy-cleaning-desktop-column">Wünsche</th>
-          <th className="happy-cleaning-desktop-column">Treffpunkt</th>
-          <th className="happy-cleaning-desktop-column">Verantwortlich</th>
-          <th className="happy-cleaning-places-column">Plätze</th>
-          <th className="happy-cleaning-desktop-column">Aufgaben</th>
-          <th className="happy-cleaning-desktop-column">
-            <div className="happy-cleaning-children-header">
+    <TableScroll
+      className="rounded-lg"
+      role="region"
+      aria-label="Happy Cleaning Stationstabelle"
+      tabIndex={0}
+    >
+      <Table aria-label="Happy Cleaning Stationen">
+        <TableHeader>
+          <TableRow>
+            <TableHead scope="col">{mobile ? 'SWP' : 'Station'}</TableHead>
+            <TableHead scope="col" data-priority="low">Wünsche</TableHead>
+            <TableHead scope="col" data-priority="low">Treffpunkt</TableHead>
+            <TableHead scope="col" data-priority="low">Verantwortlich</TableHead>
+            <TableHead scope="col">Plätze</TableHead>
+            <TableHead scope="col" data-priority="low">Aufgaben</TableHead>
+            <TableHead scope="col">
+              <div className="inline-flex items-center gap-1">
               <span>Kinder</span>
-              <button
-                className="happy-cleaning-children-toggle"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 type="button"
                 aria-label={toggleLabel}
                 title={toggleLabel}
                 onClick={() => setChildrenVisible(value => !value)}
               >
-                {childrenVisible ? <Eye size={20} /> : <EyeOff size={20} />}
-              </button>
-            </div>
-          </th>
-          {mobile && <th><span className="sr-only">Details</span></th>}
-        </tr></thead>
-        <tbody>
+                {childrenVisible
+                  ? <Eye aria-hidden="true" />
+                  : <EyeOff aria-hidden="true" />}
+              </Button>
+              </div>
+            </TableHead>
+            {mobile && <TableHead scope="col"><span className="sr-only">Details</span></TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {stations.map(station => (
-            <tr className={`table_row${station.is_excused ? ' happy-cleaning-excused-row' : ''}`} key={station.id}>
-              <th scope="row"><StationName eventId={eventId} station={station} selected={selected} busy={busy} onActivate={onActivate} /></th>
+            <TableRow data-excused={station.is_excused ? '' : undefined} key={station.id}>
+              <TableHead className="bg-[var(--table-row-background)] font-bold whitespace-normal" scope="row">
+                <StationName station={station} selected={selected} busy={busy} onActivate={onActivate} />
+              </TableHead>
               {station.is_excused
                 ? (
-                  <td className="happy-cleaning-excused-children" colSpan={mobile ? 7 : 6}>
-                    <span
-                      className="happy-cleaning-assigned-count"
-                      aria-label={`${station.children.length} ${station.children.length === 1 ? 'eingeteiltes Kind' : 'eingeteilte Kinder'}`}
-                    >
-                      {station.children.length}
-                    </span>
-                    <ChildPills station={station} onSelect={onSelect} />
-                  </td>
-                )
-                : (
-                  <>
-                    <td className="happy-cleaning-desktop-column">{station.wishes || '—'}</td>
-                    <td className="happy-cleaning-desktop-column">{station.meeting_point}</td>
-                    <td className="happy-cleaning-desktop-column">{station.responsible?.name || '—'}</td>
-                    <td className="happy-cleaning-places-column">{station.free_seats} / {station.max_kids} frei</td>
-                    <td className="happy-cleaning-desktop-column">{progress(station)}</td>
-                    <td className="happy-cleaning-desktop-column">
+                  <TableCell className="min-w-0" colSpan={mobile ? 7 : 6}>
+                    {!childrenVisible && (
                       <span
-                        className="happy-cleaning-assigned-count"
+                        className="font-medium tabular-nums"
                         aria-label={`${station.children.length} ${station.children.length === 1 ? 'eingeteiltes Kind' : 'eingeteilte Kinder'}`}
                       >
                         {station.children.length}
                       </span>
-                      <ChildPills station={station} onSelect={onSelect} />
-                    </td>
-                    {mobile && <td><StationDetailsDialog station={station} onSelect={onSelect} /></td>}
+                    )}
+                    <ChildPills station={station} onSelect={onSelect} hidden={!childrenVisible} />
+                  </TableCell>
+                )
+                : (
+                  <>
+                    <TableCell data-priority="low">{station.wishes || '—'}</TableCell>
+                    <TableCell data-priority="low">{station.meeting_point}</TableCell>
+                    <TableCell data-priority="low">{station.responsible?.name || '—'}</TableCell>
+                    <TableCell>{places(station)}</TableCell>
+                    <TableCell data-priority="low">{progress(station)}</TableCell>
+                    <TableCell>
+                      {!childrenVisible && (
+                        <span
+                          className="font-medium tabular-nums"
+                          aria-label={`${station.children.length} ${station.children.length === 1 ? 'eingeteiltes Kind' : 'eingeteilte Kinder'}`}
+                        >
+                          {station.children.length}
+                        </span>
+                      )}
+                      <ChildPills station={station} onSelect={onSelect} hidden={!childrenVisible} />
+                    </TableCell>
+                    {mobile && (
+                      <TableCell className="w-px text-center whitespace-nowrap">
+                        <StationDetailsDialog station={station} onSelect={onSelect} />
+                      </TableCell>
+                    )}
                   </>
                 )}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableScroll>
   );
 }
 
 function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync }) {
   const [selectedId, setSelectedId] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [duplicateError, setDuplicateError] = useState('');
   const [neighborhood, setNeighborhood] = useState([]);
   const [restoreFocus, setRestoreFocus] = useState(false);
   const toastManager = useToastManager();
+  const showError = useErrorToast();
   const searchRef = useRef(null);
   const selected = data.children.find(child => child.id === selectedId) || null;
-  const mobile = useMobileViewport();
+  const mobile = useIsMobile();
   const writeBlocked = Boolean(realtimeSync?.enabled && !realtimeSync.writesEnabled);
   const writeBusy = busy || writeBlocked;
   const setSelected = child => setSelectedId(child.id);
@@ -569,7 +661,7 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
   }, [restoreFocus, selectedId]);
   const saveNumber = async number => {
     setBusy(true);
-    setError('');
+    setDuplicateError('');
     setNeighborhood([]);
     try {
       const result = await mutate(`/api/happy-cleaning/children/${selected.id}/number/`, {
@@ -584,11 +676,11 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
       }
     } catch (caught) {
       if (caught?.payload?.code === 'duplicate_number') {
-        setError(`Nummer ${number} ist bereits vergeben.`);
+        setDuplicateError(`Nummer ${number} ist bereits vergeben.`);
         setNeighborhood(caught.payload.neighborhood || []);
       } else {
         if (caught?.payload?.code === 'stale') await refresh?.({ preserveData: true });
-        setError(caught?.payload?.code === 'stale'
+        showError(caught?.payload?.code === 'stale'
           ? 'Die Daten wurden inzwischen geändert. Bitte erneut versuchen.'
           : 'Die Nummer konnte nicht gespeichert werden.');
       }
@@ -602,7 +694,6 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
       `${selected.full_name} von ${selected.assigned_station.name} nach ${station.name} verschieben?`,
     )) return;
     setBusy(true);
-    setError('');
     try {
       const url = moving
         ? station.is_excused
@@ -640,7 +731,7 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
       if (caught?.payload?.code === 'station_full' || caught?.payload?.code === 'stale') {
         await refresh?.({ preserveData: true });
       }
-      setError(caught?.payload?.code === 'station_full'
+      showError(caught?.payload?.code === 'station_full'
         ? `${station.name} ist inzwischen voll. Die Einteilung wurde aktualisiert.`
         : 'Die Einteilung konnte nicht gespeichert werden. Bitte erneut versuchen.');
     } finally {
@@ -648,9 +739,13 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
     }
   };
   return (
-    <main className="happy-cleaning-page happy-cleaning-assignment" id="body-container">
-      <div className="happy-cleaning-assignment-controls">
-        <div className="happy-cleaning-assignment-searchbar">
+    <main className="mx-auto block min-h-0 w-full min-w-0 max-w-[96rem] p-2" id="body-container">
+      <div
+        className="my-8 grid w-full min-w-0 items-start gap-2 min-[901px]:grid-cols-2"
+        role="group"
+        aria-label="Kind auswählen und bearbeiten"
+      >
+        <div className="relative z-[calc(var(--z-table-header)+1)] grid w-full min-w-0 gap-1">
           <UnassignedCounter
             summary={data.summary}
             children={data.children}
@@ -668,24 +763,22 @@ function HappyCleaningAssignmentContent({ data, mutate, refresh, realtimeSync })
           <ChildSearch key={selectedId || 'empty'} children={data.children} selected={selected} onSelect={setSelected} inputRef={searchRef} />
         </div>
         {selected
-          ? <ChildDetails child={selected} busy={writeBusy} onNumber={saveNumber} />
+          ? <ChildDetails key={selected.id} child={selected} busy={writeBusy} onNumber={saveNumber} />
           : <PlaceholderChildDetails />}
       </div>
-      {error && neighborhood.length === 0 && <p className="error" role="alert">{error}</p>}
       {neighborhood.length > 0 && (
         <DuplicateNumberDialog
-          error={error}
+          error={duplicateError}
           neighborhood={neighborhood}
           busy={writeBusy}
           onSelect={saveNumber}
           onClose={() => {
-            setError('');
+            setDuplicateError('');
             setNeighborhood([]);
           }}
         />
       )}
-      <DesktopStations
-        eventId={data.event.id}
+      <StationsTable
         stations={data.stations}
         selected={selected}
         busy={writeBusy}

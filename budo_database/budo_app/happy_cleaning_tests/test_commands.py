@@ -10,13 +10,14 @@ from budo_app.happy_cleaning_assignment_publisher import (
     configure_assignment_publisher,
     reset_assignment_publisher,
 )
+from budo_app.happy_cleaning_tests.task_fixtures import CanonicalTask
+
 from budo_app.models import (
     AuditEvent,
     HappyCleaning,
     HappyCleaningAssignment,
     HappyCleaningCommandRequest,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Kinder,
     Turnus,
 )
@@ -281,7 +282,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
                 "station-create-invalid",
                 expected_revision=3,
                 name=" ",
-                max_kids=0,
+                max_kids=-1,
                 meeting_point="",
             ),
         )
@@ -289,6 +290,20 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
         self.assertEqual(set(invalid.json()["errors"]), {
             "name", "max_kids", "meeting_point",
         })
+
+        zero_capacity = self.post_json(
+            "happy-cleaning-station-create-api",
+            [self.event.id],
+            self.station_payload(
+                "station-create-zero-capacity",
+                expected_revision=3,
+                name="Geschlossen",
+                max_kids=0,
+                meeting_point="Treffpunkt",
+            ),
+        )
+        self.assertEqual(zero_capacity.status_code, 201, zero_capacity.content)
+        self.assertEqual(zero_capacity.json()["station"]["max_kids"], 0)
 
         hidden_profile = self.post_json(
             "happy-cleaning-station-update-api",
@@ -379,7 +394,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
                 turnus=self.other_turnus,
                 display_number=1,
             )
-            HappyCleaningStation.objects.create(
+            source_station = HappyCleaningStation.objects.create(
                 happy_cleaning=source,
                 name="Quelle",
                 max_kids=2,
@@ -394,7 +409,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
                     "request_id": "station-copy-without-invalidation",
                     "expected_revision": self.event.revision,
                     "source_event_id": source.id,
-                    "copy_all": True,
+                    "station_ids": [source_station.id],
                 },
             )
             self.assertEqual(copied.status_code, 200)
@@ -402,7 +417,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
         finally:
             reset_assignment_publisher()
 
-    def test_capacity_and_delete_lock_survive_assignment_removal(self):
+    def test_capacity_can_change_but_delete_lock_survives_assignment_removal(self):
         station = HappyCleaningStation.objects.create(
             happy_cleaning=self.event,
             name="Küche",
@@ -438,16 +453,119 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
                 "responsible_profile_id": None,
             },
         )
-        self.assertEqual(capacity.status_code, 409)
-        self.assertEqual(capacity.json()["code"], "capacity_locked")
+        self.assertEqual(capacity.status_code, 200)
+        station.refresh_from_db()
+        self.assertEqual(station.max_kids, 3)
 
         deleted = self.post_json(
             "happy-cleaning-station-delete-api",
             [self.event.id, station.id],
-            {"request_id": "station-delete-locked", "expected_version": 1},
+            {"request_id": "station-delete-locked", "expected_version": 2},
         )
         self.assertEqual(deleted.status_code, 409)
         self.assertEqual(deleted.json()["code"], "station_locked")
+
+    def test_overbooking_requires_confirmation_bound_to_count_and_version(self):
+        station = HappyCleaningStation.objects.create(
+            happy_cleaning=self.event,
+            name="Küche",
+            max_kids=3,
+            meeting_point="Tür",
+            position=1,
+        )
+        for index in range(3):
+            child = Kinder.objects.create(
+                kid_index=f"HC-OVER-{index}",
+                kid_vorname=f"Kind {index}",
+                kid_nachname="Test",
+                turnus=self.turnus,
+            )
+            HappyCleaningAssignment.objects.create(
+                happy_cleaning=self.event,
+                station=station,
+                child=child,
+            )
+        payload = {
+            "request_id": "station-overbook",
+            "expected_version": station.version,
+            "name": station.name,
+            "max_kids": 1,
+            "meeting_point": station.meeting_point,
+            "wishes": "",
+            "responsible_profile_id": None,
+        }
+
+        unconfirmed = self.post_json(
+            "happy-cleaning-station-update-api",
+            [self.event.id, station.id],
+            payload,
+        )
+        self.assertEqual(unconfirmed.status_code, 409)
+        self.assertEqual(
+            unconfirmed.json()["confirmation"],
+            {
+                "capacity": 1,
+                "assigned_count": 3,
+                "station_version": 1,
+                "overbooked_count": 2,
+            },
+        )
+        station.refresh_from_db()
+        self.assertEqual(station.max_kids, 3)
+        self.assertEqual(station.assignments.count(), 3)
+
+        late_child = Kinder.objects.create(
+            kid_index="HC-OVER-LATE",
+            kid_vorname="Spät",
+            kid_nachname="Test",
+            turnus=self.turnus,
+        )
+        late_assignment = HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.event,
+            station=station,
+            child=late_child,
+        )
+        stale_count = self.post_json(
+            "happy-cleaning-station-update-api",
+            [self.event.id, station.id],
+            {
+                **payload,
+                "request_id": "station-overbook-stale-count",
+                "overbooking_confirmation": {
+                    "capacity": 1,
+                    "assigned_count": 3,
+                    "station_version": 1,
+                },
+            },
+        )
+        self.assertEqual(stale_count.status_code, 409)
+        self.assertEqual(stale_count.json()["confirmation"]["assigned_count"], 4)
+        late_assignment.delete()
+
+        confirmed = self.post_json(
+            "happy-cleaning-station-update-api",
+            [self.event.id, station.id],
+            {
+                **payload,
+                "overbooking_confirmation": {
+                    "capacity": 1,
+                    "assigned_count": 3,
+                    "station_version": 1,
+                },
+            },
+        )
+        self.assertEqual(confirmed.status_code, 200, confirmed.content)
+        station.refresh_from_db()
+        self.assertEqual(station.max_kids, 1)
+        self.assertEqual(station.assignments.count(), 3)
+        audit = AuditEvent.objects.get(
+            action="happy_cleaning.station.update",
+            outcome="success",
+            request_id="station-overbook",
+        )
+        self.assertEqual(audit.details["old_capacity"], 3)
+        self.assertEqual(audit.details["new_capacity"], 1)
+        self.assertEqual(audit.details["overbooked_count"], 2)
 
     def test_station_reorder_is_gap_free_and_rejects_stale_or_incomplete_ids(self):
         stations = [
@@ -504,83 +622,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
             outcome="stale",
         ).exists())
 
-    def test_todo_create_update_reorder_and_delete_preserve_checked_state(self):
-        station = HappyCleaningStation.objects.create(
-            happy_cleaning=self.event,
-            name="Küche",
-            max_kids=2,
-            meeting_point="Tür",
-            position=1,
-        )
-        first = self.post_json(
-            "happy-cleaning-todo-create-api",
-            [self.event.id, station.id],
-            {
-                "request_id": "todo-create-1",
-                "expected_version": 1,
-                "text": "Boden kehren",
-            },
-        )
-        self.assertEqual(first.status_code, 201)
-        second = self.post_json(
-            "happy-cleaning-todo-create-api",
-            [self.event.id, station.id],
-            {
-                "request_id": "todo-create-2",
-                "expected_version": 2,
-                "text": "Tische wischen",
-            },
-        )
-        first_id = first.json()["todo"]["id"]
-        second_id = second.json()["todo"]["id"]
-        HappyCleaningTodo.objects.filter(pk=first_id).update(checked=True)
-
-        updated = self.post_json(
-            "happy-cleaning-todo-update-api",
-            [self.event.id, station.id, first_id],
-            {
-                "request_id": "todo-update-1",
-                "expected_version": 1,
-                "text": "Boden gründlich kehren",
-            },
-        )
-        self.assertEqual(updated.status_code, 200)
-        todo = HappyCleaningTodo.objects.get(pk=first_id)
-        self.assertTrue(todo.checked)
-        self.assertEqual(todo.text, "Boden gründlich kehren")
-
-        station.refresh_from_db()
-        reordered = self.post_json(
-            "happy-cleaning-todo-reorder-api",
-            [self.event.id, station.id],
-            {
-                "request_id": "todo-reorder-1",
-                "expected_version": station.version,
-                "todo_ids": [second_id, first_id],
-            },
-        )
-        self.assertEqual(reordered.status_code, 200)
-        self.assertEqual(
-            list(HappyCleaningTodo.objects.filter(station=station).values_list(
-                "id", "position", "checked",
-            )),
-            [(second_id, 1, False), (first_id, 2, True)],
-        )
-
-        second_version = HappyCleaningTodo.objects.get(pk=second_id).version
-        deleted = self.post_json(
-            "happy-cleaning-todo-delete-api",
-            [self.event.id, station.id, second_id],
-            {
-                "request_id": "todo-delete-1",
-                "expected_version": second_version,
-            },
-        )
-        self.assertEqual(deleted.status_code, 200)
-        remaining = HappyCleaningTodo.objects.get(pk=first_id)
-        self.assertEqual(remaining.position, 1)
-
-    def test_copy_deep_copies_selected_or_all_with_explicit_duplicate_policy(self):
+    def test_copy_deep_copies_selected_or_all(self):
         source_event = HappyCleaning.objects.create(
             turnus=self.other_turnus,
             display_number=1,
@@ -602,7 +644,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
             meeting_point="Quelle B",
             position=2,
         )
-        source_todo = HappyCleaningTodo.objects.create(
+        source_todo = CanonicalTask.objects.create(
             station=source_a,
             text="Alles putzen",
             position=1,
@@ -611,7 +653,7 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
         )
         existing = HappyCleaningStation.objects.create(
             happy_cleaning=self.event,
-            name="Küche",
+            name="Abstellraum",
             max_kids=1,
             meeting_point="Ziel",
             position=1,
@@ -630,36 +672,24 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
             "request_id": "copy-1",
             "expected_revision": 1,
             "source_event_id": source_event.id,
-            "copy_all": True,
+            "station_ids": [source_a.id, source_b.id],
         }
-
-        warning = self.post_json(
-            "happy-cleaning-station-copy-api",
-            url_args,
-            base,
-        )
-        self.assertEqual(warning.status_code, 409)
-        self.assertEqual(warning.json(), {
-            "ok": False,
-            "code": "duplicate_names",
-            "duplicate_names": ["Küche"],
-        })
 
         copied = self.post_json(
             "happy-cleaning-station-copy-api",
             url_args,
-            {**base, "duplicate_strategy": "copy"},
+            base,
         )
         self.assertEqual(copied.status_code, 200)
         target = list(HappyCleaningStation.objects.filter(
             happy_cleaning=self.event,
-        ).prefetch_related("todos"))
-        self.assertEqual([item.name for item in target], ["Küche", "Küche", "Bad"])
+        ))
+        self.assertEqual([item.name for item in target], ["Abstellraum", "Küche", "Bad"])
         copied_a = target[1]
         self.assertIsNone(copied_a.responsible_profile)
         self.assertEqual(copied_a.position, 2)
         self.assertEqual(copied_a.assignments.count(), 0)
-        copied_todo = copied_a.todos.get()
+        copied_todo = CanonicalTask.objects.filter(station=copied_a).get()
         self.assertNotEqual(copied_todo.id, source_todo.id)
         self.assertEqual((copied_todo.text, copied_todo.checked, copied_todo.version), (
             "Alles putzen", False, 1,

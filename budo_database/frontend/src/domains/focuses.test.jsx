@@ -62,8 +62,6 @@ describe('Schwerpunkte pages', () => {
 
     const weekColumn = screen.getByRole('heading', { name: 'Woche 1' }).closest('.detail-column');
     const mapColumn = screen.getByRole('heading', { name: 'Karte' }).closest('.detail-column');
-    expect(weekColumn).toHaveClass('focus-weeks-column');
-    expect(mapColumn).toHaveClass('focus-map-column');
     expect(weekColumn.nextElementSibling).toBe(mapColumn);
     expect(screen.queryByRole('columnheader', { name: 'Essenseinteilung' })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Aktionen' })).not.toBeInTheDocument();
@@ -120,28 +118,26 @@ describe('Schwerpunkte pages', () => {
 
     expect(screen.getByRole('heading', { name: 'Wald' })).toBeInTheDocument();
     expect(screen.getByText(/Bäume kennenlernen/)).toBeInTheDocument();
-    const detailFields = document.querySelector('.focus-detail-fields');
+    const detailFields = screen.getByRole('heading', { name: 'Wald' }).closest('.card').querySelector('.card-info-content > div');
     expect([...detailFields.querySelectorAll('p')].map(item => item.querySelector('.label').textContent)).toEqual([
       'Ort', 'Auslagern', 'Betreuende', 'Kinder', 'Wann', 'Beginnt am', 'Beschreibung',
     ]);
-    expect(within(detailFields).getByText('Beschreibung').closest('p')).toHaveClass('full-width');
     expect(screen.getByRole('link', { name: 'Waldplatz' })).toHaveAttribute('href', '/auslagerorte/7/');
     expect(screen.getByText(/Grace/)).toBeInTheDocument();
     expect(screen.getByText('Beginnt am').closest('p')).toHaveTextContent('05.07.2026');
     expect(screen.queryByText('Geschätzte Abreise')).not.toBeInTheDocument();
     expect(screen.queryByText('Geschätzte Rückkehr')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ada Kind' })).toHaveAttribute('href', '/kid_details/21');
+    const kidRow = screen.getByRole('link', { name: 'Ada Kind' }).closest('tr');
+    expect(within(kidRow).getByText('🥳 14')).toBeInTheDocument();
+    expect(within(kidRow).getByRole('link', { name: 'Ada Kind' })).toHaveAttribute('href', '/kid_details/21');
     expect(screen.getByText('Asthmaspray')).toBeInTheDocument();
     expect(screen.getByText('Allergie')).toBeInTheDocument();
     const mealsCard = screen.getByRole('heading', { name: 'Essen' }).closest('.card');
-    expect(mealsCard).toHaveClass('focus-meals-card');
-    expect(within(mealsCard).getByRole('rowheader', { name: 'Tag 1' })).toHaveClass('meal-day');
+    expect(within(mealsCard).getByRole('rowheader', { name: 'Tag 1' })).toBeInTheDocument();
     expect(within(mealsCard).getByText('warm')).toBeInTheDocument();
     const editFocus = screen.getByRole('link', { name: 'SWP bearbeiten' });
     expect(editFocus).toHaveAttribute('href', '/schwerpunkt/3/update');
-    expect(editFocus.closest('.focus-detail-actions')).not.toBeNull();
     expect(within(mealsCard).getByRole('link', { name: 'Essen bearbeiten' })).toHaveAttribute('href', '/swpmeals/3');
-    expect(within(mealsCard).getByRole('link', { name: 'Essen bearbeiten' }).closest('.react-actions')).not.toBeNull();
   });
 
   it('retains the create form, current option lists, and REST target', () => {
@@ -218,13 +214,14 @@ describe('Schwerpunkte pages', () => {
       'Tag 1', 'Tag 2', 'Tag 3',
     ]);
     expect(screen.getAllByRole('combobox')).toHaveLength(9);
-    expect(screen.getByLabelText('Tag 1 · Frühstück')).toHaveValue('box');
-    expect(screen.getByLabelText('Tag 1 · Mittagessen')).toHaveValue('warm');
-    expect(screen.getByLabelText('Tag 3 · Abendessen')).toHaveValue('box');
-    expect(screen.getByLabelText('Tag 1 · Frühstück').form).toHaveAttribute('action', '/swpmeals/3');
+    expect(screen.getByRole('combobox', { name: 'Tag 1 · Frühstück' })).toHaveValue('box');
+    expect(screen.getByRole('combobox', { name: 'Tag 1 · Mittagessen' })).toHaveValue('warm');
+    expect(screen.getByRole('combobox', { name: 'Tag 3 · Abendessen' })).toHaveValue('box');
+    expect(screen.getByRole('combobox', { name: 'Tag 1 · Frühstück' }).form).toHaveAttribute('action', '/swpmeals/3');
     expect(screen.getAllByRole('option', { name: 'BuDo' })).toHaveLength(9);
     expect(screen.getAllByRole('option', { name: 'Box' })).toHaveLength(9);
     expect(screen.getAllByRole('option', { name: 'Warm' })).toHaveLength(9);
+    expect(screen.getByRole('table').closest('[data-slot="table-scroll"]')).not.toBeNull();
   });
 
   it('declares every focus route contract without changing its browser URL', () => {

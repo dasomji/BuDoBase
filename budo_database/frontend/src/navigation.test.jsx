@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AppSidebar, ApplicationShell } from './app-sidebar';
@@ -20,19 +20,27 @@ describe('application sidebar navigation', () => {
 
     const navigation = screen.getByRole('navigation', { name: 'Hauptnavigation' });
     const lists = within(navigation).getByRole('button', { name: 'Listen' });
-    const allocations = within(navigation).getByRole('button', { name: 'Einteilungen' });
+    const focuses = within(navigation).getByRole('button', { name: 'Schwerpunkte' });
     const happyCleaning = within(navigation).getByRole('button', { name: 'Happy Cleaning' });
     const orga = within(navigation).getByRole('button', { name: 'Orgi' });
-    const allocationsMenu = document.getElementById(allocations.getAttribute('aria-controls'));
+    const listsMenu = document.getElementById(lists.getAttribute('aria-controls'));
+    const focusesMenu = document.getElementById(focuses.getAttribute('aria-controls'));
     const happyCleaningMenu = document.getElementById(happyCleaning.getAttribute('aria-controls'));
 
     expect(lists).toHaveAttribute('aria-expanded', 'true');
-    expect(allocations).toHaveAttribute('aria-expanded', 'true');
+    expect(focuses).toHaveAttribute('aria-expanded', 'true');
     expect(happyCleaning).toHaveAttribute('aria-expanded', 'true');
     expect(orga).toHaveAttribute('aria-expanded', 'true');
     expect(within(navigation).getByRole('link', { name: 'Team' })).toHaveAttribute('href', '/team/');
     expect(within(navigation).getByRole('link', { name: 'Alle Kinder' })).toHaveAttribute('href', '/all_kids');
-    expect(within(allocationsMenu).queryByRole('link', { name: 'Happy Cleaning' })).not.toBeInTheDocument();
+    expect(within(listsMenu).getByRole('link', { name: 'Gut zu wissen' })).toHaveAttribute('href', '/gut-zu-wissen/');
+    expect(within(focusesMenu).getAllByRole('link').map(link => link.textContent)).toEqual([
+      'Übersicht',
+      'SWP 1',
+      'SWP 2',
+    ]);
+    expect(within(focusesMenu).getByRole('link', { name: 'Übersicht' })).toHaveAttribute('href', '/swp-dashboard/');
+    expect(within(focusesMenu).queryByRole('link', { name: 'Happy Cleaning' })).not.toBeInTheDocument();
     expect(within(happyCleaningMenu).getAllByRole('link').map(link => link.textContent)).toEqual([
       'Übersicht',
       'Happy Cleaning 1',
@@ -47,6 +55,13 @@ describe('application sidebar navigation', () => {
     expect(within(navigation).getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin/');
     expect(screen.getByRole('link', { name: 'Profil' })).toHaveAttribute('href', '/profil/');
     expect(within(navigation).getByRole('link', { name: 'Alle Kinder' })).toHaveAttribute('data-active');
+  });
+
+  it('keeps the profile navigation active on the edit page', () => {
+    window.history.pushState({}, '', '/profil/bearbeiten/');
+    render(<ApplicationShell sidebar={<AppSidebar />} header={<div>Header</div>}><div>Inhalt</div></ApplicationShell>);
+
+    expect(screen.getByRole('link', { name: 'Profil' })).toHaveAttribute('data-active');
   });
 
   it('marks an event item active throughout that Happy Cleaning event', () => {
@@ -98,5 +113,20 @@ describe('application sidebar navigation', () => {
 
     expect(sidebar).toHaveAttribute('data-state', 'expanded');
     expect(document.cookie).toContain('sidebar_state=true');
+  });
+
+  it('uses the mobile sidebar at tablet widths where the desktop sidebar would overlap content', async () => {
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query === '(max-width: 900px)',
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+
+    render(<ApplicationShell sidebar={<AppSidebar />} header={<div>Header</div>}><div>Inhalt</div></ApplicationShell>);
+
+    await waitFor(() => {
+      expect(document.querySelector('[data-slot="sidebar"][data-state]')).not.toBeInTheDocument();
+    });
   });
 });

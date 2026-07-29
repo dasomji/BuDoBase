@@ -8,6 +8,7 @@ from budo_app.read_contracts.registry import ROUTE_CONTRACTS
 KNOWN_ROUTE_CONTRACT_KEYS = (
     "audit-events",
     "dashboard",
+    "gut-zu-wissen",
     "profile",
     "team",
     "turnus-list",
@@ -39,9 +40,9 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "birthdays",
     "happy-cleaning-overview",
     "happy-cleaning-assignment",
-    "happy-cleaning-stations",
-    "happy-cleaning-station-detail",
+    "happy-cleaning-overview-station",
     "happy-cleaning-print",
+    "happy-cleaning-todo-print",
 )
 
 class RouteContractDispatchTests(TestCase):

@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+from copy import deepcopy
 from typing import Mapping
 
 from django.db import transaction
-from django.db.models import F, Max, Q
+from django.db.models import F, Max
+from django.core.exceptions import ValidationError
 
 from budo_app.audit import (
     AuditEventData,
@@ -14,11 +16,17 @@ from budo_app.audit import (
 from budo_app.happy_cleaning_assignment_publisher import (
     publish_assignment_invalidation_on_commit,
 )
+from budo_app.happy_cleaning_station_matching import station_names_are_similar
+from budo_app.happy_cleaning_station_documents import (
+    count_tasks,
+    project_tasks,
+    validate_station_document,
+    validate_structural_edit_document,
+)
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningCommandRequest,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Profil,
     Turnus,
 )
@@ -140,8 +148,8 @@ def station_fields(payload):
         else:
             values[name] = value.strip()
     capacity = payload.get("max_kids")
-    if isinstance(capacity, bool) or not isinstance(capacity, int) or capacity <= 0:
-        errors["max_kids"] = ["A positive integer is required."]
+    if isinstance(capacity, bool) or not isinstance(capacity, int) or capacity < 0:
+        errors["max_kids"] = ["A non-negative integer is required."]
     else:
         values["max_kids"] = capacity
     wishes = payload.get("wishes", "")
@@ -273,6 +281,8 @@ def event_projection(event):
 
 
 def station_projection(station):
+    todos = project_tasks(station.content_document)
+    assigned_count = station.assignments.count()
     return {
         "id": station.id,
         "version": station.version,
@@ -283,16 +293,18 @@ def station_projection(station):
         "responsible_profile_id": station.responsible_profile_id,
         "position": station.position,
         "has_ever_had_assignment": station.has_ever_had_assignment,
-    }
-
-
-def todo_projection(todo):
-    return {
-        "id": todo.id,
-        "version": todo.version,
-        "text": todo.text,
-        "position": todo.position,
-        "checked": todo.checked,
+        "assigned_count": assigned_count,
+        "overbooked_count": max(assigned_count - station.max_kids, 0),
+        "document": station.content_document,
+        "task_item_count": len(todos),
+        "todos": todos,
+        "responsible": (
+            {
+                "id": station.responsible_profile.id,
+                "name": station.responsible_profile.rufname,
+            }
+            if station.responsible_profile else None
+        ),
     }
 
 
@@ -366,10 +378,10 @@ def _locked_station(event, station_id):
 
 
 def _locked_todo(station, todo_id):
-    todo = (
-        HappyCleaningTodo.objects.select_for_update()
-        .filter(pk=todo_id, station=station)
-        .first()
+    todo = next(
+        (todo for todo in project_tasks(station.content_document)
+         if todo["id"] == todo_id),
+        None,
     )
     if todo is None:
         raise CommandError(
@@ -414,17 +426,6 @@ def _normalize_stations(event, ordered_ids):
     queryset.update(position=F("position") + offset)
     for position, station_id in enumerate(ordered_ids, start=1):
         queryset.filter(pk=station_id).update(
-            position=position,
-            version=F("version") + 1,
-        )
-
-
-def _normalize_todos(station, ordered_ids):
-    queryset = HappyCleaningTodo.objects.filter(station=station)
-    offset = (queryset.aggregate(value=Max("position"))["value"] or 0) + len(ordered_ids) + 1
-    queryset.update(position=F("position") + offset)
-    for position, todo_id in enumerate(ordered_ids, start=1):
-        queryset.filter(pk=todo_id).update(
             position=position,
             version=F("version") + 1,
         )
@@ -528,7 +529,7 @@ def delete_event(context, event_id, expected_revision):
         return response, False
 
 
-def create_station(context, event_id, expected_revision, fields):
+def create_station(context, event_id, expected_revision, fields, document):
     action = "happy_cleaning.station.create"
     with transaction.atomic():
         _locked_turnus(context)
@@ -556,6 +557,14 @@ def create_station(context, event_id, expected_revision, fields):
             responsible_profile=responsible,
             position=position,
         )
+        try:
+            station.content_document = _save_structural_document(station, document)
+        except ValidationError as error:
+            raise CommandError(
+                "validation_error",
+                errors={"document": error.messages},
+            ) from error
+        station.save(update_fields=["content_document"])
         _bump_event(event)
         audit_success(
             context,
@@ -576,7 +585,74 @@ def create_station(context, event_id, expected_revision, fields):
         }), False
 
 
-def update_station(context, event_id, station_id, expected_version, fields):
+def _task_text_from_document_node(task):
+    return "".join(
+        child["text"]
+        for child in task["content"][0].get("content", [])
+    )
+
+
+TASK_ID_STATION_MULTIPLIER = 1_000_000
+
+
+def _next_station_task_identity(station):
+    """Allocate a JS-safe identity in a station-owned integer namespace."""
+    base = station.id * TASK_ID_STATION_MULTIPLIER
+    return max(
+        (
+            task["id"] for task in project_tasks(station.content_document)
+            if base <= task["id"] < base + TASK_ID_STATION_MULTIPLIER
+        ),
+        default=base,
+    ) + 1
+
+
+def _save_structural_document(station, submitted):
+    validate_structural_edit_document(submitted)
+    current = {todo["id"]: todo for todo in project_tasks(station.content_document)}
+    submitted_ids = {
+        task["attrs"]["id"]
+        for block in submitted["content"]
+        if block["type"] == "taskList"
+        for task in block["content"]
+        if task["attrs"]["id"] is not None
+    }
+    if not submitted_ids.issubset(current):
+        raise ValidationError("A task identity does not belong to this station.")
+    document = deepcopy(submitted)
+    identity = _next_station_task_identity(station)
+    for block in document["content"]:
+        if block["type"] != "taskList":
+            continue
+        for task in block["content"]:
+            task_identity = task["attrs"]["id"]
+            text = _task_text_from_document_node(task)
+            if task_identity is None:
+                attrs = {"id": identity, "checked": False, "version": 1}
+                identity += 1
+            else:
+                todo = current[task_identity]
+                attrs = {
+                    "id": task_identity,
+                    "checked": todo["checked"],
+                    "version": todo["version"] + (
+                        text != todo["text"]
+                    ),
+                }
+            task["attrs"] = attrs
+    validate_station_document(document)
+    return document
+
+
+def update_station(
+    context,
+    event_id,
+    station_id,
+    expected_version,
+    fields,
+    document=None,
+    overbooking_confirmation=None,
+):
     action = "happy_cleaning.station.update"
     with transaction.atomic():
         _locked_turnus(context)
@@ -597,11 +673,26 @@ def update_station(context, event_id, station_id, expected_version, fields):
             event_id=event.id,
             station_id=station.id,
         )
-        if (
-            station.has_ever_had_assignment
-            and station.max_kids != fields["max_kids"]
-        ):
-            raise CommandError("capacity_locked", status=409)
+        assigned_count = station.assignments.count()
+        proposed_overbooking = max(assigned_count - fields["max_kids"], 0)
+        if proposed_overbooking:
+            expected_confirmation = {
+                "capacity": fields["max_kids"],
+                "assigned_count": assigned_count,
+                "station_version": station.version,
+            }
+            if overbooking_confirmation != expected_confirmation:
+                raise CommandError(
+                    "overbooking_confirmation_required",
+                    status=409,
+                    extra={
+                        "confirmation": {
+                            **expected_confirmation,
+                            "overbooked_count": proposed_overbooking,
+                        },
+                    },
+                )
+        old_capacity = station.max_kids
         changed_fields = [
             name for name in (
                 "name", "max_kids", "meeting_point", "wishes",
@@ -612,6 +703,14 @@ def update_station(context, event_id, station_id, expected_version, fields):
                 else fields[name]
             )
         ]
+        if document is not None:
+            try:
+                station.content_document = _save_structural_document(station, document)
+            except ValidationError as error:
+                raise CommandError(
+                    "validation_error",
+                    errors={"document": error.messages},
+                ) from error
         station.name = fields["name"]
         station.max_kids = fields["max_kids"]
         station.meeting_point = fields["meeting_point"]
@@ -620,7 +719,7 @@ def update_station(context, event_id, station_id, expected_version, fields):
         station.version += 1
         station.save(update_fields=[
             "name", "max_kids", "meeting_point", "wishes",
-            "responsible_profile", "version",
+            "responsible_profile", "content_document", "version",
         ])
         _bump_event(event)
         audit_success(
@@ -634,6 +733,9 @@ def update_station(context, event_id, station_id, expected_version, fields):
                 "station_id": station.id,
                 "station_name": station.name,
                 "changed_fields": changed_fields,
+                "old_capacity": old_capacity,
+                "new_capacity": station.max_kids,
+                "overbooked_count": proposed_overbooking,
             },
         )
         return complete_command(context, action, {
@@ -722,201 +824,90 @@ def reorder_stations(context, event_id, expected_revision, station_ids):
         }), False
 
 
-def create_todo(context, event_id, station_id, expected_version, text):
-    action = "happy_cleaning.todo.create"
-    with transaction.atomic():
-        _locked_turnus(context)
-        replay = replay_completed_command(context, action)
-        if replay is not None:
-            return replay, True
-        event = _locked_event(context, event_id)
-        station = _locked_station(event, station_id)
-        _require_version(
-            station,
-            expected_version,
-            detail_id=station.id,
-            detail_name="station_id",
-        )
-        position = (
-            HappyCleaningTodo.objects.filter(station=station)
-            .aggregate(value=Max("position"))["value"]
-            or 0
-        ) + 1
-        todo = HappyCleaningTodo.objects.create(
-            station=station,
-            text=text,
-            position=position,
-        )
-        station.version += 1
-        station.save(update_fields=["version"])
-        _bump_event(event)
-        audit_success(
-            context,
-            action=action,
-            resource_type="todo",
-            resource_id=todo.id,
-            resource_label=todo.text,
-            details={
-                "happy_cleaning_id": event.id,
-                "station_id": station.id,
-                "todo_id": todo.id,
-            },
-        )
-        return complete_focused_command(context, action, {
-            "ok": True,
-            "event": event_projection(event),
-            "station_version": station.version,
-            "todo": todo_projection(todo),
-        }), False
+def _copy_source_document(document, first_identity=1):
+    copied = deepcopy(document)
+    identity = first_identity
+    for node in copied["content"]:
+        if node["type"] != "taskList":
+            continue
+        for task in node["content"]:
+            task["attrs"] = {
+                "id": identity,
+                "checked": False,
+                "version": 1,
+            }
+            identity += 1
+    validate_station_document(copied)
+    return copied
 
 
-def update_todo(context, event_id, station_id, todo_id, expected_version, text):
-    action = "happy_cleaning.todo.update"
-    with transaction.atomic():
-        _locked_turnus(context)
-        replay = replay_completed_command(context, action)
-        if replay is not None:
-            return replay, True
-        event = _locked_event(context, event_id)
-        station = _locked_station(event, station_id)
-        todo = _locked_todo(station, todo_id)
-        _require_version(
-            todo,
-            expected_version,
-            detail_id=todo.id,
-            detail_name="todo_id",
-        )
-        todo.text = text
-        todo.version += 1
-        todo.save(update_fields=["text", "version"])
-        station.version += 1
-        station.save(update_fields=["version"])
-        _bump_event(event)
-        audit_success(
-            context,
-            action=action,
-            resource_type="todo",
-            resource_id=todo.id,
-            resource_label=todo.text,
-            details={
-                "happy_cleaning_id": event.id,
-                "station_id": station.id,
-                "todo_id": todo.id,
-                "changed_fields": ["text"],
-            },
-        )
-        return complete_focused_command(context, action, {
-            "ok": True,
-            "event": event_projection(event),
-            "station_version": station.version,
-            "todo": todo_projection(todo),
-        }), False
-
-
-def reorder_todos(context, event_id, station_id, expected_version, todo_ids):
-    action = "happy_cleaning.todo.reorder"
-    with transaction.atomic():
-        _locked_turnus(context)
-        replay = replay_completed_command(context, action)
-        if replay is not None:
-            return replay, True
-        event = _locked_event(context, event_id)
-        station = _locked_station(event, station_id)
-        _require_version(
-            station,
-            expected_version,
-            detail_id=station.id,
-            detail_name="station_id",
-        )
-        current_ids = list(
-            HappyCleaningTodo.objects.select_for_update()
-            .filter(station=station)
-            .order_by("position", "id")
-            .values_list("id", flat=True)
-        )
-        if len(current_ids) != len(todo_ids) or set(current_ids) != set(todo_ids):
-            raise CommandError("invalid_order", status=400)
-        _normalize_todos(station, todo_ids)
-        station.version += 1
-        station.save(update_fields=["version"])
-        _bump_event(event)
-        audit_success(
-            context,
-            action=action,
-            resource_type="station",
-            resource_id=station.id,
-            resource_label=station.name,
-            details={
-                "happy_cleaning_id": event.id,
-                "station_id": station.id,
-            },
-        )
-        return complete_focused_command(context, action, {
-            "ok": True,
-            "event": event_projection(event),
-            "station_version": station.version,
-            "todo_ids": todo_ids,
-        }), False
-
-
-def delete_todo(context, event_id, station_id, todo_id, expected_version):
-    action = "happy_cleaning.todo.delete"
-    with transaction.atomic():
-        _locked_turnus(context)
-        replay = replay_completed_command(context, action)
-        if replay is not None:
-            return replay, True
-        event = _locked_event(context, event_id)
-        station = _locked_station(event, station_id)
-        todo = _locked_todo(station, todo_id)
-        _require_version(
-            todo,
-            expected_version,
-            detail_id=todo.id,
-            detail_name="todo_id",
-        )
-        label = todo.text
-        todo.delete()
-        remaining_ids = list(
-            HappyCleaningTodo.objects.filter(station=station)
-            .order_by("position", "id")
-            .values_list("id", flat=True)
-        )
-        _normalize_todos(station, remaining_ids)
-        station.version += 1
-        station.save(update_fields=["version"])
-        _bump_event(event)
-        audit_success(
-            context,
-            action=action,
-            resource_type="todo",
-            resource_id=todo_id,
-            resource_label=label,
-            details={
-                "happy_cleaning_id": event.id,
-                "station_id": station.id,
-                "todo_id": todo_id,
-            },
-        )
-        return complete_focused_command(context, action, {
-            "ok": True,
-            "event": event_projection(event),
-            "station_version": station.version,
-            "deleted_todo_id": todo_id,
-        }), False
-
-
-def _copy_source_event(target):
-    return (
-        HappyCleaning.objects.filter(
-            Q(turnus__turnus_beginn__lt=target.turnus.turnus_beginn)
-            | Q(
-                turnus=target.turnus,
-                display_number__lt=target.display_number,
-            )
-        )
-        .select_related("turnus")
+def _copied_document(source_station, target_station):
+    first_identity = _next_station_task_identity(target_station)
+    return _copy_source_document(
+        source_station.content_document, first_identity,
     )
+
+
+def _copy_responsible(source_station, source, target):
+    if source.turnus_id != target.turnus_id:
+        return None
+    responsible = source_station.responsible_profile
+    return responsible
+
+
+def _create_station_copy(source_station, source, target, position):
+    station = HappyCleaningStation.objects.create(
+        happy_cleaning=target,
+        name=source_station.name,
+        max_kids=source_station.max_kids,
+        meeting_point=source_station.meeting_point,
+        wishes=source_station.wishes,
+        responsible_profile=_copy_responsible(source_station, source, target),
+        position=position,
+        version=1,
+    )
+    station.content_document = _copied_document(source_station, station)
+    station.save(update_fields=["content_document"])
+    return station, count_tasks(station.content_document)["total"]
+
+
+def _turnus_copy_label(source, source_station):
+    return (
+        f"Kopiert aus {source_station.name} Happy Cleaning "
+        f"{source.display_number} – {source.turnus.turnus_nr}. Turnus "
+        f"{source.turnus.turnus_beginn.year}:"
+    )
+
+
+def _validate_resolutions(resolutions, conflicts_by_source, candidates_by_source):
+    if not isinstance(resolutions, list):
+        raise CommandError(
+            "validation_error",
+            errors={"resolutions": ["One decision is required per conflicting source."]},
+        )
+    decisions = {}
+    for value in resolutions:
+        if not isinstance(value, Mapping):
+            raise CommandError("validation_error", errors={"resolutions": ["Malformed decision."]})
+        source_id = value.get("source_station_id")
+        action = value.get("action")
+        target_id = value.get("target_station_id")
+        if source_id in decisions or source_id not in conflicts_by_source:
+            raise CommandError("validation_error", errors={"resolutions": ["Each conflicting source must occur exactly once."]})
+        if action not in {"overwrite", "append", "separate", "skip"}:
+            raise CommandError("validation_error", errors={"resolutions": ["Unknown action."]})
+        if action in {"overwrite", "append"}:
+            if target_id not in candidates_by_source[source_id]:
+                raise CommandError("validation_error", errors={"resolutions": ["Choose one matching target station."]})
+        elif target_id is not None:
+            raise CommandError("validation_error", errors={"resolutions": ["This action does not accept a target station."]})
+        decisions[source_id] = (action, target_id)
+    if set(decisions) != set(conflicts_by_source):
+        raise CommandError(
+            "validation_error",
+            errors={"resolutions": ["One decision is required per conflicting source."]},
+        )
+    return decisions
 
 
 def copy_stations(
@@ -924,10 +915,44 @@ def copy_stations(
     event_id,
     expected_revision,
     source_event_id,
-    *,
-    copy_all,
     station_ids,
-    duplicate_strategy,
+    resolutions=None,
+):
+    return _copy_stations(
+        context,
+        event_id,
+        expected_revision,
+        source_event_id=source_event_id,
+        station_ids=station_ids,
+        resolutions=resolutions,
+    )
+
+
+def copy_single_station(
+    context,
+    event_id,
+    expected_revision,
+    source_station_id,
+    resolutions=None,
+):
+    return _copy_stations(
+        context,
+        event_id,
+        expected_revision,
+        source_station_id=source_station_id,
+        resolutions=resolutions,
+    )
+
+
+def _copy_stations(
+    context,
+    event_id,
+    expected_revision,
+    *,
+    source_event_id=None,
+    station_ids=None,
+    resolutions=None,
+    source_station_id=None,
 ):
     action = "happy_cleaning.station.copy"
     with transaction.atomic():
@@ -937,8 +962,35 @@ def copy_stations(
             return replay, True
         target = _locked_event(context, event_id)
         _require_revision(target, expected_revision)
-        source = _copy_source_event(target).filter(pk=source_event_id).first()
-        if source is None:
+        fixed_source_station = None
+        if source_station_id is not None:
+            fixed_source_station = (
+                HappyCleaningStation.objects.filter(pk=source_station_id)
+                .select_related("happy_cleaning__turnus")
+                .first()
+            )
+            if fixed_source_station is None:
+                raise CommandError(
+                    "not_found",
+                    status=404,
+                    audit_outcome="forbidden",
+                    details={"happy_cleaning_id": target.id},
+                )
+            source_event_id = fixed_source_station.happy_cleaning_id
+        if source_event_id == target.id:
+            raise CommandError(
+                "invalid_selection",
+                errors={"source_event_id": ["Source and target must differ."]},
+            )
+        source = (
+            HappyCleaning.objects.filter(pk=source_event_id)
+            .select_related("turnus")
+            .first()
+        )
+        if source is None or (
+            source.turnus_id != target.turnus_id
+            and source.turnus.turnus_beginn >= target.turnus.turnus_beginn
+        ):
             raise CommandError(
                 "not_found",
                 status=404,
@@ -950,75 +1002,153 @@ def copy_stations(
             )
         source_stations = list(
             HappyCleaningStation.objects.filter(happy_cleaning=source)
-            .select_related("responsible_profile")
-            .prefetch_related("todos")
             .order_by("position", "id")
         )
-        if copy_all:
-            selected = source_stations
-        else:
-            selected_by_id = {station.id: station for station in source_stations}
-            if station_ids is None or any(
-                station_id not in selected_by_id for station_id in station_ids
-            ):
-                raise CommandError("invalid_selection", status=400)
-            selected = [selected_by_id[station_id] for station_id in station_ids]
-        existing_names = {
-            name.strip().casefold(): name
-            for name in HappyCleaningStation.objects.filter(
-                happy_cleaning=target,
-            ).values_list("name", flat=True)
-        }
-        duplicates = sorted({
-            station.name for station in selected
-            if station.name.strip().casefold() in existing_names
-        }, key=str.casefold)
-        if duplicates and duplicate_strategy not in {"copy", "skip"}:
-            raise CommandError(
-                "duplicate_names",
-                status=409,
-                extra={"duplicate_names": duplicates},
+        selected_by_id = {station.id: station for station in source_stations}
+        if fixed_source_station is not None:
+            station_ids = [source_station_id]
+        if any(station_id not in selected_by_id for station_id in station_ids):
+            raise CommandError("invalid_selection", status=400)
+        selected = [selected_by_id[station_id] for station_id in station_ids]
+        target_stations = list(
+            HappyCleaningStation.objects.select_for_update()
+            .filter(happy_cleaning=target)
+            .order_by("position", "id")
+        )
+        conflicts = [{
+            "source_station_id": source_station.id,
+            "source_name": source_station.name,
+            "source_task_count": count_tasks(source_station.content_document)["total"],
+            "target_station_id": target_station.id,
+            "target_name": target_station.name,
+            "target_task_count": count_tasks(target_station.content_document)["total"],
+            "overwrite_eligible": not target_station.has_ever_had_assignment,
+            "overwrite_disabled_reason": (
+                None if not target_station.has_ever_had_assignment
+                else "Diese Station war bereits einer Einteilung zugeordnet."
+            ),
+        } for source_station in selected for target_station in target_stations
+          if station_names_are_similar(source_station.name, target_station.name)]
+        conflicts_by_source = {}
+        candidates_by_source = {}
+        for conflict in conflicts:
+            conflicts_by_source.setdefault(conflict["source_station_id"], []).append(conflict)
+            candidates_by_source.setdefault(conflict["source_station_id"], set()).add(
+                conflict["target_station_id"]
             )
-        if duplicate_strategy == "skip":
-            selected = [
-                station for station in selected
-                if station.name.strip().casefold() not in existing_names
-            ]
+        if conflicts and resolutions is None:
+            return complete_command(context, action, {
+                "ok": True,
+                "result": "conflicts",
+                "target_event_id": target.id,
+                "target_revision": target.revision,
+                "source_event_id": source.id,
+                "station_ids": [station.id for station in selected],
+                "conflicts": conflicts,
+                "conflict_free_station_ids": [
+                    station.id for station in selected
+                    if station.id not in conflicts_by_source
+                ],
+            }), False
+        decisions = (
+            _validate_resolutions(
+                resolutions, conflicts_by_source, candidates_by_source,
+            )
+            if conflicts else {}
+        )
+        target_by_id = {station.id: station for station in target_stations}
+        for source_id, (resolution, target_id) in decisions.items():
+            if (
+                resolution == "overwrite"
+                and target_by_id[target_id].has_ever_had_assignment
+            ):
+                raise CommandError(
+                    "overwrite_locked",
+                    status=409,
+                    errors={"resolutions": ["The chosen target has previously been assigned."]},
+                )
         next_position = (
             HappyCleaningStation.objects.filter(happy_cleaning=target)
             .aggregate(value=Max("position"))["value"]
             or 0
         )
         copied = []
+        affected = []
+        result_counts = {
+            "copied": 0, "overwritten": 0, "appended": 0, "skipped": 0,
+            "todos_created": 0,
+        }
+        audit_decisions = []
         for source_station in selected:
-            next_position += 1
-            responsible = source_station.responsible_profile
-            if responsible and responsible.turnus_id != target.turnus_id:
-                responsible = None
-            station = HappyCleaningStation.objects.create(
-                happy_cleaning=target,
-                name=source_station.name,
-                max_kids=source_station.max_kids,
-                meeting_point=source_station.meeting_point,
-                wishes=source_station.wishes,
-                responsible_profile=responsible,
-                position=next_position,
+            resolution, target_station_id = decisions.get(
+                source_station.id, ("separate", None),
             )
-            HappyCleaningTodo.objects.bulk_create([
-                HappyCleaningTodo(
-                    station=station,
-                    text=todo.text,
-                    position=position,
-                    checked=False,
-                    version=1,
+            if resolution == "skip":
+                result_counts["skipped"] += 1
+                audit_decisions.append({
+                    "source_station_id": source_station.id,
+                    "action": "skip",
+                    "target_station_id": None,
+                })
+                continue
+            if resolution == "overwrite":
+                station = target_by_id[target_station_id]
+                station.name = source_station.name
+                station.max_kids = source_station.max_kids
+                station.meeting_point = source_station.meeting_point
+                station.wishes = source_station.wishes
+                station.responsible_profile = _copy_responsible(
+                    source_station, source, target,
                 )
-                for position, todo in enumerate(
-                    source_station.todos.all(),
-                    start=1,
+                station.version += 1
+                station.content_document = _copied_document(
+                    source_station, station,
                 )
-            ])
-            copied.append(station)
-        _bump_event(target)
+                station.save(update_fields=[
+                    "name", "max_kids", "meeting_point", "wishes",
+                    "responsible_profile", "content_document", "version",
+                ])
+                result_counts["overwritten"] += 1
+                result_counts["todos_created"] += count_tasks(
+                    station.content_document
+                )["total"]
+            elif resolution == "append":
+                station = target_by_id[target_station_id]
+                appended = _copied_document(
+                    source_station, station,
+                )
+                station.content_document = {
+                    "type": "doc",
+                    "content": [
+                        *station.content_document["content"],
+                        {
+                            "type": "paragraph",
+                            "content": [{"type": "text", "text": _turnus_copy_label(source, source_station)}],
+                        },
+                        *appended["content"],
+                    ],
+                }
+                validate_station_document(station.content_document)
+                station.version += 1
+                station.save(update_fields=["content_document", "version"])
+                result_counts["appended"] += 1
+                result_counts["todos_created"] += count_tasks(appended)["total"]
+            else:
+                next_position += 1
+                station, todo_count = _create_station_copy(
+                    source_station, source, target, next_position,
+                )
+                copied.append(station)
+                result_counts["copied"] += 1
+                result_counts["todos_created"] += todo_count
+            affected.append(station)
+            audit_decisions.append({
+                "source_station_id": source_station.id,
+                "action": resolution,
+                "target_station_id": target_station_id or station.id,
+            })
+        if any(value for key, value in result_counts.items() if key != "skipped"):
+            _bump_event(target)
         audit_success(
             context,
             action=action,
@@ -1028,11 +1158,19 @@ def copy_stations(
             details={
                 "happy_cleaning_id": target.id,
                 "source_happy_cleaning_id": source.id,
-                "copied_station_count": len(copied),
+                "source_station_ids": [station.id for station in selected],
+                "station_copy_decisions": audit_decisions,
+                "station_copy_result_counts": result_counts,
             },
         )
         return complete_command(context, action, {
             "ok": True,
+            "result": "resolved" if conflicts else "copied",
             "event": event_projection(target),
+            "result_counts": result_counts,
             "copied_stations": [station_projection(item) for item in copied],
+            "affected_stations": [
+                station_projection(item)
+                for item in {item.id: item for item in affected}.values()
+            ],
         }), False

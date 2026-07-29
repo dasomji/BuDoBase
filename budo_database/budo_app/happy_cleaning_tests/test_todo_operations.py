@@ -11,12 +11,14 @@ from budo_app.happy_cleaning_assignment_publisher import (
     configure_assignment_publisher,
     reset_assignment_publisher,
 )
+from budo_app.happy_cleaning_station_documents import project_tasks
+from budo_app.happy_cleaning_tests.task_fixtures import CanonicalTask
+
 from budo_app.models import (
     AuditEvent,
     HappyCleaning,
     HappyCleaningCommandRequest,
     HappyCleaningStation,
-    HappyCleaningTodo,
     Turnus,
 )
 from budo_app.read_contracts.views import route_data
@@ -36,7 +38,7 @@ urlpatterns = [
 
 
 @override_settings(ROOT_URLCONF=__name__)
-class HappyCleaningTodoOperationTests(TransactionTestCase):
+class CanonicalTaskOperationTests(TransactionTestCase):
     def setUp(self):
         self.turnus = Turnus.objects.create(
             turnus_nr=1,
@@ -59,7 +61,7 @@ class HappyCleaningTodoOperationTests(TransactionTestCase):
             position=1,
             version=3,
         )
-        self.first_todo = HappyCleaningTodo.objects.create(
+        self.first_todo = CanonicalTask.objects.create(
             station=self.station,
             text="Tische wischen",
             position=1,
@@ -75,59 +77,6 @@ class HappyCleaningTodoOperationTests(TransactionTestCase):
             data=json.dumps(payload),
             content_type="application/json",
             **extra,
-        )
-
-    def test_add_appends_a_todo_with_expected_station_version(self):
-        published = []
-        configure_assignment_publisher(published.append)
-        payload = {
-            "request_id": "todo-add-1",
-            "expected_version": 3,
-            "text": "Boden kehren",
-        }
-        response = self.post(
-            "happy-cleaning-todo-add-api",
-            payload,
-            args=(self.event.id, self.station.id),
-        )
-        replay = self.post(
-            "happy-cleaning-todo-add-api",
-            payload,
-            args=(self.event.id, self.station.id),
-        )
-
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json()["todo"], {
-            "id": response.json()["todo"]["id"],
-            "version": 1,
-            "text": "Boden kehren",
-            "position": 2,
-            "checked": False,
-        })
-        self.assertEqual(response.json()["station_version"], 4)
-        self.assertEqual(response.json()["event"]["revision"], 5)
-        self.assertEqual(replay.status_code, 200)
-        self.assertTrue(replay.json()["replayed"])
-        self.assertEqual(HappyCleaningTodo.objects.count(), 2)
-        self.assertEqual(
-            AuditEvent.objects.filter(request_id="todo-add-1").count(),
-            1,
-        )
-        self.assertEqual(len(published), 1)
-        stale = self.post(
-            "happy-cleaning-todo-add-api",
-            {
-                "request_id": "todo-add-stale",
-                "expected_version": 3,
-                "text": "Fenster wischen",
-            },
-            args=(self.event.id, self.station.id),
-        )
-        self.assertEqual(stale.status_code, 409)
-        self.assertEqual(stale.json()["current_version"], 4)
-        self.assertEqual(
-            AuditEvent.objects.get(request_id="todo-add-stale").outcome,
-            "stale",
         )
 
     def test_check_and_reopen_are_idempotent_audited_and_keep_activity_durable(self):
@@ -167,7 +116,7 @@ class HappyCleaningTodoOperationTests(TransactionTestCase):
         progress = self.client.get(
             reverse(
                 "route-data-api",
-                kwargs={"contract_key": "happy-cleaning-station-detail"},
+                kwargs={"contract_key": "happy-cleaning-overview-station"},
             ),
             {"event_id": self.event.id, "station_id": self.station.id},
         ).json()["station"]
@@ -195,7 +144,7 @@ class HappyCleaningTodoOperationTests(TransactionTestCase):
         progress = self.client.get(
             reverse(
                 "route-data-api",
-                kwargs={"contract_key": "happy-cleaning-station-detail"},
+                kwargs={"contract_key": "happy-cleaning-overview-station"},
             ),
             {"event_id": self.event.id, "station_id": self.station.id},
         ).json()["station"]
@@ -207,6 +156,45 @@ class HappyCleaningTodoOperationTests(TransactionTestCase):
             ),
             (0, 1, 0),
         )
+
+    def test_different_items_keep_independent_optimistic_versions_and_document_state(self):
+        second = CanonicalTask.objects.create(
+            station=self.station,
+            text="Boden kehren",
+            position=2,
+            version=5,
+        )
+
+        first_response = self.post(
+            "happy-cleaning-todo-check-api",
+            {"request_id": "different-item-1", "expected_version": 1},
+            args=(self.event.id, self.station.id, self.first_todo.id),
+        )
+        second_response = self.post(
+            "happy-cleaning-todo-check-api",
+            {"request_id": "different-item-2", "expected_version": 5},
+            args=(self.event.id, self.station.id, second.id),
+        )
+
+        self.assertEqual(
+            (first_response.status_code, second_response.status_code),
+            (200, 200),
+        )
+        self.station.refresh_from_db()
+        self.assertEqual(project_tasks(self.station.content_document), [
+            {
+                "id": self.first_todo.id,
+                "text": "Tische wischen",
+                "checked": True,
+                "version": 2,
+            },
+            {
+                "id": second.id,
+                "text": "Boden kehren",
+                "checked": True,
+                "version": 6,
+            },
+        ])
 
     def test_http_authentication_csrf_json_turnus_and_expected_versions(self):
         url_args = (self.event.id, self.station.id, self.first_todo.id)
@@ -273,7 +261,7 @@ class HappyCleaningTodoOperationTests(TransactionTestCase):
             meeting_point="Privat",
             position=1,
         )
-        other_todo = HappyCleaningTodo.objects.create(
+        other_todo = CanonicalTask.objects.create(
             station=other_station,
             text="Private Aufgabe",
             position=1,

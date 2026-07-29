@@ -13,6 +13,11 @@ import { isPublicRoute, parseRoute, renderRoute, resolveRouteHeaderTitle, resolv
 
 export { parseRoute } from './routes';
 
+const findHappyCleaningOverviewEvent = (data, eventId) => data?.years
+  ?.flatMap(group => group.turnuses)
+  .flatMap(turnus => turnus.events)
+  .find(event => event.id === eventId);
+
 function ErrorState({ title, error }) {
   return <div className="react-error"><div className="card"><h1>{title}</h1><p>{error.message}</p></div></div>;
 }
@@ -94,15 +99,20 @@ function AppContent({
     }
   }, [bootstrap, navigate, route, routeState.authenticationRequired]);
 
+  const realtimeEventId = route.event_id || pageState.happyCleaningEventId;
+  const overviewRealtimeEvent = findHappyCleaningOverviewEvent(
+    routeState.data,
+    realtimeEventId,
+  );
   const realtimeSync = useHappyCleaningSync({
     enabled: Boolean(
       bootstrap?.authenticated
       && route.domain === 'happy-cleaning'
-      && route.event_id
-      && routeState.data?.event
+      && realtimeEventId
+      && (routeState.data?.event || overviewRealtimeEvent)
     ),
-    eventId: route.event_id,
-    revision: routeState.data?.event?.revision,
+    eventId: realtimeEventId,
+    revision: routeState.data?.event?.revision ?? overviewRealtimeEvent?.revision,
     refresh: () => refreshRoute({ propagateError: true, preserveData: true }),
   });
 
@@ -116,7 +126,7 @@ function AppContent({
     search_index: bootstrap?.search_index,
     turnus: routeState.data.turnus ?? bootstrap?.turnus,
   } : bootstrap;
-  const mutate = async (url, payload, json = true) => {
+  const mutate = async (url, payload, json = true, refreshAfter = true) => {
     if (realtimeSync.enabled && !realtimeSync.writesEnabled) {
       const error = new Error('Realtime reconciliation required before writing');
       error.payload = { code: 'sync_unavailable' };
@@ -139,7 +149,7 @@ function AppContent({
     }
     let responsePayload = {};
     try { responsePayload = await response.json(); } catch { responsePayload = {}; }
-    await refreshRoute({ preserveData: true });
+    if (refreshAfter) await refreshRoute({ preserveData: true });
     return responsePayload;
   };
 
@@ -171,12 +181,16 @@ function AppContent({
     </>
   );
   if (route.standalone) return content;
+  const overviewSidebarEvents = (data.years || [])
+    .flatMap(year => year.turnuses || [])
+    .filter(turnus => turnus.is_active)
+    .flatMap(turnus => turnus.events || []);
   return (
     <ApplicationShell
       sidebar={data.authenticated ? (
         <AppSidebar happyCleaningEvents={
           route.page === 'happy-cleaning-overview'
-            ? data.events
+            ? overviewSidebarEvents
             : data.happy_cleaning_events
         } />
       ) : null}

@@ -1,0 +1,218 @@
+[
+  {
+    "path": "/dashboard/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/profil/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/team/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/upload/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/all_kids",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/kid_details/21",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/zugabreise",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/zuganreise",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/budo_familien/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/spezial_familien/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/murdergame",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/serienbrief",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/kindergesamtzahl/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/kindergeburtstage/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/swp-dashboard/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/schwerpunkt/1/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/schwerpunkt/1/update",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/swpmeals/1",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/swp-einteilung-w1",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/swp-einteilung-w2",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/happy-cleaning/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/happy-cleaning/1/assignment/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/happy-cleaning/print/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/kitchen",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/auslagerorte-list/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/auslagerorte/1/",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  },
+  {
+    "path": "/auslagerorte/create",
+    "status": 200,
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "viewportMismatch": false,
+    "overflows": false
+  }
+]

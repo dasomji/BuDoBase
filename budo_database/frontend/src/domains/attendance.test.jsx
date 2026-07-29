@@ -1,8 +1,14 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CheckPage, TrainPage, attendanceRoutes } from './attendance';
 import App from '../App';
+import { Toaster } from '../components/ui/toast';
+import { expectErrorToastOnly } from '../test-support';
+
+const render = ui => testingLibraryRender(ui, {
+  wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
+});
 
 const response = (data, { ok = true, status = 200 } = {}) => ({
   ok,
@@ -48,6 +54,7 @@ describe('attendance pages', () => {
   });
 
   it('declares the four attendance route contracts', () => {
+    expect(attendanceRoutes.find(route => route.page === 'train-departure')).toMatchObject({ title: 'Zugabreise' });
     expect(attendanceRoutes.map(route => route.readContractKey)).toEqual([
       'train-departure',
       'train-arrival',
@@ -77,12 +84,13 @@ describe('attendance pages', () => {
     }} mutate={vi.fn()} />);
 
     expect(screen.getByRole('link', { name: 'Ada Lovelace' })).toHaveAttribute('href', '/kid_details/7');
+    expect(screen.getByRole('table').parentElement).toHaveAttribute('data-sticky-first-column');
     expect(screen.getAllByText('Grace Hopper')).toHaveLength(1);
     expect(screen.getByText(/Kinder mit Top-Jugendticket: 1/)).toBeInTheDocument();
     expect(screen.getByText(/Kinder ohne Top-Jugendticket: 0/)).toBeInTheDocument();
   });
 
-  it('keeps Zugabreise toggle and note controls on their existing write interfaces', () => {
+  it('keeps Zugabreise controls on their write interfaces and confirms successful saves', async () => {
     const mutate = vi.fn();
     vi.spyOn(window, 'prompt').mockReturnValue('Neuer Treffpunkt');
     render(<TrainPage departure mutate={mutate} data={{
@@ -103,27 +111,105 @@ describe('attendance pages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Nein' }));
     expect(mutate).toHaveBeenCalledWith('/toggle_zug_abreise/', { id: 7 }, false);
+    const success = await screen.findByText('Zugabreise wurde gespeichert.', { selector: '.app-toast-description' });
+    expect(success.closest('.app-toast')).toHaveAttribute('data-type', 'success');
 
-    fireEvent.click(screen.getByRole('button', { name: '✏️' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abreise-Notiz von Ada Lovelace bearbeiten' }));
     expect(mutate).toHaveBeenCalledWith('/update_notiz_abreise/', {
       id: 7,
       notiz_abreise: 'Neuer Treffpunkt',
     });
   });
 
-  it('refreshes only the current focused transport contract after a toggle', async () => {
-    window.history.pushState({}, '', '/zugabreise');
-    const kid = {
-      id: 7,
-      full_name: 'Ada Lovelace',
+  it('keeps the visible Zugabreise row order after a toggle until the page is reloaded', async () => {
+    const mutate = vi.fn().mockResolvedValue({ status: 'success', new_count: 2 });
+    const kid = (id, fullName, trainDeparture) => ({
+      id,
+      full_name: fullName,
       present: true,
+      train_departure: trainDeparture,
       departure_note: '',
       youth_ticket: false,
       age: 14,
       registrant_name: 'Grace Hopper',
       registrant_phone: '+4312345',
       siblings: '',
-    };
+    });
+    const initialKids = [
+      kid(1, 'Ada Alpha', true),
+      kid(2, 'Berta Beta', false),
+      kid(3, 'Clara Charlie', false),
+    ];
+    const rowNames = () => screen.getAllByRole('row')
+      .map(row => row.querySelector('a[href^="/kid_details/"]')?.textContent)
+      .filter(Boolean);
+    const view = render(<TrainPage departure mutate={mutate} data={{
+      kids: initialKids,
+      totals: { train_departure: 1 },
+    }} />);
+
+    expect(rowNames()).toEqual(['Ada Alpha', 'Berta Beta', 'Clara Charlie']);
+    fireEvent.click(within(screen.getByRole('link', { name: 'Clara Charlie' }).closest('tr')).getByRole('button', { name: 'Nein' }));
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith('/toggle_zug_abreise/', { id: 3 }, false));
+
+    const updatedKids = initialKids.map(item => item.id === 3 ? { ...item, train_departure: true } : item);
+    view.rerender(<TrainPage departure mutate={mutate} data={{
+      kids: updatedKids,
+      totals: { train_departure: 2 },
+    }} />);
+    expect(rowNames()).toEqual(['Ada Alpha', 'Berta Beta', 'Clara Charlie']);
+
+    view.unmount();
+    render(<TrainPage departure mutate={mutate} data={{
+      kids: updatedKids,
+      totals: { train_departure: 2 },
+    }} />);
+    expect(rowNames()).toEqual(['Ada Alpha', 'Clara Charlie', 'Berta Beta']);
+  });
+
+  it('shows failed transport writes as error toasts, never inline', async () => {
+    const mutate = vi.fn().mockRejectedValue(new Error('network down'));
+    render(<TrainPage departure mutate={mutate} data={{
+      kids: [{
+        id: 7,
+        full_name: 'Ada Lovelace',
+        present: true,
+        train_departure: false,
+        departure_note: '',
+        youth_ticket: false,
+        age: 14,
+        registrant_name: 'Grace Hopper',
+        registrant_phone: '+4312345',
+        siblings: '',
+      }],
+      totals: { train_departure: 0 },
+    }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nein' }));
+
+    await expectErrorToastOnly('Die Zugabreise konnte nicht gespeichert werden.');
+  });
+
+  it('refreshes only the current transport contract without moving the toggled row', async () => {
+    window.history.pushState({}, '', '/zugabreise');
+    const kid = (id, fullName, trainDeparture) => ({
+      id,
+      full_name: fullName,
+      present: true,
+      train_departure: trainDeparture,
+      departure_note: '',
+      youth_ticket: false,
+      age: 14,
+      registrant_name: 'Grace Hopper',
+      registrant_phone: '+4312345',
+      siblings: '',
+    });
+    const ada = kid(1, 'Ada Alpha', true);
+    const berta = kid(2, 'Berta Beta', false);
+    const clara = kid(3, 'Clara Charlie', false);
+    const rowNames = () => screen.getAllByRole('row')
+      .map(row => row.querySelector('a[href^="/kid_details/"]')?.textContent)
+      .filter(Boolean);
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(response({
         authenticated: true,
@@ -135,20 +221,23 @@ describe('attendance pages', () => {
         search_index: { kids: [], focuses: [], places: [] },
       }))
       .mockResolvedValueOnce(response({
-        kids: [{ ...kid, train_departure: false }],
-        totals: { train_departure: 0 },
-      }))
-      .mockResolvedValueOnce(response({ status: 'success', new_count: 1 }))
-      .mockResolvedValueOnce(response({
-        kids: [{ ...kid, train_departure: true }],
+        kids: [ada, berta, clara],
         totals: { train_departure: 1 },
+      }))
+      .mockResolvedValueOnce(response({ status: 'success', new_count: 2 }))
+      .mockResolvedValueOnce(response({
+        kids: [ada, { ...clara, train_departure: true }, berta],
+        totals: { train_departure: 2 },
       }));
 
     render(<App fetchImpl={fetchImpl} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Nein' }));
+    const claraRow = (await screen.findByRole('link', { name: 'Clara Charlie' })).closest('tr');
+    expect(rowNames()).toEqual(['Ada Alpha', 'Berta Beta', 'Clara Charlie']);
+    fireEvent.click(within(claraRow).getByRole('button', { name: 'Nein' }));
 
-    expect(await screen.findByRole('button', { name: 'Ja' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Zugabreise: 1 sortieren' })).toBeInTheDocument();
+    await waitFor(() => expect(within(claraRow).getByRole('button', { name: 'Ja' })).toBeInTheDocument());
+    expect(rowNames()).toEqual(['Ada Alpha', 'Berta Beta', 'Clara Charlie']);
+    expect(screen.getByRole('button', { name: 'Zugabreise: 2 sortieren' })).toBeInTheDocument();
     await waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(4));
     expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
       '/api/bootstrap/',
