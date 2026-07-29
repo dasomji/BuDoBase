@@ -123,9 +123,14 @@ class CanonicalTaskQuery:
     def order_by(self, *_fields):
         return self
 
-    def values_list(self, field, flat=False):
-        values = [getattr(item, field) for item in self._items()]
-        return values if flat else [(value,) for value in values]
+    def values_list(self, *fields, flat=False):
+        if flat and len(fields) != 1:
+            raise TypeError("flat is not valid when values_list is called with more than one field")
+        rows = [
+            tuple(getattr(item, field) for field in fields)
+            for item in self._items()
+        ]
+        return [row[0] for row in rows] if flat else rows
 
     def update(self, **values):
         for item in self._items():

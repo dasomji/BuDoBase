@@ -93,6 +93,29 @@ class HappyCleaningModelTests(TestCase):
         with self.assertRaises(ValidationError):
             invalid_creates[-1]()
 
+    def test_canonical_task_values_list_preserves_multiple_requested_fields(self):
+        CanonicalTask.objects.create(
+            station=self.station,
+            text="Tische",
+            position=1,
+            checked=True,
+            version=2,
+        )
+        CanonicalTask.objects.create(
+            station=self.station,
+            text="Boden",
+            position=2,
+            checked=False,
+            version=4,
+        )
+
+        self.assertEqual(
+            list(CanonicalTask.objects.filter(station=self.station).values_list(
+                "checked", "version"
+            )),
+            [(True, 2), (False, 4)],
+        )
+
     def test_child_number_is_positive_and_unique_inside_its_turnus(self):
         self.kid.happy_cleaning_number = 17
         self.kid.save(update_fields=["happy_cleaning_number"])
