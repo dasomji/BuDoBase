@@ -557,7 +557,7 @@ describe('reusable components', () => {
   it('wraps DataTables by default without generating ids and exposes sticky and priority options', () => {
     const columns = [
       { key: 'name', label: 'Name' },
-      { key: 'note', label: 'Notiz', priority: 'low' },
+      { key: 'note', label: 'Notiz', priority: 'low', className: 'number-cell' },
     ];
     const rows = [{ id: 1, name: 'Ada', note: 'Vegetarisch' }];
 
@@ -576,8 +576,13 @@ describe('reusable components', () => {
     expect(tables[1].parentElement).toHaveAttribute('data-sticky-header');
     expect(tables[1].parentElement).toHaveAttribute('data-sticky-first-column');
     expect(tables[1].parentElement).toHaveAttribute('data-vertical-scroll');
-    expect(screen.getAllByRole('columnheader', { name: /Notiz/ })[0]).toHaveAttribute('data-priority', 'low');
-    expect(screen.getAllByRole('cell', { name: 'Vegetarisch' })[0]).toHaveAttribute('data-priority', 'low');
+    const noteHeader = screen.getAllByRole('columnheader', { name: /Notiz/ })[0];
+    const noteCell = screen.getAllByRole('cell', { name: 'Vegetarisch' })[0];
+    expect(noteHeader).toHaveAttribute('scope', 'col');
+    expect(noteHeader).toHaveAttribute('data-priority', 'low');
+    expect(noteHeader).toHaveClass('number-cell');
+    expect(noteCell).toHaveAttribute('data-priority', 'low');
+    expect(noteCell).toHaveClass('number-cell');
   });
 
   it('filters table pages by the first-column name only', () => {

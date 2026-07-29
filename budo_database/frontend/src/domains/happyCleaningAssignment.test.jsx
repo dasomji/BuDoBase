@@ -93,7 +93,7 @@ const assignmentData = {
 const setViewport = mobile => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
-    value: mobile ? 390 : 1024,
+    value: mobile ? 375 : 1024,
   });
   window.matchMedia = vi.fn().mockReturnValue({
     matches: mobile,
@@ -259,6 +259,44 @@ describe('Happy Cleaning assignment', () => {
     expect(numberInput.closest('.card-info-container')).not.toHaveAttribute('inert');
   });
 
+  it('keeps a collapsed child panel collapsed when its number changes and expands a different child', () => {
+    setViewport(true);
+    const view = render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Kind suchen' }), {
+      target: { value: 'Ada' },
+    });
+    fireEvent.click(screen.getByRole('option', { name: 'Ada Lovelace' }));
+
+    let panelToggle = screen.getByRole('button', { name: 'Ada Lovelace schließen' });
+    fireEvent.click(panelToggle);
+    expect(panelToggle).toHaveAttribute('aria-expanded', 'false');
+
+    view.rerender(<HappyCleaningAssignmentPage
+      data={{
+        ...assignmentData,
+        children: assignmentData.children.map(child => child.id === 1
+          ? { ...child, number: 9, number_version: 3 }
+          : child),
+      }}
+      mutate={vi.fn()}
+    />);
+
+    panelToggle = screen.getByRole('button', { name: 'Ada Lovelace öffnen' });
+    expect(panelToggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(panelToggle);
+    expect(screen.getByText('Nummer').nextElementSibling).toHaveTextContent('9');
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Kind suchen' }), {
+      target: { value: 'Grace' },
+    });
+    fireEvent.click(screen.getByRole('option', { name: 'Grace Hopper' }));
+    expect(screen.getByRole('button', { name: 'Grace Hopper schließen' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
   it('opens present unassigned children in a closable dialog and selects one', async () => {
     setViewport(false);
     render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
@@ -288,6 +326,7 @@ describe('Happy Cleaning assignment', () => {
     expect(screen.getByRole('combobox', { name: 'Kind suchen' })).toHaveValue('Grace Hopper');
   });
 
+  // Phone-width layout is browser-verified under issue #128; jsdom guards only the mobile DOM contract.
   it('renders shared table primitives inside an internal scroll boundary and keeps mobile station details available', () => {
     setViewport(false);
     const desktop = render(<HappyCleaningAssignmentPage data={assignmentData} mutate={vi.fn()} />);
@@ -329,6 +368,12 @@ describe('Happy Cleaning assignment', () => {
     expect(within(mobileTable).getByRole('columnheader', { name: 'Plätze' })).toBeInTheDocument();
     expect(within(mobileTable).getByRole('columnheader', { name: 'Details' })).toBeInTheDocument();
     expect(within(mobileTable).getByRole('columnheader', { name: 'Wünsche' })).toHaveAttribute('data-priority', 'low');
+    expect(within(mobileTable).getByRole('columnheader', { name: 'Kinder' })).not.toHaveAttribute('data-priority');
+    const mobileDiningHallRow = within(mobileTable).getByRole('rowheader', { name: 'Speisesaal' }).closest('tr');
+    const childPills = within(mobileDiningHallRow).getByRole('group', { name: 'Eingeteilte Kinder' });
+    const mobileChildButton = within(childPills).getByRole('button', { name: 'Ada Lovelace auswählen' });
+    expect(childPills).toBeInTheDocument();
+    expect(mobileChildButton).toBeInTheDocument();
     const detailsTrigger = within(mobileTable).getByRole('button', { name: 'Details zu Speisesaal anzeigen' });
     expect(detailsTrigger.querySelector('.lucide-eye')).toBeInTheDocument();
     fireEvent.click(detailsTrigger);

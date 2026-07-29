@@ -509,10 +509,12 @@ describe('Happy Cleaning station detail', () => {
     await user.keyboard('{Escape}');
     const dirtyDialog = screen.getByRole('dialog', { name: 'Ungespeicherte Änderungen' });
     expect(dirtyDialog).toBeInTheDocument();
-    expect(within(dirtyDialog).getByRole('heading', {
+    const dirtyDialogTitle = within(dirtyDialog).getByRole('heading', {
       level: 2,
       name: 'Ungespeicherte Änderungen',
-    })).toBeInTheDocument();
+    });
+    expect(dirtyDialogTitle).toHaveClass('text-xl');
+    expect(dirtyDialogTitle).toHaveClass('font-semibold');
     expect(stationCard).not.toContainElement(dirtyDialog);
     const dirtyDialogViewport = dirtyDialog.parentElement;
     const dirtyDialogBackdrop = dirtyDialogViewport?.previousElementSibling;

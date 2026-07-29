@@ -53,8 +53,10 @@ function ChildDetails({ child, busy, onNumber }) {
   useEffect(() => {
     setNumber(child.number === null ? '' : String(child.number));
     setEditingNumber(child.number === null);
-    setExpanded(true);
   }, [child.id, child.number]);
+  useEffect(() => {
+    setExpanded(true);
+  }, [child.id]);
   const numberForm = (
     <form className="flex flex-wrap items-stretch gap-1" onSubmit={event => {
       event.preventDefault();
@@ -476,7 +478,7 @@ function ChildPills({ station, onSelect, hidden = false }) {
     >
       {station.children.map(child => (
         <Button
-          className="h-auto rounded-full border border-current px-2 py-[.2rem]"
+          className="h-auto min-w-0 max-w-full rounded-full border border-current px-2 py-[.2rem] whitespace-normal"
           variant="secondary"
           type="button"
           aria-label={`${child.full_name} auswählen`}

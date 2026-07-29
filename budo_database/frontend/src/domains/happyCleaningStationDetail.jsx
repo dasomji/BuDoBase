@@ -187,7 +187,7 @@ function DirtyNavigationDialog({ onContinue, onDiscard, onSave }) {
         <Dialog.Backdrop className="fixed inset-0 z-[var(--z-modal)] bg-black/45" />
         <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] grid place-items-center overflow-y-auto p-4">
           <Dialog.Popup className="card max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-surface-solid p-6">
-            <Dialog.Title className="m-0">Ungespeicherte Änderungen</Dialog.Title>
+            <Dialog.Title className="text-xl font-semibold">Ungespeicherte Änderungen</Dialog.Title>
             <Dialog.Description>Es gibt ungespeicherte Änderungen.</Dialog.Description>
             <div className="mt-4 flex flex-wrap justify-between gap-2">
               <Button variant="secondary" type="button" onClick={onContinue}>Weiter bearbeiten</Button>

@@ -339,7 +339,7 @@ export function DataTable({
           <TableHeader><TableRow>{columns.map(column => {
             const direction = sort?.key === column.key ? sort.direction : undefined;
             const nextDirection = direction === 'ascending' ? 'absteigend' : direction === 'descending' ? 'aufsteigend' : '';
-            return <TableHead key={column.key} scope="col" data-priority={column.priority} aria-sort={direction}>{column.sortable === false ? column.label : <button className="table-sort-button" type="button" aria-label={`${column.label}${nextDirection ? ` ${nextDirection}` : ''} sortieren`} onClick={() => sortBy(column.key)}><span>{column.label}</span>{direction && <span className="sort-indicator" aria-hidden="true">{direction === 'ascending' ? '▲' : '▼'}</span>}</button>}</TableHead>;
+            return <TableHead className={column.className} key={column.key} scope="col" data-priority={column.priority} aria-sort={direction}>{column.sortable === false ? column.label : <button className="table-sort-button" type="button" aria-label={`${column.label}${nextDirection ? ` ${nextDirection}` : ''} sortieren`} onClick={() => sortBy(column.key)}><span>{column.label}</span>{direction && <span className="sort-indicator" aria-hidden="true">{direction === 'ascending' ? '▲' : '▼'}</span>}</button>}</TableHead>;
           })}</TableRow></TableHeader>
           <TableBody>
             {visibleRows.map(row => <TableRow key={row.id}>{columns.map(column => <TableCell className={column.className} data-priority={column.priority} key={column.key}>{column.render ? column.render(row) : row[column.key]}</TableCell>)}</TableRow>)}
