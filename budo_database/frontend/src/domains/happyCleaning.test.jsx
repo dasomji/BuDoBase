@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toaster } from '../components/ui/toast';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute, resolveRouteTitle, routeHeaderAction } from '../routes';
+import { expectErrorToastOnly } from '../test-support';
 import {
   HappyCleaningCreateButton,
   HappyCleaningManagementPage,
@@ -673,7 +674,7 @@ describe('Happy Cleaning management', () => {
     expect(trigger).toHaveFocus();
   });
 
-  it('keeps copy conflicts and errors in the overview dialog', async () => {
+  it('shows failed station copies as error toasts, never inline', async () => {
     const conflict = {
       ok: true, result: 'conflicts', target_revision: 4,
       conflicts: [{ source_station_id: 50, source_name: 'Bad', target_station_id: 90, target_name: 'Bad Kinder' }],
@@ -699,9 +700,7 @@ describe('Happy Cleaning management', () => {
     expect(await dialog.findByRole('alert')).toHaveTextContent('Bad → Bad Kinder');
     expect(dialog.getByText(/Zielversion 4/)).toBeInTheDocument();
     fireEvent.click(dialog.getByRole('button', { name: 'Erneut prüfen' }));
-    const toast = await screen.findByText('network down', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(dialog.queryByText('network down')).not.toBeInTheDocument();
+    await expectErrorToastOnly('network down');
   });
 
   it('requires an accessible explicit conflict decision and one eligible candidate', async () => {
@@ -781,15 +780,13 @@ describe('Happy Cleaning management', () => {
     ));
   });
 
-  it('shows create failures as error toasts instead of header text', async () => {
+  it('shows failed overview writes as error toasts, never inline', async () => {
     const mutate = vi.fn().mockRejectedValue(new Error('network down'));
     render(<HappyCleaningCreateButton mutate={mutate} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Happy Cleaning hinzufügen' }));
 
-    const toast = await screen.findByText('network down', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(document.querySelector('.header-action-error')).not.toBeInTheDocument();
+    await expectErrorToastOnly('network down');
   });
 
   it('restores the current user overview preference and lazy loads remembered open years', async () => {

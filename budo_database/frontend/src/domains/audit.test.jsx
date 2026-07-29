@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toaster } from '../components/ui/toast';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute } from '../routes';
+import { expectErrorToastOnly } from '../test-support';
 import { AuditPage } from './audit';
 
 const render = ui => testingLibraryRender(ui, {
@@ -104,14 +105,12 @@ describe('audit explorer', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:audit');
   });
 
-  it('shows an export error without losing the page', async () => {
+  it('shows failed audit exports as error toasts, never inline', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 503 });
     render(<AuditPage data={data} fetchImpl={fetchImpl} />);
     fireEvent.click(screen.getByRole('checkbox', { name: /personenbezogene Daten/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Audit-Log herunterladen' }));
-    const toast = await screen.findByText(/Export fehlgeschlagen/, { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(document.querySelector('.audit-export .error')).not.toBeInTheDocument();
+    await expectErrorToastOnly('Export fehlgeschlagen (503)');
     expect(screen.getByText(/Ada Teamer/)).toBeInTheDocument();
   });
 });

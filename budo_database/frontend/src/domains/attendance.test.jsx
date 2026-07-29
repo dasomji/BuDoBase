@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CheckPage, TrainPage, attendanceRoutes } from './attendance';
 import App from '../App';
 import { Toaster } from '../components/ui/toast';
+import { expectErrorToastOnly } from '../test-support';
 
 const render = ui => testingLibraryRender(ui, {
   wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
@@ -116,7 +117,7 @@ describe('attendance pages', () => {
     });
   });
 
-  it('shows failed transport writes as error toasts', async () => {
+  it('shows failed transport writes as error toasts, never inline', async () => {
     const mutate = vi.fn().mockRejectedValue(new Error('network down'));
     render(<TrainPage departure mutate={mutate} data={{
       kids: [{
@@ -136,8 +137,7 @@ describe('attendance pages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Nein' }));
 
-    const toast = await screen.findByText('Die Zugabreise konnte nicht gespeichert werden.', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    await expectErrorToastOnly('Die Zugabreise konnte nicht gespeichert werden.');
   });
 
   it('refreshes only the current focused transport contract after a toggle', async () => {

@@ -23,6 +23,7 @@ import {
 import { Button } from './components/ui/button';
 import { Input, NativeSelect } from './components/ui/input';
 import { Toaster } from './components/ui/toast';
+import { expectErrorToastOnly } from './test-support';
 
 describe('reusable components', () => {
   afterEach(() => {
@@ -294,9 +295,8 @@ describe('reusable components', () => {
     const view = render(toastTree(messages));
 
     const success = await screen.findByText('Willkommen zurück!', { selector: '.app-toast-description' });
-    const error = await screen.findByText('Speichern fehlgeschlagen.', { selector: '.app-toast-description' });
     expect(success.closest('.app-toast')).toHaveAttribute('data-type', 'success');
-    expect(error.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    await expectErrorToastOnly('Speichern fehlgeschlagen.');
     expect(document.querySelector('.messages')).not.toBeInTheDocument();
 
     view.rerender(toastTree(messages.map(message => ({ ...message }))));
@@ -625,7 +625,7 @@ describe('reusable components', () => {
     expect(firstColumn()).toEqual(['Ada', 'Zora']);
   });
 
-  it('keeps form state in React and shows REST validation errors as a toast', async () => {
+  it('shows failed REST forms as error toasts, never inline', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       json: async () => ({ ok: false, errors: ['Dieses Feld ist erforderlich.'] }),
@@ -635,9 +635,7 @@ describe('reusable components', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-    const toast = await screen.findByText('Dieses Feld ist erforderlich.', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(document.querySelector('.errorlist')).not.toBeInTheDocument();
+    await expectErrorToastOnly('Dieses Feld ist erforderlich.');
     expect(screen.getByDisplayValue('Ada')).toBeInTheDocument();
     expect(fetchMock.mock.calls[0][1].body.get('money_action')).toBe('withdraw');
     vi.unstubAllGlobals();

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
 import { Toaster } from '../components/ui/toast';
+import { expectErrorToastOnly } from '../test-support';
 import { AllocationPage } from './allocation';
 
 const render = ui => testingLibraryRender(ui, {
@@ -48,11 +49,7 @@ describe('allocation page', () => {
     expect(assignment).toHaveAttribute('data-slot', 'native-select');
     fireEvent.change(assignment, { target: { value: '2' } });
 
-    const message = 'Die Schwerpunktdaten konnten nicht gespeichert werden.';
-    const notifications = screen.getByRole('region', { name: 'Benachrichtigungen' });
-    const toast = await within(notifications).findByText(message);
-    expect(toast.closest('[data-type="error"]')).toBeInTheDocument();
-    expect(within(screen.getByRole('main')).queryByText(message)).not.toBeInTheDocument();
+    await expectErrorToastOnly('Die Schwerpunktdaten konnten nicht gespeichert werden.');
   });
 
   it('renders assignment stats above a two-column kid list and highlights selected choices', () => {

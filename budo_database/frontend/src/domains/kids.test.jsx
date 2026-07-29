@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import { Toaster } from '../components/ui/toast';
 import { parseRoute } from '../routes';
+import { expectErrorToastOnly } from '../test-support';
 import { KidDetailPage, KidInteractionForm, KidsPage } from './kids';
 import { formatGermanDate, formatKidBirthday } from './shared';
 
@@ -129,8 +130,7 @@ describe('Kinder pages', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'EH-Eintrag senden' }));
 
-    const toast = await screen.findByText('Bitte eine Beschreibung eingeben.', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    await expectErrorToastOnly('Bitte eine Beschreibung eingeben.');
   });
 
   it('restores the saved Taschengeld mode from its cookie', () => {
@@ -182,7 +182,7 @@ describe('Kinder pages', () => {
     expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');
   });
 
-  it('shows failed deposit writes as error toasts', async () => {
+  it('shows failed deposit writes as error toasts, never inline', async () => {
     const mutate = vi.fn().mockRejectedValue(new Error('network down'));
     const kid = {
       id: 7,
@@ -199,8 +199,7 @@ describe('Kinder pages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '+ Pfand' }));
 
-    const toast = await screen.findByText('Das Pfand konnte nicht gespeichert werden.', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    await expectErrorToastOnly('Das Pfand konnte nicht gespeichert werden.');
   });
 
   it('keeps the directory columns, filtering, sorting, links, and empty state on focused rows', () => {

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import { Toaster } from '../components/ui/toast';
 import { parseRoute } from '../routes';
+import { expectErrorToastOnly } from '../test-support';
 import { DashboardPage } from './dashboard';
 
 const render = ui => testingLibraryRender(ui, {
@@ -182,9 +183,9 @@ describe('dashboard page', () => {
     expect(await screen.findByText('Hand gekühlt')).toBeInTheDocument();
   });
 
-  it('shows a recoverable error when an activity continuation fails', async () => {
+  it('shows failed dashboard loads as error toasts, never inline', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(response({}, { ok: false, status: 503 }));
-    render(<Toaster timeout={0}><DashboardPage
+    render(<DashboardPage
       data={dashboardData({
         transactions: {
           items: [],
@@ -194,13 +195,11 @@ describe('dashboard page', () => {
         },
       })}
       fetchImpl={fetchImpl}
-    /></Toaster>);
+    />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Ältere Transaktionen laden' }));
 
-    const toast = await screen.findByText('Ältere Transaktionen konnten nicht geladen werden.', { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(document.querySelector('.activity-error')).not.toBeInTheDocument();
+    await expectErrorToastOnly('Ältere Transaktionen konnten nicht geladen werden.');
     expect(screen.getByRole('button', { name: 'Ältere Transaktionen laden' })).toBeEnabled();
   });
 

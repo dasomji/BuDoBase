@@ -148,6 +148,14 @@ its dimensions, padding, or border radius on individual pages.
 Use `Button` instead of new `.button` anchors or bare button styling. Keep the
 native `type`, form, ARIA, and disabled semantics appropriate to the action.
 
+## Error feedback
+
+Errors surface as error toasts and never as inline text. This keeps failed
+actions from moving page layout or leaving stale banners after a successful
+retry. The duplicate-number recovery dialog in the Happy-Cleaning assignment
+flow is the sole exception: its error title is an action prompt within the
+recovery flow. New pages inherit this rule.
+
 ## Card
 
 Import `Card` from the shared module:

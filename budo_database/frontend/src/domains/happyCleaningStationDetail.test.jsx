@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toaster } from '../components/ui/toast';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute } from '../routes';
+import { expectErrorToastOnly } from '../test-support';
 import {
   HappyCleaningStationDetailPage,
   StableTaskItem,
@@ -194,7 +195,7 @@ describe('Happy Cleaning station detail', () => {
     expect(completed).toBeChecked();
   });
 
-  it('refreshes a stale task conflict so the same item can be retried', async () => {
+  it('shows failed station-detail writes as error toasts, never inline', async () => {
     const stale = new Error('Update failed');
     stale.payload = { code: 'stale', current_version: 2 };
     const mutate = vi.fn().mockRejectedValue(stale);
@@ -208,12 +209,11 @@ describe('Happy Cleaning station detail', () => {
     );
 
     const completed = screen.getByRole('checkbox', { name: 'Boden kehren erledigen' });
-    const stationCard = completed.closest('.card');
     fireEvent.click(completed);
 
-    const toast = await screen.findByText(/erneut versuchen/, { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(stationCard.querySelector('.error')).not.toBeInTheDocument();
+    await expectErrorToastOnly(
+      'Die Daten wurden inzwischen geändert. Bitte erneut versuchen.',
+    );
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
     expect(screen.getByRole('checkbox', { name: 'Boden kehren erledigen' })).toBeEnabled();
   });
@@ -354,8 +354,9 @@ describe('Happy Cleaning station detail', () => {
     expect(screen.getByRole('button', { name: 'Auswahl verbindlich kopieren' })).toBeEnabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Erneut prüfen' }));
-    const toast = await screen.findByText(/inzwischen geändert/, { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    await expectErrorToastOnly(
+      'Die Daten wurden inzwischen geändert. Bitte neu laden.',
+    );
     expect(screen.getByRole('heading', { name: 'Speisesaal', hidden: true })).toBeInTheDocument();
   });
 
@@ -531,9 +532,9 @@ describe('Happy Cleaning station detail', () => {
     screen.getByRole('button', { name: 'Speichern und weiter' }).focus();
     await user.keyboard('{Enter}');
 
-    const toast = await screen.findByText(/inzwischen geändert/, { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(screen.getByLabelText('Name der Station').closest('form').querySelector('.error')).not.toBeInTheDocument();
+    await expectErrorToastOnly(
+      'Die Daten wurden inzwischen geändert. Bitte erneut versuchen.',
+    );
     expect(screen.getByLabelText('Name der Station')).toHaveValue('Entwurf');
     expect(onBack).not.toHaveBeenCalled();
   });

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toaster } from '../components/ui/toast';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute } from '../routes';
+import { expectErrorToastOnly } from '../test-support';
 import { HappyCleaningAssignmentPage } from './happyCleaningAssignment';
 
 const render = ui => testingLibraryRender(ui, {
@@ -532,12 +533,9 @@ describe('Happy Cleaning assignment', () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Bestätigen' }));
 
     await waitFor(() => expect(refresh).toHaveBeenCalledWith({ preserveData: true }));
-    const toast = await screen.findByText(
+    await expectErrorToastOnly(
       'Es sind keine Nummern mehr zuzuteilen. Die Daten wurden neu geladen.',
-      { selector: '.app-toast-description' },
     );
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
-    expect(within(screen.getByRole('dialog')).queryByText(/keine Nummern mehr/)).not.toBeInTheDocument();
   });
 
   it('gates station assignment on a versioned number entry', async () => {
@@ -721,7 +719,7 @@ describe('Happy Cleaning assignment', () => {
     expect(mutate).not.toHaveBeenCalled();
   });
 
-  it('retains selection and reconciles the focused snapshot after a station conflict', async () => {
+  it('shows failed assignment writes as error toasts, never inline', async () => {
     setViewport(false);
     const data = {
       ...assignmentData,
@@ -737,8 +735,9 @@ describe('Happy Cleaning assignment', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Grace Hopper Speisesaal zuweisen' }));
 
-    const toast = await screen.findByText(/Speisesaal ist inzwischen voll/, { selector: '.app-toast-description' });
-    expect(toast.closest('.app-toast')).toHaveAttribute('data-type', 'error');
+    await expectErrorToastOnly(
+      'Speisesaal ist inzwischen voll. Die Einteilung wurde aktualisiert.',
+    );
     expect(screen.getByRole('heading', { name: 'Grace Hopper' })).toBeInTheDocument();
     expect(refresh).toHaveBeenCalledOnce();
     expect(screen.queryByText(/wurde Speisesaal zugeteilt/)).not.toBeInTheDocument();
