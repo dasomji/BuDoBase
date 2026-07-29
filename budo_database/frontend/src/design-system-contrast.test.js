@@ -140,6 +140,45 @@ describe('design-system contrast contracts', () => {
     );
   });
 
+  it('keeps one shared Button focus treatment visible on every supported surface', () => {
+    const ring = token('ring');
+    const solidSurface = token('surface-solid');
+    const header = token('surface-header');
+    const headerOnPage = composite(header, page);
+    const headerOnCard = composite(header, card);
+
+    for (const surface of [page, card, solidSurface, headerOnPage, headerOnCard]) {
+      expectContrast(ring, surface, 3);
+    }
+
+    const baseClasses = buttonSource
+      .match(/cva\(\s*"([^"]*)"/)?.[1]
+      .split(/\s+/);
+    expect(baseClasses, 'Could not parse the shared Button base classes').toBeDefined();
+    expect(baseClasses).toContain('focus-visible:ring-ring');
+    expect(
+      baseClasses.some(className => /^focus-visible:ring-ring\//.test(className)),
+      'The shared Button focus ring must use the ring token at full opacity',
+    ).toBe(false);
+
+    const variantMapSource = buttonSource.match(
+      /variants:\s*\{\s*variant:\s*\{([\s\S]*?)\n\s*\},\s*size:\s*\{/,
+    )?.[1];
+    expect(variantMapSource, 'Could not parse the Button variant map').toBeDefined();
+
+    const variants = [...variantMapSource.matchAll(
+      /(?:^|\n)\s*(?:"([^"]+)"|([\w-]+)):\s*"([^"]*)"/g,
+    )].map(match => [match[1] ?? match[2], match[3]]);
+    expect(variants.length, 'The parsed Button variant map was empty').toBeGreaterThan(0);
+
+    for (const [variant, classes] of variants) {
+      expect(
+        classes,
+        `Button variant "${variant}" declares focus-visible: classes; keep focus treatment in the shared base so tailwind-merge cannot drop it`,
+      ).not.toContain('focus-visible:');
+    }
+  });
+
   it('keeps the documented token table synchronized with the source values', () => {
     for (const [name, exactValue] of [
       ['link', '#725500'],

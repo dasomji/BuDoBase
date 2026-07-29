@@ -90,6 +90,10 @@ import { Button } from '../components/ui/button';
 with the same visual contract. A disabled anchor receives `aria-disabled`,
 leaves the tab order, and prevents activation.
 
+The focus treatment is shared by all variants. Variant definitions must never
+declare `focus-visible:` classes, because tailwind-merge would drop the base
+ring.
+
 ```jsx
 <Button onClick={save}>Speichern</Button>
 <Button variant="secondary" onClick={preview}>Vorschau</Button>
