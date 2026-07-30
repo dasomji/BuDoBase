@@ -6,7 +6,10 @@ from datetime import datetime
 from typing import Callable
 
 from django.db.models import (
+    Case,
+    Count,
     Exists,
+    F,
     FloatField,
     Model,
     OuterRef,
@@ -14,6 +17,7 @@ from django.db.models import (
     Q,
     Sum,
     Value,
+    When,
 )
 from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
@@ -22,6 +26,8 @@ from budo_app.models import (
     ErsteHilfeEintrag,
     ErsteHilfeFoto,
     Geld,
+    HappyCleaningAssignment,
+    HappyCleaningStation,
     Kinder,
     Notizen,
     NotizFoto,
@@ -281,6 +287,7 @@ def _empty_summary(profile):
         "kids": [],
         "focuses": [],
         "focus_assignments_complete": {"w1": False, "w2": False},
+        "happy_cleanings": [],
     }
 
 
@@ -298,6 +305,7 @@ def build_dashboard_contract(request):
             "kids": [],
             "focuses": [],
             "focus_assignments_complete": {"w1": False, "w2": False},
+            "happy_cleanings": [],
             "activity": {
                 "first_aid": _activity_page("first_aid", None),
                 "notes": _activity_page("notes", None),
@@ -413,6 +421,104 @@ def build_dashboard_contract(request):
             )
             for week in ("w1", "w2")
         }
+        personal_station_rows = list(
+            HappyCleaningStation.objects.filter(
+                happy_cleaning__turnus_id=turnus_id,
+                responsible_profile_id=profile.id,
+            )
+            .annotate(
+                dashboard_kid_id=Case(
+                    When(
+                        Q(assignments__child__turnus_id=turnus_id)
+                        & Q(
+                            assignments__target_kind=(
+                                HappyCleaningAssignment.TargetKind.STATION
+                            )
+                        )
+                        & Q(
+                            assignments__happy_cleaning_id=(
+                                F("happy_cleaning_id")
+                            )
+                        ),
+                        then=F("assignments__child_id"),
+                    ),
+                    default=Value(None),
+                )
+            )
+            .values(
+                "id",
+                "name",
+                "position",
+                "happy_cleaning_id",
+                "happy_cleaning__display_number",
+                "content_document",
+                "dashboard_kid_id",
+            )
+            .annotate(
+                dashboard_assigned_present_count=Count(
+                    "happy_cleaning__assignments__child_id",
+                    filter=(
+                        Q(
+                            happy_cleaning__assignments__child__anwesend=True,
+                            happy_cleaning__assignments__child__turnus_id=turnus_id,
+                        )
+                        & (
+                            Q(
+                                happy_cleaning__assignments__target_kind=(
+                                    HappyCleaningAssignment.TargetKind.STATION
+                                ),
+                                happy_cleaning__assignments__station__happy_cleaning_id=(
+                                    F("happy_cleaning_id")
+                                ),
+                            )
+                            | Q(
+                                happy_cleaning__assignments__target_kind=(
+                                    HappyCleaningAssignment.TargetKind.EXCUSED
+                                ),
+                                happy_cleaning__assignments__station__isnull=True,
+                            )
+                        )
+                    ),
+                    distinct=True,
+                )
+            )
+            .order_by(
+                "happy_cleaning__display_number",
+                "position",
+                "id",
+                "dashboard_kid_id",
+            )
+        )
+        happy_cleanings_by_id = {}
+        personal_stations_by_id = {}
+        for station_row in personal_station_rows:
+            event_id = station_row["happy_cleaning_id"]
+            event_payload = happy_cleanings_by_id.setdefault(event_id, {
+                "id": event_id,
+                "display_number": station_row[
+                    "happy_cleaning__display_number"
+                ],
+                "assignments_complete": (
+                    bool(present_kid_ids)
+                    and station_row["dashboard_assigned_present_count"]
+                    == len(present_kid_ids)
+                ),
+                "stations": [],
+            })
+            station_payload = personal_stations_by_id.get(station_row["id"])
+            if station_payload is None:
+                station_payload = {
+                    "id": station_row["id"],
+                    "name": station_row["name"],
+                    "kid_ids": [],
+                    "document": station_row["content_document"],
+                }
+                personal_stations_by_id[station_row["id"]] = station_payload
+                event_payload["stations"].append(station_payload)
+            if station_row["dashboard_kid_id"] is not None:
+                station_payload["kid_ids"].append(
+                    station_row["dashboard_kid_id"]
+                )
         summary = {
             "profile": _profile_payload(profile, focus_ids),
             "team": [
@@ -449,6 +555,7 @@ def build_dashboard_contract(request):
                 for focus in personal_focuses
             ],
             "focus_assignments_complete": focus_assignments_complete,
+            "happy_cleanings": list(happy_cleanings_by_id.values()),
         }
 
     return {

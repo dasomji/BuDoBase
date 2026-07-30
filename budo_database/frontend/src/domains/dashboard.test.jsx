@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
@@ -50,6 +50,27 @@ const dashboardData = (activity = {}) => ({
     { id: 12, name: 'See', week: 'w2', kid_ids: [7] },
   ],
   focus_assignments_complete: { w1: true, w2: true },
+  happy_cleanings: [{
+    id: 21,
+    display_number: 1,
+    assignments_complete: true,
+    stations: [{
+      id: 31,
+      name: 'Küche',
+      kid_ids: [7],
+      document: {
+        type: 'doc',
+        content: [{
+          type: 'taskList',
+          content: [{
+            type: 'taskItem',
+            attrs: { id: 101, checked: false, version: 1 },
+            content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Boden fegen' }] }],
+          }],
+        }],
+      },
+    }],
+  }],
   activity: {
     notes: emptyPage,
     first_aid: emptyPage,
@@ -79,10 +100,12 @@ describe('dashboard page', () => {
       'Kinder: 1',
       'Notizen',
       'Erste Hilfe',
-      'Meine BuDo-Familie',
-      'Mein SWP 1',
-      'Mein SWP 2',
-      'Taschengeldtransaktionen',
+      'Medi',
+      'SWP 1: Wald',
+      'SWP 2: See',
+      'Happy Cleaning 1: Küche',
+      'Taschengeld',
+      'Taschengeldkasse',
     ]) {
       expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
     }
@@ -101,8 +124,27 @@ describe('dashboard page', () => {
       expect(screen.queryByRole('heading', { name: removed })).not.toBeInTheDocument();
     }
     expect(screen.getAllByRole('link', { name: 'Grace Hopper' }).length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/11/');
-    expect(screen.getByRole('link', { name: 'See' })).toHaveAttribute('href', '/schwerpunkt/12/');
+    const familyCard = screen.getByRole('heading', { name: 'Medi' }).closest('.card');
+    expect(within(familyCard).getAllByText('Medi')).toHaveLength(1);
+    expect(screen.queryByRole('link', { name: 'Wald' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'See' })).not.toBeInTheDocument();
+    const cleaningCard = screen.getByRole('heading', { name: 'Happy Cleaning 1: Küche' }).closest('.card');
+    expect(cleaningCard).toHaveClass('transparent');
+    const kidsCard = within(cleaningCard).getByRole('heading', { name: 'Kinder' }).closest('.card');
+    const todosCard = within(cleaningCard).getByRole('heading', { name: 'To-Dos' }).closest('.card');
+    expect(kidsCard).not.toHaveClass('transparent');
+    expect(todosCard).not.toHaveClass('transparent');
+    expect(within(kidsCard).getByRole('link', { name: 'Zur Einteilung' })).toHaveAttribute('href', '/happy-cleaning/21/assignment/');
+    expect(within(todosCard).getByRole('link', { name: 'Küche Details' })).toHaveAttribute('href', '/happy-cleaning/?event_id=21&station_id=31');
+    expect(within(todosCard).getByRole('checkbox', { name: 'Boden fegen erledigen' })).toBeInTheDocument();
+    const moneyCard = screen.getByRole('heading', { name: 'Taschengeld' }).closest('.card');
+    expect(moneyCard).toHaveClass('transparent');
+    const cashCard = within(moneyCard).getByRole('heading', { name: 'Taschengeldkasse' }).closest('.card');
+    expect(within(moneyCard).queryByRole('heading', { name: 'Transaktionen' })).not.toBeInTheDocument();
+    expect(cashCard).not.toHaveClass('transparent');
+    expect(cashCard).toHaveTextContent('Gesamt eingezahlt: 20.00 €');
+    expect(cashCard).toHaveTextContent('Gesamt ausgegeben: 2.00 €');
+    expect(cashCard).toHaveTextContent('Kassenstand: 18.00 €');
   });
 
   it('renders the moved informational cards on Gut zu wissen', () => {
@@ -156,8 +198,75 @@ describe('dashboard page', () => {
 
     render(<DashboardPage data={data} />);
 
-    expect(screen.queryByRole('heading', { name: 'Mein SWP 1' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Mein SWP 2' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'SWP 1: Wald' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'SWP 2: See' })).toBeInTheDocument();
+  });
+
+  it('waits to show a personal Happy Cleaning until all present kids are assigned', () => {
+    const data = dashboardData();
+    data.happy_cleanings[0].assignments_complete = false;
+
+    render(<DashboardPage data={data} />);
+
+    expect(screen.queryByRole('heading', { name: 'Happy Cleaning 1: Küche' })).not.toBeInTheDocument();
+  });
+
+  it('renders pocket-money transactions as the four-column compact table', () => {
+    render(<DashboardPage data={dashboardData({
+      transactions: {
+        ...emptyPage,
+        items: [{
+          id: 41,
+          author: 'Ada',
+          date: '2026-07-11T10:00:00Z',
+          kid_id: 7,
+          kid: 'Grace Hopper',
+          amount: 3.4,
+        }],
+      },
+    })} />);
+
+    const moneyCard = screen.getByRole('heading', { name: 'Taschengeld' }).closest('.card');
+    const cashCard = within(moneyCard).getByRole('heading', { name: 'Taschengeldkasse' }).closest('.card');
+    const table = within(moneyCard).getByRole('table');
+    expect(cashCard.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(table).getAllByRole('columnheader').map(header => header.textContent)).toEqual([
+      'Kind',
+      'Datum',
+      'Betrag',
+      'Autor',
+    ]);
+    const row = within(table).getByRole('link', { name: 'Grace Hopper' }).closest('tr');
+    expect(row).toHaveTextContent('Grace Hopper');
+    expect(row).toHaveTextContent('11.07');
+    expect(row).toHaveTextContent('3.40 €');
+    expect(row).toHaveTextContent('Ada');
+  });
+
+  it('sorts station children by first name and toggles station To-Dos from the dashboard', async () => {
+    const data = dashboardData();
+    data.kids.push({
+      ...data.kids[0],
+      id: 8,
+      full_name: 'Ada Lovelace',
+    });
+    data.happy_cleanings[0].stations[0].kid_ids = [7, 8];
+    const mutate = vi.fn().mockResolvedValue({ ok: true });
+
+    render(<DashboardPage data={data} mutate={mutate} />);
+
+    const cleaningCard = screen.getByRole('heading', { name: 'Happy Cleaning 1: Küche' }).closest('.card');
+    const kidsCard = within(cleaningCard).getByRole('heading', { name: 'Kinder' }).closest('.card');
+    expect(within(kidsCard).getAllByRole('listitem').map(item => item.textContent)).toEqual([
+      'Ada Lovelace',
+      'Grace Hopper',
+    ]);
+
+    fireEvent.click(within(cleaningCard).getByRole('checkbox', { name: 'Boden fegen erledigen' }));
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith(
+      '/api/happy-cleaning/events/21/stations/31/todos/101/check/',
+      expect.objectContaining({ expected_version: 1, request_id: expect.any(String) }),
+    ));
   });
 
   it('loads and appends the selected older activity page without duplicates', async () => {

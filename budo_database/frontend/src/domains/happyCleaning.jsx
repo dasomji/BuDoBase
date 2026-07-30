@@ -252,6 +252,16 @@ function StationSummaryTable({ event, stations, sort, onSort, onSelect, selectio
   );
 }
 
+const readOverviewSelection = () => {
+  const params = new URLSearchParams(globalThis.location?.search || '');
+  const eventId = Number(params.get('event_id'));
+  const stationId = Number(params.get('station_id'));
+  return Number.isSafeInteger(eventId) && eventId > 0
+    && Number.isSafeInteger(stationId) && stationId > 0
+    ? { eventId, stationId }
+    : null;
+};
+
 const readOverviewPreference = (key, activeYear) => {
   try {
     const stored = JSON.parse(globalThis.localStorage?.getItem(key) || 'null');
@@ -285,7 +295,7 @@ export function HappyCleaningOverviewPage({
   const detailRequestId = useRef(0);
   const rowRefs = useRef(new Map());
   const detailNavigationGuard = useRef(null);
-  const [selection, setSelection] = useState(null);
+  const [selection, setSelection] = useState(readOverviewSelection);
   const [restoreFocusKey, setRestoreFocusKey] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -486,7 +496,10 @@ export function HappyCleaningOverviewPage({
     )));
   }, [data.years]);
   useEffect(() => {
-    if (selection?.stationId != null) loadDetail(selection);
+    if (selection?.stationId != null) {
+      setPageState(current => ({ ...current, happyCleaningEventId: selection.eventId }));
+      loadDetail(selection);
+    }
     // Realtime refresh replaces overview data; refresh the selected detail too.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.years]);

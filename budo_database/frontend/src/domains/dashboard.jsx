@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { Card, ResponsiveCardGrid } from '../components';
+import { Card, DataTable, ResponsiveCardGrid } from '../components';
 import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { FirstAidGallery } from './first-aid-gallery';
+import { HappyCleaningStationTodoDocument } from './happyCleaningStationDetail';
 import { formatGermanDate, formatKidBirthday, linkKid, money } from './shared';
 
 function appendUnique(current, incoming) {
@@ -12,11 +13,33 @@ function appendUnique(current, incoming) {
   return [...current, ...incoming.filter(item => !existing.has(item.id))];
 }
 
+const transactionColumns = [
+  {
+    key: 'kid',
+    label: 'Kind',
+    render: transaction => <a href={`/kid_details/${transaction.kid_id}`}>{transaction.kid}</a>,
+  },
+  {
+    key: 'date',
+    label: 'Datum',
+    render: transaction => {
+      const formatted = formatGermanDate(transaction.date);
+      return formatted?.slice(0, 5);
+    },
+  },
+  {
+    key: 'amount',
+    label: 'Betrag',
+    render: transaction => money(transaction.amount),
+    sortValue: transaction => Number(transaction.amount),
+  },
+  { key: 'author', label: 'Autor' },
+];
+
 function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
   const showError = useErrorToast();
-  const textActivity = kind !== 'transactions';
   const label = kind === 'notes' ? 'Notizen' : kind === 'first_aid' ? 'EH-Einträge' : 'Transaktionen';
 
   useEffect(() => {
@@ -50,16 +73,13 @@ function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
 
   return (
     <>
-      <ul>{page.items.map(item => (
-        kind === 'first_aid'
-          ? <FirstAidEntry entry={item} childName={item.kid} showChildLink key={item.id} />
-          : kind === 'notes'
-            ? <NoteEntry entry={item} childName={item.kid} showChildLink key={item.id} />
-          : <li key={item.id}>
-            <p><strong>{item.author}</strong> am {formatGermanDate(item.date)}: <a href={`/kid_details/${item.kid_id}`}>{item.kid}</a></p>
-            <p>{textActivity ? item.text : `Betrag: ${money(item.amount)}`}</p>
-          </li>
-      ))}</ul>
+      {kind === 'transactions'
+        ? <DataTable columns={transactionColumns} rows={page.items} empty="Keine Transaktionen" />
+        : <ul>{page.items.map(item => (
+          kind === 'first_aid'
+            ? <FirstAidEntry entry={item} childName={item.kid} showChildLink key={item.id} />
+            : <NoteEntry entry={item} childName={item.kid} showChildLink key={item.id} />
+        ))}</ul>}
       {page.has_more && (
         <Button type="button" disabled={loading} onClick={loadMore}>
           {loading ? `Ältere ${label} werden geladen…` : `Ältere ${label} laden`}
@@ -125,24 +145,65 @@ export function GoodToKnowPage({ data }) {
 }
 
 function FocusAssignment({ focus, kidsById }) {
-  const assignedKids = (focus.kid_ids || []).map(id => kidsById.get(Number(id))).filter(Boolean);
+  const assignedKids = (focus.kid_ids || [])
+    .map(kidId => kidsById.get(Number(kidId)))
+    .filter(Boolean);
+  return assignedKids.length
+    ? <ul>{assignedKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul>
+    : <p>Keine Kinder eingeteilt.</p>;
+}
+
+function HappyCleaningStationCard({ event, station, kidsById, mutate, refresh }) {
+  const assignedKids = (station.kid_ids || [])
+    .map(id => kidsById.get(Number(id)))
+    .filter(Boolean)
+    .sort((left, right) => left.full_name.localeCompare(right.full_name, 'de', {
+      sensitivity: 'base',
+    }));
+  const assignmentHref = `/happy-cleaning/${event.id}/assignment/`;
+  const detailHref = `/happy-cleaning/?event_id=${event.id}&station_id=${station.id}`;
   return (
-    <section className="[&+&]:mt-3 [&+&]:border-t [&+&]:border-foreground/20 [&+&]:pt-3" aria-labelledby={`dashboard-focus-${focus.id}`}>
-      <h3 className="m-0 text-base" id={`dashboard-focus-${focus.id}`}><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a></h3>
-      {assignedKids.length
-        ? <ul>{assignedKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul>
-        : <p>Keine Kinder eingeteilt.</p>}
-    </section>
+    <Card
+      className="transparent"
+      id={`db-happy-cleaning-station-${station.id}`}
+      title={`Happy Cleaning ${event.display_number}: ${station.name}`}
+    >
+      <div className="grid grid-cols-1 items-start gap-4">
+        <Card
+          actions={<Button href={assignmentHref}>Zur Einteilung</Button>}
+          headingLevel={3}
+          title="Kinder"
+        >
+          {assignedKids.length
+            ? <ul>{assignedKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul>
+            : <p>Keine Kinder eingeteilt.</p>}
+        </Card>
+        <Card
+          actions={<Button variant="secondary" href={detailHref}>{station.name} Details</Button>}
+          headingLevel={3}
+          title="To-Dos"
+        >
+          <HappyCleaningStationTodoDocument
+            eventId={event.id}
+            stationId={station.id}
+            document={station.document}
+            mutate={mutate}
+            refresh={refresh}
+          />
+        </Card>
+      </div>
+    </Card>
   );
 }
 
-export function DashboardPage({ data, fetchImpl = fetch, onFirstAidItemsChange }) {
+export function DashboardPage({ data, fetchImpl = fetch, mutate, refresh, onFirstAidItemsChange }) {
   const {
     profile,
     totals,
     kids,
     focuses = [],
     focus_assignments_complete: assignmentsComplete = {},
+    happy_cleanings: happyCleanings = [],
     activity,
   } = data;
   const [firstAidItems, setFirstAidItems] = useState(activity.first_aid.items);
@@ -154,15 +215,17 @@ export function DashboardPage({ data, fetchImpl = fetch, onFirstAidItemsChange }
   const familyKids = profile?.budo_family
     ? kids.filter(kid => kid.budo_family === profile.budo_family)
     : [];
+  const familyTitle = profile?.budo_family
+    ? familyLabels[profile.budo_family] || profile.budo_family
+    : 'Meine BuDo-Familie';
   const kidsById = new Map(kids.map(kid => [Number(kid.id), kid]));
-  const focusesByWeek = week => focuses.filter(focus => focus.week === week);
-  const personalFocusCard = (week, number) => assignmentsComplete[week] && (
-    <Card title={`Mein SWP ${number}`} id={`db-swp-${number}`}>
-      {focusesByWeek(week).length
-        ? focusesByWeek(week).map(focus => <FocusAssignment focus={focus} kidsById={kidsById} key={focus.id} />)
-        : <p>Kein Schwerpunkt zugeteilt.</p>}
-    </Card>
-  );
+  const personalFocusCards = (week, number) => assignmentsComplete[week]
+    ? focuses.filter(focus => focus.week === week).map(focus => (
+      <Card title={`SWP ${number}: ${focus.name}`} id={`db-swp-${focus.id}`} key={focus.id}>
+        <FocusAssignment focus={focus} kidsById={kidsById} />
+      </Card>
+    ))
+    : [];
   return (
     <FirstAidGallery entries={[...noteItems, ...firstAidItems]}>
       <ResponsiveCardGrid independentColumns>
@@ -175,14 +238,37 @@ export function DashboardPage({ data, fetchImpl = fetch, onFirstAidItemsChange }
       </Card>
       <Card title="Notizen" id="db-notizen"><ActivityList kind="notes" initialPage={activity.notes} fetchImpl={fetchImpl} onItemsChange={setNoteItems} /></Card>
       <Card title="Erste Hilfe" id="db-erste-hilfe"><ActivityList kind="first_aid" initialPage={activity.first_aid} fetchImpl={fetchImpl} onItemsChange={handleFirstAidItemsChange} /></Card>
-      <Card title="Meine BuDo-Familie" id="db-budo-familie">
+      <Card title={familyTitle} id="db-budo-familie">
         {profile?.budo_family
-          ? <><p><span className="label">{familyLabels[profile.budo_family] || profile.budo_family}</span></p>{familyKids.length ? <ul>{familyKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul> : <p>Keine Kinder in dieser BuDo-Familie.</p>}</>
+          ? familyKids.length
+            ? <ul>{familyKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul>
+            : <p>Keine Kinder in dieser BuDo-Familie.</p>
           : <p>Noch keine BuDo-Familie im Profil zugeordnet.</p>}
       </Card>
-      {personalFocusCard('w1', 1)}
-      {personalFocusCard('w2', 2)}
-      <Card title="Taschengeldtransaktionen" id="db-geld"><ActivityList kind="transactions" initialPage={activity.transactions} fetchImpl={fetchImpl} /></Card>
+      {personalFocusCards('w1', 1)}
+      {personalFocusCards('w2', 2)}
+      {happyCleanings.filter(event => event.assignments_complete).flatMap(event => (
+        event.stations.map(station => (
+          <HappyCleaningStationCard
+            event={event}
+            station={station}
+            kidsById={kidsById}
+            mutate={mutate}
+            refresh={refresh}
+            key={station.id}
+          />
+        ))
+      ))}
+      <Card className="transparent" title="Taschengeld" id="db-geld">
+        <div className="grid grid-cols-1 items-start gap-4">
+          <Card headingLevel={3} title="Taschengeldkasse">
+            <p><span className="label">Gesamt eingezahlt</span>: {money(totals.pocket_money_paid)}</p>
+            <p><span className="label">Gesamt ausgegeben</span>: {money(totals.pocket_money_paid - totals.pocket_money)}</p>
+            <p><span className="label">Kassenstand</span>: {money(totals.pocket_money)}</p>
+          </Card>
+          <ActivityList kind="transactions" initialPage={activity.transactions} fetchImpl={fetchImpl} />
+        </div>
+      </Card>
       </ResponsiveCardGrid>
     </FirstAidGallery>
   );
@@ -195,7 +281,9 @@ export const dashboardRoutes = [
     title: 'BuDo Dashboard',
     domain: 'dashboard',
     readContractKey: 'dashboard',
-    render: ({ data, fetchImpl }) => <DashboardPage data={data} fetchImpl={fetchImpl} />,
+    render: ({ data, fetchImpl, mutate, refresh }) => (
+      <DashboardPage data={data} fetchImpl={fetchImpl} mutate={mutate} refresh={refresh} />
+    ),
   },
   {
     pattern: /^\/gut-zu-wissen$/,

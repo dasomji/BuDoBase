@@ -9,6 +9,9 @@ from budo_app.models import (
     BetreuerinnenGeld,
     ErsteHilfeEintrag,
     Geld,
+    HappyCleaning,
+    HappyCleaningAssignment,
+    HappyCleaningStation,
     Kinder,
     Notizen,
     Schwerpunkte,
@@ -67,6 +70,37 @@ class DashboardContractTests(TestCase):
         )
         self.focus.betreuende.add(self.profile)
         self.kid.schwerpunkte.add(self.focus)
+        self.happy_cleaning = HappyCleaning.objects.create(
+            turnus=self.turnus,
+            display_number=1,
+        )
+        self.cleaning_station = HappyCleaningStation.objects.create(
+            happy_cleaning=self.happy_cleaning,
+            name="Küche",
+            max_kids=5,
+            meeting_point="Vor der Küche",
+            responsible_profile=self.profile,
+            position=1,
+            content_document={
+                "type": "doc",
+                "content": [{
+                    "type": "taskList",
+                    "content": [{
+                        "type": "taskItem",
+                        "attrs": {"id": 101, "checked": False, "version": 1},
+                        "content": [{
+                            "type": "paragraph",
+                            "content": [{"type": "text", "text": "Boden fegen"}],
+                        }],
+                    }],
+                }],
+            },
+        )
+        HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.happy_cleaning,
+            station=self.cleaning_station,
+            child=self.kid,
+        )
         Geld.objects.create(kinder=self.kid, amount=20, added_by=self.user)
         Geld.objects.create(kinder=self.kid, amount=-2, added_by=self.user)
         BetreuerinnenGeld.objects.create(
@@ -177,6 +211,17 @@ class DashboardContractTests(TestCase):
             payload["focus_assignments_complete"],
             {"w1": True, "w2": False},
         )
+        self.assertEqual(payload["happy_cleanings"], [{
+            "id": self.happy_cleaning.id,
+            "display_number": 1,
+            "assignments_complete": True,
+            "stations": [{
+                "id": self.cleaning_station.id,
+                "name": "Küche",
+                "kid_ids": [self.kid.id],
+                "document": self.cleaning_station.content_document,
+            }],
+        }])
         self.assertEqual(
             payload["activity"]["notes"]["items"][0],
             {
@@ -301,6 +346,32 @@ class DashboardContractTests(TestCase):
         self.assertEqual(
             completed_again["focus_assignments_complete"],
             {"w1": True, "w2": True},
+        )
+
+    def test_happy_cleaning_completion_requires_every_present_kid(self):
+        second_present_kid = Kinder.objects.create(
+            kid_index="T2-cleaning-present",
+            kid_vorname="Cleaning",
+            kid_nachname="Kid",
+            turnus=self.turnus,
+            anwesend=True,
+        )
+
+        incomplete = self.client.get(self.contract_url()).json()
+
+        self.assertFalse(incomplete["happy_cleanings"][0]["assignments_complete"])
+
+        HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.happy_cleaning,
+            child=second_present_kid,
+            target_kind=HappyCleaningAssignment.TargetKind.EXCUSED,
+        )
+        complete = self.client.get(self.contract_url()).json()
+
+        self.assertTrue(complete["happy_cleanings"][0]["assignments_complete"])
+        self.assertNotIn(
+            second_present_kid.id,
+            complete["happy_cleanings"][0]["stations"][0]["kid_ids"],
         )
 
     def test_activity_uses_stable_independent_keyset_pages(self):
