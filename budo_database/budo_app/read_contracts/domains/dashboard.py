@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
 
-from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import (
+    Case,
     Count,
     Exists,
     F,
@@ -17,6 +17,7 @@ from django.db.models import (
     Q,
     Sum,
     Value,
+    When,
 )
 from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
@@ -420,25 +421,40 @@ def build_dashboard_contract(request):
             )
             for week in ("w1", "w2")
         }
-        personal_stations = list(
+        personal_station_rows = list(
             HappyCleaningStation.objects.filter(
                 happy_cleaning__turnus_id=turnus_id,
                 responsible_profile_id=profile.id,
             )
-            .select_related("happy_cleaning")
             .annotate(
-                dashboard_kid_ids=ArrayAgg(
-                    "assignments__child_id",
-                    filter=Q(
-                        assignments__child__turnus_id=turnus_id,
-                        assignments__target_kind=(
-                            HappyCleaningAssignment.TargetKind.STATION
+                dashboard_kid_id=Case(
+                    When(
+                        Q(assignments__child__turnus_id=turnus_id)
+                        & Q(
+                            assignments__target_kind=(
+                                HappyCleaningAssignment.TargetKind.STATION
+                            )
+                        )
+                        & Q(
+                            assignments__happy_cleaning_id=(
+                                F("happy_cleaning_id")
+                            )
                         ),
-                        assignments__happy_cleaning_id=F("happy_cleaning_id"),
+                        then=F("assignments__child_id"),
                     ),
-                    distinct=True,
-                    default=Value([]),
-                ),
+                    default=Value(None),
+                )
+            )
+            .values(
+                "id",
+                "name",
+                "position",
+                "happy_cleaning_id",
+                "happy_cleaning__display_number",
+                "content_document",
+                "dashboard_kid_id",
+            )
+            .annotate(
                 dashboard_assigned_present_count=Count(
                     "happy_cleaning__assignments__child_id",
                     filter=(
@@ -466,36 +482,43 @@ def build_dashboard_contract(request):
                     distinct=True,
                 )
             )
-            .only(
-                "id",
-                "name",
-                "position",
-                "happy_cleaning_id",
-                "happy_cleaning__id",
+            .order_by(
                 "happy_cleaning__display_number",
-                "content_document",
+                "position",
+                "id",
+                "dashboard_kid_id",
             )
-            .order_by("happy_cleaning__display_number", "position", "id")
         )
         happy_cleanings_by_id = {}
-        for station in personal_stations:
-            event = station.happy_cleaning
-            event_payload = happy_cleanings_by_id.setdefault(event.id, {
-                "id": event.id,
-                "display_number": event.display_number,
+        personal_stations_by_id = {}
+        for station_row in personal_station_rows:
+            event_id = station_row["happy_cleaning_id"]
+            event_payload = happy_cleanings_by_id.setdefault(event_id, {
+                "id": event_id,
+                "display_number": station_row[
+                    "happy_cleaning__display_number"
+                ],
                 "assignments_complete": (
                     bool(present_kid_ids)
-                    and station.dashboard_assigned_present_count
+                    and station_row["dashboard_assigned_present_count"]
                     == len(present_kid_ids)
                 ),
                 "stations": [],
             })
-            event_payload["stations"].append({
-                "id": station.id,
-                "name": station.name,
-                "kid_ids": station.dashboard_kid_ids,
-                "document": station.content_document,
-            })
+            station_payload = personal_stations_by_id.get(station_row["id"])
+            if station_payload is None:
+                station_payload = {
+                    "id": station_row["id"],
+                    "name": station_row["name"],
+                    "kid_ids": [],
+                    "document": station_row["content_document"],
+                }
+                personal_stations_by_id[station_row["id"]] = station_payload
+                event_payload["stations"].append(station_payload)
+            if station_row["dashboard_kid_id"] is not None:
+                station_payload["kid_ids"].append(
+                    station_row["dashboard_kid_id"]
+                )
         summary = {
             "profile": _profile_payload(profile, focus_ids),
             "team": [
