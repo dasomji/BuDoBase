@@ -1,5 +1,6 @@
 import json
 from datetime import date
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase, override_settings
@@ -74,6 +75,18 @@ class AttendanceContractTests(TestCase):
     def contract_url(self, key, kid=None):
         url = reverse("route-data-api", kwargs={"contract_key": key})
         return f"{url}?id={kid.id}" if kid else url
+
+    def post_check_in(self, *, consent=False, **overrides):
+        payload = {
+            "_target": f"/check_in/{self.active_kid.id}",
+            "check_in_date": "2026-07-01",
+            "notiz": "",
+            "amount": "",
+        }
+        if consent:
+            payload["einverstaendnis_erklaerung"] = "on"
+        payload.update(overrides)
+        return self.client.post(reverse("form-submit-api"), payload)
 
     def test_check_in_returns_only_the_selected_active_turnus_kid(self):
         self.active_kid.anwesend = False
@@ -299,6 +312,156 @@ class AttendanceContractTests(TestCase):
         )
         self.assertTrue(refreshed.json()["kid"]["present"])
         self.assertTrue(refreshed.json()["kid"]["id_card"])
+
+    def test_check_in_consent_change_bumps_once(self):
+        Kinder.objects.filter(pk=self.active_kid.pk).update(
+            anwesend=True,
+            check_in_date=date(2026, 7, 1),
+            ausweis=False,
+            e_card=False,
+            einverstaendnis_erklaerung=False,
+        )
+
+        response = self.post_check_in(consent=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "ok": True,
+                "redirect": f"/kid_details/{self.active_kid.id}",
+            },
+        )
+        self.active_kid.refresh_from_db()
+        self.assertIs(self.active_kid.einverstaendnis_erklaerung, True)
+        self.assertEqual(self.active_kid.edit_version, 2)
+
+    def test_check_in_identical_consent_does_not_bump(self):
+        Kinder.objects.filter(pk=self.active_kid.pk).update(
+            anwesend=True,
+            check_in_date=date(2026, 7, 1),
+            ausweis=False,
+            e_card=False,
+            einverstaendnis_erklaerung=True,
+        )
+
+        response = self.post_check_in(consent=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.active_kid.refresh_from_db()
+        self.assertIs(self.active_kid.einverstaendnis_erklaerung, True)
+        self.assertEqual(self.active_kid.edit_version, 1)
+
+    def test_check_in_attendance_only_change_does_not_bump(self):
+        Kinder.objects.filter(pk=self.active_kid.pk).update(
+            anwesend=False,
+            check_in_date=None,
+            ausweis=False,
+            e_card=False,
+            einverstaendnis_erklaerung=False,
+        )
+
+        response = self.post_check_in(
+            consent=False,
+            ausweis="on",
+            e_card="on",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.active_kid.refresh_from_db()
+        self.assertIs(self.active_kid.anwesend, True)
+        self.assertEqual(self.active_kid.check_in_date, date(2026, 7, 1))
+        self.assertIs(self.active_kid.ausweis, True)
+        self.assertIs(self.active_kid.e_card, True)
+        self.assertIs(self.active_kid.einverstaendnis_erklaerung, False)
+        self.assertEqual(self.active_kid.edit_version, 1)
+
+    def test_check_in_combined_attendance_and_consent_change_bumps_once(self):
+        Kinder.objects.filter(pk=self.active_kid.pk).update(
+            anwesend=False,
+            check_in_date=None,
+            ausweis=False,
+            e_card=False,
+            einverstaendnis_erklaerung=False,
+        )
+
+        response = self.post_check_in(
+            consent=True,
+            ausweis="on",
+            e_card="on",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.active_kid.refresh_from_db()
+        self.assertIs(self.active_kid.anwesend, True)
+        self.assertIs(self.active_kid.einverstaendnis_erklaerung, True)
+        self.assertEqual(self.active_kid.edit_version, 2)
+
+    def test_check_in_version_failure_rolls_back_attendance_and_consent(self):
+        Kinder.objects.filter(pk=self.active_kid.pk).update(
+            anwesend=False,
+            check_in_date=None,
+            ausweis=False,
+            e_card=False,
+            einverstaendnis_erklaerung=False,
+        )
+        original_save = Kinder.save
+
+        def fail_version_save(instance, *args, **kwargs):
+            if tuple(kwargs.get("update_fields") or ()) == ("edit_version",):
+                raise RuntimeError("synthetic version persistence failure")
+            return original_save(instance, *args, **kwargs)
+
+        failure = None
+        with patch.object(Kinder, "save", new=fail_version_save):
+            try:
+                self.post_check_in(
+                    consent=True,
+                    ausweis="on",
+                    e_card="on",
+                )
+            except RuntimeError as error:
+                failure = error
+
+        self.active_kid.refresh_from_db()
+        self.assertEqual(
+            (
+                str(failure),
+                self.active_kid.anwesend,
+                self.active_kid.check_in_date,
+                self.active_kid.ausweis,
+                self.active_kid.e_card,
+                self.active_kid.einverstaendnis_erklaerung,
+                self.active_kid.edit_version,
+            ),
+            (
+                "synthetic version persistence failure",
+                False,
+                None,
+                False,
+                False,
+                False,
+                1,
+            ),
+        )
+
+    def test_check_in_narrow_save_does_not_overwrite_stale_covered_fields(self):
+        stale_kid = Kinder.objects.get(pk=self.active_kid.pk)
+        Kinder.objects.filter(pk=self.active_kid.pk).update(
+            kid_vorname="Fresh",
+            einverstaendnis_erklaerung=False,
+        )
+
+        with patch(
+            "budo_app.kids_views.safe_get_object_or_404",
+            return_value=stale_kid,
+        ):
+            response = self.post_check_in(consent=False)
+
+        self.assertEqual(response.status_code, 200)
+        self.active_kid.refresh_from_db()
+        self.assertEqual(self.active_kid.kid_vorname, "Fresh")
+        self.assertEqual(self.active_kid.edit_version, 1)
 
     def test_check_out_form_redirects_and_the_focused_contract_is_current(self):
         self.active_kid.anwesend = True

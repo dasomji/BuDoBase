@@ -21,6 +21,7 @@ from .forms import (
     GeldForm,
     NotizForm,
 )
+from .kid_edit_writes import versioned_child_write
 from .models import Auslagerorte, Kinder, Profil, Schwerpunkte
 from .react_views import render_react_page
 from .utils import (
@@ -172,7 +173,7 @@ def toggle_zug_abreise(request):
     kid_id = request.POST.get('id')
     kid = get_active_kid_or_404(request, kid_id)
     kid.zug_abreise = not kid.zug_abreise
-    kid.save()
+    kid.save(update_fields=("zug_abreise",))
 
     zugabreise_count = Kinder.objects.filter(
         zug_abreise=True, turnus=request.active_turnus).count()
@@ -194,7 +195,7 @@ def update_notiz_abreise(request):
 
     kid = get_active_kid_or_404(request, kid_id)
     kid.notiz_abreise = new_notiz_abreise
-    kid.save()
+    kid.save(update_fields=("notiz_abreise",))
     return JsonResponse({'status': 'success'})
 
 
@@ -348,14 +349,36 @@ def check_in(request, id):
                 geld.added_by = request.user
                 geld.save()
         if check_in_form.is_valid() and notiz_form.is_valid() and geld_form.is_valid():
-            this_kid = check_in_form.save(commit=False)
-            this_kid.anwesend = True
-            if this_kid.check_in_date.strftime("%Y-%m-%d") != this_kid.turnus.turnus_beginn.strftime("%Y-%m-%d"):
-                this_kid.late_anreise = this_kid.check_in_date
-                if original_kid.check_in_date is not None:
-                    this_kid.check_in_date = original_kid.check_in_date
+            submitted_kid = check_in_form.save(commit=False)
+            update_fields = [
+                'anwesend',
+                'check_in_date',
+                'ausweis',
+                'e_card',
+                'einverstaendnis_erklaerung',
+            ]
+            with versioned_child_write(
+                turnus_id=request.active_turnus.id,
+                child_id=id,
+            ) as write:
+                write.child.anwesend = True
+                write.child.check_in_date = submitted_kid.check_in_date
+                write.child.ausweis = submitted_kid.ausweis
+                write.child.e_card = submitted_kid.e_card
+                write.child.einverstaendnis_erklaerung = (
+                    submitted_kid.einverstaendnis_erklaerung
+                )
+                if (
+                    submitted_kid.check_in_date.strftime("%Y-%m-%d")
+                    != request.active_turnus.turnus_beginn.strftime("%Y-%m-%d")
+                ):
+                    write.child.late_anreise = submitted_kid.check_in_date
+                    update_fields.append('late_anreise')
+                    if original_kid.check_in_date is not None:
+                        write.child.check_in_date = original_kid.check_in_date
 
-            this_kid.save()
+                write.save_child(update_fields=update_fields)
+
             return redirect('kid_details', id=id)
     else:
         check_in_form = CheckInForm()
@@ -421,7 +444,12 @@ def check_out(request, id):
             if this_kid.early_abreise_date.strftime("%Y-%m-%d") == this_kid.turnus.get_turnus_ende().strftime("%Y-%m-%d"):
                 this_kid.early_abreise_date = None
 
-            this_kid.save()
+            this_kid.save(update_fields=(
+                "early_abreise_date",
+                "anwesend",
+                "e_card",
+                "ausweis",
+            ))
             return redirect('kid_details', id=id)
     else:
         check_out_form = CheckOutForm()

@@ -6,6 +6,11 @@ This command will decode HTML entities like &#039; to their proper characters.
 import html
 from django.core.management.base import BaseCommand
 from django.db import transaction
+
+from budo_app.kid_edit_writes import (
+    COVERED_KINDER_FIELDS,
+    versioned_child_write,
+)
 from budo_app.models import Kinder
 
 
@@ -58,6 +63,7 @@ class Command(BaseCommand):
         queryset = Kinder.objects.all()
         if turnus_id:
             queryset = queryset.filter(turnus_id=turnus_id)
+        queryset = queryset.order_by("pk")
 
         self.stdout.write(f"Processing {queryset.count()} Kinder records...")
 
@@ -70,7 +76,7 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             for kid in queryset:
-                kid_changes = []
+                kid_changes = {}
 
                 for field_name in text_fields:
                     original_value = getattr(kid, field_name)
@@ -78,22 +84,35 @@ class Command(BaseCommand):
                         decoded_value = self.decode_html_entities(
                             original_value)
                         if decoded_value != original_value:
-                            kid_changes.append({
-                                'field': field_name,
-                                'original': original_value,
-                                'decoded': decoded_value
-                            })
-                            if not dry_run:
-                                setattr(kid, field_name, decoded_value)
+                            kid_changes[field_name] = decoded_value
 
                 if kid_changes:
                     changes_made.append({
-                        'kid': kid,
-                        'changes': kid_changes
+                        'kid_id': kid.pk,
+                        'fields': tuple(kid_changes),
                     })
 
                     if not dry_run:
-                        kid.save()
+                        changed_fields = tuple(kid_changes)
+                        has_covered_change = any(
+                            field_name in COVERED_KINDER_FIELDS
+                            for field_name in changed_fields
+                        )
+                        if has_covered_change:
+                            with versioned_child_write(
+                                turnus_id=kid.turnus_id,
+                                child_id=kid.pk,
+                            ) as write:
+                                for (
+                                    field_name,
+                                    decoded_value,
+                                ) in kid_changes.items():
+                                    setattr(write.child, field_name, decoded_value)
+                                write.save_child(update_fields=changed_fields)
+                        else:
+                            for field_name, decoded_value in kid_changes.items():
+                                setattr(kid, field_name, decoded_value)
+                            kid.save(update_fields=changed_fields)
 
                     updated_count += 1
 
@@ -104,12 +123,8 @@ class Command(BaseCommand):
             self.stdout.write(f"\nUpdated {updated_count} records:")
 
         for item in changes_made:
-            kid = item['kid']
-            self.stdout.write(
-                f"\n  Kid: {kid.kid_vorname} {kid.kid_nachname} (ID: {kid.id})")
-            for change in item['changes']:
-                self.stdout.write(
-                    f"    {change['field']}: '{change['original']}' -> '{change['decoded']}'")
+            self.stdout.write(f"\n  Kid ID: {item['kid_id']}")
+            self.stdout.write(f"    Fields: {', '.join(item['fields'])}")
 
         if not dry_run and updated_count > 0:
             self.stdout.write(

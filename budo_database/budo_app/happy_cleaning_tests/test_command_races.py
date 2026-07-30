@@ -1,11 +1,12 @@
 import json
-from concurrent.futures import ThreadPoolExecutor
 from datetime import date
-from threading import Barrier
+from queue import Empty, Queue
+from threading import Barrier, Thread
+from time import monotonic
 from unittest import skipUnless
 
 from django.contrib.auth.models import User
-from django.db import close_old_connections, connection
+from django.db import close_old_connections, connection, connections
 from django.test import Client, TransactionTestCase
 from django.urls import reverse
 
@@ -24,6 +25,10 @@ from budo_app.models import (
 )
 class HappyCleaningManagementRaceTests(TransactionTestCase):
     reset_sequences = True
+    worker_timeout = 20
+    cleanup_grace = 12
+    lock_timeout = "5000ms"
+    statement_timeout = "10000ms"
 
     def setUp(self):
         self.turnus = Turnus.objects.create(
@@ -39,10 +44,23 @@ class HappyCleaningManagementRaceTests(TransactionTestCase):
 
     def concurrent_posts(self, url, payloads):
         barrier = Barrier(2)
+        results = Queue()
 
         def post(index):
-            close_old_connections()
+            response_value = None
+            error_types = []
             try:
+                close_old_connections()
+                connection.ensure_connection()
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT set_config('lock_timeout', %s, false)",
+                        (self.lock_timeout,),
+                    )
+                    cursor.execute(
+                        "SELECT set_config('statement_timeout', %s, false)",
+                        (self.statement_timeout,),
+                    )
                 client = Client()
                 client.force_login(self.users[index])
                 barrier.wait(timeout=10)
@@ -51,12 +69,125 @@ class HappyCleaningManagementRaceTests(TransactionTestCase):
                     data=json.dumps(payloads[index]),
                     content_type="application/json",
                 )
-                return response.status_code, response.json()
+                response_value = response.status_code, response.json()
+            except BaseException as error:
+                error_types.append(type(error).__name__)
             finally:
-                close_old_connections()
+                try:
+                    connections.close_all()
+                except BaseException as error:
+                    error_types.append(type(error).__name__)
+                results.put((index, response_value, tuple(error_types)))
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            return list(executor.map(post, range(2)))
+        threads = [
+            Thread(
+                target=post,
+                args=(index,),
+                daemon=True,
+                name=f"happy-cleaning-command-race-{index}",
+            )
+            for index in range(2)
+        ]
+        for thread in threads:
+            thread.start()
+
+        worker_deadline = monotonic() + self.worker_timeout
+        for thread in threads:
+            thread.join(timeout=max(0, worker_deadline - monotonic()))
+
+        timed_out_indices = tuple(
+            index
+            for index, thread in enumerate(threads)
+            if thread.is_alive()
+        )
+        if timed_out_indices:
+            cleanup_deadline = monotonic() + self.cleanup_grace
+            for thread in threads:
+                thread.join(timeout=max(0, cleanup_deadline - monotonic()))
+
+        outcomes = {}
+        while True:
+            try:
+                index, response_value, error_types = results.get_nowait()
+            except Empty:
+                break
+            outcomes[index] = (response_value, error_types)
+
+        completed_error_types = tuple(
+            error_type
+            for _response_value, error_types in outcomes.values()
+            for error_type in error_types
+        )
+        self._assert_worker_health(
+            timed_out_indices=timed_out_indices,
+            completed_indices=tuple(outcomes),
+            completed_error_types=completed_error_types,
+            expected_workers=len(threads),
+        )
+        return [
+            outcomes[index][0]
+            for index in range(len(threads))
+        ]
+
+    def _assert_worker_health(
+            self,
+            *,
+            timed_out_indices,
+            completed_indices,
+            completed_error_types,
+            expected_workers):
+        incomplete_indices = tuple(
+            index
+            for index in range(expected_workers)
+            if index not in completed_indices
+        )
+        if (
+            timed_out_indices
+            or incomplete_indices
+            or completed_error_types
+        ):
+            timeout_workers = ",".join(
+                str(index) for index in timed_out_indices
+            ) or "none"
+            incomplete_workers = ",".join(
+                str(index) for index in incomplete_indices
+            ) or "none"
+            error_summary = ", ".join(
+                sorted(completed_error_types)
+            ) or "none"
+            raise AssertionError(
+                "Happy Cleaning worker failure; "
+                f"timed_out={bool(timed_out_indices)}; "
+                f"timed_out_workers={timeout_workers}; "
+                f"incomplete_workers={incomplete_workers}; "
+                "sanitized exception types: "
+                f"{error_summary}"
+            )
+
+    def test_harness_reports_completed_worker_error_types(self):
+        with self.assertRaises(AssertionError) as failure:
+            self._assert_worker_health(
+                timed_out_indices=(),
+                completed_indices=(0, 1),
+                completed_error_types=("RuntimeError",),
+                expected_workers=2,
+            )
+
+        self.assertIn("timed_out=False", str(failure.exception))
+        self.assertIn("RuntimeError", str(failure.exception))
+
+    def test_harness_classifies_timeout_with_completed_errors(self):
+        with self.assertRaises(AssertionError) as failure:
+            self._assert_worker_health(
+                timed_out_indices=(1,),
+                completed_indices=(0,),
+                completed_error_types=("ValueError",),
+                expected_workers=2,
+            )
+
+        self.assertIn("timed_out=True", str(failure.exception))
+        self.assertIn("timed_out_workers=1", str(failure.exception))
+        self.assertIn("ValueError", str(failure.exception))
 
     def test_concurrent_event_create_allocates_distinct_contiguous_numbers(self):
         results = self.concurrent_posts(

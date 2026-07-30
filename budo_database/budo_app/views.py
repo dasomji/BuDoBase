@@ -6,6 +6,7 @@ from django.contrib import messages
 from .models import Kinder, SpezialFamilien, Profil
 from .react_views import render_react_page
 from .forms import CSVUploadForm, BirthdayNotizForm
+from .kid_edit_writes import versioned_child_write
 from django.views.decorators.http import require_GET, require_POST
 from django.db import transaction
 from .utils import (
@@ -84,7 +85,7 @@ def update_pfand(request):
         else:
             return JsonResponse({'status': 'error', 'message': 'Invalid action'})
 
-        kid.save()
+        kid.save(update_fields=("pfand",))
 
         return JsonResponse({
             'status': 'success',
@@ -164,7 +165,7 @@ def upload_spezialfamilien(request):
                             )
 
                             kid.spezial_familien = spezial_familie
-                            kid.save()
+                            kid.save(update_fields=("spezial_familien",))
                             updated_count += 1
 
                         except Kinder.DoesNotExist:
@@ -279,6 +280,7 @@ def update_birthdays_from_sv(request):
 
     try:
         with transaction.atomic():
+            birthday_updates = []
             for kid in kids:
                 if kid.sozialversicherungsnr:
                     try:
@@ -288,20 +290,31 @@ def update_birthdays_from_sv(request):
 
                         # Only update if the birthday is different or missing
                         if sv_birthday and kid.kid_birthday != sv_birthday:
-                            old_birthday = kid.kid_birthday
-                            kid.kid_birthday = sv_birthday
-                            kid.save()
-                            updated_count += 1
-
-                            # Log the change
-                            logger.info(f"Updated birthday for {kid.kid_vorname} {kid.kid_nachname} "
-                                        f"from {old_birthday} to {sv_birthday}")
+                            birthday_updates.append((kid.id, sv_birthday))
 
                     except (ValueError, TypeError, IndexError) as e:
                         error_count += 1
-                        error_msg = f"Error processing {kid.kid_vorname} {kid.kid_nachname}: {str(e)}"
+                        error_msg = (
+                            f"Error processing birthday for child {kid.id}: "
+                            f"{type(e).__name__}"
+                        )
                         errors.append(error_msg)
                         logger.error(error_msg)
+
+            for child_id, sv_birthday in sorted(birthday_updates):
+                with versioned_child_write(
+                    turnus_id=request.active_turnus.id,
+                    child_id=child_id,
+                ) as write:
+                    if write.child.kid_birthday == sv_birthday:
+                        continue
+                    write.child.kid_birthday = sv_birthday
+                    write.save_child(update_fields=('kid_birthday',))
+                    updated_count += 1
+                    logger.info(
+                        "Updated birthday for child %s",
+                        child_id,
+                    )
 
             # Success message
             if updated_count > 0:

@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib import admin
+from django.core.exceptions import FieldDoesNotExist
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.template.defaultfilters import filesizeformat
@@ -7,6 +8,7 @@ from django.utils.html import format_html
 
 from .first_aid_contract import FIRST_AID_MAX_PHOTOS
 from .first_aid_photos import process_first_aid_photos
+from .kid_edit_writes import ChildWriteScopeError, versioned_child_write
 from .models import (
     AuditEvent,
     Auslagerorte,
@@ -41,46 +43,144 @@ class KinderAdminForm(forms.ModelForm):
     class Meta:
         model = Kinder
         fields = '__all__'
-        exclude = ['schwerpunkte']
+        exclude = ['edit_version', 'schwerpunkte']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._original_turnus_id = self.instance.turnus_id
+        selected_turnus_id = self._original_turnus_id
+        if selected_turnus_id is None and self.is_bound:
+            selected_turnus_id = self.data.get(
+                self.add_prefix('turnus')
+            )
+        if selected_turnus_id is None:
+            selected_turnus_id = self.initial.get('turnus')
+        if hasattr(selected_turnus_id, 'pk'):
+            selected_turnus_id = selected_turnus_id.pk
+        try:
+            selected_turnus_id = int(selected_turnus_id)
+        except (TypeError, ValueError):
+            selected_turnus_id = None
+        if selected_turnus_id is not None and selected_turnus_id <= 0:
+            selected_turnus_id = None
+
+        for week, field_name in (
+            ('w1', 'schwerpunkt_w1'),
+            ('w2', 'schwerpunkt_w2'),
+        ):
+            queryset = Schwerpunkte.objects.none()
+            if selected_turnus_id:
+                queryset = Schwerpunkte.objects.filter(
+                    schwerpunktzeit__turnus_id=selected_turnus_id,
+                    schwerpunktzeit__woche=week,
+                )
+            self.fields[field_name].queryset = queryset
+
         if self.instance.pk:
             self.fields['schwerpunkt_w1'].initial = self.instance.schwerpunkte.filter(
-                schwerpunktzeit__woche='w1').first()
+                schwerpunktzeit__turnus_id=self._original_turnus_id,
+                schwerpunktzeit__woche='w1',
+            ).first()
             self.fields['schwerpunkt_w2'].initial = self.instance.schwerpunkte.filter(
-                schwerpunktzeit__woche='w2').first()
+                schwerpunktzeit__turnus_id=self._original_turnus_id,
+                schwerpunktzeit__woche='w2',
+            ).first()
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-
-        # Save the instance first
         if commit:
-            instance.save()
-
-        # Clear the existing Schwerpunkte
-        instance.schwerpunkte.clear()
-
-        # Save the selected Schwerpunkte
-        if self.cleaned_data.get('schwerpunkt_w1'):
-            instance.schwerpunkte.add(self.cleaned_data.get('schwerpunkt_w1'))
-        if self.cleaned_data.get('schwerpunkt_w2'):
-            instance.schwerpunkte.add(self.cleaned_data.get('schwerpunkt_w2'))
-
-        # Save the instance again to update the ManyToManyField
-        if commit:
-            instance.save()
-
+            if instance.pk:
+                self.save_versioned()
+            else:
+                instance.save()
+                self.save_new_swp_links()
         return instance
+
+    def save_new_swp_links(self):
+        selected_ids = [
+            focus.id
+            for focus in (
+                self.cleaned_data.get('schwerpunkt_w1'),
+                self.cleaned_data.get('schwerpunkt_w2'),
+            )
+            if focus is not None
+        ]
+        if selected_ids:
+            self.instance.schwerpunkte.add(*selected_ids)
+
+    def save_versioned(self):
+        submitted = self.instance
+        period_ids_by_week = dict(
+            Schwerpunktzeit.objects.filter(
+                turnus_id=self._original_turnus_id,
+                woche__in=('w1', 'w2'),
+            ).values_list('woche', 'id')
+        )
+        model_update_fields = []
+        for field_name in self.changed_data:
+            try:
+                field = Kinder._meta.get_field(field_name)
+            except FieldDoesNotExist:
+                continue
+            if (
+                field.many_to_many
+                or field.primary_key
+                or field.name in {'edit_version', 'turnus'}
+            ):
+                continue
+            model_update_fields.append(field.name)
+
+        with versioned_child_write(
+            turnus_id=self._original_turnus_id,
+            child_id=submitted.pk,
+        ) as write:
+            for field_name in model_update_fields:
+                field = Kinder._meta.get_field(field_name)
+                setattr(
+                    write.child,
+                    field.attname,
+                    getattr(submitted, field.attname),
+                )
+            if model_update_fields:
+                write.save_child(update_fields=model_update_fields)
+
+            for week, form_field in (
+                ('w1', 'schwerpunkt_w1'),
+                ('w2', 'schwerpunkt_w2'),
+            ):
+                if form_field not in self.changed_data:
+                    continue
+                selected = self.cleaned_data.get(form_field)
+                write.set_swp_links(
+                    period_id=period_ids_by_week[week],
+                    focus_ids=() if selected is None else (selected.id,),
+                )
+
+        submitted.edit_version = write.child.edit_version
+        submitted.turnus_id = self._original_turnus_id
 
 
 class KinderAdmin(admin.ModelAdmin):
     list_display = ("__str__", "turnus")
     form = KinderAdminForm
     list_select_related = ('turnus', 'spezial_familien')
+    readonly_fields = ('edit_version',)
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('turnus', 'spezial_familien')
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly_fields = list(super().get_readonly_fields(request, obj))
+        if obj is not None:
+            readonly_fields.append('turnus')
+        return tuple(readonly_fields)
+
+    def save_model(self, request, obj, form, change):
+        if change:
+            form.save_versioned()
+        else:
+            super().save_model(request, obj, form, change)
+            form.save_new_swp_links()
 
 
 class KinderInline(admin.TabularInline):
@@ -174,6 +274,89 @@ class SchwerpunkteAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('ort', 'schwerpunktzeit').prefetch_related('betreuende', 'swp_kinder')
+
+    def save_formset(self, request, form, formset, change):
+        if formset.model is not Kinder.schwerpunkte.through:
+            return super().save_formset(request, form, formset, change)
+
+        focus = formset.instance
+        through = Kinder.schwerpunkte.through
+        existing_child_ids = set(
+            through.objects.filter(
+                schwerpunkte_id=focus.id,
+            ).values_list('kinder_id', flat=True)
+        )
+        desired_child_ids = {
+            inline_form.cleaned_data['kinder'].id
+            for inline_form in formset.forms
+            if (
+                inline_form.cleaned_data
+                and not inline_form.cleaned_data.get('DELETE')
+                and inline_form.cleaned_data.get('kinder') is not None
+            )
+        }
+        operations = {
+            child_id: False
+            for child_id in existing_child_ids - desired_child_ids
+        }
+        operations.update({
+            child_id: True
+            for child_id in desired_child_ids - existing_child_ids
+        })
+        period_id = focus.schwerpunktzeit_id
+        turnus_id = (
+            focus.schwerpunktzeit.turnus_id
+            if focus.schwerpunktzeit_id is not None
+            else None
+        )
+        child_turnus_ids = dict(
+            Kinder.objects.filter(
+                id__in=operations,
+            ).values_list('id', 'turnus_id')
+        )
+        invalid_additions = [
+            child_id
+            for child_id, present in operations.items()
+            if (
+                present
+                and turnus_id is not None
+                and child_turnus_ids.get(child_id) != turnus_id
+            )
+        ]
+        if invalid_additions:
+            raise ChildWriteScopeError(
+                "The child is unavailable in the active Turnus."
+            )
+
+        with transaction.atomic():
+            for child_id in sorted(operations):
+                present = operations[child_id]
+                if (
+                    turnus_id is None
+                    or child_turnus_ids.get(child_id) != turnus_id
+                ):
+                    link = through.objects.filter(
+                        kinder_id=child_id,
+                        schwerpunkte_id=focus.id,
+                    )
+                    if present:
+                        through.objects.get_or_create(
+                            kinder_id=child_id,
+                            schwerpunkte_id=focus.id,
+                        )
+                    else:
+                        link.delete()
+                    continue
+
+                with versioned_child_write(
+                    turnus_id=turnus_id,
+                    child_id=child_id,
+                ) as write:
+                    write.set_swp_link(
+                        period_id=period_id,
+                        focus_id=focus.id,
+                        present=present,
+                    )
 
     def display_betreuende(self, obj):
         return ", ".join([str(betreuer) for betreuer in obj.betreuende.all()])

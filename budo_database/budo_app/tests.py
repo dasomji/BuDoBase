@@ -673,6 +673,31 @@ class ExcelProcessingTransactionTest(TestCase):
         self.assertIsNotNone(first_kid.kid_nachname)
         self.assertEqual(first_kid.turnus, self.turnus)
         self.assertTrue(first_kid.top_jugendticket)
+        self.assertEqual(first_kid.budo_family, "S")
+        self.assertEqual(first_kid.edit_version, 1)
+
+    @patch('budo_app.excelProcessor.read_workbook')
+    def test_import_rejects_pre_existing_child_instead_of_updating(
+            self, mock_read_workbook):
+        mock_read_workbook.return_value = sample_excel_frames()
+        existing = make_kid(
+            self.turnus,
+            kid_index="T1-1",
+            first_name="Existing",
+            last_name="Child",
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Existing Kinder rows cannot be updated by Excel import",
+        ):
+            process_excel(self.turnus)
+
+        existing.refresh_from_db()
+        self.assertEqual(Kinder.objects.filter(turnus=self.turnus).count(), 1)
+        self.assertEqual(existing.kid_vorname, "Existing")
+        self.assertEqual(existing.kid_nachname, "Child")
+        self.assertEqual(existing.edit_version, 1)
 
     @patch('budo_app.excelProcessor.read_workbook')
     def test_top_jugendticket_is_imported_from_anreise_text(
