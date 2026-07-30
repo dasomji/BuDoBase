@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { FirstAidGallery } from './first-aid-gallery';
+import { HappyCleaningStationTodoDocument } from './happyCleaningStationDetail';
 import { formatGermanDate, formatKidBirthday, linkKid, money } from './shared';
 
 function appendUnique(current, incoming) {
@@ -124,11 +125,11 @@ export function GoodToKnowPage({ data }) {
   );
 }
 
-function FocusAssignment({ focus, kidsById }) {
-  const assignedKids = (focus.kid_ids || []).map(id => kidsById.get(Number(id))).filter(Boolean);
+function AssignmentSection({ id, name, href, kidIds, kidsById }) {
+  const assignedKids = (kidIds || []).map(kidId => kidsById.get(Number(kidId))).filter(Boolean);
   return (
-    <section className="[&+&]:mt-3 [&+&]:border-t [&+&]:border-foreground/20 [&+&]:pt-3" aria-labelledby={`dashboard-focus-${focus.id}`}>
-      <h3 className="m-0 text-base" id={`dashboard-focus-${focus.id}`}><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a></h3>
+    <section className="[&+&]:mt-3 [&+&]:border-t [&+&]:border-foreground/20 [&+&]:pt-3" aria-labelledby={id}>
+      <h3 className="m-0 text-base" id={id}><a href={href}>{name}</a></h3>
       {assignedKids.length
         ? <ul>{assignedKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul>
         : <p>Keine Kinder eingeteilt.</p>}
@@ -136,13 +137,69 @@ function FocusAssignment({ focus, kidsById }) {
   );
 }
 
-export function DashboardPage({ data, fetchImpl = fetch, onFirstAidItemsChange }) {
+function FocusAssignment({ focus, kidsById }) {
+  return (
+    <AssignmentSection
+      id={`dashboard-focus-${focus.id}`}
+      name={focus.name}
+      href={`/schwerpunkt/${focus.id}/`}
+      kidIds={focus.kid_ids}
+      kidsById={kidsById}
+    />
+  );
+}
+
+function HappyCleaningStationCard({ event, station, kidsById, mutate, refresh }) {
+  const assignedKids = (station.kid_ids || [])
+    .map(id => kidsById.get(Number(id)))
+    .filter(Boolean)
+    .sort((left, right) => left.full_name.localeCompare(right.full_name, 'de', {
+      sensitivity: 'base',
+    }));
+  const assignmentHref = `/happy-cleaning/${event.id}/assignment/`;
+  const detailHref = `/happy-cleaning/?event_id=${event.id}&station_id=${station.id}`;
+  return (
+    <Card
+      className="transparent"
+      id={`db-happy-cleaning-station-${station.id}`}
+      title={`Happy Cleaning ${event.display_number}: ${station.name}`}
+    >
+      <div className="grid grid-cols-1 items-start gap-4">
+        <Card
+          actions={<Button href={assignmentHref}>Zur Einteilung</Button>}
+          headingLevel={3}
+          title="Kinder"
+        >
+          {assignedKids.length
+            ? <ul>{assignedKids.map(kid => <li key={kid.id}>{linkKid(kid)}</li>)}</ul>
+            : <p>Keine Kinder eingeteilt.</p>}
+        </Card>
+        <Card
+          actions={<Button variant="secondary" href={detailHref}>{station.name} Details</Button>}
+          headingLevel={3}
+          title="To-Dos"
+        >
+          <HappyCleaningStationTodoDocument
+            eventId={event.id}
+            stationId={station.id}
+            document={station.document}
+            mutate={mutate}
+            refresh={refresh}
+          />
+        </Card>
+      </div>
+    </Card>
+  );
+}
+
+export function DashboardPage({ data, fetchImpl = fetch, mutate, refresh, onFirstAidItemsChange }) {
   const {
     profile,
     totals,
     kids,
     focuses = [],
     focus_assignments_complete: assignmentsComplete = {},
+    happy_cleanings: happyCleanings = [],
     activity,
   } = data;
   const [firstAidItems, setFirstAidItems] = useState(activity.first_aid.items);
@@ -182,6 +239,18 @@ export function DashboardPage({ data, fetchImpl = fetch, onFirstAidItemsChange }
       </Card>
       {personalFocusCard('w1', 1)}
       {personalFocusCard('w2', 2)}
+      {happyCleanings.filter(event => event.assignments_complete).flatMap(event => (
+        event.stations.map(station => (
+          <HappyCleaningStationCard
+            event={event}
+            station={station}
+            kidsById={kidsById}
+            mutate={mutate}
+            refresh={refresh}
+            key={station.id}
+          />
+        ))
+      ))}
       <Card title="Taschengeldtransaktionen" id="db-geld"><ActivityList kind="transactions" initialPage={activity.transactions} fetchImpl={fetchImpl} /></Card>
       </ResponsiveCardGrid>
     </FirstAidGallery>
@@ -195,7 +264,9 @@ export const dashboardRoutes = [
     title: 'BuDo Dashboard',
     domain: 'dashboard',
     readContractKey: 'dashboard',
-    render: ({ data, fetchImpl }) => <DashboardPage data={data} fetchImpl={fetchImpl} />,
+    render: ({ data, fetchImpl, mutate, refresh }) => (
+      <DashboardPage data={data} fetchImpl={fetchImpl} mutate={mutate} refresh={refresh} />
+    ),
   },
   {
     pattern: /^\/gut-zu-wissen$/,

@@ -90,6 +90,59 @@ describe('Happy Cleaning management', () => {
     );
   });
 
+  it('opens a station detail linked directly from the dashboard', async () => {
+    window.history.pushState({}, '', '/happy-cleaning/?event_id=7&station_id=70');
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        event: { id: 7, display_number: 1, revision: 2 },
+        station: {
+          id: 70,
+          version: 1,
+          name: 'Küche',
+          max_kids: 4,
+          meeting_point: 'Gang',
+          wishes: '',
+          document: { type: 'doc', content: [] },
+          can_edit: true,
+          can_delete: false,
+          can_toggle_tasks: true,
+          children: [],
+        },
+      }),
+    });
+
+    render(<HappyCleaningOverviewPage
+      data={{
+        user_id: 42,
+        active_year: 2026,
+        responsible_profiles: [],
+        copy_targets: [],
+        years: [{
+          year: 2026,
+          loaded: true,
+          is_active: true,
+          turnuses: [{
+            id: 1,
+            number: 1,
+            start: '2026-07-01',
+            is_active: true,
+            events: [{ id: 7, display_number: 1, revision: 2, stations: [] }],
+          }],
+        }],
+      }}
+      mutate={vi.fn()}
+      fetchImpl={fetchImpl}
+    />);
+
+    await waitFor(() => expect(fetchImpl).toHaveBeenCalledWith(
+      '/api/route-data/happy-cleaning-overview-station/?event_id=7&station_id=70',
+      { credentials: 'same-origin' },
+    ));
+    expect(await screen.findByRole('heading', { name: 'Küche' })).toBeInTheDocument();
+    window.history.pushState({}, '', '/');
+  });
+
   it('groups years, lazy loads history, persists user state, and globally sorts every station table', async () => {
     const user = userEvent.setup();
     const mutate = vi.fn().mockResolvedValue({ ok: true });

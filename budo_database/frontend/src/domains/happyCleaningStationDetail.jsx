@@ -180,6 +180,52 @@ function ReadOnlyStationDocument({
   );
 }
 
+export function HappyCleaningStationTodoDocument({
+  eventId,
+  stationId,
+  document: stationDocument,
+  canToggle = true,
+  mutate,
+  refresh,
+  writesBlocked = false,
+}) {
+  const [busyTodoIds, setBusyTodoIds] = useState(() => new Set());
+  const showError = useErrorToast();
+  const setTodoState = async todo => {
+    const taskId = String(todo.id);
+    setBusyTodoIds(current => new Set(current).add(taskId));
+    const operation = todo.checked ? 'reopen' : 'check';
+    try {
+      await mutate(
+        `/api/happy-cleaning/events/${eventId}/stations/${stationId}/todos/${todo.id}/${operation}/`,
+        {
+          request_id: requestId(),
+          expected_version: todo.version,
+        },
+      );
+    } catch (caught) {
+      showError(errorMessage(caught));
+      if (caught?.payload?.code === 'stale') await refresh?.();
+    } finally {
+      setBusyTodoIds(current => {
+        const next = new Set(current);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  };
+
+  return (
+    <ReadOnlyStationDocument
+      document={stationDocument}
+      canToggle={canToggle}
+      writesBlocked={writesBlocked}
+      busyTodoIds={busyTodoIds}
+      onToggle={setTodoState}
+    />
+  );
+}
+
 function DirtyNavigationDialog({ onContinue, onDiscard, onSave }) {
   return (
     <Dialog.Root open onOpenChange={open => { if (!open) onContinue(); }}>
@@ -403,9 +449,7 @@ export function HappyCleaningStationDetailPage({
   onCopySuccess,
 }) {
   const { event, station } = data;
-  const [busyTodoIds, setBusyTodoIds] = useState(() => new Set());
   const [editing, setEditing] = useState(initialEditing);
-  const showError = useErrorToast();
   const [copyOpen, setCopyOpen] = useState(false);
   const navigationGuard = useRef(null);
   const writesBlocked = realtimeSync?.enabled && !realtimeSync.writesEnabled;
@@ -417,30 +461,6 @@ export function HappyCleaningStationDetailPage({
     if (!onBack) return;
     if (editing && navigationGuard.current) navigationGuard.current(onBack);
     else onBack();
-  };
-
-  const setTodoState = async todo => {
-    const taskId = String(todo.id);
-    setBusyTodoIds(current => new Set(current).add(taskId));
-    const operation = todo.checked ? 'reopen' : 'check';
-    try {
-      await mutate(
-        `/api/happy-cleaning/events/${event.id}/stations/${station.id}/todos/${todo.id}/${operation}/`,
-        {
-          request_id: requestId(),
-          expected_version: todo.version,
-        },
-      );
-    } catch (caught) {
-      showError(errorMessage(caught));
-      if (caught?.payload?.code === 'stale') await refresh?.();
-    } finally {
-      setBusyTodoIds(current => {
-        const next = new Set(current);
-        next.delete(taskId);
-        return next;
-      });
-    }
   };
 
   const Page = embedded ? 'section' : 'main';
@@ -496,12 +516,14 @@ export function HappyCleaningStationDetailPage({
               >
                 Aufgaben
               </h2>
-              <ReadOnlyStationDocument
+              <HappyCleaningStationTodoDocument
+                eventId={event.id}
+                stationId={station.id}
                 document={station.document}
                 canToggle={station.can_toggle_tasks}
                 writesBlocked={writesBlocked}
-                busyTodoIds={busyTodoIds}
-                onToggle={setTodoState}
+                mutate={mutate}
+                refresh={refresh}
               />
             </section>
             <div className="flex flex-wrap justify-end gap-2">
