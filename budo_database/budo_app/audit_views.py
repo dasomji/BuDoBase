@@ -1,7 +1,9 @@
 import uuid
 
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, StreamingHttpResponse
+from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import APIException
 from rest_framework.response import Response
@@ -30,12 +32,26 @@ from budo_app.audit_queries import (
     serialize_audit_event,
 )
 from budo_app.models import AuditEvent
+from budo_app.react_views import render_react_page
 
 
 class AuditDetailUnavailable(APIException):
     status_code = 503
     default_detail = "Audit detail is temporarily unavailable."
     default_code = "audit_detail_unavailable"
+
+
+@login_required
+@require_GET
+def audit_page(request):
+    if not can_view_audit(request.user):
+        log_audit_denial(
+            user=request.user,
+            endpoint_kind="list",
+            reason_code="forbidden",
+        )
+        raise PermissionDenied("Audit access denied.")
+    return render_react_page(request)
 
 
 @api_view(["GET"])

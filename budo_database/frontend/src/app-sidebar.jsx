@@ -190,7 +190,7 @@ function NavigationGroup({ item, index }) {
   );
 }
 
-function withHappyCleaningEvents(events) {
+function withHappyCleaningEvents(events, permissions) {
   const eventItems = [...events]
     .sort((left, right) => (
       left.display_number - right.display_number || left.id - right.id
@@ -200,18 +200,29 @@ function withHappyCleaningEvents(events) {
       href: `/happy-cleaning/${event.id}/assignment/`,
       activePrefix: `/happy-cleaning/${event.id}`,
     }));
-  return sidebarItems.map(item => (
-    item.label === 'Happy Cleaning'
-      ? {
+  return sidebarItems.map(item => {
+    if (item.label === 'Happy Cleaning') {
+      return {
         ...item,
         children: [item.children[0], ...eventItems, item.children[1]],
-      }
-      : item
-  ));
+      };
+    }
+    if (item.label === 'Orgi' && permissions?.view_auditevent) {
+      return {
+        ...item,
+        children: [
+          ...item.children.slice(0, -1),
+          { label: 'Audit-Log', href: '/audit/' },
+          item.children.at(-1),
+        ],
+      };
+    }
+    return item;
+  });
 }
 
-export function AppSidebar({ happyCleaningEvents = [] }) {
-  const items = withHappyCleaningEvents(happyCleaningEvents);
+export function AppSidebar({ happyCleaningEvents = [], permissions }) {
+  const items = withHappyCleaningEvents(happyCleaningEvents, permissions);
   return (
     <Sidebar side="left" collapsible="icon">
       <SidebarHeader>

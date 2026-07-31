@@ -17,13 +17,14 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path, re_path
 from budo_app.api_views import submit_form
-from budo_app.audit_views import audit_event_detail, export_audit_events
+from budo_app.audit_views import audit_event_detail, audit_page, export_audit_events
 from budo_app.kid_edit_views import kid_edit
 from budo_app.read_contracts.bootstrap import bootstrap
 from budo_app.read_contracts.views import route_data
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('audit/', audit_page, name='audit-page'),
     path('api/bootstrap/', bootstrap, name='bootstrap-api'),
     path(
         'api/route-data/<slug:contract_key>/',
