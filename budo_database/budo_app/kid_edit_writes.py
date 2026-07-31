@@ -3,56 +3,19 @@ from dataclasses import dataclass
 
 from django.db import transaction
 
+from .kid_edit_contracts import (
+    FIELD_CONTRACTS,
+    canonicalize_storage_value,
+)
 from .models import Kinder, Schwerpunkte, Schwerpunktzeit, Turnus
-from .text_cleaning import (
-    DEFAULT_EMPTY_VALUES,
-    FOOD_EMPTY_VALUES,
-    REQUEST_EMPTY_VALUES,
+
+
+COVERED_KINDER_FIELDS = tuple(
+    field.storage_name for field in FIELD_CONTRACTS
 )
-
-
-COVERED_KINDER_FIELDS = (
-    "kid_vorname",
-    "kid_nachname",
-    "sex",
-    "kid_birthday",
-    "turnus_dauer",
-    "geschwister",
-    "zeltwunsch",
-    "budo_erfahrung",
-    "sozialversicherungsnr",
-    "illness",
-    "drugs",
-    "vegetarisch",
-    "special_food_description",
-    "swimmer",
-    "einverstaendnis_erklaerung",
-    "rezeptfreie_medikamente",
-    "rezept_medikamente",
-    "tetanusimpfung",
-    "zeckenimpfung",
-    "anmelde_organisation",
-    "anmelder_vorname",
-    "anmelder_nachname",
-    "anmelder_email",
-    "anmelder_mobil",
-    "hauptversichert_bei",
-    "notfall_kontakte",
-    "budo_family",
-)
-
-_SEMANTIC_BLANKS = {
-    "geschwister": REQUEST_EMPTY_VALUES,
-    "zeltwunsch": REQUEST_EMPTY_VALUES,
-    "illness": DEFAULT_EMPTY_VALUES,
-    "drugs": DEFAULT_EMPTY_VALUES,
-    "special_food_description": FOOD_EMPTY_VALUES,
+_FIELD_CONTRACTS_BY_STORAGE_NAME = {
+    field.storage_name: field for field in FIELD_CONTRACTS
 }
-_BOOLEAN_FIELDS = {
-    "budo_erfahrung",
-    "einverstaendnis_erklaerung",
-}
-_NON_TEXT_FIELDS = _BOOLEAN_FIELDS | {"kid_birthday", "turnus_dauer"}
 _SCOPE_OWNED_FIELDS = {
     "id",
     "pk",
@@ -353,48 +316,9 @@ def apply_locked_swp_change(
     return True
 
 
-def _normalized_text(value):
-    if value is None:
-        return ""
-    return str(value).replace("\r\n", "\n").replace("\r", "\n").strip()
-
-
-def _canonical_controlled_value(field_name, value):
-    normalized = _normalized_text(value)
-    lowered = normalized.lower()
-
-    if field_name == "sex":
-        if lowered in {"", "nan", "none", "-"}:
-            return None
-        if lowered in {"weiblich", "männlich", "divers"}:
-            return lowered
-    elif field_name == "vegetarisch":
-        if lowered in {"", "nan", "none", "-"}:
-            return None
-        if lowered == "ja":
-            return True
-        if lowered == "nein":
-            return False
-    elif field_name == "budo_family":
-        if normalized == "":
-            return None
-        if normalized in {"S", "M", "L", "XL"}:
-            return normalized
-
-    return normalized
-
-
 def _canonical_field_value(field_name, value):
-    if field_name in _NON_TEXT_FIELDS:
-        return value
-    if field_name in {"sex", "vegetarisch", "budo_family"}:
-        return _canonical_controlled_value(field_name, value)
-
-    normalized = _normalized_text(value)
-    empty_values = _SEMANTIC_BLANKS.get(field_name)
-    if empty_values is not None and normalized.lower() in empty_values:
-        return ""
-    return normalized
+    field = _FIELD_CONTRACTS_BY_STORAGE_NAME[field_name]
+    return canonicalize_storage_value(field, value).api_value
 
 
 def _canonical_child_snapshot(child):

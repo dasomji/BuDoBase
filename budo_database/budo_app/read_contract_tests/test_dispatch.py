@@ -17,6 +17,7 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "train-departure",
     "train-arrival",
     "kid-detail",
+    "kid-edit",
     "check-in",
     "check-out",
     "serial-letter",

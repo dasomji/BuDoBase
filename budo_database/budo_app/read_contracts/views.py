@@ -18,4 +18,7 @@ def route_data(request, contract_key):
             },
             status=404,
         )
-    return Response(contract.builder(request))
+    response = Response(contract.builder(request))
+    if contract.cache_control is not None:
+        response["Cache-Control"] = contract.cache_control
+    return response

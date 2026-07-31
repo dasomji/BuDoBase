@@ -222,6 +222,21 @@ class VersionedChildWriteTests(TransactionTestCase):
             {self.focus_1.id, self.foreign_focus.id},
         )
 
+    def test_budo_family_lowercase_to_exact_choice_persists_and_bumps(self):
+        _covered_fields, _scope_error, versioned_child_write = self.protocol()
+        Kinder.objects.filter(pk=self.child.id).update(budo_family="s")
+
+        with versioned_child_write(
+            turnus_id=self.turnus.id,
+            child_id=self.child.id,
+        ) as write:
+            write.child.budo_family = "S"
+            write.save_child(update_fields=("budo_family",))
+
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.budo_family, "S")
+        self.assertEqual(self.child.edit_version, 2)
+
     def test_uncovered_only_change_does_not_bump_and_save_is_narrow(self):
         _covered_fields, _scope_error, versioned_child_write = self.protocol()
         Kinder.objects.filter(pk=self.child.id).update(anwesend=True)
