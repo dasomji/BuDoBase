@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from dataclasses import dataclass
 
 from django.db import transaction
 
@@ -63,6 +64,293 @@ _SCOPE_OWNED_FIELDS = {
 
 class ChildWriteScopeError(Exception):
     pass
+
+
+class LockedSwpError(Exception):
+    """Neutral failure raised by the lock-assuming SWP write seam."""
+
+    def __init__(self, code, *, current_version=None):
+        self.code = code
+        self.current_version = current_version
+        super().__init__(code)
+
+
+@dataclass(frozen=True, slots=True)
+class LockedSwpPlan:
+    child_id: int
+    turnus_id: int
+    expected_version: int
+    focus_configuration: tuple
+    source_link_ids: frozenset
+    target_link_ids: frozenset
+    changed: bool
+
+
+def _canonical_locked_swp_configuration(*, turnus, focus_configuration):
+    try:
+        turnus_id = turnus.pk
+        configuration = tuple(focus_configuration)
+    except (AttributeError, TypeError):
+        raise LockedSwpError("validation_error") from None
+
+    if turnus_id is None:
+        raise LockedSwpError("validation_error")
+
+    canonical = []
+    period_ids = set()
+    focus_ids = set()
+    for entry in configuration:
+        try:
+            period, focuses = entry
+            period_id = period.pk
+            period_turnus_id = period.turnus_id
+            focuses = tuple(focuses)
+        except (AttributeError, TypeError, ValueError):
+            raise LockedSwpError("validation_error") from None
+
+        if (
+            period_id is None
+            or period_turnus_id != turnus_id
+            or period_id in period_ids
+        ):
+            raise LockedSwpError("validation_error")
+        period_ids.add(period_id)
+
+        period_focus_ids = []
+        for focus in focuses:
+            try:
+                focus_id = focus.pk
+                focus_period_id = focus.schwerpunktzeit_id
+            except AttributeError:
+                raise LockedSwpError("validation_error") from None
+            if (
+                focus_id is None
+                or focus_period_id != period_id
+                or focus_id in focus_ids
+            ):
+                raise LockedSwpError("validation_error")
+            focus_ids.add(focus_id)
+            period_focus_ids.append(focus_id)
+
+        canonical.append((period_id, tuple(sorted(period_focus_ids))))
+
+    return tuple(sorted(canonical)), frozenset(focus_ids)
+
+
+def _validate_locked_swp_binding(*, child, turnus):
+    try:
+        child_id = child.pk
+        turnus_id = turnus.pk
+        child_turnus_id = child.turnus_id
+    except AttributeError:
+        raise LockedSwpError("not_found") from None
+    if (
+        child_id is None
+        or turnus_id is None
+        or child_turnus_id != turnus_id
+    ):
+        raise LockedSwpError("not_found")
+    return child_id, turnus_id
+
+
+def _canonical_requested_swp_links(
+    *,
+    focus_configuration,
+    configured_focus_ids,
+    source_link_ids,
+    requested_links_by_period,
+):
+    try:
+        requested_period_ids = set(requested_links_by_period)
+    except TypeError:
+        raise LockedSwpError("validation_error") from None
+
+    configured_period_ids = {
+        period_id for period_id, _focus_ids in focus_configuration
+    }
+    if requested_period_ids != configured_period_ids:
+        raise LockedSwpError("validation_error")
+
+    target_ids = set()
+    for period_id, available_ids in focus_configuration:
+        try:
+            requested_ids = tuple(requested_links_by_period[period_id])
+            distinct_requested_ids = set(requested_ids)
+        except (KeyError, TypeError):
+            raise LockedSwpError("validation_error") from None
+        if len(distinct_requested_ids) != len(requested_ids):
+            raise LockedSwpError("validation_error")
+        for focus_id in requested_ids:
+            if focus_id not in configured_focus_ids:
+                raise LockedSwpError("not_found")
+            if focus_id not in available_ids:
+                raise LockedSwpError("not_found")
+        if len(requested_ids) > 1 and distinct_requested_ids != (
+            source_link_ids.intersection(available_ids)
+        ):
+            raise LockedSwpError("validation_error")
+        target_ids.update(requested_ids)
+    return frozenset(target_ids)
+
+
+def _valid_plan_target(
+    *,
+    focus_configuration,
+    source_link_ids,
+    target_link_ids,
+):
+    if not isinstance(target_link_ids, frozenset):
+        return False
+    remaining = set(target_link_ids)
+    configured = set()
+    for _period_id, available_ids in focus_configuration:
+        available_ids = set(available_ids)
+        configured.update(available_ids)
+        period_target_ids = remaining.intersection(available_ids)
+        if len(period_target_ids) > 1 and period_target_ids != (
+            source_link_ids.intersection(available_ids)
+        ):
+            return False
+    return remaining.issubset(configured)
+
+
+def plan_locked_swp_change(
+    *,
+    child,
+    turnus,
+    focus_configuration,
+    active_link_ids,
+    requested_links_by_period,
+    expected_version,
+):
+    child_id, turnus_id = _validate_locked_swp_binding(
+        child=child,
+        turnus=turnus,
+    )
+    if child.edit_version != expected_version:
+        raise LockedSwpError(
+            "stale",
+            current_version=child.edit_version,
+        )
+
+    canonical_configuration, configured_focus_ids = (
+        _canonical_locked_swp_configuration(
+            turnus=turnus,
+            focus_configuration=focus_configuration,
+        )
+    )
+    try:
+        source_link_ids = frozenset(active_link_ids)
+    except TypeError:
+        raise LockedSwpError("validation_error") from None
+    if not source_link_ids.issubset(configured_focus_ids):
+        raise LockedSwpError("validation_error")
+
+    target_link_ids = _canonical_requested_swp_links(
+        focus_configuration=canonical_configuration,
+        configured_focus_ids=configured_focus_ids,
+        source_link_ids=source_link_ids,
+        requested_links_by_period=requested_links_by_period,
+    )
+    return LockedSwpPlan(
+        child_id=child_id,
+        turnus_id=turnus_id,
+        expected_version=expected_version,
+        focus_configuration=canonical_configuration,
+        source_link_ids=source_link_ids,
+        target_link_ids=target_link_ids,
+        changed=source_link_ids != target_link_ids,
+    )
+
+
+def apply_locked_swp_change(
+    *,
+    child,
+    turnus,
+    focus_configuration,
+    active_link_ids,
+    plan,
+):
+    if not isinstance(plan, LockedSwpPlan):
+        raise LockedSwpError("plan_mismatch")
+    if (
+        not isinstance(plan.focus_configuration, tuple)
+        or not isinstance(plan.source_link_ids, frozenset)
+        or not isinstance(plan.target_link_ids, frozenset)
+        or not isinstance(plan.changed, bool)
+    ):
+        raise LockedSwpError("plan_mismatch")
+
+    try:
+        child_id = child.pk
+        turnus_id = turnus.pk
+        child_turnus_id = child.turnus_id
+    except AttributeError:
+        raise LockedSwpError("plan_mismatch") from None
+    if (
+        child_id != plan.child_id
+        or turnus_id != plan.turnus_id
+        or child_turnus_id != turnus_id
+    ):
+        raise LockedSwpError("plan_mismatch")
+
+    if child.edit_version != plan.expected_version:
+        raise LockedSwpError(
+            "stale",
+            current_version=child.edit_version,
+        )
+
+    try:
+        canonical_configuration, configured_focus_ids = (
+            _canonical_locked_swp_configuration(
+                turnus=turnus,
+                focus_configuration=focus_configuration,
+            )
+        )
+        current_link_ids = frozenset(active_link_ids)
+    except LockedSwpError:
+        raise LockedSwpError("plan_mismatch") from None
+    except TypeError:
+        raise LockedSwpError("plan_mismatch") from None
+
+    if canonical_configuration != plan.focus_configuration:
+        raise LockedSwpError("plan_mismatch")
+    if current_link_ids != plan.source_link_ids:
+        raise LockedSwpError(
+            "stale",
+            current_version=child.edit_version,
+        )
+    if (
+        not plan.source_link_ids.issubset(configured_focus_ids)
+        or not _valid_plan_target(
+            focus_configuration=canonical_configuration,
+            source_link_ids=plan.source_link_ids,
+            target_link_ids=plan.target_link_ids,
+        )
+        or plan.changed
+        != (plan.source_link_ids != plan.target_link_ids)
+    ):
+        raise LockedSwpError("plan_mismatch")
+
+    if not plan.changed:
+        return False
+
+    remove_ids = plan.source_link_ids - plan.target_link_ids
+    add_ids = plan.target_link_ids - plan.source_link_ids
+    through = Kinder.schwerpunkte.through
+    if remove_ids:
+        through.objects.filter(
+            kinder_id=child_id,
+            schwerpunkte_id__in=remove_ids,
+        ).delete()
+    if add_ids:
+        through.objects.bulk_create(
+            [
+                through(kinder_id=child_id, schwerpunkte_id=focus_id)
+                for focus_id in sorted(add_ids)
+            ]
+        )
+    return True
 
 
 def _normalized_text(value):
