@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "status": "blocked",
+  "reviewed_on": "2026-07-31",
+  "candidate_preflight": {
+    "status": "blocked",
+    "environment": null,
+    "provenance": null,
+    "checked_on": null,
+    "checked": null,
+    "supported": null,
+    "unsupported": null,
+    "total_bytes": null,
+    "max_bytes": null,
+    "limit_bytes": null,
+    "evidence_ref": null
+  },
+  "qa_preflight": {
+    "environment": "development-qa",
+    "evidence_ref": "docs/evidence/165/dev-qa-preflight.md"
+  },
+  "controls": {
+    "storage_encryption": {
+      "status": "blocked",
+      "owner": "Production platform owner",
+      "verified_on": null,
+      "evidence_ref": "docs/operations/audit-security-readiness.md"
+    },
+    "database_transport": {
+      "status": "blocked",
+      "owner": "Production platform owner",
+      "verified_on": null,
+      "evidence_ref": "docs/operations/audit-security-readiness.md"
+    },
+    "browser_transport": {
+      "status": "blocked",
+      "owner": "Production application owner",
+      "verified_on": null,
+      "evidence_ref": "docs/operations/audit-security-readiness.md"
+    },
+    "credentials_and_mfa": {
+      "status": "blocked",
+      "owner": "Production identity owner",
+      "verified_on": null,
+      "evidence_ref": "docs/operations/audit-security-readiness.md"
+    },
+    "logging_exclusions": {
+      "status": "blocked",
+      "owner": "Production application owner",
+      "verified_on": null,
+      "evidence_ref": "docs/operations/audit-security-readiness.md"
+    },
+    "backup_and_export_handling": {
+      "status": "blocked",
+      "owner": "Production data owner",
+      "verified_on": null,
+      "evidence_ref": "docs/operations/audit-security-readiness.md"
+    },
+    "permission_assignments": {
+      "status": "blocked",
+      "owner": "Production identity owner",
+      "verified_on": null,
+      "evidence_ref": "docs/operations/audit-security-readiness.md"
+    },
+    "restore_and_deletion_reconciliation": {
+      "status": "blocked",
+      "owner": "Production data owner",
+      "verified_on": null,
+      "evidence_ref": "docs/operations/audit-security-readiness.md"
+    },
+    "incident_response": {
+      "status": "blocked",
+      "owner": "Incident response owner",
+      "verified_on": null,
+      "evidence_ref": "docs/operations/audit-security-readiness.md"
+    }
+  },
+  "blockers": [
+    "storage_encryption",
+    "database_transport",
+    "browser_transport",
+    "credentials_and_mfa",
+    "logging_exclusions",
+    "backup_and_export_handling",
+    "permission_assignments",
+    "restore_and_deletion_reconciliation",
+    "incident_response"
+  ],
+  "at_rest_decision": {
+    "disposition": "pending",
+    "owner": null,
+    "decided_on": null,
+    "evidence_ref": null
+  },
+  "approval": {
+    "status": "blocked",
+    "approver": null,
+    "approved_on": null,
+    "evidence_ref": null
+  }
+}

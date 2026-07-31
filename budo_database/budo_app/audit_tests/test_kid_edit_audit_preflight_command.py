@@ -4,6 +4,7 @@ from copy import deepcopy
 from datetime import date
 import importlib
 from io import StringIO
+import re
 from unittest import mock
 
 from django.core.management import call_command
@@ -133,8 +134,26 @@ class KidEditAuditPreflightCommandTests(TestCase):
                 self.assertNotIn(str(turnus_id), output)
                 self.assertNotIn("checked=0", output)
 
-    def test_per_string_and_unsupported_type_fail_with_only_id_path_and_counts(self):
-        child = self.child(
+    def assert_safe_unsupported_line(
+        self, output, *, path, marker, forbidden=(),
+    ):
+        matching = [
+            line for line in output.splitlines()
+            if f"path={path}" in line
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertRegex(
+            matching[0],
+            rf"^child_ordinal=1 path={re.escape(path)} bytes=\d+$",
+        )
+        self.assertNotIn("child_id=", output)
+        self.assertNotIn("turnus_id=", output)
+        self.assertNotIn(f"index-{marker}", output)
+        for value in forbidden:
+            self.assertNotIn(str(value), output)
+
+    def test_per_string_and_unsupported_type_fail_with_only_ordinal_path_and_bytes(self):
+        self.child(
             self.turnus,
             marker="UNSUPPORTED",
             illness="SECRET-ILLNESS-" + "x" * 10_001,
@@ -149,8 +168,9 @@ class KidEditAuditPreflightCommandTests(TestCase):
                 stdout=stdout, stderr=stderr, no_color=True,
             )
         output = stdout.getvalue() + stderr.getvalue()
-        self.assertIn(f"child_id={child.pk}", output)
-        self.assertIn("path=fields.illness", output)
+        self.assert_safe_unsupported_line(
+            output, path="fields.illness", marker="UNSUPPORTED",
+        )
         self.assertIn("unsupported=1", output)
         self.assert_private_output(output, "SECRET-ILLNESS", "SECRET-FIRST")
 
@@ -169,13 +189,38 @@ class KidEditAuditPreflightCommandTests(TestCase):
                 stdout=stdout, stderr=stderr, no_color=True,
             )
         output = stdout.getvalue() + stderr.getvalue()
-        self.assertIn(f"child_id={child.pk}", output)
-        self.assertIn("path=fields.stay_weeks", output)
+        self.assert_safe_unsupported_line(
+            output, path="fields.stay_weeks", marker="UNSUPPORTED",
+        )
         self.assertIn("unsupported=1", output)
         self.assertNotIn("1.5", output)
 
+        invalid_snapshot = valid_details()["before"]
+        leaked_period_id = 876_543_210
+        invalid_snapshot["swp"][0]["period_id"] = leaked_period_id
+        invalid_snapshot["swp"][0]["duration_days"] = 0
+        stdout = StringIO()
+        stderr = StringIO()
+        with mock.patch.object(
+            command_module,
+            "serialize_kid_edit_snapshot",
+            return_value=invalid_snapshot,
+        ), self.assertRaises(CommandError):
+            call_command(
+                "check_kid_edit_audit_payloads",
+                "--turnus-id", str(self.turnus.pk),
+                stdout=stdout, stderr=stderr, no_color=True,
+            )
+        output = stdout.getvalue() + stderr.getvalue()
+        self.assert_safe_unsupported_line(
+            output,
+            path="swp.0",
+            marker="UNSUPPORTED",
+            forbidden=(leaked_period_id,),
+        )
+
     def test_missing_nullable_and_unknown_fields_report_deterministic_safe_paths(self):
-        child = self.child(self.turnus, marker="STRUCTURE")
+        self.child(self.turnus, marker="STRUCTURE")
         missing = deepcopy(valid_details()["before"])
         missing["fields"].pop("siblings")
         unknown = deepcopy(valid_details()["before"])
@@ -198,14 +243,15 @@ class KidEditAuditPreflightCommandTests(TestCase):
                         stdout=stdout, stderr=stderr, no_color=True,
                     )
                 output = stdout.getvalue() + stderr.getvalue()
-                self.assertIn(f"child_id={child.pk}", output)
-                self.assertIn(f"path={expected_path}", output)
+                self.assert_safe_unsupported_line(
+                    output, path=expected_path, marker="STRUCTURE",
+                )
                 self.assertIn("unsupported=1", output)
                 self.assertNotIn("SECRET-UNKNOWN-VALUE", output)
                 self.assertNotIn("SECRET-FIRST-STRUCTURE", output)
 
     def test_over_four_mib_fails_with_size_root_path_and_no_payload_values(self):
-        child = self.child(self.turnus, marker="OVERSIZE")
+        self.child(self.turnus, marker="OVERSIZE")
         oversized = deepcopy(valid_details()["before"])
         oversized["swp"][0]["focuses"] = [
             {
@@ -228,9 +274,10 @@ class KidEditAuditPreflightCommandTests(TestCase):
                 stdout=stdout, stderr=stderr, no_color=True,
             )
         output = stdout.getvalue() + stderr.getvalue()
-        self.assertIn(f"child_id={child.pk}", output)
-        self.assertIn("path=$", output)
-        self.assertRegex(output, r"bytes=[4-9][0-9]{6,}")
+        self.assert_safe_unsupported_line(
+            output, path="$", marker="OVERSIZE",
+        )
+        self.assertRegex(output, r"child_ordinal=1 path=\$ bytes=[4-9][0-9]{6,}")
         self.assertIn("limit_bytes=4194304", output)
         self.assertIn("unsupported=1", output)
         self.assert_private_output(output, "SECRET-FIRST-OVERSIZE", "XXXXX")

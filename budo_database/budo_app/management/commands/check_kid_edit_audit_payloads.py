@@ -74,25 +74,19 @@ def _unsupported_snapshot_path(snapshot):
     periods = snapshot.get("swp")
     if type(periods) is not list:
         return "swp"
-    for period in periods:
+    for index, period in enumerate(periods):
         try:
             _period(period)
         except (ValidationError, TypeError, ValueError):
-            period_id = period.get("period_id") if type(period) is dict else None
-            return f"swp.{period_id}" if type(period_id) is int else "swp"
+            return f"swp.{index}"
     events = snapshot.get("happy_cleaning")
     if type(events) is not list:
         return "happy_cleaning"
-    for event in events:
+    for index, event in enumerate(events):
         try:
             _event(event)
         except (ValidationError, TypeError, ValueError):
-            event_id = event.get("event_id") if type(event) is dict else None
-            return (
-                f"happy_cleaning.{event_id}"
-                if type(event_id) is int
-                else "happy_cleaning"
-            )
+            return f"happy_cleaning.{index}"
     return "$"
 
 
@@ -220,7 +214,7 @@ class Command(BaseCommand):
         unsupported = 0
         total_bytes = 0
         max_bytes = 0
-        for child in children:
+        for child_ordinal, child in enumerate(children, start=1):
             try:
                 snapshot = serialize_kid_edit_snapshot(
                     child=child,
@@ -228,7 +222,9 @@ class Command(BaseCommand):
                 )
             except (ValidationError, TypeError, ValueError, AttributeError):
                 unsupported += 1
-                self.stdout.write(f"child_id={child.pk} path=$ bytes=0")
+                self.stdout.write(
+                    f"child_ordinal={child_ordinal} path=$ bytes=0"
+                )
                 continue
 
             candidate = {
@@ -245,7 +241,7 @@ class Command(BaseCommand):
             if size > MAX_KID_EDIT_AUDIT_BYTES:
                 unsupported += 1
                 self.stdout.write(
-                    f"child_id={child.pk} path=$ bytes={size}"
+                    f"child_ordinal={child_ordinal} path=$ bytes={size}"
                 )
                 continue
             try:
@@ -258,7 +254,7 @@ class Command(BaseCommand):
                 unsupported += 1
                 path = _unsupported_snapshot_path(snapshot)
                 self.stdout.write(
-                    f"child_id={child.pk} path={path} bytes={size}"
+                    f"child_ordinal={child_ordinal} path={path} bytes={size}"
                 )
                 continue
             supported += 1
