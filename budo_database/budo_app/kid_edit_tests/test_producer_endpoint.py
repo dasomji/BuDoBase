@@ -290,6 +290,61 @@ class KidEditProducerFixture(TransactionTestCase):
             self.assertNotIn(secret, rendered)
 
 class KidEditProducerEndpointTests(KidEditProducerFixture):
+    def test_session_json_post_accepts_bootstrap_csrf_token(self):
+        payload = self.read_payload("csrf-session-json-166")
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.force_login(self.user)
+        csrf_token = csrf_client.get(reverse("bootstrap-api")).json()["csrf_token"]
+
+        response = self.post(
+            payload,
+            client=csrf_client,
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["result"], "no_change")
+        self.assert_no_secrets(response.json())
+
+    def test_success_flashes_once_after_navigation_and_exact_replay_does_not_duplicate(self):
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.force_login(self.user)
+        csrf_token = csrf_client.get(reverse("bootstrap-api")).json()["csrf_token"]
+        success_message = [{
+            "text": "Alle Daten und Einteilungen wurden gespeichert.",
+            "tags": "success",
+        }]
+
+        updated = self.post(
+            self.changed_payload("flash-updated-166"),
+            client=csrf_client,
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+        self.assertEqual(updated.json()["result"], "updated")
+        first_bootstrap = csrf_client.get(reverse("bootstrap-api")).json()
+        self.assertEqual(first_bootstrap["messages"], success_message)
+        self.assertEqual(
+            csrf_client.get(reverse("bootstrap-api")).json()["messages"],
+            [],
+        )
+
+        no_change_payload = self.read_payload("flash-no-change-166")
+        no_change = self.post(
+            no_change_payload,
+            client=csrf_client,
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+        replayed = self.post(
+            no_change_payload,
+            client=csrf_client,
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+        self.assertEqual(no_change.json()["result"], "no_change")
+        self.assertTrue(replayed.json()["replayed"])
+        replay_bootstrap = csrf_client.get(reverse("bootstrap-api")).json()
+        self.assertEqual(replay_bootstrap["messages"], success_message)
+        self.assert_no_secrets(replay_bootstrap["messages"])
+
     def test_positive_child_route_enforces_auth_profile_turnus_csrf_and_parser(self):
         self.require_endpoint()
         payload = self.read_payload("boundary-1")

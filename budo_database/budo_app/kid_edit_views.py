@@ -3,9 +3,15 @@
 from copy import deepcopy
 import json
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -24,6 +30,14 @@ from budo_app.kid_edit_contracts import (
 )
 from budo_app.models import Kinder, Profil
 from budo_app.react_views import render_react_page
+
+
+class _RawBodySessionAuthentication(SessionAuthentication):
+    """Cache the body before DRF's CSRF check parses the request stream."""
+
+    def enforce_csrf(self, request):
+        request.body
+        super().enforce_csrf(request)
 
 
 @login_required
@@ -58,6 +72,7 @@ def _recover_field_command(request, error, profile, kid_id):
 
 
 @api_view(["POST"])
+@authentication_classes([_RawBodySessionAuthentication])
 @permission_classes([IsAuthenticated])
 def kid_edit(request, kid_id):
     decoded = decode_kid_edit_request(request.body, request.content_type)
@@ -91,4 +106,9 @@ def kid_edit(request, kid_id):
         )
     except KidEditCommandError as error:
         return Response(error.payload, status=error.status)
+    if not payload.get("replayed"):
+        messages.success(
+            request._request,
+            "Alle Daten und Einteilungen wurden gespeichert.",
+        )
     return Response(payload, status=status)
