@@ -83,12 +83,12 @@ class KidEditAbsenceContractTests(TestCase):
             "ledger": HappyCleaningCommandRequest.objects.count(),
         }
 
-    def test_reads_and_unsupported_write_routes_have_no_write_side_effects(self):
+    def test_reads_and_invalid_write_requests_have_no_write_side_effects(self):
         before = self.persisted_state()
 
         kid_edit_get = self.client.get(self.route_url("kid-edit"))
         kid_detail_get = self.client.get(self.route_url("kid-detail"))
-        missing_write_route = self.client.post(
+        invalid_write = self.client.post(
             f"/api/kids/{self.kid.id}/edit/",
             data='{"first_name":"Changed"}',
             content_type="application/json",
@@ -101,6 +101,7 @@ class KidEditAbsenceContractTests(TestCase):
 
         self.assertEqual(kid_edit_get.status_code, 200)
         self.assertEqual(kid_detail_get.status_code, 200)
-        self.assertEqual(missing_write_route.status_code, 404)
+        self.assertEqual(invalid_write.status_code, 422)
+        self.assertFalse(invalid_write.json()["ok"])
         self.assertEqual(route_data_post.status_code, 405)
         self.assertEqual(self.persisted_state(), before)
