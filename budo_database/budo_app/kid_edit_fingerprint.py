@@ -88,11 +88,68 @@ def _command_payload(command):
     ).encode("utf-8")
 
 
+def _request_payload(request, *, turnus_id, child_id):
+    """Canonicalize decoded request intent before mutable state is loaded."""
+    value = {
+        "request_id": _typed(request.request_id),
+        "turnus_id": _typed(turnus_id),
+        "child_id": _typed(child_id),
+        "expected_edit_version": _typed(request.expected_edit_version),
+        "field_baselines": [
+            [name, _typed(value)]
+            for name, value in sorted(request.field_baselines.items())
+        ],
+        "fields": [
+            [name, _typed(value)]
+            for name, value in sorted(request.fields.items())
+        ],
+        "swp": [
+            {
+                "period_id": _typed(item.period_id),
+                "baseline": _typed(item.baseline),
+                "target": _swp_target(item.target),
+            }
+            for item in sorted(request.swp, key=lambda item: item.period_id)
+        ],
+        "happy_cleaning_number": _typed(request.happy_cleaning_number),
+        "expected_number_version": _typed(request.expected_number_version),
+        "happy_cleaning": [
+            {
+                "event_id": _typed(item.event_id),
+                "expected_assignment_version": _typed(
+                    item.expected_assignment_version
+                ),
+                "target": _happy_cleaning_target(item.target),
+            }
+            for item in sorted(
+                request.happy_cleaning, key=lambda item: item.event_id,
+            )
+        ],
+    }
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
 def _digest(command, key):
     payload = _command_payload(command)
     return hmac.new(
         str(key).encode("utf-8"),
         KID_EDIT_FINGERPRINT_SALT.encode("ascii") + b"\0" + payload,
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _request_digest(request, *, turnus_id, child_id, key):
+    payload = _request_payload(
+        request, turnus_id=turnus_id, child_id=child_id,
+    )
+    return hmac.new(
+        str(key).encode("utf-8"),
+        KID_EDIT_FINGERPRINT_SALT.encode("ascii") + b"\0request\0" + payload,
         hashlib.sha256,
     ).hexdigest()
 
@@ -111,4 +168,36 @@ def verify_kid_edit_command_fingerprint(fingerprint, command):
     matched = False
     for key in (settings.SECRET_KEY, *settings.SECRET_KEY_FALLBACKS):
         matched |= secrets.compare_digest(supplied, _digest(command, key))
+    return bool(matched)
+
+
+def sign_kid_edit_request(request, *, turnus_id, child_id):
+    return "hmac-sha256:v1:" + _request_digest(
+        request,
+        turnus_id=turnus_id,
+        child_id=child_id,
+        key=settings.SECRET_KEY,
+    )
+
+
+def verify_kid_edit_request_fingerprint(
+    fingerprint, request, *, turnus_id, child_id,
+):
+    if type(fingerprint) is not str:
+        return False
+    match = _FINGERPRINT.fullmatch(fingerprint)
+    if match is None:
+        return False
+    supplied = match.group(1)
+    matched = False
+    for key in (settings.SECRET_KEY, *settings.SECRET_KEY_FALLBACKS):
+        matched |= secrets.compare_digest(
+            supplied,
+            _request_digest(
+                request,
+                turnus_id=turnus_id,
+                child_id=child_id,
+                key=key,
+            ),
+        )
     return bool(matched)

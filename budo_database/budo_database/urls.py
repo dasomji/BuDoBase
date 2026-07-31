@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from budo_app.api_views import submit_form
 from budo_app.audit_views import audit_event_detail, export_audit_events
+from budo_app.kid_edit_views import kid_edit
 from budo_app.read_contracts.bootstrap import bootstrap
 from budo_app.read_contracts.views import route_data
 
@@ -30,6 +31,7 @@ urlpatterns = [
         name='route-data-api',
     ),
     path('api/form-submit/', submit_form, name='form-submit-api'),
+    path('api/kids/<int:kid_id>/edit/', kid_edit, name='kid-edit-api'),
     path(
         'api/happy-cleaning/',
         include('budo_app.happy_cleaning_command_urls'),
