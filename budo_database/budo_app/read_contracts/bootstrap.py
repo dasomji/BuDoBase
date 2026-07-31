@@ -4,6 +4,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from budo_app.audit_policy import can_export_audit, can_view_audit
 from budo_app.models import (
     Auslagerorte,
     HappyCleaning,
@@ -27,8 +28,8 @@ def _permissions(user):
         "change_profiles": user.has_perm("budo_app.change_profil"),
         "change_focuses": user.has_perm("budo_app.change_schwerpunkte"),
         "change_places": user.has_perm("budo_app.change_auslagerorte"),
-        "view_auditevent": user.has_perm("budo_app.view_auditevent"),
-        "export_auditevent": user.has_perm("budo_app.export_auditevent"),
+        "view_auditevent": can_view_audit(user),
+        "export_auditevent": can_export_audit(user),
     }
 
 

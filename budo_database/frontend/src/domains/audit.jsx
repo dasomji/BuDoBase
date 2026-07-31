@@ -16,13 +16,16 @@ import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
 
 
-function queryUrl(filters, page, pageSize) {
+function queryUrl(filters, page, pageSize, snapshotId) {
   const params = new URLSearchParams();
   Object.entries(filters || {}).forEach(([key, value]) => {
     if (value) params.set(key, value);
   });
   if (page > 1) params.set('page', String(page));
   if (pageSize && pageSize !== 50) params.set('page_size', String(pageSize));
+  if (snapshotId !== undefined && snapshotId !== null) {
+    params.set('snapshot_id', String(snapshotId));
+  }
   const query = params.toString();
   return `/audit/${query ? `?${query}` : ''}`;
 }
@@ -53,7 +56,9 @@ function AuditFilters({ data }) {
       <FilterField label="Aktion" name="action">
         <select name="action" defaultValue={filters.action || ''}>
           <option value="">Alle</option>
-          {(options.actions || []).map(value => <option key={value}>{value}</option>)}
+          {(options.actions || []).map(value => (
+            <option key={value} value={value} label={value} />
+          ))}
         </select>
       </FilterField>
       <FilterField label="Ergebnis" name="outcome">
@@ -77,6 +82,23 @@ function AuditFilters({ data }) {
   );
 }
 
+const MAX_SUMMARY_FIELDS = 12;
+const MAX_SUMMARY_FIELD_LENGTH = 64;
+
+function auditDetailsSummary(summary) {
+  if (summary?.sensitive === true && Array.isArray(summary.changed_paths)) {
+    return `${summary.changed_paths.length} geänderte Pfade`;
+  }
+  if (summary?.sensitive === false && Array.isArray(summary.available_fields)) {
+    const fields = summary.available_fields
+      .filter(field => typeof field === 'string')
+      .slice(0, MAX_SUMMARY_FIELDS)
+      .map(field => field.slice(0, MAX_SUMMARY_FIELD_LENGTH));
+    return fields.length ? fields.join(', ') : 'Keine Detailfelder verfügbar';
+  }
+  return 'Keine Zusammenfassung verfügbar';
+}
+
 function AuditTable({ events }) {
   if (!events.length) return <p>Keine Audit-Ereignisse gefunden.</p>;
   return (
@@ -95,7 +117,12 @@ function AuditTable({ events }) {
             <TableCell>{event.resource.label} ({event.resource.type} #{event.resource.id})</TableCell>
             <TableCell>{event.client_ip || '—'}</TableCell>
             <TableCell>{event.user_agent || '—'}</TableCell>
-            <TableCell><code className="whitespace-pre-wrap [overflow-wrap:anywhere]">{JSON.stringify(event.details)}</code></TableCell>
+            <TableCell>
+              <div className="flex min-w-48 flex-col items-start gap-2">
+                <span>{auditDetailsSummary(event.details_summary)}</span>
+                <Button href={event.details_url} variant="secondary">Details anzeigen</Button>
+              </div>
+            </TableCell>
           </TableRow>
         ))}</TableBody>
       </Table>
@@ -108,11 +135,11 @@ function Pagination({ filters, pagination }) {
   return (
     <nav className="flex items-center justify-center gap-3 p-3" aria-label="Audit-Seiten">
       {pagination.has_previous && (
-        <Button href={queryUrl(filters, pagination.page - 1, pagination.page_size)} variant="secondary">Vorherige Seite</Button>
+        <Button href={queryUrl(filters, pagination.page - 1, pagination.page_size, pagination.snapshot_id)} variant="secondary">Vorherige Seite</Button>
       )}
       <span>Seite {pagination.page} von {pagination.pages}</span>
       {pagination.has_next && (
-        <Button href={queryUrl(filters, pagination.page + 1, pagination.page_size)} variant="secondary">Nächste Seite</Button>
+        <Button href={queryUrl(filters, pagination.page + 1, pagination.page_size, pagination.snapshot_id)} variant="secondary">Nächste Seite</Button>
       )}
     </nav>
   );

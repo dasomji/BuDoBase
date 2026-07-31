@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Toaster } from '../components/ui/toast';
@@ -21,12 +21,32 @@ const event = {
   request_id: 'request-8',
   client_ip: '192.0.2.4',
   user_agent: 'Audit Browser',
-  details: { changed_fields: ['name'] },
+  details_summary: {
+    sensitive: false,
+    available_fields: ['changed_fields', 'station_name'],
+  },
+  details_url: '/api/audit-events/8/?turnus=2',
+};
+
+const kidEditEvent = {
+  ...event,
+  id: 9,
+  actor: { id: 4, label: 'Grace Teamer' },
+  action: 'kid.edit',
+  resource: { type: 'child', id: '27', label: 'Kind #27' },
+  details_summary: {
+    schema: 'budo.kid-edit',
+    version: 1,
+    result: 'updated',
+    changed_paths: ['illness', 'swp.17', 'happy_cleaning_number', 'happy_cleaning.42'],
+    sensitive: true,
+  },
+  details_url: '/api/audit-events/9/',
 };
 
 const data = {
   authorized: true,
-  events: [event],
+  events: [event, kidEditEvent],
   filters: { turnus: '2', actor: '', action: '', outcome: '', resource_type: '', resource_id: '', from: '', to: '' },
   filter_options: {
     turnuses: [{ id: 2, label: 'T2-2026' }, { id: 3, label: 'T3-2026' }],
@@ -34,7 +54,7 @@ const data = {
     outcomes: ['success'],
     resource_types: ['station'],
   },
-  pagination: { page: 1, page_size: 50, total: 51, pages: 2, has_previous: false, has_next: true },
+  pagination: { page: 1, page_size: 50, total: 51, pages: 2, has_previous: false, has_next: true, snapshot_id: 811 },
   export_url: '/api/audit-events/export/',
 };
 
@@ -79,6 +99,47 @@ describe('audit explorer', () => {
 
     render(<AuditPage data={{ ...data, events: [], pagination: { ...data.pagination, total: 0, pages: 0, has_next: false } }} />);
     expect(screen.getByText('Keine Audit-Ereignisse gefunden.')).toBeInTheDocument();
+  });
+
+  it('keeps the snapshot only while paging, never when filtering or resetting', () => {
+    render(<AuditPage data={{
+      ...data,
+      pagination: {
+        ...data.pagination, page: 2, pages: 3,
+        has_previous: true, has_next: true,
+      },
+    }} />);
+
+    expect(screen.getByRole('link', { name: 'Vorherige Seite' })).toHaveAttribute(
+      'href', expect.stringContaining('snapshot_id=811'),
+    );
+    expect(screen.getByRole('link', { name: 'Nächste Seite' })).toHaveAttribute(
+      'href', expect.stringContaining('snapshot_id=811'),
+    );
+    expect(document.querySelector('form input[name="snapshot_id"]')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Zurücksetzen' })).toHaveAttribute(
+      'href', '/audit/',
+    );
+  });
+
+  it('renders only bounded summaries and accessible exact detail links', () => {
+    expect(event).not.toHaveProperty('details');
+    expect(kidEditEvent).not.toHaveProperty('details');
+    render(<AuditPage data={data} />);
+
+    expect(screen.getByText(/4 geänderte Pfade/i)).toBeInTheDocument();
+    expect(screen.getByText(/changed_fields.*station_name/i)).toBeInTheDocument();
+    expect(screen.queryByText('illness')).not.toBeInTheDocument();
+    expect(screen.queryByText('happy_cleaning.42')).not.toBeInTheDocument();
+
+    const legacyRow = screen.getByText('happy_cleaning.station.update').closest('tr');
+    expect(within(legacyRow).getByRole('link', { name: /Details anzeigen/i })).toHaveAttribute(
+      'href', event.details_url,
+    );
+    const kidRow = screen.getByText('kid.edit').closest('tr');
+    expect(within(kidRow).getByRole('link', { name: /Details anzeigen/i })).toHaveAttribute(
+      'href', kidEditEvent.details_url,
+    );
   });
 
   it('requires the privacy acknowledgement and downloads the log response', async () => {

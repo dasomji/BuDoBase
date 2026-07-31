@@ -15,9 +15,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from budo_app.api_views import submit_form
-from budo_app.audit_views import export_audit_events
+from budo_app.audit_views import audit_event_detail, export_audit_events
 from budo_app.read_contracts.bootstrap import bootstrap
 from budo_app.read_contracts.views import route_data
 
@@ -46,6 +46,11 @@ urlpatterns = [
         'api/audit-events/export/',
         export_audit_events,
         name='audit-export-api',
+    ),
+    re_path(
+        r'^api/audit-events/(?P<event_id>[1-9]\d*)/$',
+        audit_event_detail,
+        name='audit-event-detail-api',
     ),
     path('', include('budo_app.urls')),
     path('', include('users.urls'))

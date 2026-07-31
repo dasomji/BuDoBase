@@ -1,5 +1,6 @@
 import ipaddress
 import json
+import re
 from dataclasses import dataclass
 from typing import Mapping
 
@@ -64,6 +65,16 @@ COMMON_DETAIL_FIELDS = {
     "filter_count": (int,),
 }
 
+AUDIT_VIEW_LIST_DETAIL_KEYS = frozenset({
+    "view_kind", "result_count", "filter_count", "page", "page_size",
+    "snapshot_id", "sensitive_payload_count",
+})
+AUDIT_VIEW_DETAIL_DETAIL_KEYS = frozenset({
+    "view_kind", "result_count", "filter_count", "audit_event_id",
+    "snapshot_id", "sensitive_payload_count",
+})
+AUDIT_EXPORT_DETAIL_KEYS = frozenset({"result_count", "filter_count"})
+
 ACTION_DETAIL_FIELDS = {
     "happy_cleaning.event.create": COMMON_DETAIL_FIELDS,
     "happy_cleaning.event.update": COMMON_DETAIL_FIELDS,
@@ -87,9 +98,10 @@ ACTION_DETAIL_FIELDS = {
     "happy_cleaning.assignment.move": COMMON_DETAIL_FIELDS,
     "happy_cleaning.assignment.move_to_excused": COMMON_DETAIL_FIELDS,
     "happy_cleaning.assignment.remove": COMMON_DETAIL_FIELDS,
-    "audit.export": {
-        "result_count": (int,),
-        "filter_count": (int,),
+    "audit.export": {key: (int,) for key in AUDIT_EXPORT_DETAIL_KEYS},
+    "audit.view": {
+        key: ((str,) if key == "view_kind" else (int,))
+        for key in AUDIT_VIEW_LIST_DETAIL_KEYS
     },
 }
 
@@ -100,6 +112,9 @@ SENSITIVE_KEY_PARTS = frozenset({
 })
 MAX_DETAILS_BYTES = 4096
 MAX_DETAIL_STRING = 500
+MAX_AUDIT_LIST_PAGE_SIZE = 100
+MAX_AUDIT_FILTER_COUNT = 8
+POSTGRES_BIGINT_MAX = 9_223_372_036_854_775_807
 
 
 def canonical_client_ip(value):
@@ -155,6 +170,82 @@ def _valid_json_detail(value, *, depth=0):
 
 
 def _validate_details(action, details):
+    if action == "kid.edit":
+        from budo_app.kid_edit_audit import validate_kid_edit_details
+
+        return validate_kid_edit_details(details)
+    if action == "audit.export":
+        if (
+            not isinstance(details, Mapping)
+            or frozenset(details) != AUDIT_EXPORT_DETAIL_KEYS
+            or any(
+                not isinstance(details[name], int)
+                or isinstance(details[name], bool)
+                for name in AUDIT_EXPORT_DETAIL_KEYS
+            )
+            or details["result_count"] < 0
+            or details["result_count"] > POSTGRES_BIGINT_MAX
+            or details["filter_count"] < 0
+            or details["filter_count"] > MAX_AUDIT_FILTER_COUNT
+        ):
+            raise ValidationError({"details": "Invalid audit.export schema."})
+        validated = dict(details)
+        encoded = json.dumps(
+            validated, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")
+        if len(encoded) > MAX_DETAILS_BYTES:
+            raise ValidationError({"details": "Details object is too large."})
+        return validated
+    if action == "audit.view":
+        if not isinstance(details, Mapping):
+            raise ValidationError({"details": "Must be an action-specific object."})
+        view_kind = details.get("view_kind")
+        if view_kind == "list":
+            expected_keys = AUDIT_VIEW_LIST_DETAIL_KEYS
+        elif view_kind == "detail":
+            expected_keys = AUDIT_VIEW_DETAIL_DETAIL_KEYS
+        else:
+            raise ValidationError({"details": "Invalid audit.view schema."})
+        if frozenset(details) != expected_keys:
+            raise ValidationError({"details": "Invalid audit.view schema."})
+        integer_fields = expected_keys - {"view_kind"}
+        if any(
+            not isinstance(details[name], int) or isinstance(details[name], bool)
+            for name in integer_fields
+        ):
+            raise ValidationError({"details": "Invalid audit.view schema."})
+        if view_kind == "list":
+            invalid = (
+                details["result_count"] < 0
+                or details["result_count"] > details["page_size"]
+                or details["filter_count"] < 0
+                or details["filter_count"] > MAX_AUDIT_FILTER_COUNT
+                or details["page"] < 1
+                or details["page"] > POSTGRES_BIGINT_MAX
+                or details["page_size"] < 1
+                or details["page_size"] > MAX_AUDIT_LIST_PAGE_SIZE
+                or details["snapshot_id"] < 0
+                or details["snapshot_id"] > POSTGRES_BIGINT_MAX
+                or details["sensitive_payload_count"] != 0
+            )
+        else:
+            invalid = (
+                details["result_count"] != 1
+                or details["filter_count"] != 0
+                or details["audit_event_id"] < 1
+                or details["audit_event_id"] > POSTGRES_BIGINT_MAX
+                or details["snapshot_id"] != details["audit_event_id"]
+                or details["sensitive_payload_count"] not in {0, 1}
+            )
+        if invalid:
+            raise ValidationError({"details": "Invalid audit.view schema."})
+        validated = dict(details)
+        encoded = json.dumps(
+            validated, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")
+        if len(encoded) > MAX_DETAILS_BYTES:
+            raise ValidationError({"details": "Details object is too large."})
+        return validated
     if not isinstance(details, Mapping):
         raise ValidationError({"details": "Must be an action-specific object."})
     schema = ACTION_DETAIL_FIELDS.get(action)
@@ -208,6 +299,39 @@ def _validated_fields(data):
         or data.actor_id <= 0
     ):
         raise ValidationError({"actor_id": "Must be a positive integer or null."})
+    validated_details = _validate_details(data.action, data.details)
+    if data.action == "kid.edit" and (
+        data.outcome != "success"
+        or data.resource_type != "child"
+        or re.fullmatch(r"[1-9]\d*", data.resource_id) is None
+        or int(data.resource_id) > 9_223_372_036_854_775_807
+    ):
+        raise ValidationError({"action": "Invalid kid.edit audit envelope."})
+    if data.action == "audit.view":
+        if validated_details["view_kind"] == "list":
+            invalid_envelope = (
+                data.outcome != "success"
+                or data.resource_type != "audit_log"
+                or data.resource_id != str(data.turnus.pk)
+                or data.resource_label != str(data.turnus)
+            )
+        else:
+            event_id = validated_details["audit_event_id"]
+            invalid_envelope = (
+                data.outcome != "success"
+                or data.resource_type != "audit_event"
+                or data.resource_id != str(event_id)
+                or data.resource_label != f"Audit event {event_id}"
+            )
+        if invalid_envelope:
+            raise ValidationError({"action": "Invalid audit.view audit envelope."})
+    if data.action == "audit.export" and (
+        data.outcome != "success"
+        or data.resource_type != "audit_log"
+        or data.resource_id != str(data.turnus.pk)
+        or data.resource_label != f"Audit log {data.turnus}"
+    ):
+        raise ValidationError({"action": "Invalid audit.export audit envelope."})
     return {
         "turnus": data.turnus,
         "actor_id": data.actor_id,
@@ -220,7 +344,7 @@ def _validated_fields(data):
         "request_id": data.request_id.strip(),
         "client_ip": canonical_client_ip(data.client_ip),
         "user_agent": data.user_agent,
-        "details": _validate_details(data.action, data.details),
+        "details": validated_details,
     }
 
 

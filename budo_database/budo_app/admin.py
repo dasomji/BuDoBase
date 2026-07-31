@@ -10,7 +10,6 @@ from .first_aid_contract import FIRST_AID_MAX_PHOTOS
 from .first_aid_photos import process_first_aid_photos
 from .kid_edit_writes import ChildWriteScopeError, versioned_child_write
 from .models import (
-    AuditEvent,
     Auslagerorte,
     AuslagerorteImage,
     AuslagerorteNotizen,
@@ -529,30 +528,6 @@ class FirstAidEntryAdmin(TurnusEntryAdmin):
     inlines = (ErsteHilfeFotoInline,)
 
 
-class AuditEventAdmin(admin.ModelAdmin):
-    list_display = (
-        "occurred_at", "turnus", "actor_label", "action", "outcome",
-        "resource_type", "resource_label",
-    )
-    list_filter = ("turnus", "action", "outcome", "resource_type")
-    search_fields = (
-        "actor_label", "resource_id", "resource_label", "request_id",
-    )
-    readonly_fields = tuple(
-        field.name for field in AuditEvent._meta.concrete_fields
-    )
-    ordering = ("-occurred_at", "-id")
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-
 admin.site.register(Kinder, KinderAdmin)
 admin.site.register(Turnus, TurnusAdmin)
 admin.site.register(Auslagerorte, AuslagerorteAdmin)
@@ -566,5 +541,4 @@ admin.site.register(Meal)
 admin.site.register(Schwerpunktzeit, SchwerpunktzeitAdmin)
 admin.site.register(SchwerpunktWahl)
 admin.site.register(SpezialFamilien, SpezialFamilienAdmin)
-admin.site.register(AuditEvent, AuditEventAdmin)
 admin.site.register(ErsteHilfeEintrag, FirstAidEntryAdmin)
