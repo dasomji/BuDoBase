@@ -193,12 +193,22 @@ header height. Header removes the property when it unmounts.
 
 ## Error feedback
 
-Errors surface as error toasts and never as inline text. Successful asynchronous
-writes that have no sufficiently clear immediate result use the shared success
-toast for confirmation. This keeps action feedback consistent without moving
-page layout or leaving stale banners after a retry. The duplicate-number recovery dialog in the Happy-Cleaning assignment
-flow is the sole exception: its error title is an action prompt within the
-recovery flow. New pages inherit this rule.
+Field-addressable form validation uses a compact page summary, invalid control
+styling, a concrete inline message, `aria-invalid`/`aria-describedby`, and
+focus on the first invalid control. Cards containing invalid controls open and
+may show an error count in their header. These field errors do not also emit a
+generic error toast.
+
+Action-level, transport, and non-field errors continue to use the shared error
+toast unless a dedicated recovery flow owns the message. Successful
+asynchronous writes that have no sufficiently clear immediate result use the
+shared success toast for confirmation. The duplicate-number recovery dialog in
+the Happy-Cleaning assignment flow remains an action prompt within that
+recovery flow.
+
+Rendered-DOM tests for a form with field-addressable errors cover summary
+semantics, inline association, first-invalid focus, Card opening/error counts,
+and absence of a duplicate error toast.
 
 ## Card
 

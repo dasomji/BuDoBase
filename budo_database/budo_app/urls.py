@@ -9,6 +9,7 @@ from .happy_cleaning_page_views import (
     event_print_number_page,
     print_number_page,
 )
+from .kid_edit_views import kid_edit_page
 
 urlpatterns = [
     path(
@@ -28,6 +29,7 @@ urlpatterns = [
     path('zugabreise', views.zugabreise, name='zugabreise'),
     path('zuganreise', views.zuganreise, name='zuganreise'),
     path('kid_details/<int:id>', views.kid_details, name='kid_details'),
+    path('kid_details/<int:kid_id>/edit', kid_edit_page, name='kid-edit-page'),
     path('check_in/<int:id>', views.check_in, name='check_in'),
     path('check_out/<int:id>', views.check_out, name='check_out'),
     path('serienbrief', views.serienbrief, name='serienbrief'),

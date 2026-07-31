@@ -177,7 +177,7 @@ function AppContent({
             : 'Realtime-Verbindung unterbrochen. Daten werden abgeglichen…'}
         </p>
       )}
-      {renderRoute(route, { data, mutate, refresh: refreshRoute, fetchImpl, realtimeSync, pageState, setPageState })}
+      {renderRoute(route, { data, mutate, navigate, refresh: refreshRoute, fetchImpl, realtimeSync, pageState, setPageState })}
     </>
   );
   if (route.standalone) return content;

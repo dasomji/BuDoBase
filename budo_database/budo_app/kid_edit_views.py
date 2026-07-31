@@ -3,6 +3,8 @@
 from copy import deepcopy
 import json
 
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -21,6 +23,13 @@ from budo_app.kid_edit_contracts import (
     decode_kid_edit_request,
 )
 from budo_app.models import Kinder, Profil
+from budo_app.react_views import render_react_page
+
+
+@login_required
+@require_GET
+def kid_edit_page(request, kid_id):
+    return render_react_page(request)
 
 
 def _recover_field_command(request, error, profile, kid_id):

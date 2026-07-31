@@ -6,6 +6,7 @@ import { dashboardRoutes } from './domains/dashboard';
 import { focusRoutes } from './domains/focuses';
 import { happyCleaningRoutes } from './domains/happyCleaning';
 import { kidRoutes } from './domains/kids';
+import { kidEditRoutes } from './domains/kidEdit';
 import { kitchenRoutes } from './domains/kitchen';
 import { maintenanceRoutes } from './domains/maintenance';
 import { profileRoutes } from './domains/profiles';
@@ -20,6 +21,7 @@ export const routeDefinitions = [
   ...profileRoutes,
   ...maintenanceRoutes,
   ...kidRoutes,
+  ...kidEditRoutes,
   ...attendanceRoutes,
   ...reportRoutes,
   ...focusRoutes,
@@ -52,7 +54,7 @@ export function resolveRouteHeaderTitle(route, data, title) {
 }
 
 export function routeHeaderAction(route, data, pageContext = {}) {
-  return route.headerAction?.(data, pageContext) || null;
+  return route.headerAction?.(data, { ...pageContext, route }) || null;
 }
 
 export function isPublicRoute(route) {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { Card, Column, DataTable, FieldList, findById, ResponsiveCardGrid, RestForm } from '../components';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -189,6 +190,17 @@ export const kidRoutes = [
     resolveHeaderTitle: (route, data, title) => data.permissions?.change_kids
       ? <a href={`/admin/budo_app/kinder/${route.id}/change/`}>{title}</a>
       : title,
+    headerAction: (_data, { route }) => (
+      <Button
+        className="mobile-icon-action"
+        size="responsive-icon"
+        href={`/kid_details/${route.id}/edit`}
+        aria-label="Bearbeiten"
+      >
+        <span className="desktop-action-label">Bearbeiten</span>
+        <Pencil className="mobile-action-label" aria-hidden="true" />
+      </Button>
+    ),
     render: ({ route, data, mutate, refresh }) => <KidDetailPage data={data} id={route.id} mutate={mutate} onSaved={refresh} />,
   },
 ];

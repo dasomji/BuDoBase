@@ -69,6 +69,22 @@ implementation deviation; new work uses those exact variants and does not
 introduce a second boundary. Older breakpoints are transitional legacy code,
 not choices for new work.
 
+### Field-addressable form validation
+
+Field-addressable validation is rendered in the form that owns recovery. An
+invalid submit presents a compact summary, invalid control styling, concrete
+inline messages, `aria-invalid`/`aria-describedby`, and focus on the first
+invalid control. A collapsed Card containing an error opens first and its
+header may report the number of contained errors. Field errors do not also
+produce a generic error toast.
+
+Action-level, transport, and non-field failures continue to use the shared
+error toast unless a dedicated recovery flow owns the message. Successful
+asynchronous writes still use the success-toast rule when their immediate
+result is not otherwise sufficiently clear. Rendered-DOM verification covers
+the summary, inline association, focus, Card recovery, and absence of duplicate
+toast feedback.
+
 ### Printing
 
 React is the only application print architecture. Every route loads the app
