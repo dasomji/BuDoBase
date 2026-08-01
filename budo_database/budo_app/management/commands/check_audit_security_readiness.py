@@ -3,11 +3,11 @@
 import json
 from pathlib import Path
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from budo_app.audit_readiness import (
     ReadinessError,
-    default_manifest_path,
     validate_manifest,
 )
 
@@ -21,7 +21,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         manifest_path = options.get("manifest")
-        path = Path(manifest_path) if manifest_path else default_manifest_path()
+        path = (
+            Path(manifest_path)
+            if manifest_path
+            else Path(settings.BASE_DIR)
+            / "docs/operations/audit-security-readiness.json"
+        )
         try:
             try:
                 manifest = json.loads(path.read_text(encoding="utf-8"))

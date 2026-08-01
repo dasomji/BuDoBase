@@ -16,7 +16,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from budo_app.audit import actor_label_for_user, client_ip_from_request
-from budo_app.audit_readiness import kid_edit_release_enabled
 from budo_app.happy_cleaning_commands import CommandContext
 from budo_app.kid_edit_commands import (
     KidEditCommandError,
@@ -76,10 +75,6 @@ def _recover_field_command(request, error, profile, kid_id):
 @authentication_classes([_RawBodySessionAuthentication])
 @permission_classes([IsAuthenticated])
 def kid_edit(request, kid_id):
-    if not kid_edit_release_enabled():
-        return Response(
-            {"ok": False, "code": "release_gated"}, status=403,
-        )
     decoded = decode_kid_edit_request(request.body, request.content_type)
     profile = (
         Profil.objects.select_related("turnus")

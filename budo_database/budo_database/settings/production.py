@@ -9,10 +9,6 @@ if not SECRET_KEY:
 
 DEBUG = False
 
-# The audit-security release gate cannot be bypassed in production; only an
-# approved readiness manifest opens the kid-edit and audit surfaces.
-KID_EDIT_ALLOW_UNAPPROVED = False
-
 # Get the application URL from environment variable
 APP_URL = os.environ.get('APP_URL')
 if not APP_URL:

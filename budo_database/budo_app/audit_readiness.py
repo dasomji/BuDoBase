@@ -1,7 +1,6 @@
-"""Validate and enforce the audit-security readiness release gate."""
+"""Validate the audit-security readiness manifest."""
 
 from datetime import date
-import json
 from pathlib import Path, PurePosixPath
 import re
 from urllib.parse import urlsplit
@@ -307,25 +306,3 @@ def validate_manifest(manifest):
     if manifest["status"] == "blocked" and approval["status"] != "blocked":
         _error("/status", "blocked readiness is inconsistent")
     return manifest
-
-
-def default_manifest_path():
-    return Path(settings.BASE_DIR) / "docs/operations/audit-security-readiness.json"
-
-
-def readiness_approved(manifest_path=None):
-    try:
-        path = (
-            Path(manifest_path)
-            if manifest_path is not None
-            else default_manifest_path()
-        )
-        manifest = json.loads(path.read_text(encoding="utf-8"))
-        validate_manifest(manifest)
-        return manifest["status"] == "approved"
-    except Exception:
-        return False
-
-
-def kid_edit_release_enabled():
-    return settings.KID_EDIT_ALLOW_UNAPPROVED or readiness_approved()

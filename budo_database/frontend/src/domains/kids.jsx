@@ -190,7 +190,7 @@ export const kidRoutes = [
     resolveHeaderTitle: (route, data, title) => data.permissions?.change_kids
       ? <a href={`/admin/budo_app/kinder/${route.id}/change/`}>{title}</a>
       : title,
-    headerAction: (data, { route }) => data.permissions?.kid_edit_enabled ? (
+    headerAction: (_data, { route }) => (
       <Button
         className="mobile-icon-action"
         size="responsive-icon"
@@ -200,7 +200,7 @@ export const kidRoutes = [
         <span className="desktop-action-label">Bearbeiten</span>
         <Pencil className="mobile-action-label" aria-hidden="true" />
       </Button>
-    ) : null,
+    ),
     render: ({ route, data, mutate, refresh }) => <KidDetailPage data={data} id={route.id} mutate={mutate} onSaved={refresh} />,
   },
 ];

@@ -236,9 +236,7 @@ describe('kid edit route and rendered form', () => {
     });
     expect(resolveRouteTitle(editRoute, { authenticated: true, kid: { id: 7, full_name: 'Ada Lovelace' } })).toBe('Ada Lovelace bearbeiten');
 
-    render(routeHeaderAction(parseRoute('/kid_details/7'), {
-      permissions: { kid_edit_enabled: true },
-    }));
+    render(routeHeaderAction(parseRoute('/kid_details/7'), {}));
     const action = screen.getByRole('link', { name: 'Bearbeiten' });
     expect(action).toHaveAttribute('href', '/kid_details/7/edit');
     expect(action).toHaveClass('mobile-icon-action');
