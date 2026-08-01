@@ -190,7 +190,7 @@ function NavigationGroup({ item, index }) {
   );
 }
 
-function withHappyCleaningEvents(events, permissions) {
+function withDynamicNavEntries(events, permissions) {
   const eventItems = [...events]
     .sort((left, right) => (
       left.display_number - right.display_number || left.id - right.id
@@ -222,7 +222,7 @@ function withHappyCleaningEvents(events, permissions) {
 }
 
 export function AppSidebar({ happyCleaningEvents = [], permissions }) {
-  const items = withHappyCleaningEvents(happyCleaningEvents, permissions);
+  const items = withDynamicNavEntries(happyCleaningEvents, permissions);
   return (
     <Sidebar side="left" collapsible="icon">
       <SidebarHeader>

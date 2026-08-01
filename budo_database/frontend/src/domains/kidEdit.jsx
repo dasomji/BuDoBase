@@ -1,37 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
 
-import { Card } from '../components';
+import { Card, Columns, ConfirmationDialog } from '../components';
 import { Button } from '../components/ui/button';
 import { Input, NativeSelect, Textarea } from '../components/ui/input';
 import { useErrorToast, useSuccessToast } from '../components/ui/toast';
+import { KID_EDIT_SECTIONS } from './kidEditFields';
 
-const SECTIONS = [
-  ['Allgemein', [
-    ['first_name', 'Vorname', 'text'], ['last_name', 'Nachname', 'text'],
-    ['sex', 'Geschlecht', 'select'], ['birthday', 'Geburtstag', 'date'],
-    ['stay_weeks', 'Aufenthaltsdauer', 'select'], ['siblings', 'Geschwister', 'text'],
-    ['tent_request', 'Zeltwunsch', 'text'], ['budo_experience', 'BuDo-Erfahrung', 'select'],
-  ]],
-  ['Gesundheitsinfos', [
-    ['social_security_number', 'Sozialversicherungsnummer', 'text'],
-    ['illness', 'Krankheiten und Besonderheiten', 'textarea'], ['drugs', 'Medikamente', 'textarea'],
-    ['vegetarian', 'Vegetarisch', 'select'], ['special_food', 'Besondere Ernährung', 'textarea'],
-    ['swimmer', 'Schwimmkenntnisse', 'text'], ['consent', 'Einverständniserklärung', 'select'],
-    ['over_the_counter_medication', 'Rezeptfreie Medikamente', 'textarea'],
-    ['prescription_medication', 'Rezeptpflichtige Medikamente', 'textarea'],
-    ['tetanus', 'Tetanusimpfung', 'text'], ['tick_vaccine', 'Zeckenimpfung', 'text'],
-  ]],
-  ['Familie', [
-    ['organization', 'Organisation', 'text'],
-    ['registrant_first_name', 'Vorname der anmeldenden Person', 'text'],
-    ['registrant_last_name', 'Nachname der anmeldenden Person', 'text'],
-    ['registrant_email', 'E-Mail der anmeldenden Person', 'email'],
-    ['registrant_phone', 'Mobilnummer der anmeldenden Person', 'tel'],
-    ['insured_with', 'Hauptversichert bei', 'text'],
-    ['emergency_contacts', 'Notfallkontakte', 'textarea'],
-  ]],
-  ['BuDo', [['budo_family', 'BuDo-Familie', 'select']]],
-];
+const SECTIONS = KID_EDIT_SECTIONS.map(({ title, fields }) => [
+  title,
+  fields.map(({ name, label, kind }) => [name, label, kind]),
+]);
 
 const FIELD_NAMES = SECTIONS.flatMap(([, fields]) => fields.map(([name]) => name));
 const FIELD_KIND = Object.fromEntries(SECTIONS.flatMap(([, fields]) => fields.map(([name, , kind]) => [name, kind])));
@@ -81,16 +59,17 @@ function EditField({ name, label, kind, value, options, errors, onChange, inputR
 
 function DiscardDialog({ cancel, discard }) {
   return (
-    <div className="fixed inset-0 z-[var(--z-modal)] grid place-items-center bg-black/45 p-6">
-      <section className="card w-full max-w-[28rem] bg-surface-solid p-6" role="dialog" aria-modal="true" aria-labelledby="discard-title">
-        <h2 id="discard-title">Änderungen verwerfen?</h2>
-        <p>Nicht gespeicherte Änderungen gehen verloren.</p>
-        <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={cancel}>Weiter bearbeiten</Button>
-          <Button type="button" variant="destructive" onClick={discard}>Verwerfen</Button>
-        </div>
-      </section>
-    </div>
+    <ConfirmationDialog
+      open
+      title="Änderungen verwerfen?"
+      confirmLabel="Verwerfen"
+      cancelLabel="Weiter bearbeiten"
+      onConfirm={discard}
+      onCancel={cancel}
+      destructive
+    >
+      <p>Nicht gespeicherte Änderungen gehen verloren.</p>
+    </ConfirmationDialog>
   );
 }
 
@@ -167,7 +146,7 @@ export function KidEditPage({ data, mutate, navigate }) {
     return count ? `${name} · ${count} Fehler` : name;
   };
   return (
-    <main className="kid-edit-page min-w-0" id="body-container">
+    <Columns className="kid-edit-page min-w-0">
       <form aria-label="Kind bearbeiten" noValidate onSubmit={submit}>
         {Object.keys(fieldErrors).length ? (
           <div className="mb-4 rounded-lg border border-destructive bg-popover p-3" role="alert">
@@ -202,7 +181,7 @@ export function KidEditPage({ data, mutate, navigate }) {
         </div>
       </form>
       {discarding ? <DiscardDialog cancel={() => setDiscarding(false)} discard={() => navigate(`/kid_details/${kid.id}`)} /> : null}
-    </main>
+    </Columns>
   );
 }
 

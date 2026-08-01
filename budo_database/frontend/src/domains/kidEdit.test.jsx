@@ -358,6 +358,22 @@ describe('kid edit route and rendered form', () => {
     expect(dirtyNavigate).toHaveBeenCalledWith('/kid_details/7');
   });
 
+  it('closes the dirty-discard dialog with Escape and keeps editing', async () => {
+    const user = userEvent.setup();
+    const navigate = vi.fn();
+    renderEdit({ navigate });
+    await user.clear(screen.getByRole('textbox', { name: /^Vorname(?: \*)?$/ }));
+    await user.type(screen.getByRole('textbox', { name: /^Vorname(?: \*)?$/ }), 'Grace');
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }));
+
+    expect(screen.getByRole('button', { name: 'Weiter bearbeiten' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Änderungen verwerfen?' })).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /^Vorname(?: \*)?$/ })).toHaveValue('Grace');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it.each(['updated', 'no_change'])('submits one complete %s command, redirects, and shows one success toast', async result => {
     const user = userEvent.setup();
     const navigate = vi.fn();

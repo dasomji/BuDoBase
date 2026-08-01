@@ -4,6 +4,7 @@ import {
   Card,
   Column,
   Columns,
+  ConfirmationDialog,
   Table,
   TableBody,
   TableCell,
@@ -13,7 +14,9 @@ import {
   TableScroll,
 } from '../components';
 import { Button } from '../components/ui/button';
+import { NativeSelect } from '../components/ui/input';
 import { useErrorToast } from '../components/ui/toast';
+import { KID_EDIT_SECTIONS } from './kidEditFields';
 
 
 function queryUrl(filters, page, pageSize, snapshotId) {
@@ -44,34 +47,34 @@ function AuditFilters({ data }) {
   return (
     <form action="/audit/" method="get" className="form-grid grid-cols-[repeat(auto-fit,minmax(11.25rem,1fr))] items-end">
       <FilterField label="Turnus" name="turnus">
-        <select name="turnus" defaultValue={filters.turnus || ''}>
+        <NativeSelect name="turnus" defaultValue={filters.turnus || ''}>
           {(options.turnuses || []).map(turnus => (
             <option key={turnus.id} value={turnus.id}>{turnus.label}</option>
           ))}
-        </select>
+        </NativeSelect>
       </FilterField>
       <FilterField label="Von" name="from" type="datetime-local" value={filters.from} />
       <FilterField label="Bis" name="to" type="datetime-local" value={filters.to} />
       <FilterField label="Akteur:in" name="actor" value={filters.actor} />
       <FilterField label="Aktion" name="action">
-        <select name="action" defaultValue={filters.action || ''}>
+        <NativeSelect name="action" defaultValue={filters.action || ''}>
           <option value="">Alle</option>
           {(options.actions || []).map(value => (
             <option key={value} value={value} label={value} />
           ))}
-        </select>
+        </NativeSelect>
       </FilterField>
       <FilterField label="Ergebnis" name="outcome">
-        <select name="outcome" defaultValue={filters.outcome || ''}>
+        <NativeSelect name="outcome" defaultValue={filters.outcome || ''}>
           <option value="">Alle</option>
           {(options.outcomes || []).map(value => <option key={value}>{value}</option>)}
-        </select>
+        </NativeSelect>
       </FilterField>
       <FilterField label="Ressourcentyp" name="resource_type">
-        <select name="resource_type" defaultValue={filters.resource_type || ''}>
+        <NativeSelect name="resource_type" defaultValue={filters.resource_type || ''}>
           <option value="">Alle</option>
           {(options.resource_types || []).map(value => <option key={value}>{value}</option>)}
-        </select>
+        </NativeSelect>
       </FilterField>
       <FilterField label="Ressourcen-ID" name="resource_id" value={filters.resource_id} />
       <div className="mt-3 flex flex-wrap gap-2">
@@ -99,11 +102,13 @@ function auditDetailsSummary(summary) {
   return 'Keine Zusammenfassung verfügbar';
 }
 
-const DETAIL_GROUPS = [
-  ['Allgemein', ['first_name', 'last_name', 'sex', 'birthday', 'stay_weeks', 'siblings', 'tent_request', 'budo_experience']],
-  ['Gesundheitsinfos', ['social_security_number', 'illness', 'drugs', 'vegetarian', 'special_food', 'swimmer', 'consent', 'over_the_counter_medication', 'prescription_medication', 'tetanus', 'tick_vaccine']],
-  ['Familie', ['organization', 'registrant_first_name', 'registrant_last_name', 'registrant_email', 'registrant_phone', 'insured_with', 'emergency_contacts', 'budo_family']],
-];
+const DETAIL_GROUPS = KID_EDIT_SECTIONS.map(({ title, fields }) => [
+  title,
+  fields.map(({ name }) => name),
+]);
+const DETAIL_LABELS = Object.fromEntries(KID_EDIT_SECTIONS.flatMap(
+  ({ fields }) => fields.map(({ name, label }) => [name, label]),
+));
 
 const MAX_DETAIL_TEXT = 10_000;
 const boundedText = value => {
@@ -171,13 +176,21 @@ function SensitiveDetail({ event }) {
   const details = event.details;
   const before = details.before;
   const after = details.after;
+  const knownFields = new Set(Object.keys(DETAIL_LABELS));
+  const extraFields = [...new Set([
+    ...Object.keys(before.fields || {}),
+    ...Object.keys(after.fields || {}),
+  ])].filter(field => !knownFields.has(field));
+  const groups = extraFields.length
+    ? [...DETAIL_GROUPS, ['Weitere Felder', extraFields]]
+    : DETAIL_GROUPS;
   return (
     <div className="grid gap-4 py-2" aria-label={`Sensible Details für Ereignis ${event.id}`}>
-      {DETAIL_GROUPS.map(([title, fields]) => (
+      {groups.map(([title, fields]) => (
         <section className="grid gap-2" key={title} aria-label={title}>
           <h2>{title}</h2>
           {fields.map(field => (
-            <BeforeAfter key={field} label={field} before={before.fields[field]} after={after.fields[field]} />
+            <BeforeAfter key={field} label={DETAIL_LABELS[field] || field} before={before.fields[field]} after={after.fields[field]} />
           ))}
         </section>
       ))}
@@ -189,16 +202,17 @@ function SensitiveDetail({ event }) {
 
 function RevealWarning({ cancel, confirm }) {
   return (
-    <div className="fixed inset-0 z-[var(--z-modal)] grid place-items-center bg-black/45 p-6">
-      <section className="card w-full max-w-[34rem] bg-surface-solid p-6" role="alertdialog" aria-modal="true" aria-labelledby="audit-warning-title">
-        <h2 id="audit-warning-title">Sensible Audit-Details laden?</h2>
-        <p>Die Details können Gesundheit, Medikamente, Sozialversicherungsdaten, Familie, Telefon, E-Mail, Notfallkontakte und Zuteilungen enthalten.</p>
-        <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={cancel}>Abbrechen</Button>
-          <Button type="button" onClick={confirm}>Details laden und anzeigen</Button>
-        </div>
-      </section>
-    </div>
+    <ConfirmationDialog
+      open
+      title="Sensible Audit-Details laden?"
+      confirmLabel="Details laden und anzeigen"
+      cancelLabel="Abbrechen"
+      onConfirm={confirm}
+      onCancel={cancel}
+      role="alertdialog"
+    >
+      <p>Die Details können Gesundheit, Medikamente, Sozialversicherungsdaten, Familie, Telefon, E-Mail, Notfallkontakte und Zuteilungen enthalten.</p>
+    </ConfirmationDialog>
   );
 }
 
@@ -225,10 +239,7 @@ function AuditTable({ events, revealed, reveal }) {
               <div className="flex min-w-48 flex-col items-start gap-2">
                 <span>{auditDetailsSummary(event.details_summary)}</span>
                 {event.details_summary?.sensitive
-                  ? <>
-                    <Button href={event.details_url} variant="secondary" onClick={click => { click.preventDefault(); reveal(event); }}>Details anzeigen</Button>
-                    <Button type="button" variant="secondary" onClick={() => reveal(event)}>Sensible Details anzeigen</Button>
-                  </>
+                  ? <Button type="button" variant="secondary" onClick={() => reveal(event)}>Sensible Details anzeigen</Button>
                   : <Button href={event.details_url} variant="secondary">Details anzeigen</Button>}
               </div>
             </TableCell>
@@ -316,7 +327,7 @@ export function AuditPage({ data, fetchImpl = fetch }) {
     else setPendingReveal(event);
   };
   return (
-    <main className="block p-3" id="body-container">
+    <Columns className="block p-3">
       <Card title="Audit-Ereignisse filtern">
         <AuditFilters data={data} />
         <div className="mt-3 border-t border-current pt-3">
@@ -344,7 +355,7 @@ export function AuditPage({ data, fetchImpl = fetch }) {
           }}
         />
       ) : null}
-    </main>
+    </Columns>
   );
 }
 

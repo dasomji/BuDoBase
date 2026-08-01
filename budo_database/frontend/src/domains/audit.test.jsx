@@ -76,6 +76,7 @@ describe('audit explorer', () => {
 
     render(<AuditPage data={data} />);
     expect(screen.getByLabelText('Turnus')).toHaveValue('2');
+    expect(screen.getByLabelText('Turnus')).toHaveAttribute('data-slot', 'native-select');
     expect(screen.getByLabelText('Von')).toBeInTheDocument();
     expect(screen.getByLabelText('Bis')).toBeInTheDocument();
     expect(screen.getByLabelText('Akteur:in')).toBeInTheDocument();
@@ -137,9 +138,8 @@ describe('audit explorer', () => {
       'href', event.details_url,
     );
     const kidRow = screen.getByText('kid.edit').closest('tr');
-    expect(within(kidRow).getByRole('link', { name: /Details anzeigen/i })).toHaveAttribute(
-      'href', kidEditEvent.details_url,
-    );
+    expect(within(kidRow).getByRole('button', { name: 'Sensible Details anzeigen' })).toBeEnabled();
+    expect(within(kidRow).queryByRole('link', { name: 'Details anzeigen' })).not.toBeInTheDocument();
   });
 
   it('requires the privacy acknowledgement and downloads the log response', async () => {

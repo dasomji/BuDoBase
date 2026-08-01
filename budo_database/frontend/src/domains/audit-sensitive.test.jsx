@@ -188,6 +188,8 @@ describe('sensitive audit reveal', () => {
     }
     expect(screen.getAllByText('Vorher').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Nachher').length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: 'Krankheiten und Besonderheiten' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'BuDo-Familie' }).closest('section')).toHaveAccessibleName('BuDo');
     expect(fetchImpl).toHaveBeenCalledTimes(1);
 
     const secondRow = screen.getByText('Kind #30').closest('tr');

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppSidebar, ApplicationShell } from './app-sidebar';
 import {
   Card,
+  ConfirmationDialog,
   DataTable,
   GlobalSearch,
   Header,
@@ -54,6 +55,47 @@ describe('reusable components', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     }));
+  });
+
+  it('cancels confirmation dialogs from Escape and the backdrop with cancel focused initially', () => {
+    const onCancel = vi.fn();
+    const { rerender } = render(
+      <ConfirmationDialog
+        open
+        title="Aktion bestätigen?"
+        confirmLabel="Bestätigen"
+        cancelLabel="Abbrechen"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      >
+        <p>Dialoginhalt</p>
+      </ConfirmationDialog>,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Aktion bestätigen?' });
+    expect(screen.getByRole('button', { name: 'Abbrechen' })).toHaveFocus();
+    fireEvent.click(dialog);
+    expect(onCancel).not.toHaveBeenCalled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledOnce();
+
+    onCancel.mockClear();
+    fireEvent.click(dialog.parentElement);
+    expect(onCancel).toHaveBeenCalledOnce();
+
+    rerender(
+      <ConfirmationDialog
+        open={false}
+        title="Aktion bestätigen?"
+        confirmLabel="Bestätigen"
+        cancelLabel="Abbrechen"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      >
+        <p>Dialoginhalt</p>
+      </ConfirmationDialog>,
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('renders the link variant as a named link', () => {
