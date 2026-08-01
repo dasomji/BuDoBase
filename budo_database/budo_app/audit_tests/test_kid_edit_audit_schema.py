@@ -8,7 +8,6 @@ from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase, TransactionTestCase
 from django.utils.functional import SimpleLazyObject
 
-from budo_app.models import Turnus
 from budo_app.audit import (
     MAX_DETAILS_BYTES,
     MAX_DETAIL_STRING,
@@ -16,16 +15,20 @@ from budo_app.audit import (
     AuditEventData,
     record_audit_event,
 )
+from budo_app.kid_edit_contracts import FIELD_CONTRACTS
+from budo_app.models import Turnus
 
 try:
     from budo_app.kid_edit_audit import (
         MAX_KID_EDIT_AUDIT_BYTES,
+        _STORAGE_FIELDS,
         validate_kid_edit_details,
     )
 except ModuleNotFoundError as error:  # Keep discovery useful during the RED phase.
     if error.name != "budo_app.kid_edit_audit":
         raise
     MAX_KID_EDIT_AUDIT_BYTES = None
+    _STORAGE_FIELDS = None
     validate_kid_edit_details = None
 
 
@@ -240,6 +243,12 @@ def details_at_exact_size(target):
 
 
 class KidEditDetailSchemaTests(SimpleTestCase):
+    def test_storage_fields_derive_exactly_from_contract_field_names(self):
+        self.assertEqual(
+            tuple(_STORAGE_FIELDS),
+            tuple(field.api_name for field in FIELD_CONTRACTS),
+        )
+
     def validate(self, value, **kwargs):
         self.assertTrue(callable(validate_kid_edit_details),
                         "budo_app.kid_edit_audit is not implemented yet")

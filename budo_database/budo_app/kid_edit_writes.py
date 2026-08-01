@@ -392,7 +392,7 @@ def _active_swp_snapshot(*, child_id, focus_ids):
     )
 
 
-class _VersionedChildWrite:
+class VersionedChildWrite:
     def __init__(self, *, child, focus_ids_by_period):
         self.child = child
         self._focus_ids_by_period = focus_ids_by_period
@@ -522,7 +522,7 @@ def versioned_child_write(*, turnus_id, child_id):
             child_id=child.id,
             focus_ids=configured_focus_ids,
         )
-        write = _VersionedChildWrite(
+        write = VersionedChildWrite(
             child=child,
             focus_ids_by_period=focus_ids_by_period,
         )

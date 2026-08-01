@@ -566,7 +566,7 @@ class KidEditProducerEndpointTests(KidEditProducerFixture):
         self.require_endpoint()
         stages = (
             ("scalar", mock.patch(
-                "budo_app.kid_edit_writes._VersionedChildWrite.save_child",
+                "budo_app.kid_edit_writes.VersionedChildWrite.save_child",
                 side_effect=RuntimeError("scalar-stage"),
             )),
             ("swp", mock.patch(

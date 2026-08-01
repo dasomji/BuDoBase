@@ -38,7 +38,7 @@ from budo_app.kid_edit_fingerprint import (
     verify_kid_edit_request_fingerprint,
 )
 from budo_app.kid_edit_writes import (
-    _VersionedChildWrite,
+    VersionedChildWrite,
     plan_locked_swp_change,
 )
 from budo_app.models import (
@@ -61,6 +61,21 @@ ACTION = "kid.edit"
 class KidEditCommandError(Exception):
     status: int
     payload: dict
+
+
+@dataclass(frozen=True)
+class LockedAggregate:
+    turnus: Turnus
+    child: Kinder
+    periods: list
+    focuses: list
+    active_links: frozenset
+    events: list
+    stations: list
+    stations_by_event: dict
+    assignments: dict
+    current: KidEditCurrentState
+    focuses_by_period: dict[int, tuple]
 
 
 def _plain_errors(errors):
@@ -156,11 +171,13 @@ def _assignment_target(assignment):
     )
 
 
-def _snapshot(*, child, periods, active_links, events, assignments):
+def _snapshot(
+    *, child, periods, focuses_by_period, active_links, events, assignments,
+):
     focus_by_id = {
         focus.id: focus
         for period in periods
-        for focus in period._kid_edit_focuses
+        for focus in focuses_by_period[period.id]
     }
     return serialize_kid_edit_snapshot(
         child=child,
@@ -219,8 +236,10 @@ def _load_locked(turnus_id, child_id):
     focuses_by_period = {period.id: [] for period in periods}
     for focus in focuses:
         focuses_by_period[focus.schwerpunktzeit_id].append(focus)
-    for period in periods:
-        period._kid_edit_focuses = tuple(focuses_by_period[period.id])
+    focuses_by_period = {
+        period_id: tuple(period_focuses)
+        for period_id, period_focuses in focuses_by_period.items()
+    }
 
     events = list(
         HappyCleaning.objects.filter(turnus_id=turnus_id).order_by("id")
@@ -271,9 +290,9 @@ def _load_locked(turnus_id, child_id):
         periods=tuple(
             KidEditCurrentSwpPeriod(
                 period.id,
-                tuple(focus.id for focus in period._kid_edit_focuses),
+                tuple(focus.id for focus in focuses_by_period[period.id]),
                 tuple(
-                    focus.id for focus in period._kid_edit_focuses
+                    focus.id for focus in focuses_by_period[period.id]
                     if focus.id in active_links
                 ),
             )
@@ -289,8 +308,19 @@ def _load_locked(turnus_id, child_id):
             for event in events
         ),
     )
-    return (turnus, child, periods, focuses, active_links, events, stations,
-            stations_by_event, assignments, current)
+    return LockedAggregate(
+        turnus=turnus,
+        child=child,
+        periods=periods,
+        focuses=focuses,
+        active_links=active_links,
+        events=events,
+        stations=stations,
+        stations_by_event=stations_by_event,
+        assignments=assignments,
+        current=current,
+        focuses_by_period=focuses_by_period,
+    )
 
 
 def _swp_targets(command):
@@ -373,28 +403,29 @@ def execute_kid_edit(*, context, child_id, decoded, pre_errors=None):
         loaded = _load_locked(context.turnus.id, child_id)
         if loaded is None:
             raise KidEditCommandError(404, {"ok": False, "code": "not_found"})
-        (turnus, child, periods, focuses, active_links, events, stations,
-         stations_by_event, assignments, current) = loaded
-        validated = validate_kid_edit_command(decoded, current)
+        validated = validate_kid_edit_command(decoded, loaded.current)
         if pre_errors:
-            validated = _merge_pre_errors(validated, pre_errors, current)
+            validated = _merge_pre_errors(
+                validated, pre_errors, loaded.current,
+            )
         if isinstance(validated, KidEditValidationError):
             raise KidEditCommandError(
                 validated.status, validation_error_response(validated),
             )
         focus_configuration = tuple(
-            (period, period._kid_edit_focuses) for period in periods
+            (period, loaded.focuses_by_period[period.id])
+            for period in loaded.periods
         )
         swp_plan = plan_locked_swp_change(
-            child=child, turnus=turnus,
+            child=loaded.child, turnus=loaded.turnus,
             focus_configuration=focus_configuration,
-            active_link_ids=active_links,
+            active_link_ids=loaded.active_links,
             requested_links_by_period=_swp_targets(validated),
             expected_version=validated.expected_edit_version,
         )
         try:
             number_plan = plan_locked_child_number(
-                child=child, turnus_id=turnus.id,
+                child=loaded.child, turnus_id=loaded.turnus.id,
                 number=validated.happy_cleaning_number,
                 expected_version=validated.expected_number_version,
             )
@@ -402,8 +433,8 @@ def execute_kid_edit(*, context, child_id, decoded, pre_errors=None):
             raise _locked_mutation_error(
                 error, field="happy_cleaning_number",
             ) from error
-        event_by_id = {event.id: event for event in events}
-        station_by_id = {station.id: station for station in stations}
+        event_by_id = {event.id: event for event in loaded.events}
+        station_by_id = {station.id: station for station in loaded.stations}
         assignment_plans = []
         for item in validated.happy_cleaning:
             target_station = (
@@ -412,8 +443,8 @@ def execute_kid_edit(*, context, child_id, decoded, pre_errors=None):
             )
             try:
                 plan = plan_locked_assignment_change(
-                    child=child, event=event_by_id[item.event_id],
-                    current_assignment=assignments.get(item.event_id),
+                    child=loaded.child, event=event_by_id[item.event_id],
+                    current_assignment=loaded.assignments.get(item.event_id),
                     target_kind=item.target.kind, station=target_station,
                     expected_version=item.current_assignment_version,
                 )
@@ -425,57 +456,64 @@ def execute_kid_edit(*, context, child_id, decoded, pre_errors=None):
 
         scalar_fields = [
             name for name, value in validated.storage_fields.items()
-            if getattr(child, name) != value
+            if getattr(loaded.child, name) != value
         ]
         aggregate_changed = bool(
             scalar_fields or swp_plan.changed or number_plan.changed
             or any(plan.changed for plan, _station in assignment_plans)
         )
         before = _snapshot(
-            child=child, periods=periods, active_links=active_links,
-            events=events, assignments=assignments,
+            child=loaded.child,
+            periods=loaded.periods,
+            focuses_by_period=loaded.focuses_by_period,
+            active_links=loaded.active_links,
+            events=loaded.events,
+            assignments=loaded.assignments,
         ) if aggregate_changed else None
 
-        writer = _VersionedChildWrite(
-            child=child,
+        writer = VersionedChildWrite(
+            child=loaded.child,
             focus_ids_by_period={
                 period.id: frozenset(
-                    focus.id for focus in period._kid_edit_focuses
-                ) for period in periods
+                    focus.id
+                    for focus in loaded.focuses_by_period[period.id]
+                )
+                for period in loaded.periods
             },
         )
         for name in scalar_fields:
-            setattr(child, name, validated.storage_fields[name])
+            setattr(loaded.child, name, validated.storage_fields[name])
         writer.save_child(update_fields=scalar_fields)
         kid_edit_writes.apply_locked_swp_change(
-            child=child, turnus=turnus,
+            child=loaded.child, turnus=loaded.turnus,
             focus_configuration=focus_configuration,
-            active_link_ids=active_links, plan=swp_plan,
+            active_link_ids=loaded.active_links, plan=swp_plan,
         )
         happy_cleaning_assignment_commands.apply_locked_child_number(
-            child=child, plan=number_plan,
+            child=loaded.child, plan=number_plan,
         )
         changed_assignment_ids = {
             plan.event_id for plan, _station in assignment_plans if plan.changed
         }
         revisions = dict(bump_locked_event_revisions_once(
-            turnus_id=turnus.id, number_changed=number_plan.changed,
+            turnus_id=loaded.turnus.id, number_changed=number_plan.changed,
             assignment_event_ids=changed_assignment_ids,
         ))
-        for event in events:
+        for event in loaded.events:
             if event.id in revisions:
                 event.revision = revisions[event.id]
         for plan, target_station in assignment_plans:
             if plan.changed:
                 happy_cleaning_assignment_commands.apply_locked_assignment_change(
-                    child=child, event=event_by_id[plan.event_id],
-                    current_assignment=assignments.get(plan.event_id), plan=plan,
+                    child=loaded.child, event=event_by_id[plan.event_id],
+                    current_assignment=loaded.assignments.get(plan.event_id),
+                    plan=plan,
                     event_revision=revisions[plan.event_id],
                     target_station=target_station,
                 )
         if scalar_fields or swp_plan.changed:
-            child.edit_version += 1
-            child.save(update_fields=("edit_version",))
+            loaded.child.edit_version += 1
+            loaded.child.save(update_fields=("edit_version",))
 
         result = "updated" if aggregate_changed else "no_change"
         assignment_versions = {}
@@ -483,13 +521,18 @@ def execute_kid_edit(*, context, child_id, decoded, pre_errors=None):
             refreshed_assignments = {
                 row.happy_cleaning_id: row
                 for row in HappyCleaningAssignment.objects.select_related("station").filter(
-                    child_id=child.id, happy_cleaning_id__in=event_by_id,
+                    child_id=loaded.child.id,
+                    happy_cleaning_id__in=event_by_id,
                 )
             }
             active_after = swp_plan.target_link_ids
             after = _snapshot(
-                child=child, periods=periods, active_links=active_after,
-                events=events, assignments=refreshed_assignments,
+                child=loaded.child,
+                periods=loaded.periods,
+                focuses_by_period=loaded.focuses_by_period,
+                active_links=active_after,
+                events=loaded.events,
+                assignments=refreshed_assignments,
             )
             api_name_by_storage = {
                 field.storage_name: field.api_name for field in FIELD_CONTRACTS
@@ -510,11 +553,13 @@ def execute_kid_edit(*, context, child_id, decoded, pre_errors=None):
             )
             details = build_kid_edit_audit_details(before, after, changed_paths)
             record_audit_event(AuditEventData(
-                turnus=turnus, actor_id=context.actor_id,
+                turnus=loaded.turnus, actor_id=context.actor_id,
                 actor_label=context.actor_label, action=ACTION,
                 outcome="success", resource_type="child",
-                resource_id=str(child.id),
-                resource_label=f"{child.kid_vorname} {child.kid_nachname}".strip(),
+                resource_id=str(loaded.child.id),
+                resource_label=(
+                    f"{loaded.child.kid_vorname} {loaded.child.kid_nachname}"
+                ).strip(),
                 request_id=validated.request_id,
                 client_ip=context.client_ip, user_agent=context.user_agent,
                 details=details,
@@ -523,30 +568,32 @@ def execute_kid_edit(*, context, child_id, decoded, pre_errors=None):
                 str(event.id): (
                     0 if refreshed_assignments.get(event.id) is None
                     else refreshed_assignments[event.id].version
-                ) for event in events
+                ) for event in loaded.events
             }
         else:
             assignment_versions = {
                 str(event.id): (
-                    0 if assignments.get(event.id) is None
-                    else assignments[event.id].version
-                ) for event in events
+                    0 if loaded.assignments.get(event.id) is None
+                    else loaded.assignments[event.id].version
+                ) for event in loaded.events
             }
         response = {
-            "ok": True, "result": result, "kid_id": child.id,
-            "redirect": f"/kid_details/{child.id}",
+            "ok": True, "result": result, "kid_id": loaded.child.id,
+            "redirect": f"/kid_details/{loaded.child.id}",
             "versions": {
-                "edit": child.edit_version,
-                "happy_cleaning_number": child.happy_cleaning_number_version,
+                "edit": loaded.child.edit_version,
+                "happy_cleaning_number": (
+                    loaded.child.happy_cleaning_number_version
+                ),
                 "happy_cleaning_assignments": assignment_versions,
                 "happy_cleaning_events": {
-                    str(event.id): event.revision for event in events
+                    str(event.id): event.revision for event in loaded.events
                 },
             },
             "replayed": False,
         }
         HappyCleaningCommandRequest.objects.create(
-            turnus=turnus, actor_id=context.actor_id,
+            turnus=loaded.turnus, actor_id=context.actor_id,
             request_id=validated.request_id, action=ACTION,
             response=response, fingerprint=fingerprint, status_code=200,
         )

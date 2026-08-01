@@ -6,46 +6,47 @@ import re
 
 from django.core.exceptions import ValidationError
 
+from budo_app.kid_edit_contracts import FIELD_CONTRACTS
 from budo_app.kid_edit_contracts.signing import (
     has_baseline_token_syntax,
     has_legacy_token_syntax,
 )
+from budo_app.models import Kinder
 
 MAX_KID_EDIT_AUDIT_BYTES = 4 * 1024 * 1024
 POSTGRES_INTEGER_MIN = -2_147_483_648
 POSTGRES_INTEGER_MAX = 2_147_483_647
 POSTGRES_BIGINT_MAX = 9_223_372_036_854_775_807
 
-# Storage values deliberately have an audit schema independent of the edit
-# request's canonical API contract. Tuple values are kind, nullable, max length.
+# Storage values retain an audit schema independent of canonical API values.
+# Tuple values are kind, nullable, max length; the roster follows FIELD_CONTRACTS.
+_STORAGE_KIND_BY_VALUE_TYPE = {
+    "boolean": "boolean",
+    "date": "date",
+    "email": "string",
+    "enum": "string",
+    "integer": "integer",
+    "text": "string",
+}
+
+
+def _storage_field_schema(field):
+    model_field = Kinder._meta.get_field(field.storage_name)
+    maximum = (
+        field.max_length
+        if field.max_length is not None
+        else model_field.max_length
+    )
+    return (
+        _STORAGE_KIND_BY_VALUE_TYPE[field.value_type],
+        model_field.null,
+        maximum,
+    )
+
+
 _STORAGE_FIELDS = {
-    "first_name": ("string", False, 255),
-    "last_name": ("string", False, 255),
-    "sex": ("string", True, 255),
-    "birthday": ("date", True, None),
-    "stay_weeks": ("integer", True, None),
-    "siblings": ("string", True, 255),
-    "tent_request": ("string", True, 255),
-    "budo_experience": ("boolean", True, None),
-    "social_security_number": ("string", True, 255),
-    "illness": ("string", True, 10_000),
-    "drugs": ("string", True, 10_000),
-    "vegetarian": ("string", True, 255),
-    "special_food": ("string", True, 255),
-    "swimmer": ("string", True, 255),
-    "consent": ("boolean", True, None),
-    "over_the_counter_medication": ("string", True, 10_000),
-    "prescription_medication": ("string", True, 255),
-    "tetanus": ("string", True, 255),
-    "tick_vaccine": ("string", True, 255),
-    "organization": ("string", True, 255),
-    "registrant_first_name": ("string", False, 255),
-    "registrant_last_name": ("string", False, 255),
-    "registrant_email": ("string", True, 255),
-    "registrant_phone": ("string", True, 255),
-    "insured_with": ("string", True, 255),
-    "emergency_contacts": ("string", True, 10_000),
-    "budo_family": ("string", True, 30),
+    field.api_name: _storage_field_schema(field)
+    for field in FIELD_CONTRACTS
 }
 
 _TOP_KEYS = {
