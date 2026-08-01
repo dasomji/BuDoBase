@@ -21,6 +21,7 @@ from budo_app.audit_policy import (
     can_view_audit,
     log_audit_denial,
 )
+from budo_app.audit_readiness import kid_edit_release_enabled
 from budo_app.audit_exports import (
     AuditExportCommand,
     AuditExportTurnusNotFound,
@@ -44,6 +45,8 @@ class AuditDetailUnavailable(APIException):
 @login_required
 @require_GET
 def audit_page(request):
+    if not kid_edit_release_enabled():
+        raise Http404
     if not can_view_audit(request.user):
         log_audit_denial(
             user=request.user,
@@ -57,6 +60,10 @@ def audit_page(request):
 @api_view(["GET"])
 @permission_classes([AuditDetailIsAuthenticated])
 def audit_event_detail(request, event_id):
+    if not kid_edit_release_enabled():
+        return Response(
+            {"ok": False, "code": "release_gated"}, status=403,
+        )
     user = request.user
     if not can_view_audit(user):
         log_audit_denial(
@@ -123,6 +130,10 @@ def audit_event_detail(request, event_id):
 @api_view(["GET"])
 @permission_classes([AuditExportIsAuthenticated])
 def export_audit_events(request):
+    if not kid_edit_release_enabled():
+        return Response(
+            {"ok": False, "code": "release_gated"}, status=403,
+        )
     user = request.user
     if not can_export_audit(user):
         log_audit_denial(

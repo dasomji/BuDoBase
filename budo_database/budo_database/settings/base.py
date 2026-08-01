@@ -12,6 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Load environment variables
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
+KID_EDIT_ALLOW_UNAPPROVED = (
+    os.environ.get("BUDO_KID_EDIT_ALLOW_UNAPPROVED") == "1"
+)
+
 # Application definition
 INSTALLED_APPS = [
     'daphne',

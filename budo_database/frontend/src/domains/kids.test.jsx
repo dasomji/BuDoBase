@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
 import { Toaster } from '../components/ui/toast';
-import { parseRoute } from '../routes';
+import { parseRoute, routeHeaderAction } from '../routes';
 import { expectErrorToastOnly } from '../test-support';
 import { KidDetailPage, KidInteractionForm, KidsPage } from './kids';
 import { formatGermanDate, formatKidBirthday } from './shared';
@@ -408,6 +408,20 @@ describe('Kinder pages', () => {
       readContractKey: 'kid-detail',
       id: '21',
     });
+  });
+
+  it('hides the kid Edit action when the release-gated capability is false', () => {
+    const route = parseRoute('/kid_details/21');
+    expect(routeHeaderAction(route, {
+      permissions: { kid_edit_enabled: false },
+    })).toBeNull();
+
+    render(routeHeaderAction(route, {
+      permissions: { kid_edit_enabled: true },
+    }));
+    expect(screen.getByRole('link', { name: 'Bearbeiten' })).toHaveAttribute(
+      'href', '/kid_details/21/edit',
+    );
   });
 
   it('refreshes only the selected Kind contract after a Pfand update', async () => {

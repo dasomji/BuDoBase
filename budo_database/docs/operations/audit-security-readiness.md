@@ -299,3 +299,13 @@ failure and obtain a new acceptance before approval.
 
 The repository does not infer approval from passing tests, development data,
 provider defaults, or an absent answer.
+
+## Runtime release gate
+
+Production exposes the kid-edit producer and read contract, its Edit entry
+point, and the audit page, detail, export, and navigation surfaces only when
+this manifest validates with status `approved`. The gate fails closed when the
+manifest is missing, unreadable, invalid, or blocked.
+
+For development or QA only, set `BUDO_KID_EDIT_ALLOW_UNAPPROVED=1` to bypass
+the manifest decision. Do not use this override for production releases.

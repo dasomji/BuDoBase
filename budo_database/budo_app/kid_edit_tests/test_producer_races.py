@@ -40,6 +40,12 @@ from budo_app.models import (
 class KidEditProducerPostgreSQLRaceTests(KidEditProducerFixture):
     worker_timeout = 20
 
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        if connection.vendor == "postgresql":
+            print(f"PostgreSQL server version: {connection.pg_version}")
+
     def setUp(self):
         super().setUp()
         if connection.vendor != "postgresql":

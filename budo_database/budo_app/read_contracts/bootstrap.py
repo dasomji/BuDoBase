@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from budo_app.audit_policy import can_export_audit, can_view_audit
+from budo_app.audit_readiness import kid_edit_release_enabled
 from budo_app.models import (
     Auslagerorte,
     HappyCleaning,
@@ -28,7 +29,10 @@ def _permissions(user):
         "change_profiles": user.has_perm("budo_app.change_profil"),
         "change_focuses": user.has_perm("budo_app.change_schwerpunkte"),
         "change_places": user.has_perm("budo_app.change_auslagerorte"),
-        "view_auditevent": can_view_audit(user),
+        "kid_edit_enabled": kid_edit_release_enabled(),
+        "view_auditevent": (
+            kid_edit_release_enabled() and can_view_audit(user)
+        ),
         "export_auditevent": can_export_audit(user),
     }
 

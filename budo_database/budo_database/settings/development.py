@@ -2,6 +2,8 @@ from .base import *
 import dj_database_url
 import os
 
+KID_EDIT_ALLOW_UNAPPROVED = True
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-nzf&ei1yhum+vx!(lsdiode6qbmdxt7idos2m#1nbq*cd+wyy5'
 

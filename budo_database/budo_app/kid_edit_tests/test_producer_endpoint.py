@@ -9,6 +9,7 @@ from unittest import mock
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.db import connection
 from django.test import Client, TransactionTestCase
 from django.urls import Resolver404, resolve, reverse
 
@@ -290,6 +291,12 @@ class KidEditProducerFixture(TransactionTestCase):
             self.assertNotIn(secret, rendered)
 
 class KidEditProducerEndpointTests(KidEditProducerFixture):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        if connection.vendor == "postgresql":
+            print(f"PostgreSQL server version: {connection.pg_version}")
+
     def test_session_json_post_accepts_bootstrap_csrf_token(self):
         payload = self.read_payload("csrf-session-json-166")
         csrf_client = Client(enforce_csrf_checks=True)
@@ -313,6 +320,10 @@ class KidEditProducerEndpointTests(KidEditProducerFixture):
         success_message = [{
             "text": "Alle Daten und Einteilungen wurden gespeichert.",
             "tags": "success",
+        }]
+        no_change_message = [{
+            "text": "Keine Änderungen zum Speichern.",
+            "tags": "info",
         }]
 
         updated = self.post(
@@ -342,7 +353,7 @@ class KidEditProducerEndpointTests(KidEditProducerFixture):
         self.assertEqual(no_change.json()["result"], "no_change")
         self.assertTrue(replayed.json()["replayed"])
         replay_bootstrap = csrf_client.get(reverse("bootstrap-api")).json()
-        self.assertEqual(replay_bootstrap["messages"], success_message)
+        self.assertEqual(replay_bootstrap["messages"], no_change_message)
         self.assert_no_secrets(replay_bootstrap["messages"])
 
     def test_positive_child_route_enforces_auth_profile_turnus_csrf_and_parser(self):
