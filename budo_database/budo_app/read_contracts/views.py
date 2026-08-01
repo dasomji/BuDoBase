@@ -5,11 +5,15 @@ from budo_app.audit_policy import AuditAwareIsAuthenticated
 from budo_app.audit_readiness import kid_edit_release_enabled
 
 from .registry import get_contract
+
+RELEASE_GATED_CONTRACTS = frozenset({"kid-edit", "audit"})
+
+
 @api_view(["GET"])
 @permission_classes([AuditAwareIsAuthenticated])
 def route_data(request, contract_key):
     """Dispatch an authenticated route read without falling back to app-data."""
-    if contract_key == "kid-edit" and not kid_edit_release_enabled():
+    if contract_key in RELEASE_GATED_CONTRACTS and not kid_edit_release_enabled():
         return Response(
             {"ok": False, "code": "release_gated"}, status=403,
         )

@@ -128,6 +128,12 @@ class ReleaseGateViewTests(TestCase):
         self.assertFalse(bootstrap["permissions"]["kid_edit_enabled"])
         route_data = self.kid_edit_route_data()
         self.assertEqual((route_data.status_code, route_data.json()), (403, gated))
+        audit_contract = self.client.get(
+            reverse("route-data-api", kwargs={"contract_key": "audit"}),
+        )
+        self.assertEqual(
+            (audit_contract.status_code, audit_contract.json()), (403, gated),
+        )
 
     @override_settings(KID_EDIT_ALLOW_UNAPPROVED=True)
     def test_explicit_flag_keeps_development_surface_open(self):

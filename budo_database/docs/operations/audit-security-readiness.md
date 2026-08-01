@@ -308,4 +308,5 @@ this manifest validates with status `approved`. The gate fails closed when the
 manifest is missing, unreadable, invalid, or blocked.
 
 For development or QA only, set `BUDO_KID_EDIT_ALLOW_UNAPPROVED=1` to bypass
-the manifest decision. Do not use this override for production releases.
+the manifest decision. Production settings force this override off; only an
+approved manifest opens the gated surfaces in production.
