@@ -441,6 +441,7 @@ def check_out(request, id):
             this_kid.anwesend = False
             this_kid.e_card = False
             this_kid.ausweis = False
+            this_kid.checkout_notiz = notiz_form.cleaned_data.get('notiz') or ''
             if this_kid.early_abreise_date.strftime("%Y-%m-%d") == this_kid.turnus.get_turnus_ende().strftime("%Y-%m-%d"):
                 this_kid.early_abreise_date = None
 
@@ -449,6 +450,7 @@ def check_out(request, id):
                 "anwesend",
                 "e_card",
                 "ausweis",
+                "checkout_notiz",
             ))
             return redirect('kid_details', id=id)
     else:
