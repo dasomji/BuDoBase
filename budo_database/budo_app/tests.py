@@ -9,6 +9,7 @@ from .excelProcessor import (
     process_excel,
     validate_workbook_columns,
 )
+from .updateExcel import update_excel_file
 from unittest.mock import patch
 from django.contrib.auth.models import User
 from io import BytesIO
@@ -633,6 +634,93 @@ class DownloadUpdatedExcelTest(TestCase):
         self.assertEqual(content, b"generated workbook")
         self.assertIsNotNone(generated_path)
         self.assertFalse(os.path.exists(os.path.dirname(generated_path)))
+
+    def test_export_does_not_mark_an_on_time_arrival_as_late(self):
+        self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
+        self.turnus.save(update_fields=("turnus_beginn",))
+        kid = make_kid(self.turnus)
+        kid.check_in_date = date(2024, 7, 7)  # default Sunday arrival
+        kid.turnus_dauer = 2
+        kid.save(update_fields=("check_in_date", "turnus_dauer"))
+
+        with TemporaryDirectory() as directory:
+            path = os.path.join(directory, "aufenthaltsdoku.xlsx")
+            update_excel_file(path, self.turnus)
+            exported = pd.read_excel(path, dtype=str).fillna("")
+
+        self.assertEqual(exported.loc[0, "verspätete Anreise"], "")
+
+    def test_checkout_note_is_written_to_its_own_export_column(self):
+        kid = make_kid(self.turnus)
+
+        response = self.client.post(
+            reverse("check_out", args=(kid.pk,)),
+            {
+                "early_abreise_date": "2024-07-05",
+                "notiz": "Abholung durch Tante um 14 Uhr",
+                "amount": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        kid.refresh_from_db()
+        self.assertEqual(kid.checkout_notiz, "Abholung durch Tante um 14 Uhr")
+
+        with TemporaryDirectory() as directory:
+            path = os.path.join(directory, "aufenthaltsdoku.xlsx")
+            update_excel_file(path, self.turnus)
+            exported = pd.read_excel(path, dtype=str).fillna("")
+
+        self.assertEqual(
+            exported.loc[0, "Check-Out-Notiz"],
+            "Abholung durch Tante um 14 Uhr",
+        )
+
+    def test_export_marks_train_departure_and_stay_changes_from_original_workbook(self):
+        kid = make_kid(self.turnus)
+        kid.zug_abreise = False
+        kid.turnus_dauer = 1
+        kid.save(update_fields=("zug_abreise", "turnus_dauer"))
+        self.turnus.uploadedFile = SimpleUploadedFile(
+            "original.xlsx",
+            b"original workbook",
+        )
+        self.turnus.save(update_fields=("uploadedFile",))
+        original, raw = sample_excel_frames()
+
+        with TemporaryDirectory() as directory, patch(
+            "budo_app.updateExcel.read_workbook",
+            return_value=(original, raw),
+        ):
+            path = os.path.join(directory, "aufenthaltsdoku.xlsx")
+            update_excel_file(path, self.turnus)
+            exported = pd.read_excel(path, dtype=str).fillna("")
+
+        self.assertEqual(exported.loc[0, "Zugabreise geändert"], "ja")
+        self.assertEqual(exported.loc[0, "Aufenthalt geändert"], "ja")
+
+    def test_export_only_marks_departure_before_the_kids_planned_friday(self):
+        self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
+        self.turnus.save(update_fields=("turnus_beginn",))
+        one_week = make_kid(self.turnus, kid_index="one-week")
+        one_week.turnus_dauer = 1
+        one_week.early_abreise_date = date(2024, 7, 12)  # planned Friday
+        one_week.save(update_fields=("turnus_dauer", "early_abreise_date"))
+        two_weeks = make_kid(self.turnus, kid_index="two-weeks")
+        two_weeks.turnus_dauer = 2
+        two_weeks.early_abreise_date = date(2024, 7, 18)  # one day early
+        two_weeks.save(update_fields=("turnus_dauer", "early_abreise_date"))
+
+        with TemporaryDirectory() as directory:
+            path = os.path.join(directory, "aufenthaltsdoku.xlsx")
+            update_excel_file(path, self.turnus)
+            exported = pd.read_excel(path, dtype=str).fillna("").set_index("Index")
+
+        self.assertEqual(exported.loc["one-week", "vorzeitige Abreise"], "")
+        self.assertEqual(
+            exported.loc["two-weeks", "vorzeitige Abreise"],
+            "2024-07-18",
+        )
 
 
 class ExcelProcessingTransactionTest(TestCase):
