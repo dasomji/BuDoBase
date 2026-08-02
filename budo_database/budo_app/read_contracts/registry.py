@@ -8,6 +8,7 @@ from .domains import (
     dashboard,
     focuses,
     happy_cleaning,
+    kid_edit,
     kids,
     kitchen,
     maintenance,
@@ -25,6 +26,7 @@ class RouteContract:
     key: str
     domain: str
     builder: ContractBuilder
+    cache_control: str | None = None
 
 
 DOMAIN_CONTRACTS = {
@@ -34,6 +36,7 @@ DOMAIN_CONTRACTS = {
     "dashboard": dashboard.CONTRACTS,
     "focuses": focuses.CONTRACTS,
     "happy-cleaning": happy_cleaning.CONTRACTS,
+    "kid-edit": kid_edit.CONTRACTS,
     "kids": kids.CONTRACTS,
     "kitchen": kitchen.CONTRACTS,
     "maintenance": maintenance.CONTRACTS,
@@ -53,6 +56,9 @@ def _build_registry():
                 key=key,
                 domain=domain,
                 builder=builder,
+                cache_control=(
+                    "private, no-store" if key == "kid-edit" else None
+                ),
             )
     return registry
 

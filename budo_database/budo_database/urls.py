@@ -15,14 +15,16 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from budo_app.api_views import submit_form
-from budo_app.audit_views import export_audit_events
+from budo_app.audit_views import audit_event_detail, audit_page, export_audit_events
+from budo_app.kid_edit_views import kid_edit
 from budo_app.read_contracts.bootstrap import bootstrap
 from budo_app.read_contracts.views import route_data
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('audit/', audit_page, name='audit-page'),
     path('api/bootstrap/', bootstrap, name='bootstrap-api'),
     path(
         'api/route-data/<slug:contract_key>/',
@@ -30,6 +32,7 @@ urlpatterns = [
         name='route-data-api',
     ),
     path('api/form-submit/', submit_form, name='form-submit-api'),
+    path('api/kids/<int:kid_id>/edit/', kid_edit, name='kid-edit-api'),
     path(
         'api/happy-cleaning/',
         include('budo_app.happy_cleaning_command_urls'),
@@ -46,6 +49,11 @@ urlpatterns = [
         'api/audit-events/export/',
         export_audit_events,
         name='audit-export-api',
+    ),
+    re_path(
+        r'^api/audit-events/(?P<event_id>[1-9]\d*)/$',
+        audit_event_detail,
+        name='audit-event-detail-api',
     ),
     path('', include('budo_app.urls')),
     path('', include('users.urls'))

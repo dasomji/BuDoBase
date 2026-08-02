@@ -224,6 +224,7 @@ class Kinder(models.Model):
         blank=True,
     )
     happy_cleaning_number_version = models.PositiveIntegerField(default=1)
+    edit_version = models.PositiveIntegerField(default=1)
 
     # Schwerpunkte & Familien
     schwerpunkte = models.ManyToManyField(
@@ -377,6 +378,10 @@ class Kinder(models.Model):
             models.CheckConstraint(
                 condition=models.Q(happy_cleaning_number_version__gt=0),
                 name="kinder_hc_number_version_positive",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(edit_version__gt=0),
+                name="kinder_edit_version_positive",
             ),
             models.UniqueConstraint(
                 fields=("turnus", "happy_cleaning_number"),
@@ -638,6 +643,8 @@ class HappyCleaningCommandRequest(models.Model):
     request_id = models.CharField(max_length=255)
     action = models.CharField(max_length=100)
     response = models.JSONField(default=dict)
+    fingerprint = models.CharField(max_length=80, null=True)
+    status_code = models.PositiveSmallIntegerField(default=200)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -645,6 +652,13 @@ class HappyCleaningCommandRequest(models.Model):
             models.UniqueConstraint(
                 fields=("turnus", "actor_id", "request_id"),
                 name="hc_command_actor_request_uniq",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(action="kid.edit")
+                    | models.Q(fingerprint__isnull=False)
+                ),
+                name="hc_kid_edit_fingerprint_required",
             ),
         ]
 

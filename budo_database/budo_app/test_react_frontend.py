@@ -352,6 +352,7 @@ class ReactPageRouteSmokeTests(TestCase):
             "zugabreise": reverse("zugabreise"),
             "zuganreise": reverse("zuganreise"),
             "kid_details": reverse("kid_details", args=(self.kid.id,)),
+            "kid-edit-page": reverse("kid-edit-page", args=(self.kid.id,)),
             "check_in": reverse("check_in", args=(self.kid.id,)),
             "check_out": reverse("check_out", args=(self.kid.id,)),
             "serienbrief": reverse("serienbrief"),

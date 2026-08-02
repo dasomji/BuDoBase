@@ -177,7 +177,7 @@ function AppContent({
             : 'Realtime-Verbindung unterbrochen. Daten werden abgeglichen…'}
         </p>
       )}
-      {renderRoute(route, { data, mutate, refresh: refreshRoute, fetchImpl, realtimeSync, pageState, setPageState })}
+      {renderRoute(route, { data, mutate, navigate, refresh: refreshRoute, fetchImpl, realtimeSync, pageState, setPageState })}
     </>
   );
   if (route.standalone) return content;
@@ -192,7 +192,7 @@ function AppContent({
           route.page === 'happy-cleaning-overview'
             ? overviewSidebarEvents
             : data.happy_cleaning_events
-        } />
+        } permissions={data.permissions} />
       ) : null}
       header={<Header title={resolveRouteHeaderTitle(route, data, title)} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data, { pageState, setPageState, mutate }) : null} />}
     >

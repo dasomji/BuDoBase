@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
@@ -194,6 +194,104 @@ describe('Kinder pages', () => {
     const checkAction = screen.getByRole('link', { name: action });
     expect(checkAction).toHaveAttribute('href', path);
     expect(checkAction.closest('.card')).toHaveAttribute('id', 'budo-container');
+  });
+
+  it('renders dynamic Schwerpunkt and Happy Cleaning rows from the detail contract', () => {
+    const kid = {
+      id: 7,
+      full_name: 'Ada Lovelace',
+      present: true,
+      weeks: 2,
+      notes: [],
+      first_aid_entries: [],
+      transactions: [],
+      remaining_money: 0,
+      deposit: 0,
+      focus_assignments: [
+        {
+          period_id: 12,
+          code: 'w2',
+          label: 'Woche 2 (2 Tage)',
+          focuses: [{ id: 4, label: 'Wald' }],
+        },
+        {
+          period_id: 13,
+          code: 'u',
+          label: 'unklar (1 Tag)',
+          focuses: [],
+        },
+        {
+          period_id: 11,
+          code: 'w1',
+          label: 'Woche 1 (3 Tage)',
+          focuses: [
+            { id: 5, label: 'alpha' },
+            { id: 6, label: 'Alpha' },
+          ],
+        },
+      ],
+      happy_cleaning_number: 42,
+      happy_cleaning_assignments: [
+        {
+          event_id: 21,
+          display_number: 1,
+          label: 'Happy Cleaning 1',
+          target: { kind: 'excused', label: 'Entschuldigt' },
+        },
+        {
+          event_id: 22,
+          display_number: 2,
+          label: 'Happy Cleaning 2',
+          target: { kind: 'station', station_id: 31, label: 'Küche <Nord>' },
+        },
+        {
+          event_id: 23,
+          display_number: 3,
+          label: 'Happy Cleaning 3',
+          target: { kind: 'unassigned', label: 'Nicht eingeteilt' },
+        },
+      ],
+    };
+
+    render(<KidDetailPage data={{ kids: [kid], turnus: { label: 'T2' }, csrf_token: 'token' }} id="7" mutate={vi.fn()} />);
+
+    const budoCard = screen.getByRole('heading', { name: 'BuDo' }).closest('.card');
+    expect(within(budoCard).getByText('Woche 2 (2 Tage)').closest('p')).toHaveTextContent('Woche 2 (2 Tage): Wald');
+    expect(within(budoCard).getByText('unklar (1 Tag)').closest('p')).toHaveTextContent('unklar (1 Tag): ---');
+    expect(within(budoCard).getByText('Woche 1 (3 Tage)').closest('p')).toHaveTextContent('Woche 1 (3 Tage): alpha, Alpha');
+    expect(within(budoCard).getByText('Happy Cleaning Nummer').closest('p')).toHaveTextContent('Happy Cleaning Nummer: 42');
+    expect(within(budoCard).getByText('Happy Cleaning 1').closest('p')).toHaveTextContent('Happy Cleaning 1: Entschuldigt');
+    expect(within(budoCard).getByText('Happy Cleaning 2').closest('p')).toHaveTextContent('Happy Cleaning 2: Küche <Nord>');
+    expect(within(budoCard).getByText('Happy Cleaning 3').closest('p')).toHaveTextContent('Happy Cleaning 3: Nicht eingeteilt');
+    expect(budoCard.querySelector('nord')).toBeNull();
+    expect(within(budoCard).queryByText('SWP 1')).not.toBeInTheDocument();
+    expect(within(budoCard).queryByText('SWP 2')).not.toBeInTheDocument();
+  });
+
+  it('renders safe dynamic-detail placeholders when periods and cleaning data are empty', () => {
+    const kid = {
+      id: 7,
+      full_name: 'Ada Lovelace',
+      present: true,
+      weeks: 2,
+      notes: [],
+      first_aid_entries: [],
+      transactions: [],
+      remaining_money: 0,
+      deposit: 0,
+      focus_assignments: [],
+      happy_cleaning_number: null,
+      happy_cleaning_assignments: [],
+    };
+
+    render(<KidDetailPage data={{ kids: [kid], turnus: { label: 'T2' }, csrf_token: 'token' }} id="7" mutate={vi.fn()} />);
+
+    const budoCard = screen.getByRole('heading', { name: 'BuDo' }).closest('.card');
+    expect(within(budoCard).getByText('Schwerpunkte').closest('p')).toHaveTextContent('Schwerpunkte: ---');
+    expect(within(budoCard).getByText('Happy Cleaning Nummer').closest('p')).toHaveTextContent('Happy Cleaning Nummer: ---');
+    expect(within(budoCard).getByText('Happy Cleaning').closest('p')).toHaveTextContent('Happy Cleaning: ---');
+    expect(within(budoCard).queryByText('SWP 1')).not.toBeInTheDocument();
+    expect(within(budoCard).queryByText('SWP 2')).not.toBeInTheDocument();
   });
 
   it('uses the dashboard card grid at its two-column available-width breakpoint', async () => {

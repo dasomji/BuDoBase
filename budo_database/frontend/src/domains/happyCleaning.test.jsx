@@ -270,6 +270,7 @@ describe('Happy Cleaning management', () => {
     const confirmation = dialog.getByLabelText('„Happy Cleaning 2“ zur Bestätigung eingeben');
     const deleteButton = dialog.getByRole('button', { name: 'Happy Cleaning 2 endgültig löschen' });
     expect(confirmation).toHaveAttribute('data-slot', 'input');
+    expect(confirmation).toHaveFocus();
     expect(confirmation.labels).toHaveLength(1);
     expect(confirmation.labels[0]).toHaveTextContent('„Happy Cleaning 2“ zur Bestätigung eingeben');
     expect(deleteButton).toBeDisabled();

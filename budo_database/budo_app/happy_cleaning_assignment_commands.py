@@ -1,5 +1,7 @@
 """Race-safe application services for child numbers and assignments."""
 
+from dataclasses import dataclass
+
 from django.db import IntegrityError, transaction
 from django.db.models import F
 
@@ -34,6 +36,39 @@ class AssignmentCommandError(CommandError):
     def __init__(self, code, *, projection=None, **kwargs):
         super().__init__(code, **kwargs)
         self.projection = projection or {}
+
+
+class LockedMutationError(Exception):
+    """Projection-free failure from a lock-assuming mutation seam."""
+
+    def __init__(self, code, *, current_version=None):
+        super().__init__(code)
+        self.code = code
+        self.current_version = current_version
+
+
+@dataclass(frozen=True, slots=True)
+class LockedChildNumberPlan:
+    child_id: int
+    turnus_id: int
+    number: int | None
+    previous_number: int | None
+    expected_version: int
+    changed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class LockedAssignmentPlan:
+    child_id: int
+    turnus_id: int
+    event_id: int
+    source_assignment_id: int | None
+    source_version: int
+    source_target_kind: str
+    source_station_id: int | None
+    target_kind: str
+    target_station_id: int | None
+    changed: bool
 
 
 def _lock_actor(context):
@@ -109,14 +144,50 @@ def _increment_event_revision(event):
 
 
 def _increment_turnus_event_revisions(turnus_id):
-    HappyCleaning.objects.filter(turnus_id=turnus_id).update(
-        revision=F("revision") + 1,
+    return bump_locked_event_revisions_once(
+        turnus_id=turnus_id,
+        number_changed=True,
+        assignment_event_ids=(),
     )
-    return list(
-        HappyCleaning.objects.filter(turnus_id=turnus_id)
-        .values_list("id", "revision")
-        .order_by("id")
+
+
+def _lock_affected_event_rows(
+    *,
+    turnus_id,
+    number_changed,
+    assignment_event_ids,
+):
+    assignment_event_ids = frozenset(assignment_event_ids)
+    if not number_changed and not assignment_event_ids:
+        return []
+
+    events = HappyCleaning.objects.select_for_update().filter(
+        turnus_id=turnus_id,
     )
+    if not number_changed:
+        events = events.filter(pk__in=assignment_event_ids)
+    return list(events.order_by("pk"))
+
+
+def bump_locked_event_revisions_once(
+    *,
+    turnus_id,
+    number_changed,
+    assignment_event_ids,
+):
+    """Lock and bump the caller's affected Turnus events exactly once."""
+    events = _lock_affected_event_rows(
+        turnus_id=turnus_id,
+        number_changed=number_changed,
+        assignment_event_ids=assignment_event_ids,
+    )
+
+    revisions = []
+    for event in events:
+        event.revision += 1
+        event.save(update_fields=("revision",))
+        revisions.append((event.id, event.revision))
+    return revisions
 
 
 def _duplicate_number_projection(turnus_id, requested_number):
@@ -165,6 +236,137 @@ def _conflict(code, *, projection, outcome, details, current_version=None):
     )
 
 
+def plan_locked_child_number(*, child, turnus_id, number, expected_version):
+    """Validate a number change against child state locked by the caller."""
+    if child.turnus_id != turnus_id:
+        raise LockedMutationError("not_found")
+    if child.happy_cleaning_number_version != expected_version:
+        raise LockedMutationError(
+            "stale",
+            current_version=child.happy_cleaning_number_version,
+        )
+    if number is not None and (
+        isinstance(number, bool)
+        or not isinstance(number, int)
+        or number <= 0
+    ):
+        raise LockedMutationError("validation_error")
+
+    changed = child.happy_cleaning_number != number
+    if changed and number is not None and Kinder.objects.filter(
+        turnus_id=turnus_id,
+        happy_cleaning_number=number,
+    ).exclude(pk=child.id).exists():
+        raise LockedMutationError(
+            "duplicate_number",
+            current_version=child.happy_cleaning_number_version,
+        )
+
+    return LockedChildNumberPlan(
+        child_id=child.id,
+        turnus_id=turnus_id,
+        number=number,
+        previous_number=child.happy_cleaning_number,
+        expected_version=expected_version,
+        changed=changed,
+    )
+
+
+def apply_locked_child_number(*, child, plan):
+    """Apply a number change to a child locked by the caller.
+
+    The caller owns the surrounding transaction and any command-level side
+    effects such as event revisions, audit, idempotency, and publication.
+    """
+    if not isinstance(plan, LockedChildNumberPlan):
+        raise LockedMutationError("plan_mismatch")
+    if child.id != plan.child_id or child.turnus_id != plan.turnus_id:
+        raise LockedMutationError("plan_mismatch")
+    if (
+        child.happy_cleaning_number_version != plan.expected_version
+        or child.happy_cleaning_number != plan.previous_number
+    ):
+        raise LockedMutationError(
+            "stale",
+            current_version=child.happy_cleaning_number_version,
+        )
+    if plan.number is not None and (
+        isinstance(plan.number, bool)
+        or not isinstance(plan.number, int)
+        or plan.number <= 0
+    ):
+        raise LockedMutationError("validation_error")
+    if plan.changed != (plan.previous_number != plan.number):
+        raise LockedMutationError("plan_mismatch")
+    if not plan.changed:
+        return False
+
+    previous_number = child.happy_cleaning_number
+    previous_version = child.happy_cleaning_number_version
+    child.happy_cleaning_number = plan.number
+    child.happy_cleaning_number_version += 1
+    try:
+        child.save(update_fields=(
+            "happy_cleaning_number",
+            "happy_cleaning_number_version",
+        ))
+    except IntegrityError:
+        child.happy_cleaning_number = previous_number
+        child.happy_cleaning_number_version = previous_version
+        raise
+    return True
+
+
+def _raise_number_command_error(
+    error,
+    *,
+    child,
+    turnus_id,
+    number,
+    expected_version,
+):
+    if error.code == "not_found":
+        raise AssignmentCommandError(
+            "not_found",
+            status=404,
+            audit_outcome="forbidden",
+            details={"child_id": child.id},
+        ) from error
+    if error.code == "stale":
+        _conflict(
+            "stale",
+            projection={"child": _child_projection(child)},
+            outcome="stale",
+            current_version=error.current_version,
+            details={
+                "child_id": child.id,
+                "expected_version": expected_version,
+                "current_version": error.current_version,
+            },
+        )
+    if error.code == "validation_error":
+        raise AssignmentCommandError(
+            "validation_error",
+            errors={"number": ["A positive integer or null is required."]},
+        ) from error
+    if error.code == "duplicate_number":
+        _conflict(
+            "duplicate_number",
+            projection={
+                "child": _child_projection(child),
+                "neighborhood": _duplicate_number_projection(turnus_id, number),
+            },
+            outcome="duplicate_number",
+            details={
+                "child_id": child.id,
+                "new_number": number,
+                "expected_version": expected_version,
+                "current_version": error.current_version,
+            },
+        )
+    raise error
+
+
 def set_child_number(context, child_id, number, expected_version):
     with transaction.atomic():
         _lock_actor(context)
@@ -191,29 +393,35 @@ def set_child_number(context, child_id, number, expected_version):
                 audit_outcome="forbidden",
                 details={"child_id": child_id},
             )
-        if child.happy_cleaning_number_version != expected_version:
-            _conflict(
-                "stale",
-                projection={"child": _child_projection(child)},
-                outcome="stale",
-                current_version=child.happy_cleaning_number_version,
-                details={
-                    "child_id": child.id,
-                    "expected_version": expected_version,
-                    "current_version": child.happy_cleaning_number_version,
-                },
+        try:
+            plan = plan_locked_child_number(
+                child=child,
+                turnus_id=context.turnus.id,
+                number=number,
+                expected_version=expected_version,
+            )
+        except LockedMutationError as error:
+            _raise_number_command_error(
+                error,
+                child=child,
+                turnus_id=context.turnus.id,
+                number=number,
+                expected_version=expected_version,
             )
         previous = child.happy_cleaning_number
         event_revisions = []
-        if previous != number:
-            child.happy_cleaning_number = number
-            child.happy_cleaning_number_version += 1
+        if plan.changed:
             try:
                 with transaction.atomic():
-                    child.save(update_fields=(
-                        "happy_cleaning_number",
-                        "happy_cleaning_number_version",
-                    ))
+                    apply_locked_child_number(child=child, plan=plan)
+            except LockedMutationError as error:
+                _raise_number_command_error(
+                    error,
+                    child=child,
+                    turnus_id=context.turnus.id,
+                    number=number,
+                    expected_version=expected_version,
+                )
             except IntegrityError:
                 neighborhood = _duplicate_number_projection(
                     context.turnus.id,
@@ -273,6 +481,247 @@ def set_child_number(context, child_id, number, expected_version):
                 "request_id": context.request_id,
             })
         return response, False
+
+
+def _locked_assignment_target(assignment):
+    if assignment is None:
+        return "unassigned", None
+    if (
+        assignment.target_kind == HappyCleaningAssignment.TargetKind.EXCUSED
+        and assignment.station_id is None
+    ):
+        return "excused", None
+    if (
+        assignment.target_kind == HappyCleaningAssignment.TargetKind.STATION
+        and assignment.station_id is not None
+    ):
+        return "station", assignment.station_id
+    raise LockedMutationError("validation_error")
+
+
+def _validate_assignment_target_shape(*, target_kind, station):
+    if target_kind == "station":
+        if station is None:
+            raise LockedMutationError("validation_error")
+        return station.id
+    if target_kind in {"excused", "unassigned"}:
+        if station is not None:
+            raise LockedMutationError("validation_error")
+        return None
+    raise LockedMutationError("validation_error")
+
+
+def plan_locked_assignment_change(
+    *,
+    child,
+    event,
+    current_assignment,
+    target_kind,
+    station=None,
+    expected_version,
+):
+    """Validate an assignment change against caller-locked domain state."""
+    if child.turnus_id != event.turnus_id:
+        raise LockedMutationError("not_found")
+    if current_assignment is not None and (
+        current_assignment.child_id != child.id
+        or current_assignment.happy_cleaning_id != event.id
+    ):
+        raise LockedMutationError("not_found")
+
+    current_version = (
+        0 if current_assignment is None else current_assignment.version
+    )
+    if current_version != expected_version:
+        raise LockedMutationError(
+            "stale",
+            current_version=current_version,
+        )
+
+    target_station_id = _validate_assignment_target_shape(
+        target_kind=target_kind,
+        station=station,
+    )
+    if station is not None and station.happy_cleaning_id != event.id:
+        raise LockedMutationError("not_found")
+
+    source_target_kind, source_station_id = _locked_assignment_target(
+        current_assignment,
+    )
+    changed = (
+        source_target_kind != target_kind
+        or source_station_id != target_station_id
+    )
+    if target_kind == "station" and child.happy_cleaning_number is None:
+        raise LockedMutationError("number_required")
+    if (
+        changed
+        and target_kind == "station"
+        and station.assignments.count() >= station.max_kids
+    ):
+        raise LockedMutationError("station_full")
+
+    return LockedAssignmentPlan(
+        child_id=child.id,
+        turnus_id=child.turnus_id,
+        event_id=event.id,
+        source_assignment_id=(
+            None if current_assignment is None else current_assignment.id
+        ),
+        source_version=current_version,
+        source_target_kind=source_target_kind,
+        source_station_id=source_station_id,
+        target_kind=target_kind,
+        target_station_id=target_station_id,
+        changed=changed,
+    )
+
+
+def _validate_assignment_plan_binding(
+    *,
+    child,
+    event,
+    current_assignment,
+    plan,
+):
+    if not isinstance(plan, LockedAssignmentPlan):
+        raise LockedMutationError("plan_mismatch")
+    if (
+        child.id != plan.child_id
+        or child.turnus_id != plan.turnus_id
+        or event.id != plan.event_id
+        or event.turnus_id != plan.turnus_id
+    ):
+        raise LockedMutationError("plan_mismatch")
+
+    current_id = None if current_assignment is None else current_assignment.id
+    current_version = (
+        0 if current_assignment is None else current_assignment.version
+    )
+    if current_id != plan.source_assignment_id:
+        raise LockedMutationError(
+            "stale",
+            current_version=current_version,
+        )
+    if current_assignment is not None and (
+        current_assignment.child_id != child.id
+        or current_assignment.happy_cleaning_id != event.id
+    ):
+        raise LockedMutationError("plan_mismatch")
+    if current_version != plan.source_version:
+        raise LockedMutationError(
+            "stale",
+            current_version=current_version,
+        )
+
+    try:
+        source_target = _locked_assignment_target(current_assignment)
+    except LockedMutationError as error:
+        raise LockedMutationError(
+            "stale",
+            current_version=current_version,
+        ) from error
+    if source_target != (
+        plan.source_target_kind,
+        plan.source_station_id,
+    ):
+        raise LockedMutationError(
+            "stale",
+            current_version=current_version,
+        )
+
+    valid_target = (
+        (
+            plan.target_kind == "station"
+            and isinstance(plan.target_station_id, int)
+            and not isinstance(plan.target_station_id, bool)
+            and plan.target_station_id > 0
+        )
+        or (
+            plan.target_kind in {"excused", "unassigned"}
+            and plan.target_station_id is None
+        )
+    )
+    if not valid_target:
+        raise LockedMutationError("plan_mismatch")
+    changed = (
+        plan.source_target_kind != plan.target_kind
+        or plan.source_station_id != plan.target_station_id
+    )
+    if plan.changed != changed:
+        raise LockedMutationError("plan_mismatch")
+
+
+def apply_locked_assignment_change(
+    *,
+    child,
+    event,
+    current_assignment,
+    plan,
+    event_revision,
+    target_station,
+):
+    """Apply a validated assignment plan using the caller's event revision."""
+    _validate_assignment_plan_binding(
+        child=child,
+        event=event,
+        current_assignment=current_assignment,
+        plan=plan,
+    )
+    if (
+        isinstance(event_revision, bool)
+        or not isinstance(event_revision, int)
+        or event_revision <= 0
+    ):
+        raise LockedMutationError("validation_error")
+    if event_revision != event.revision:
+        raise LockedMutationError(
+            "stale",
+            current_version=event.revision,
+        )
+
+    if plan.target_kind == "station":
+        if (
+            target_station is None
+            or target_station.id != plan.target_station_id
+            or target_station.happy_cleaning_id != event.id
+        ):
+            raise LockedMutationError("plan_mismatch")
+        if child.happy_cleaning_number is None:
+            raise LockedMutationError("number_required")
+        if (
+            plan.changed
+            and target_station.assignments.count() >= target_station.max_kids
+        ):
+            raise LockedMutationError("station_full")
+    elif target_station is not None:
+        raise LockedMutationError("plan_mismatch")
+    if not plan.changed:
+        return False
+
+    if plan.target_kind == "unassigned":
+        current_assignment.delete()
+        return True
+
+    if current_assignment is None:
+        HappyCleaningAssignment.objects.create(
+            happy_cleaning=event,
+            child=child,
+            station=target_station,
+            target_kind=plan.target_kind,
+            version=event_revision,
+        )
+        return True
+
+    current_assignment.station = target_station
+    current_assignment.target_kind = plan.target_kind
+    current_assignment.version = event_revision
+    current_assignment.save(update_fields=(
+        "station",
+        "target_kind",
+        "version",
+    ))
+    return True
 
 
 def _assignment_for_update(event_id, child_id):
@@ -802,10 +1251,18 @@ def assign_missing_numbers(context, event_id, requested_assignments):
             )
             .order_by("kid_vorname", "kid_nachname", "id")
         )
-        first_event = (
-            HappyCleaning.objects.select_for_update()
-            .filter(turnus_id=context.turnus.id, display_number=1)
-            .first()
+        locked_events = _lock_affected_event_rows(
+            turnus_id=context.turnus.id,
+            number_changed=True,
+            assignment_event_ids=(),
+        )
+        first_event = next(
+            (
+                locked_event
+                for locked_event in locked_events
+                if locked_event.display_number == 1
+            ),
+            None,
         )
         present_ids = {
             child.id for child in children if child.anwesend is True

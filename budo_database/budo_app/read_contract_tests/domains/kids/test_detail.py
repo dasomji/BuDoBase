@@ -9,9 +9,14 @@ from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
 from budo_app.models import (
     ErsteHilfeEintrag,
     Geld,
+    HappyCleaning,
+    HappyCleaningAssignment,
+    HappyCleaningStation,
     Kinder,
     Notizen,
     Schwerpunkte,
+    Schwerpunktzeit,
+    SpezialFamilien,
     Turnus,
 )
 
@@ -29,8 +34,9 @@ DETAIL_FIELDS = {
     "budo_experience",
     "budo_family",
     "special_family",
-    "focus_w1",
-    "focus_w2",
+    "focus_assignments",
+    "happy_cleaning_number",
+    "happy_cleaning_assignments",
     "social_security_number",
     "illness",
     "drugs",
@@ -75,6 +81,10 @@ class KidDetailContractTests(TestCase):
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
         self.client.force_login(self.user)
+        self.special_family = SpezialFamilien.objects.create(
+            name="Biberhaus",
+            turnus=self.turnus,
+        )
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
             kid_vorname="Ada",
@@ -88,6 +98,8 @@ class KidDetailContractTests(TestCase):
             zeltwunsch="Grace",
             budo_erfahrung=True,
             budo_family="M",
+            spezial_familien=self.special_family,
+            happy_cleaning_number=42,
             sozialversicherungsnr="1234 020712",
             illness="Allergie",
             drugs="Asthmaspray",
@@ -110,13 +122,72 @@ class KidDetailContractTests(TestCase):
             anmerkung="Teamnotiz",
             pfand=2,
         )
-        for week, name in (("w1", "Theater"), ("w2", "Wald")):
-            focus_time = self.turnus.schwerpunktzeit_set.get(woche=week)
-            focus = Schwerpunkte.objects.create(
-                swp_name=name,
-                schwerpunktzeit=focus_time,
-            )
-            self.kid.schwerpunkte.add(focus)
+        self.period_w1 = self.turnus.schwerpunktzeit_set.get(woche="w1")
+        self.period_w2 = self.turnus.schwerpunktzeit_set.get(woche="w2")
+        self.period_w1.swp_beginn = date(2026, 7, 9)
+        self.period_w1.dauer = 3
+        self.period_w1.save(update_fields=["swp_beginn", "dauer"])
+        self.period_w2.swp_beginn = date(2026, 7, 2)
+        self.period_w2.dauer = 2
+        self.period_w2.save(update_fields=["swp_beginn", "dauer"])
+        self.period_empty = Schwerpunktzeit.objects.create(
+            turnus=self.turnus,
+            woche="u",
+            swp_beginn=date(2026, 7, 6),
+            dauer=1,
+        )
+        self.alpha_lower = Schwerpunkte.objects.create(
+            swp_name="alpha",
+            schwerpunktzeit=self.period_w1,
+        )
+        self.alpha_upper = Schwerpunkte.objects.create(
+            swp_name="Alpha",
+            schwerpunktzeit=self.period_w1,
+        )
+        self.wald = Schwerpunkte.objects.create(
+            swp_name="Wald",
+            schwerpunktzeit=self.period_w2,
+        )
+        self.kid.schwerpunkte.add(
+            self.alpha_lower,
+            self.alpha_upper,
+            self.wald,
+        )
+
+        self.event_station = HappyCleaning.objects.create(
+            turnus=self.turnus,
+            display_number=2,
+        )
+        self.event_excused = HappyCleaning.objects.create(
+            turnus=self.turnus,
+            display_number=1,
+        )
+        self.event_unassigned = HappyCleaning.objects.create(
+            turnus=self.turnus,
+            display_number=3,
+        )
+        self.station = HappyCleaningStation.objects.create(
+            happy_cleaning=self.event_station,
+            name="Küche <Nord>",
+            max_kids=4,
+            meeting_point="Hof",
+            position=1,
+        )
+        HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.event_station,
+            station=self.station,
+            child=self.kid,
+        )
+        HappyCleaningAssignment.objects.create(
+            happy_cleaning=self.event_excused,
+            station=None,
+            target_kind=HappyCleaningAssignment.TargetKind.EXCUSED,
+            child=self.kid,
+        )
+        self.foreign_event = HappyCleaning.objects.create(
+            turnus=self.other_turnus,
+            display_number=1,
+        )
         self.note = Notizen.objects.create(
             kinder=self.kid,
             notiz="Sonnencreme",
@@ -166,8 +237,66 @@ class KidDetailContractTests(TestCase):
         kid = response.json()["kids"][0]
         self.assertEqual(set(kid), DETAIL_FIELDS)
         self.assertEqual(kid["full_name"], "Ada Lovelace")
-        self.assertEqual(kid["focus_w1"], "Theater")
-        self.assertEqual(kid["focus_w2"], "Wald")
+        self.assertEqual(kid["special_family"], "Biberhaus")
+        self.assertNotIn("focus_w1", kid)
+        self.assertNotIn("focus_w2", kid)
+        self.assertEqual(kid["happy_cleaning_number"], 42)
+        self.assertEqual(
+            kid["focus_assignments"],
+            [
+                {
+                    "period_id": self.period_w2.id,
+                    "code": "w2",
+                    "label": "Woche 2 (2 Tage)",
+                    "focuses": [{"id": self.wald.id, "label": "Wald"}],
+                },
+                {
+                    "period_id": self.period_empty.id,
+                    "code": "u",
+                    "label": "unklar (1 Tag)",
+                    "focuses": [],
+                },
+                {
+                    "period_id": self.period_w1.id,
+                    "code": "w1",
+                    "label": "Woche 1 (3 Tage)",
+                    "focuses": [
+                        {"id": self.alpha_lower.id, "label": "alpha"},
+                        {"id": self.alpha_upper.id, "label": "Alpha"},
+                    ],
+                },
+            ],
+        )
+        self.assertEqual(
+            kid["happy_cleaning_assignments"],
+            [
+                {
+                    "event_id": self.event_excused.id,
+                    "display_number": 1,
+                    "label": "Happy Cleaning 1",
+                    "target": {"kind": "excused", "label": "Entschuldigt"},
+                },
+                {
+                    "event_id": self.event_station.id,
+                    "display_number": 2,
+                    "label": "Happy Cleaning 2",
+                    "target": {
+                        "kind": "station",
+                        "station_id": self.station.id,
+                        "label": "Küche <Nord>",
+                    },
+                },
+                {
+                    "event_id": self.event_unassigned.id,
+                    "display_number": 3,
+                    "label": "Happy Cleaning 3",
+                    "target": {
+                        "kind": "unassigned",
+                        "label": "Nicht eingeteilt",
+                    },
+                },
+            ],
+        )
         self.assertEqual(kid["social_security_number"], "1234 020712")
         self.assertEqual(kid["emergency_contacts"], "Grace +43 456")
         self.assertEqual(kid["notes"], [{
@@ -225,8 +354,105 @@ class KidDetailContractTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         kid = response.json()["kids"][0]
-        self.assertEqual(kid["focus_w1"], "Theater")
+        self.assertEqual(
+            kid.get("focus_assignments"),
+            [
+                {
+                    "period_id": self.period_w2.id,
+                    "code": "w2",
+                    "label": "Woche 2 (2 Tage)",
+                    "focuses": [{"id": self.wald.id, "label": "Wald"}],
+                },
+                {
+                    "period_id": self.period_empty.id,
+                    "code": "u",
+                    "label": "unklar (1 Tag)",
+                    "focuses": [],
+                },
+                {
+                    "period_id": self.period_w1.id,
+                    "code": "w1",
+                    "label": "Woche 1 (3 Tage)",
+                    "focuses": [
+                        {"id": self.alpha_lower.id, "label": "alpha"},
+                        {"id": self.alpha_upper.id, "label": "Alpha"},
+                    ],
+                },
+            ],
+        )
         self.assertNotContains(response, "ZZZ Fremder Schwerpunkt")
+
+    def test_foreign_station_corruption_projects_safe_unassigned_target(self):
+        foreign_station = HappyCleaningStation.objects.create(
+            happy_cleaning=self.foreign_event,
+            name="FOREIGN-STATION-PRIVATE",
+            max_kids=99,
+            meeting_point="Foreign",
+            position=1,
+        )
+        HappyCleaningAssignment.objects.filter(
+            happy_cleaning=self.event_station,
+            child=self.kid,
+        ).update(station_id=foreign_station.id)
+
+        response = self.client.get(self.contract_url(self.kid))
+
+        self.assertEqual(response.status_code, 200)
+        assignments = response.json()["kids"][0][
+            "happy_cleaning_assignments"
+        ]
+        self.assertEqual(
+            assignments,
+            [
+                {
+                    "event_id": self.event_excused.id,
+                    "display_number": 1,
+                    "label": "Happy Cleaning 1",
+                    "target": {"kind": "excused", "label": "Entschuldigt"},
+                },
+                {
+                    "event_id": self.event_station.id,
+                    "display_number": 2,
+                    "label": "Happy Cleaning 2",
+                    "target": {
+                        "kind": "unassigned",
+                        "label": "Nicht eingeteilt",
+                    },
+                },
+                {
+                    "event_id": self.event_unassigned.id,
+                    "display_number": 3,
+                    "label": "Happy Cleaning 3",
+                    "target": {
+                        "kind": "unassigned",
+                        "label": "Nicht eingeteilt",
+                    },
+                },
+            ],
+        )
+        self.assertNotIn(
+            foreign_station.id,
+            [
+                assignment["target"].get("station_id")
+                for assignment in assignments
+            ],
+        )
+        self.assertNotContains(response, "FOREIGN-STATION-PRIVATE")
+
+    def test_returns_empty_dynamic_assignments_and_a_null_cleaning_number(self):
+        self.turnus.schwerpunktzeit_set.all().delete()
+        self.turnus.happy_cleanings.all().delete()
+        self.kid.happy_cleaning_number = None
+        self.kid.save(update_fields=["happy_cleaning_number"])
+
+        response = self.client.get(self.contract_url(self.kid))
+
+        self.assertEqual(response.status_code, 200)
+        kid = response.json()["kids"][0]
+        self.assertEqual(kid.get("focus_assignments"), [])
+        self.assertEqual(kid.get("happy_cleaning_assignments"), [])
+        self.assertIn("happy_cleaning_number", kid)
+        self.assertIsNone(kid["happy_cleaning_number"])
 
 
 class KidDetailMutationContractTests(TestCase):

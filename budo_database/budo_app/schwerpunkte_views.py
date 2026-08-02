@@ -16,6 +16,7 @@ from django.views.generic.edit import CreateView, UpdateView
 
 from . import models
 from .forms import MealChoiceForm, SchwerpunktForm
+from .kid_edit_writes import versioned_child_write
 from .models import (
     Auslagerorte,
     Kinder,
@@ -356,32 +357,42 @@ def update_schwerpunkt_wahl(request):
     choice_rank = data.get('choice_rank')
 
     try:
-        kid = get_active_kid_or_404(request, kid_id)
+        get_active_kid_or_404(request, kid_id)
         schwerpunkt = safe_get_object_or_404(
             Schwerpunkte, id=swp_id, schwerpunktzeit__turnus=request.active_turnus)
         schwerpunktzeit = schwerpunkt.schwerpunktzeit
 
-        schwerpunkt_wahl, created = SchwerpunktWahl.objects.get_or_create(
-            kind=kid,
-            schwerpunktzeit=schwerpunktzeit
-        )
+        with versioned_child_write(
+            turnus_id=request.active_turnus.id,
+            child_id=kid_id,
+        ) as write:
+            write.validate_swp_focus(
+                period_id=schwerpunktzeit.id,
+                focus_id=schwerpunkt.id,
+            )
+            schwerpunkt_wahl, _created = SchwerpunktWahl.objects.get_or_create(
+                kind=write.child,
+                schwerpunktzeit=schwerpunktzeit
+            )
 
-        if choice_rank is not None:
-            if choice_rank == '1':
-                kid.schwerpunkte.remove(
-                    *kid.schwerpunkte.filter(schwerpunktzeit=schwerpunktzeit))
-                schwerpunkt_wahl.erste_wahl = schwerpunkt
-                kid.schwerpunkte.add(schwerpunkt)
-            elif choice_rank == '2':
-                schwerpunkt_wahl.zweite_wahl = schwerpunkt
-            elif choice_rank == '3':
-                schwerpunkt_wahl.dritte_wahl = schwerpunkt
-        else:
-            kid.schwerpunkte.remove(
-                *kid.schwerpunkte.filter(schwerpunktzeit=schwerpunktzeit))
-            kid.schwerpunkte.add(schwerpunkt)
+            if choice_rank is not None:
+                if choice_rank == '1':
+                    schwerpunkt_wahl.erste_wahl = schwerpunkt
+                    write.set_swp_links(
+                        period_id=schwerpunktzeit.id,
+                        focus_ids=(schwerpunkt.id,),
+                    )
+                elif choice_rank == '2':
+                    schwerpunkt_wahl.zweite_wahl = schwerpunkt
+                elif choice_rank == '3':
+                    schwerpunkt_wahl.dritte_wahl = schwerpunkt
+            else:
+                write.set_swp_links(
+                    period_id=schwerpunktzeit.id,
+                    focus_ids=(schwerpunkt.id,),
+                )
 
-        schwerpunkt_wahl.save()
+            schwerpunkt_wahl.save()
 
         return JsonResponse({'status': 'success'})
     except Exception as e:

@@ -1,6 +1,9 @@
+from contextlib import contextmanager
 from datetime import date
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -393,6 +396,7 @@ class ReportContractTests(TestCase):
 
 class BirthdayActionContractTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.turnus = Turnus.objects.create(
             turnus_nr=2,
             turnus_beginn=date(2026, 7, 1),
@@ -458,6 +462,7 @@ class BirthdayActionContractTests(TestCase):
         )
         self.kid.refresh_from_db()
         self.assertEqual(self.kid.kid_birthday, date(2012, 7, 2))
+        self.assertEqual(self.kid.edit_version, 2)
         focused = self.client.get(
             reverse(
                 "route-data-api",
@@ -473,6 +478,158 @@ class BirthdayActionContractTests(TestCase):
                     "tags": "success",
                 }
             ],
+        )
+
+    def test_canonical_same_birthday_does_not_bump(self):
+        Kinder.objects.filter(pk=self.kid.pk).update(
+            kid_birthday=date(2012, 7, 2),
+        )
+
+        response = self.post_form(
+            {"_target": "/update-birthdays-from-sv/"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.kid_birthday, date(2012, 7, 2))
+        self.assertEqual(self.kid.edit_version, 1)
+        self.assertEqual(
+            self.client.get(reverse("bootstrap-api")).json()["messages"],
+            [
+                {
+                    "text": "No birthdays needed updating.",
+                    "tags": "info",
+                }
+            ],
+        )
+
+    def test_multiple_birthday_changes_lock_by_pk_and_bump_independently(self):
+        Kinder.objects.filter(pk=self.kid.pk).update(kid_vorname="Zulu")
+        second_kid = Kinder.objects.create(
+            kid_index="T2-2",
+            kid_vorname="Alpha",
+            kid_nachname="Second",
+            kid_birthday=date(2010, 1, 1),
+            turnus=self.turnus,
+            sozialversicherungsnr="9876 030813",
+        )
+        lock_order = []
+        from budo_app.kid_edit_writes import versioned_child_write
+
+        @contextmanager
+        def recording_versioned_child_write(*, turnus_id, child_id):
+            lock_order.append(child_id)
+            with versioned_child_write(
+                turnus_id=turnus_id,
+                child_id=child_id,
+            ) as write:
+                yield write
+
+        with patch(
+            "budo_app.views.versioned_child_write",
+            new=recording_versioned_child_write,
+            create=True,
+        ):
+            response = self.post_form(
+                {"_target": "/update-birthdays-from-sv/"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.kid.refresh_from_db()
+        second_kid.refresh_from_db()
+        self.assertEqual(
+            (
+                lock_order,
+                self.kid.kid_birthday,
+                self.kid.edit_version,
+                second_kid.kid_birthday,
+                second_kid.edit_version,
+            ),
+            (
+                sorted((self.kid.pk, second_kid.pk)),
+                date(2012, 7, 2),
+                2,
+                date(2013, 8, 3),
+                2,
+            ),
+        )
+        self.assertEqual(
+            self.client.get(reverse("bootstrap-api")).json()["messages"],
+            [
+                {
+                    "text": "Successfully updated 2 birthdays from SV numbers.",
+                    "tags": "success",
+                }
+            ],
+        )
+
+    def test_second_birthday_version_failure_rolls_back_the_whole_batch(self):
+        second_kid = Kinder.objects.create(
+            kid_index="T2-2",
+            kid_vorname="Second",
+            kid_nachname="Child",
+            kid_birthday=date(2010, 1, 1),
+            turnus=self.turnus,
+            sozialversicherungsnr="9876 030813",
+        )
+        original_save = Kinder.save
+
+        def fail_second_version_save(instance, *args, **kwargs):
+            if (
+                instance.pk == second_kid.pk
+                and tuple(kwargs.get("update_fields") or ())
+                == ("edit_version",)
+            ):
+                raise RuntimeError(
+                    "synthetic second birthday version failure"
+                )
+            return original_save(instance, *args, **kwargs)
+
+        with patch.object(Kinder, "save", new=fail_second_version_save):
+            response = self.post_form(
+                {"_target": "/update-birthdays-from-sv/"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.kid.refresh_from_db()
+        second_kid.refresh_from_db()
+        self.assertEqual(
+            (
+                self.kid.kid_birthday,
+                self.kid.edit_version,
+                second_kid.kid_birthday,
+                second_kid.edit_version,
+            ),
+            (
+                date(2011, 1, 1),
+                1,
+                date(2010, 1, 1),
+                1,
+            ),
+        )
+
+    def test_birthday_narrow_save_preserves_fresher_covered_fields(self):
+        cached_response = self.client.get(reverse("kindergeburtstage"))
+        self.assertEqual(cached_response.status_code, 200)
+        Kinder.objects.filter(pk=self.kid.pk).update(kid_nachname="Fresh")
+
+        response = self.post_form(
+            {"_target": "/update-birthdays-from-sv/"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.kid.refresh_from_db()
+        self.assertEqual(
+            (
+                self.kid.kid_nachname,
+                self.kid.kid_birthday,
+                self.kid.edit_version,
+            ),
+            (
+                "Fresh",
+                date(2012, 7, 2),
+                2,
+            ),
         )
 
     def test_birthday_actions_reject_missing_csrf_and_cross_turnus_kids(self):
@@ -514,6 +671,7 @@ class BirthdayActionContractTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.kid.refresh_from_db()
         self.assertEqual(self.kid.kid_birthday, date(2011, 1, 1))
+        self.assertEqual(self.kid.edit_version, 1)
         self.assertEqual(
             self.client.get(reverse("bootstrap-api")).json()["messages"],
             [

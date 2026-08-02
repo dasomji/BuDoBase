@@ -88,10 +88,7 @@ class AuditServiceTests(TransactionTestCase):
         with self.assertRaises(ValidationError):
             AuditEvent.objects.filter(pk=event.pk).delete()
 
-        model_admin = admin.site._registry[AuditEvent]
-        self.assertFalse(model_admin.has_add_permission(None))
-        self.assertFalse(model_admin.has_change_permission(None, event))
-        self.assertFalse(model_admin.has_delete_permission(None, event))
+        self.assertNotIn(AuditEvent, admin.site._registry)
 
         actor_label = "Audit Teamer"
         self.user.delete()
@@ -134,6 +131,8 @@ class AuditHttpTests(TestCase):
             turnus_beginn=date(2026, 8, 1),
         )
         self.user = User.objects.create_user(username="reader", password="secret")
+        self.user.is_staff = True
+        self.user.save(update_fields=["is_staff"])
         self.user.profil.turnus = self.turnus
         self.user.profil.save(update_fields=["turnus"])
         self.client.force_login(self.user)
@@ -173,8 +172,7 @@ class AuditHttpTests(TestCase):
 
     def test_read_requires_permission_and_never_leaks_another_turnus(self):
         denied = self._route()
-        self.assertEqual(denied.status_code, 200)
-        self.assertEqual(denied.json(), {"authorized": False, "events": []})
+        self.assertEqual(denied.status_code, 403)
 
         self.user.user_permissions.add(Permission.objects.get(codename="view_auditevent"))
         response = self._route("?actor=Ada&action=happy_cleaning.event.create&page=1&page_size=1")
@@ -190,6 +188,7 @@ class AuditHttpTests(TestCase):
             "pages": 1,
             "has_previous": False,
             "has_next": False,
+            "snapshot_id": self.own.id,
         })
         self.assertNotIn("Other Reader", response.content.decode())
 
@@ -204,11 +203,7 @@ class AuditHttpTests(TestCase):
         self.assertEqual(own_response.json()["filter_options"]["turnuses"], [
             {"id": self.turnus.id, "label": "T2-2026"},
         ])
-        self.assertEqual(other_response.json()["events"], [])
-        self.assertIn(
-            f"turnus={self.other_turnus.id}",
-            other_response.json()["export_url"],
-        )
+        self.assertEqual(other_response.status_code, 404)
         self.assertNotIn("Other Reader", other_response.content.decode())
 
     def test_superuser_can_select_a_turnus_and_defaults_only_to_their_active_turnus(self):
@@ -266,8 +261,11 @@ class AuditHttpTests(TestCase):
         self.assertEqual(lines[0], {
             "record_type": "header",
             "schema": "budo.audit",
-            "version": 1,
+            "version": 2,
+            "classification": "sensitive-personal-data",
+            "payload_policy": "full-authorized",
             "turnus": {"id": self.turnus.id, "label": "T2-2026"},
+            "snapshot_id": self.own.id,
         })
         self.assertEqual([line["id"] for line in lines[1:]], [self.own.id])
         export_event = AuditEvent.objects.get(action="audit.export")

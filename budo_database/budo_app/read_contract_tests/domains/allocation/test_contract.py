@@ -1,10 +1,12 @@
 import json
 from datetime import date
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from budo_app import schwerpunkte_views
 from budo_app.models import (
     Kinder,
     Schwerpunkte,
@@ -116,6 +118,19 @@ class AllocationContractTests(TestCase):
 
     def contract_url(self, week):
         return f'{reverse("route-data-api", kwargs={"contract_key": "allocation"})}?week={week}'
+
+    def post_swp_selection(self, *, kid_id, focus_id, choice_rank):
+        return self.client.post(
+            reverse("update_schwerpunkt_wahl"),
+            json.dumps(
+                {
+                    "kid_id": kid_id,
+                    "swp_id": focus_id,
+                    "choice_rank": choice_rank,
+                }
+            ),
+            content_type="application/json",
+        )
 
     def test_selected_week_contract_is_active_turnus_only_and_privacy_focused(self):
         response = self.client.get(self.contract_url(2))
@@ -268,16 +283,10 @@ class AllocationContractTests(TestCase):
             schwerpunktzeit=self.week_2,
         )
 
-        choice_response = self.client.post(
-            reverse("update_schwerpunkt_wahl"),
-            json.dumps(
-                {
-                    "kid_id": self.kid.id,
-                    "swp_id": climbing.id,
-                    "choice_rank": "1",
-                }
-            ),
-            content_type="application/json",
+        choice_response = self.post_swp_selection(
+            kid_id=self.kid.id,
+            focus_id=climbing.id,
+            choice_rank="1",
         )
         friends_response = self.client.post(
             reverse("update_freunde"),
@@ -313,6 +322,195 @@ class AllocationContractTests(TestCase):
         )
         self.assertEqual(focuses["Klettern"]["kid_ids"], [self.kid.id])
         self.assertEqual(focuses["See"]["kid_ids"], [])
+
+    def test_changed_current_selection_bumps_once_and_preserves_other_links(self):
+        alternative = Schwerpunkte.objects.create(
+            swp_name="Klettern",
+            schwerpunktzeit=self.week_2,
+        )
+
+        response = self.post_swp_selection(
+            kid_id=self.kid.id,
+            focus_id=alternative.id,
+            choice_rank="1",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "success"})
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.edit_version, 2)
+        self.assertEqual(
+            set(self.kid.schwerpunkte.values_list("id", flat=True)),
+            {self.forest.id, alternative.id, self.other_focus.id},
+        )
+
+    def test_identical_selection_keeps_the_link_row_and_version(self):
+        through = Kinder.schwerpunkte.through
+        original_link_id = through.objects.get(
+            kinder_id=self.kid.id,
+            schwerpunkte_id=self.lake.id,
+        ).id
+
+        response = self.post_swp_selection(
+            kid_id=self.kid.id,
+            focus_id=self.lake.id,
+            choice_rank=None,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "success"})
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.edit_version, 1)
+        self.assertEqual(
+            through.objects.get(
+                kinder_id=self.kid.id,
+                schwerpunkte_id=self.lake.id,
+            ).id,
+            original_link_id,
+        )
+
+    def test_rank_only_change_without_m2m_change_does_not_bump(self):
+        alternative = Schwerpunkte.objects.create(
+            swp_name="Klettern",
+            schwerpunktzeit=self.week_2,
+        )
+        original_focus_ids = set(
+            self.kid.schwerpunkte.values_list("id", flat=True)
+        )
+
+        response = self.post_swp_selection(
+            kid_id=self.kid.id,
+            focus_id=alternative.id,
+            choice_rank="2",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "success"})
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.edit_version, 1)
+        self.assertEqual(
+            set(self.kid.schwerpunkte.values_list("id", flat=True)),
+            original_focus_ids,
+        )
+        self.assertEqual(
+            SchwerpunktWahl.objects.get(
+                kind=self.kid,
+                schwerpunktzeit=self.week_2,
+            ).zweite_wahl_id,
+            alternative.id,
+        )
+
+    def test_rank_only_choice_rejects_focus_moved_before_locked_snapshot(self):
+        alternative = Schwerpunkte.objects.create(
+            swp_name="Klettern",
+            schwerpunktzeit=self.week_2,
+        )
+        original_second_choice_id = SchwerpunktWahl.objects.get(
+            kind=self.kid,
+            schwerpunktzeit=self.week_2,
+        ).zweite_wahl_id
+        real_versioned_child_write = (
+            schwerpunkte_views.versioned_child_write
+        )
+
+        def move_focus_before_snapshot(*, turnus_id, child_id):
+            updated = Schwerpunkte.objects.filter(pk=alternative.id).update(
+                schwerpunktzeit=self.week_1,
+            )
+            self.assertEqual(updated, 1)
+            return real_versioned_child_write(
+                turnus_id=turnus_id,
+                child_id=child_id,
+            )
+
+        with patch.object(
+            schwerpunkte_views,
+            "versioned_child_write",
+            side_effect=move_focus_before_snapshot,
+        ):
+            response = self.post_swp_selection(
+                kid_id=self.kid.id,
+                focus_id=alternative.id,
+                choice_rank="2",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "error")
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.edit_version, 1)
+        self.assertEqual(
+            SchwerpunktWahl.objects.get(
+                kind=self.kid,
+                schwerpunktzeit=self.week_2,
+            ).zweite_wahl_id,
+            original_second_choice_id,
+        )
+
+    def test_unavailable_child_or_focus_does_not_mutate_or_bump(self):
+        original_focus_ids = set(
+            self.kid.schwerpunkte.values_list("id", flat=True)
+        )
+        original_foreign_focus_ids = set(
+            self.other_kid.schwerpunkte.values_list("id", flat=True)
+        )
+
+        attempts = (
+            (self.kid.id, self.other_focus.id),
+            (self.other_kid.id, self.lake.id),
+            (999_991, self.lake.id),
+            (self.kid.id, 999_992),
+        )
+        for kid_id, focus_id in attempts:
+            with self.subTest(kid_id=kid_id, focus_id=focus_id):
+                response = self.post_swp_selection(
+                    kid_id=kid_id,
+                    focus_id=focus_id,
+                    choice_rank=None,
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["status"], "error")
+
+        self.kid.refresh_from_db()
+        self.other_kid.refresh_from_db()
+        self.assertEqual(self.kid.edit_version, 1)
+        self.assertEqual(self.other_kid.edit_version, 1)
+        self.assertEqual(
+            set(self.kid.schwerpunkte.values_list("id", flat=True)),
+            original_focus_ids,
+        )
+        self.assertEqual(
+            set(self.other_kid.schwerpunkte.values_list("id", flat=True)),
+            original_foreign_focus_ids,
+        )
+
+    def test_choice_persistence_failure_rolls_back_link_and_version(self):
+        alternative = Schwerpunkte.objects.create(
+            swp_name="Klettern",
+            schwerpunktzeit=self.week_2,
+        )
+        original_focus_ids = set(
+            self.kid.schwerpunkte.values_list("id", flat=True)
+        )
+
+        with patch.object(
+            SchwerpunktWahl,
+            "save",
+            side_effect=RuntimeError("synthetic choice persistence failure"),
+        ):
+            response = self.post_swp_selection(
+                kid_id=self.kid.id,
+                focus_id=alternative.id,
+                choice_rank="1",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "error")
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.edit_version, 1)
+        self.assertEqual(
+            set(self.kid.schwerpunkte.values_list("id", flat=True)),
+            original_focus_ids,
+        )
 
     def test_existing_json_mutations_cannot_change_cross_turnus_records(self):
         original_focus_ids = set(self.kid.schwerpunkte.values_list("id", flat=True))

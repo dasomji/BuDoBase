@@ -4,6 +4,7 @@ import { PlusIcon, Printer } from 'lucide-react';
 
 import {
   Card,
+  ConfirmationDialog,
   Table,
   TableBody,
   TableCell,
@@ -44,46 +45,35 @@ const errorMessage = error => {
 
 function DeleteConfirmationDialog({ event, onCancel, onConfirm }) {
   const [confirmation, setConfirmation] = useState('');
+  const confirmationRef = useRef(null);
   const eventName = `Happy Cleaning ${event.display_number}`;
-  const titleId = `happy-cleaning-delete-title-${event.id}`;
   const confirmationId = `happy-cleaning-delete-confirmation-${event.id}`;
   const confirmed = confirmation === eventName;
   return (
-    <div className="fixed inset-0 z-[var(--z-modal)] grid place-items-center bg-black/45 p-6">
-      <section
-        className="card w-full max-w-[30rem] bg-surface-solid p-6"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onKeyDown={key => { if (key.key === 'Escape') onCancel(); }}
-      >
-        <h2 id={titleId}>{eventName} löschen</h2>
-        <p>Diese Aktion kann nicht rückgängig gemacht werden.</p>
-        <label className="mt-4 mb-1 block font-medium" htmlFor={confirmationId}>
-          „{eventName}“ zur Bestätigung eingeben
-        </label>
-        <Input
-          id={confirmationId}
-          autoComplete="off"
-          autoFocus
-          spellCheck="false"
-          value={confirmation}
-          onChange={change => setConfirmation(change.target.value)}
-        />
-        <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <Button variant="secondary" type="button" onClick={onCancel}>Abbrechen</Button>
-          <Button
-            variant="destructive"
-            type="button"
-            disabled={!confirmed}
-            aria-label={`${eventName} endgültig löschen`}
-            onClick={onConfirm}
-          >
-            Endgültig löschen
-          </Button>
-        </div>
-      </section>
-    </div>
+    <ConfirmationDialog
+      open
+      title={`${eventName} löschen`}
+      confirmLabel="Endgültig löschen"
+      confirmAriaLabel={`${eventName} endgültig löschen`}
+      cancelLabel="Abbrechen"
+      onConfirm={confirmed ? onConfirm : null}
+      onCancel={onCancel}
+      destructive
+      initialFocusRef={confirmationRef}
+    >
+      <p>Diese Aktion kann nicht rückgängig gemacht werden.</p>
+      <label className="mt-4 mb-1 block font-medium" htmlFor={confirmationId}>
+        „{eventName}“ zur Bestätigung eingeben
+      </label>
+      <Input
+        id={confirmationId}
+        ref={confirmationRef}
+        autoComplete="off"
+        spellCheck="false"
+        value={confirmation}
+        onChange={change => setConfirmation(change.target.value)}
+      />
+    </ConfirmationDialog>
   );
 }
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { Card, Column, DataTable, FieldList, findById, ResponsiveCardGrid, RestForm } from '../components';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -125,6 +126,20 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
   const showError = useErrorToast();
   const kid = findById(data.kids, id);
   if (!kid) return <NotFoundPage />;
+  const focusItems = kid.focus_assignments?.length
+    ? kid.focus_assignments.map(period => [
+      period.label,
+      period.focuses.length
+        ? period.focuses.map(focus => focus.label).join(', ')
+        : '---',
+    ])
+    : [['Schwerpunkte', '---']];
+  const happyCleaningItems = kid.happy_cleaning_assignments?.length
+    ? kid.happy_cleaning_assignments.map(assignment => [
+      assignment.label,
+      assignment.target.label,
+    ])
+    : [['Happy Cleaning', '---']];
   const deposit = async action => {
     try {
       await mutate('/update_pfand/', { id: kid.id, action });
@@ -137,7 +152,7 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
       <ResponsiveCardGrid independentColumns>
         <Column id="left-column" className="min-w-0 gap-4">
           <Card title={`${kid.full_name}${kid.present ? '' : ' ❌'}`} id="kinderinfos"><FieldList items={[["Geschlecht", kid.sex], ["Alter", kid.age], ["Geburtstag", formatKidBirthday(kid)], ["Aufenthaltsdauer", `${kid.weeks}-wöchig`], ["Geschwister", kid.siblings], ["Zeltwunsch", kid.tent_request], ["War schon mal im Bunten Dorf", yesNo(kid.budo_experience)]]} /></Card>
-          <Card title="BuDo" id="budo-container" actions={<Button href={`/${kid.present ? 'check_out' : 'check_in'}/${kid.id}`}>{kid.present ? 'Auschecken' : 'Einchecken'}</Button>}><FieldList items={[["Turnus", data.turnus?.label], ["Budo Familie", kid.budo_family], ["Haus", kid.special_family], ["SWP 1", kid.focus_w1], ["SWP 2", kid.focus_w2]]} /></Card>
+          <Card title="BuDo" id="budo-container" actions={<Button href={`/${kid.present ? 'check_out' : 'check_in'}/${kid.id}`}>{kid.present ? 'Auschecken' : 'Einchecken'}</Button>}><FieldList items={[["Turnus", data.turnus?.label], ["Budo Familie", kid.budo_family], ["Haus", kid.special_family], ...focusItems, ["Happy Cleaning Nummer", displayOrPlaceholder(kid.happy_cleaning_number)], ...happyCleaningItems]} /></Card>
         </Column>
         <Column id="center-column" className="min-w-0 gap-4">
           <Card title="Gesundheitsinfos" id="health_info"><FieldList items={[["Sozialversicherungsnummer", kid.social_security_number], ["Krankheiten", displayOrPlaceholder(kid.illness)], ["Medikamente", displayOrPlaceholder(kid.drugs)], ["Vegetarisch", kid.vegetarian], ["Ernährungsvorgaben", kid.special_food], ["Schwimmkenntnisse", kid.swimmer], ["Einverständnis für ärztliche Behandlung", requiredHealthYesNo(kid.consent)], ["Rezeptfreie Medikamente", requiredHealthValue(kid.over_the_counter_medication)], ["Medikamente auf Rezept", requiredHealthValue(kid.prescription_medication)], ["Tetanusimpfung", requiredHealthValue(kid.tetanus)], ["Zeckenimpfung", requiredHealthValue(kid.tick_vaccine)]]} /></Card>
@@ -175,6 +190,17 @@ export const kidRoutes = [
     resolveHeaderTitle: (route, data, title) => data.permissions?.change_kids
       ? <a href={`/admin/budo_app/kinder/${route.id}/change/`}>{title}</a>
       : title,
+    headerAction: (_data, { route }) => (
+      <Button
+        className="mobile-icon-action"
+        size="responsive-icon"
+        href={`/kid_details/${route.id}/edit`}
+        aria-label="Bearbeiten"
+      >
+        <span className="desktop-action-label">Bearbeiten</span>
+        <Pencil className="mobile-action-label" aria-hidden="true" />
+      </Button>
+    ),
     render: ({ route, data, mutate, refresh }) => <KidDetailPage data={data} id={route.id} mutate={mutate} onSaved={refresh} />,
   },
 ];

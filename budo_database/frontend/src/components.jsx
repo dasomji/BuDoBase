@@ -258,6 +258,63 @@ export function Columns({ children, className = '' }) {
   return <main className={className} id="body-container">{children}</main>;
 }
 
+export function ConfirmationDialog({
+  open,
+  title,
+  confirmLabel,
+  confirmAriaLabel,
+  cancelLabel,
+  onConfirm,
+  onCancel,
+  destructive = false,
+  initialFocusRef,
+  role = 'dialog',
+  children,
+}) {
+  const titleId = useId();
+  const cancelRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    (initialFocusRef?.current || cancelRef.current)?.focus();
+    const cancelOnEscape = event => {
+      if (event.key === 'Escape') onCancel();
+    };
+    document.addEventListener('keydown', cancelOnEscape);
+    return () => document.removeEventListener('keydown', cancelOnEscape);
+  }, [initialFocusRef, onCancel, open]);
+
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[var(--z-modal)] grid place-items-center bg-black/45 p-6"
+      onClick={event => { if (event.target === event.currentTarget) onCancel(); }}
+    >
+      <section
+        className="card w-full max-w-[30rem] bg-surface-solid p-6"
+        role={role}
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <h2 id={titleId}>{title}</h2>
+        {children}
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <Button ref={cancelRef} type="button" variant="secondary" onClick={onCancel}>{cancelLabel}</Button>
+          <Button
+            type="button"
+            variant={destructive ? 'destructive' : 'default'}
+            disabled={!onConfirm}
+            aria-label={confirmAriaLabel}
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </Button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 const responsiveCardMinWidthRem = 20;
 const responsiveCardGapRem = 1;
 

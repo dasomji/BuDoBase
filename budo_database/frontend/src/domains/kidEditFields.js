@@ -1,0 +1,51 @@
+export const KID_EDIT_SECTIONS = [
+  {
+    key: 'general',
+    title: 'Allgemein',
+    fields: [
+      { name: 'first_name', label: 'Vorname', kind: 'text' },
+      { name: 'last_name', label: 'Nachname', kind: 'text' },
+      { name: 'sex', label: 'Geschlecht', kind: 'select' },
+      { name: 'birthday', label: 'Geburtstag', kind: 'date' },
+      { name: 'stay_weeks', label: 'Aufenthaltsdauer', kind: 'select' },
+      { name: 'siblings', label: 'Geschwister', kind: 'text' },
+      { name: 'tent_request', label: 'Zeltwunsch', kind: 'text' },
+      { name: 'budo_experience', label: 'BuDo-Erfahrung', kind: 'select' },
+    ],
+  },
+  {
+    key: 'health',
+    title: 'Gesundheitsinfos',
+    fields: [
+      { name: 'social_security_number', label: 'Sozialversicherungsnummer', kind: 'text' },
+      { name: 'illness', label: 'Krankheiten und Besonderheiten', kind: 'textarea' },
+      { name: 'drugs', label: 'Medikamente', kind: 'textarea' },
+      { name: 'vegetarian', label: 'Vegetarisch', kind: 'select' },
+      { name: 'special_food', label: 'Besondere Ernährung', kind: 'textarea' },
+      { name: 'swimmer', label: 'Schwimmkenntnisse', kind: 'text' },
+      { name: 'consent', label: 'Einverständniserklärung', kind: 'select' },
+      { name: 'over_the_counter_medication', label: 'Rezeptfreie Medikamente', kind: 'textarea' },
+      { name: 'prescription_medication', label: 'Rezeptpflichtige Medikamente', kind: 'textarea' },
+      { name: 'tetanus', label: 'Tetanusimpfung', kind: 'text' },
+      { name: 'tick_vaccine', label: 'Zeckenimpfung', kind: 'text' },
+    ],
+  },
+  {
+    key: 'family',
+    title: 'Familie',
+    fields: [
+      { name: 'organization', label: 'Organisation', kind: 'text' },
+      { name: 'registrant_first_name', label: 'Vorname der anmeldenden Person', kind: 'text' },
+      { name: 'registrant_last_name', label: 'Nachname der anmeldenden Person', kind: 'text' },
+      { name: 'registrant_email', label: 'E-Mail der anmeldenden Person', kind: 'email' },
+      { name: 'registrant_phone', label: 'Mobilnummer der anmeldenden Person', kind: 'tel' },
+      { name: 'insured_with', label: 'Hauptversichert bei', kind: 'text' },
+      { name: 'emergency_contacts', label: 'Notfallkontakte', kind: 'textarea' },
+    ],
+  },
+  {
+    key: 'budo',
+    title: 'BuDo',
+    fields: [{ name: 'budo_family', label: 'BuDo-Familie', kind: 'select' }],
+  },
+];

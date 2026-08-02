@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from django.contrib.auth.models import AbstractBaseUser
+from rest_framework.exceptions import APIException
 
 from budo_app.audit import AuditEventData, actor_label_for_user, record_audit_event
 from budo_app.audit_queries import (
@@ -17,6 +18,12 @@ from budo_app.models import AuditEvent
 
 class AuditExportTurnusNotFound(LookupError):
     pass
+
+
+class AuditExportIssuanceUnavailable(APIException):
+    status_code = 503
+    default_detail = "Audit export is temporarily unavailable."
+    default_code = "audit_export_unavailable"
 
 
 @dataclass(frozen=True)
@@ -63,16 +70,17 @@ def export_audit_events(command):
         .order_by("-id")
         .values_list("id", flat=True)
         .first()
+        or 0
     )
     queryset = filtered_audit_events(command.filters, turnus.id)
-    if snapshot_id is None:
+    if snapshot_id == 0:
         queryset = queryset.none()
     else:
         queryset = queryset.filter(id__lte=snapshot_id)
     queryset = queryset.select_related("turnus").order_by("occurred_at", "id")
     result_count = queryset.count()
 
-    record_audit_event(AuditEventData(
+    issuance = AuditEventData(
         turnus=turnus,
         actor_id=command.user.id,
         actor_label=actor_label_for_user(command.user),
@@ -90,13 +98,20 @@ def export_audit_events(command):
                 bool(value) for value in command.filters.as_query_dict().values()
             ),
         },
-    ))
+    )
+    try:
+        record_audit_event(issuance)
+    except Exception as error:
+        raise AuditExportIssuanceUnavailable from error
 
     header = {
         "record_type": "header",
         "schema": "budo.audit",
-        "version": 1,
+        "version": 2,
+        "classification": "sensitive-personal-data",
+        "payload_policy": "full-authorized",
         "turnus": {"id": turnus.id, "label": str(turnus)},
+        "snapshot_id": snapshot_id,
     }
     return AuditExportResult(
         lines=_stream_records(header, queryset),

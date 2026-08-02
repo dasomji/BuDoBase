@@ -198,6 +198,22 @@ def parse_postal_code(value):
     raise ValueError(f"Invalid postal code '{value_text}'")
 
 
+def save_new_import_child(kid):
+    if (
+        kid.pk is not None
+        or models.Kinder.objects.filter(
+            turnus_id=kid.turnus_id,
+            kid_index=kid.kid_index,
+        ).exists()
+    ):
+        raise ValueError(
+            "Existing Kinder rows cannot be updated by Excel import"
+        )
+
+    kid.save(force_insert=True)
+    return kid
+
+
 def assign_budo_families(kids, turnus):
     kids_with_age = []
     for kid in kids:
@@ -368,7 +384,7 @@ def process_excel(turnus=None):
                     swimmer=decode_html_entities(budo["Schwimmkenntnisse"][i]),
                 )
 
-                kid.save()
+                save_new_import_child(kid)
                 processed_kids.append(kid)
 
             except Exception as e:
