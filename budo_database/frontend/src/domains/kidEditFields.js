@@ -39,7 +39,7 @@ export const KID_EDIT_SECTIONS = [
       { name: 'registrant_last_name', label: 'Nachname der anmeldenden Person', kind: 'text' },
       { name: 'registrant_email', label: 'E-Mail der anmeldenden Person', kind: 'email' },
       { name: 'registrant_phone', label: 'Mobilnummer der anmeldenden Person', kind: 'tel' },
-      { name: 'insured_with', label: 'Hauptversichert bei', kind: 'text' },
+      { name: 'insured_with', label: 'Hauptversichert bei', kind: 'textarea' },
       { name: 'emergency_contacts', label: 'Notfallkontakte', kind: 'textarea' },
     ],
   },

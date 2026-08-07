@@ -265,7 +265,8 @@ describe('kid edit route and rendered form', () => {
 
     const requiredControls = controls.filter(control => control.required);
     expect(requiredControls.map(control => control.name)).toEqual(['first_name', 'last_name']);
-    expect(screen.getByText(/\* kennzeichnet Pflichtfelder/)).toBeInTheDocument();
+    expect(screen.queryByText(/\* kennzeichnet Pflichtfelder/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Hauptversichert bei').tagName).toBe('TEXTAREA');
     expect(form).not.toHaveTextContent('❗');
 
     const budo = screen.getByRole('heading', { name: 'BuDo' }).closest('.card');
@@ -285,8 +286,10 @@ describe('kid edit route and rendered form', () => {
     expect(toggles.every(toggle => toggle.getAttribute('aria-expanded') === 'true')).toBe(true);
 
     const actions = within(form).getByRole('region', { name: 'Bearbeitungsaktionen' });
+    expect(actions).toHaveClass('mx-auto', 'w-fit', 'justify-center');
+    expect(actions).not.toHaveClass('bg-background/95', 'border-t', 'border-border');
     expect(within(actions).getByRole('button', { name: 'Abbrechen' })).toBeEnabled();
-    expect(within(actions).getByRole('button', { name: 'Alle Änderungen speichern' })).toBeEnabled();
+    expect(within(actions).getByRole('button', { name: 'Alle Änderungen speichern' })).toBeDisabled();
     expect(form.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_CONTAINED_BY).toBeTruthy();
     expect(form.lastElementChild).toBe(actions);
   });
@@ -305,6 +308,8 @@ describe('kid edit route and rendered form', () => {
     }));
     renderEdit({ mutate });
 
+    await user.clear(screen.getByRole('textbox', { name: /^Vorname(?: \*)?$/ }));
+    await user.type(screen.getByRole('textbox', { name: /^Vorname(?: \*)?$/ }), 'Grace');
     await user.click(screen.getByRole('button', { name: 'Allgemein schließen' }));
     await user.click(screen.getByRole('button', { name: 'Gesundheitsinfos schließen' }));
     await user.click(screen.getByRole('button', { name: 'Alle Änderungen speichern' }));
@@ -387,6 +392,9 @@ describe('kid edit route and rendered form', () => {
     });
     renderEdit({ mutate, navigate });
 
+    const firstName = screen.getByRole('textbox', { name: /^Vorname(?: \*)?$/ });
+    await user.clear(firstName);
+    await user.type(firstName, 'Grace');
     await user.click(screen.getByRole('button', { name: 'Alle Änderungen speichern' }));
 
     await waitFor(() => expect(mutate).toHaveBeenCalledOnce());
@@ -423,6 +431,7 @@ describe('kid edit route and rendered form', () => {
 
     expect(screen.queryByText('❗')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'E-Mail der anmeldenden Person' })).toHaveValue('legacy-invalid@');
+    await user.type(screen.getByRole('textbox', { name: 'Organisation' }), ' geändert');
     await user.click(screen.getByRole('button', { name: 'Alle Änderungen speichern' }));
 
     const notifications = screen.getByRole('region', { name: 'Benachrichtigungen' });
