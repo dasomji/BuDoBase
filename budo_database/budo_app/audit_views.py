@@ -5,15 +5,9 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404, StreamingHttpResponse
 from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 
-from budo_app.audit import (
-    AuditEventData,
-    actor_label_for_user,
-    client_ip_from_request,
-    record_audit_event,
-)
+from budo_app.audit import client_ip_from_request
 from budo_app.audit_policy import (
     AuditDetailIsAuthenticated,
     AuditExportIsAuthenticated,
@@ -33,12 +27,6 @@ from budo_app.audit_queries import (
 )
 from budo_app.models import AuditEvent
 from budo_app.react_views import render_react_page
-
-
-class AuditDetailUnavailable(APIException):
-    status_code = 503
-    default_detail = "Audit detail is temporarily unavailable."
-    default_code = "audit_detail_unavailable"
 
 
 @login_required
@@ -88,36 +76,7 @@ def audit_event_detail(request, event_id):
         )
         raise Http404
 
-    payload = serialize_audit_event(event)
-    access = AuditEventData(
-        turnus=turnus,
-        actor_id=user.id,
-        actor_label=actor_label_for_user(user),
-        action="audit.view",
-        outcome="success",
-        resource_type="audit_event",
-        resource_id=str(event.id),
-        resource_label=f"Audit event {event.id}",
-        request_id=(
-            request.META.get("HTTP_X_REQUEST_ID", "").strip()
-            or str(uuid.uuid4())
-        ),
-        client_ip=client_ip_from_request(request),
-        user_agent=request.META.get("HTTP_USER_AGENT", ""),
-        details={
-            "view_kind": "detail",
-            "result_count": 1,
-            "filter_count": 0,
-            "audit_event_id": event.id,
-            "snapshot_id": event.id,
-            "sensitive_payload_count": 1 if event.action == "kid.edit" else 0,
-        },
-    )
-    try:
-        record_audit_event(access)
-    except Exception as error:
-        raise AuditDetailUnavailable from error
-    return Response(payload)
+    return Response(serialize_audit_event(event))
 
 
 @api_view(["GET"])

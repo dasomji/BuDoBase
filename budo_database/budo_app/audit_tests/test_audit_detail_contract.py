@@ -6,7 +6,7 @@ from unittest import mock
 
 from django.contrib.auth.models import Permission, User
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError, connection
+from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import Resolver404, resolve
@@ -159,7 +159,7 @@ class AuditDetailHttpTests(TestCase):
             ],
         })
 
-    def test_get_loads_one_complete_row_and_records_exact_sensitive_access(self):
+    def test_get_loads_one_complete_row_without_recording_a_view(self):
         target_details = valid_details()
         target = self.event(
             action="kid.edit", details=target_details,
@@ -186,32 +186,20 @@ class AuditDetailHttpTests(TestCase):
         self.assertNotIn("ADJACENT-SECRET", response.content.decode())
         serializer.assert_called_once()
         self.assertEqual(serializer.call_args.args[0].id, target.id)
-        access = AuditEvent.objects.get(action="audit.view")
-        self.assertGreater(access.id, target.id)
-        self.assertEqual(access.turnus_id, self.turnus.id)
-        self.assertEqual(access.resource_type, "audit_event")
-        self.assertEqual(access.resource_id, str(target.id))
-        self.assertEqual(access.request_id, "detail-access")
-        self.assertEqual(access.client_ip, "192.0.2.44")
-        self.assertEqual(access.user_agent, "Audit Detail/1.0")
-        self.assertEqual(access.details, {
-            "view_kind": "detail", "result_count": 1, "filter_count": 0,
-            "audit_event_id": target.id, "snapshot_id": target.id,
-            "sensitive_payload_count": 1,
-        })
+        self.assertFalse(AuditEvent.objects.filter(action="audit.view").exists())
         self.assert_privacy_headers(response)
 
-    def test_legacy_detail_records_zero_sensitive_payloads(self):
+    def test_legacy_detail_does_not_record_an_audit_view(self):
         target = self.event(
             details={"station_name": "Complete legacy value"},
             request_id="legacy-target",
         )
+        before = AuditEvent.objects.count()
         response = self.client.get(self.url(target.id))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["details"], target.details)
-        access = AuditEvent.objects.get(action="audit.view")
-        self.assertEqual(access.details["sensitive_payload_count"], 0)
-        self.assertEqual(access.details["audit_event_id"], target.id)
+        self.assertEqual(AuditEvent.objects.count(), before)
+        self.assertFalse(AuditEvent.objects.filter(action="audit.view").exists())
         self.assert_privacy_headers(response)
 
     def test_anonymous_and_forbidden_are_logged_before_lookup_or_serialization(self):
@@ -298,31 +286,9 @@ class AuditDetailHttpTests(TestCase):
         self.assertEqual(implicit.status_code, 404)
         self.assertEqual(explicit.status_code, 200)
         self.assertEqual(explicit.json()["id"], foreign.id)
-        access = AuditEvent.objects.get(action="audit.view")
-        self.assertEqual(access.turnus_id, self.other_turnus.id)
+        self.assertFalse(AuditEvent.objects.filter(action="audit.view").exists())
         self.assert_privacy_headers(implicit)
         self.assert_privacy_headers(explicit)
-
-    def test_access_insert_exceptions_fail_closed_without_detail_payload(self):
-        target = self.event(
-            details={"station_name": "MUST-NOT-LEAK"}, request_id="failure",
-        )
-        self.client.raise_request_exception = False
-        for error in (
-            ValidationError("insert failed"), DatabaseError("insert failed"),
-            RuntimeError("SECRET-INSERT-ERROR"),
-        ):
-            with self.subTest(error=type(error).__name__), mock.patch.object(
-                audit_views, "record_audit_event", create=True, side_effect=error,
-            ):
-                response = self.client.get(self.url(target.id))
-                self.assertEqual(response.status_code, 503)
-                self.assertNotIn("details", response.json())
-                rendered = response.content.decode()
-                self.assertNotIn("MUST-NOT-LEAK", rendered)
-                self.assertNotIn("SECRET-INSERT-ERROR", rendered)
-                self.assert_privacy_headers(response)
-
 
 class AuditViewDetailSchemaTests(TestCase):
     def setUp(self):

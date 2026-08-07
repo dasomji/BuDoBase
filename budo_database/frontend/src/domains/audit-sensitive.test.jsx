@@ -132,13 +132,6 @@ const jsonResponse = payload => ({
   json: vi.fn().mockResolvedValue(payload),
 });
 
-function acceptRevealWarning() {
-  const warning = screen.getByRole('alertdialog');
-  fireEvent.click(within(warning).getByRole('button', {
-    name: /laden|anzeigen|fortfahren/i,
-  }));
-}
-
 describe('sensitive audit reveal', () => {
   afterEach(() => {
     cleanup();
@@ -150,7 +143,7 @@ describe('sensitive audit reveal', () => {
     sessionStorage.clear();
   });
 
-  it('warns once per mounted session, then fetches and renders only one structured event', async () => {
+  it('loads and renders structured details for every updated form by default', async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(jsonResponse(detail(9)))
       .mockResolvedValueOnce(jsonResponse(detail(10, {
@@ -170,34 +163,21 @@ describe('sensitive audit reveal', () => {
     render(<AuditPage data={data} fetchImpl={fetchImpl} />);
 
     const firstRow = screen.getByText('Kind #29').closest('tr');
-    fireEvent.click(within(firstRow).getByRole('button', { name: 'Sensible Details anzeigen' }));
-
-    const warning = screen.getByRole('alertdialog');
-    expect(warning).toHaveAccessibleName();
-    expect(warning).toHaveTextContent(/Gesundheit/i);
-    expect(warning).toHaveTextContent(/Sozialversicherung/i);
-    expect(fetchImpl).not.toHaveBeenCalled();
-    fireEvent.click(within(warning).getByRole('button', { name: /laden|anzeigen|fortfahren/i }));
 
     await waitFor(() => expect(fetchImpl).toHaveBeenCalledWith(
       '/api/audit-events/9/',
       { credentials: 'same-origin' },
     ));
     for (const heading of ['Allgemein', 'Gesundheitsinfos', 'Familie', 'SWP', 'Happy Cleaning']) {
-      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+      expect(screen.getAllByRole('heading', { name: heading }).length).toBeGreaterThan(0);
     }
     expect(screen.getAllByText('Vorher').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Nachher').length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: 'Krankheiten und Besonderheiten' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'BuDo-Familie' }).closest('section')).toHaveAccessibleName('BuDo');
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-
-    const secondRow = screen.getByText('Kind #30').closest('tr');
-    fireEvent.click(within(secondRow).getByRole('button', { name: 'Sensible Details anzeigen' }));
-
+    expect(screen.queryByRole('heading', { name: 'BuDo-Familie' })).not.toBeInTheDocument();
     await waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-    expect(screen.queryByText(SCRIPT_LIKE_SECRET)).not.toBeInTheDocument();
+    expect(screen.getAllByText(SCRIPT_LIKE_SECRET).length).toBeGreaterThan(0);
     expect(await screen.findByText('Grace Hopper')).toBeInTheDocument();
   });
 
@@ -210,8 +190,6 @@ describe('sensitive audit reveal', () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(detail(9)));
     render(<AuditPage data={{ ...data, events: [data.events[0]] }} fetchImpl={fetchImpl} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sensible Details anzeigen' }));
-    acceptRevealWarning();
     await screen.findAllByText(SCRIPT_LIKE_SECRET);
 
     expect(document.querySelector('script')).not.toBeInTheDocument();
@@ -262,22 +240,16 @@ describe('sensitive audit reveal', () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(largeDetail));
     render(<AuditPage data={{ ...data, events: [data.events[0]] }} fetchImpl={fetchImpl} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sensible Details anzeigen' }));
-    acceptRevealWarning();
     expect(await screen.findByText('Grace')).toBeInTheDocument();
     expect(screen.queryByText('UNCHANGED-EVENT-250')).not.toBeInTheDocument();
 
-    const section = screen.getByRole('heading', { name: 'Happy Cleaning' }).closest('section');
-    fireEvent.click(within(section).getByRole('button', { name: /unveränderte Werte anzeigen/i }));
-    expect(await screen.findByText('UNCHANGED-EVENT-250')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /unveränderte Werte anzeigen/i })).not.toBeInTheDocument();
     expect(fetchImpl).toHaveBeenCalledOnce();
   });
 
   it('clears the complete payload when filters, snapshot, or page rows change', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(detail(9)));
     const view = render(<AuditPage data={{ ...data, events: [data.events[0]] }} fetchImpl={fetchImpl} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Sensible Details anzeigen' }));
-    acceptRevealWarning();
     await screen.findAllByText(SCRIPT_LIKE_SECRET);
 
     view.rerender(<AuditPage data={{
@@ -287,7 +259,6 @@ describe('sensitive audit reveal', () => {
     }} fetchImpl={fetchImpl} />);
     expect(screen.queryByText(SCRIPT_LIKE_SECRET)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sensible Details anzeigen' }));
     await screen.findAllByText(SCRIPT_LIKE_SECRET);
     view.rerender(<AuditPage data={{
       ...data,

@@ -146,7 +146,7 @@ export function KidEditPage({ data, mutate, navigate }) {
     return count ? `${name} · ${count} Fehler` : name;
   };
   return (
-    <Columns className="kid-edit-page min-w-0">
+    <Columns className="kid-edit-page responsive-card-grid min-w-0">
       <form aria-label="Kind bearbeiten" noValidate onSubmit={submit}>
         {Object.keys(fieldErrors).length ? (
           <div className="mb-4 rounded-lg border border-destructive bg-popover p-3" role="alert">
@@ -154,8 +154,7 @@ export function KidEditPage({ data, mutate, navigate }) {
             <Button className="ml-2" size="sm" type="button" variant="outline" onClick={() => controls.current[firstInvalid]?.focus()}>Zum ersten Fehler</Button>
           </div>
         ) : null}
-        <p className="mb-3 text-sm text-muted-foreground">* kennzeichnet Pflichtfelder</p>
-        <div className="grid min-w-0 grid-cols-1 items-start gap-4 min-[901px]:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-4 @[41rem]:grid-cols-2 @[83rem]:grid-cols-4">
           {SECTIONS.map(([section, fields]) => (
             <Card className="min-w-0" expanded={expanded[section]} key={section} onExpandedChange={open => setExpanded(current => ({ ...current, [section]: open }))} title={title(section)}>
               <div className="grid min-w-0 gap-3">
@@ -175,9 +174,9 @@ export function KidEditPage({ data, mutate, navigate }) {
             </Card>
           ))}
         </div>
-        <div aria-label="Bearbeitungsaktionen" className="sticky bottom-0 z-10 mt-4 flex flex-wrap justify-end gap-2 border-t border-border bg-background/95 py-3" role="region">
+        <div aria-label="Bearbeitungsaktionen" className="sticky bottom-0 z-10 mx-auto mt-4 flex w-fit flex-wrap justify-center gap-2 py-3" role="region">
           <Button type="button" variant="secondary" onClick={() => dirty ? setDiscarding(true) : navigate(`/kid_details/${kid.id}`)}>Abbrechen</Button>
-          <Button type="submit">Alle Änderungen speichern</Button>
+          <Button disabled={!dirty} type="submit">Alle Änderungen speichern</Button>
         </div>
       </form>
       {discarding ? <DiscardDialog cancel={() => setDiscarding(false)} discard={() => navigate(`/kid_details/${kid.id}`)} /> : null}

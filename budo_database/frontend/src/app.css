@@ -609,6 +609,8 @@
 .form-grid input:not([type="checkbox"]):not([type="radio"]),
 .form-grid select,
 .form-grid textarea {
+  box-sizing: border-box;
+  min-width: 0;
   width: 100%;
   border: 2px solid white;
   border-radius: var(--corner-rad);

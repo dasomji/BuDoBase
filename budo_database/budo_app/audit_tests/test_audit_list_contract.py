@@ -22,7 +22,6 @@ from budo_app.audit import (
 from budo_app.audit_queries import FILTER_NAMES
 from budo_app.audit_tests.test_kid_edit_audit_schema import valid_details
 from budo_app.models import AuditEvent, Turnus
-from budo_app.read_contracts.domains import audit as audit_domain
 from budo_app.read_contracts.registry import get_contract
 
 
@@ -176,8 +175,10 @@ class AuditListContractTests(TestCase):
         })
         self.assert_privacy_headers(response)
 
-    def test_successful_list_writes_one_exact_metadata_only_access_event(self):
+    def test_successful_list_does_not_record_an_audit_view(self):
         source = self.event(request_id="source")
+        before = AuditEvent.objects.count()
+
         response = self.client.get(
             self.url,
             {"action": source.action, "outcome": "success", "page_size": 1},
@@ -187,55 +188,10 @@ class AuditListContractTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertIn("snapshot_id", payload["pagination"])
-        snapshot_id = payload["pagination"]["snapshot_id"]
-        access = AuditEvent.objects.get(action="audit.view")
-        self.assertGreater(access.id, snapshot_id)
-        self.assertNotIn(access.id, [row["id"] for row in payload["events"]])
-        self.assertEqual(access.outcome, "success")
-        self.assertEqual(access.resource_type, "audit_log")
-        self.assertEqual(access.resource_id, str(self.turnus.id))
-        self.assertEqual(access.resource_label, str(self.turnus))
-        self.assertEqual(access.actor_id, self.user.id)
-        self.assertEqual(access.request_id, "audit-list-access-request")
-        self.assertEqual(access.client_ip, "192.0.2.44")
-        self.assertEqual(access.user_agent, "Audit Explorer/1.0")
-        self.assertEqual(access.details, {
-            "view_kind": "list",
-            "result_count": 1,
-            "filter_count": 2,
-            "page": 1,
-            "page_size": 1,
-            "snapshot_id": snapshot_id,
-            "sensitive_payload_count": 0,
-        })
-        self.assertNotIn("details", payload["events"][0])
+        self.assertEqual(AuditEvent.objects.count(), before)
+        self.assertFalse(AuditEvent.objects.filter(action="audit.view").exists())
+        self.assertNotIn("details", response.json()["events"][0])
         self.assert_privacy_headers(response)
-
-    def test_access_insert_failures_return_503_without_event_payload(self):
-        self.event(details={"station_name": "MUST-NOT-LEAK"})
-        self.client.raise_request_exception = False
-        for error in (
-            ValidationError("access audit unavailable"),
-            RuntimeError("SECRET-INSERT-FAILURE"),
-        ):
-            with self.subTest(error=type(error).__name__):
-                before = AuditEvent.objects.count()
-                with mock.patch.object(
-                    audit_domain, "record_audit_event", side_effect=error,
-                ):
-                    response = self.client.get(self.url)
-                self.assertEqual(response.status_code, 503)
-                self.assertEqual(AuditEvent.objects.count(), before)
-                rendered = response.content.decode()
-                self.assertNotIn("MUST-NOT-LEAK", rendered)
-                self.assertNotIn("SECRET-INSERT-FAILURE", rendered)
-                if response.headers.get("Content-Type", "").startswith(
-                    "application/json"
-                ):
-                    self.assertNotIn("events", response.json())
-                self.assert_privacy_headers(response)
 
     def test_unrelated_audit_builder_runtime_error_remains_visible(self):
         unrelated = RuntimeError("unrelated builder defect")
