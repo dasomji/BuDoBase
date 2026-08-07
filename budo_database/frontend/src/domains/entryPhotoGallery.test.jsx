@@ -40,6 +40,43 @@ const olderPhoto = {
   alt: 'EH-Foto 1 von Ada Lovelace, EH-Eintrag 20',
 };
 
+const recentNotePhoto = {
+  id: 301,
+  url: '/api/attachments/notes/301/media/',
+  width: 720,
+  height: 540,
+  alt: 'Notizfoto 1 von Ada Lovelace, Notiz vom 04.07.2026 10:00',
+};
+
+const olderNotePhoto = {
+  id: 402,
+  url: '/api/attachments/notes/402/media/',
+  width: 540,
+  height: 720,
+  alt: 'Notizfoto 1 von Ada Lovelace, Notiz vom 01.07.2026 10:00',
+};
+
+const noteEntries = [
+  {
+    id: 40,
+    author: 'Ada',
+    date: '2026-07-04T10:00:00Z',
+    kid_id: 7,
+    kid: 'Ada Lovelace',
+    text: 'Jüngere Notiz',
+    photos: [recentNotePhoto],
+  },
+  {
+    id: 10,
+    author: 'Grace',
+    date: '2026-07-01T10:00:00Z',
+    kid_id: 7,
+    kid: 'Ada Lovelace',
+    text: 'Ältere Notiz',
+    photos: [olderNotePhoto],
+  },
+];
+
 const recentEntry = {
   id: 30,
   author: 'Boris',
@@ -60,7 +97,7 @@ const olderEntry = {
   photos: [olderPhoto],
 };
 
-function kidDetailData(entries = [recentEntry, olderEntry]) {
+function kidDetailData(entries = [recentEntry, olderEntry], notes = []) {
   return {
     csrf_token: 'token',
     turnus: { label: 'T2' },
@@ -70,7 +107,7 @@ function kidDetailData(entries = [recentEntry, olderEntry]) {
       present: true,
       weeks: 2,
       birthday: '2012-07-02',
-      notes: [],
+      notes,
       first_aid_entries: entries,
       transactions: [],
       remaining_money: 10,
@@ -79,7 +116,10 @@ function kidDetailData(entries = [recentEntry, olderEntry]) {
   };
 }
 
-function dashboardData(firstAidPage = { ...emptyPage, items: [recentEntry, olderEntry] }) {
+function dashboardData(
+  firstAidPage = { ...emptyPage, items: [recentEntry, olderEntry] },
+  notesPage = emptyPage,
+) {
   return {
     profile: { budo_family: null, focus_ids: [] },
     totals: {
@@ -105,7 +145,7 @@ function dashboardData(firstAidPage = { ...emptyPage, items: [recentEntry, older
     focuses: [],
     focus_assignments_complete: { w1: false, w2: false },
     activity: {
-      notes: emptyPage,
+      notes: notesPage,
       first_aid: firstAidPage,
       transactions: emptyPage,
     },
@@ -186,8 +226,8 @@ describe('page-level EH photo gallery', () => {
     const dialog = gallery();
     expectCurrentPhoto(dialog, recentPhotos[1]);
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(within(dialog).getByRole('button', { name: /vorheriges Foto/i })).toBeVisible();
-    expect(within(dialog).getByRole('button', { name: /nächstes Foto/i })).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: /vorheriges EH-Foto/i })).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: /nächstes EH-Foto/i })).toBeVisible();
     expect(within(dialog).getByRole('button', { name: /Galerie schließen/i })).toBeVisible();
     expect(within(dialog).queryByText(recentEntry.text)).not.toBeInTheDocument();
     for (const control of within(dialog).getAllByRole('button')) {
@@ -218,8 +258,8 @@ describe('page-level EH photo gallery', () => {
     openPhoto(recentPhotos[0]);
 
     const dialog = gallery();
-    const previous = within(dialog).getByRole('button', { name: /vorheriges Foto/i });
-    const next = within(dialog).getByRole('button', { name: /nächstes Foto/i });
+    const previous = within(dialog).getByRole('button', { name: /vorheriges EH-Foto/i });
+    const next = within(dialog).getByRole('button', { name: /nächstes EH-Foto/i });
 
     fireEvent.click(next);
     expectCurrentPhoto(dialog, recentPhotos[1]);
@@ -233,6 +273,41 @@ describe('page-level EH photo gallery', () => {
     expectCurrentPhoto(dialog, recentPhotos[1]);
 
     expect(window.location.pathname).toBe('/kid_details/7');
+  });
+
+  it.each([
+    {
+      page: 'kid detail',
+      renderPage: () => render(<KidDetailPage data={kidDetailData(undefined, noteEntries)} id="7" mutate={vi.fn()} />),
+    },
+    {
+      page: 'dashboard',
+      renderPage: () => render(<DashboardPage data={dashboardData(undefined, { ...emptyPage, items: noteEntries })} />),
+    },
+  ])('keeps Notizfotos and EH-Fotos in separate chronological galleries on $page', ({ renderPage }) => {
+    renderPage();
+
+    const notesCard = screen.getByRole('heading', { name: 'Notizen' }).closest('section');
+    const firstAidCard = screen.getByRole('heading', { name: 'Erste Hilfe' }).closest('section');
+    expect(within(notesCard).getByRole('img', { name: recentNotePhoto.alt })).toBeInTheDocument();
+    expect(within(firstAidCard).getByRole('img', { name: recentPhotos[0].alt })).toBeInTheDocument();
+
+    const noteTrigger = within(notesCard).getByRole('button', { name: recentNotePhoto.alt });
+    const firstAidTrigger = within(firstAidCard).getByRole('button', { name: recentPhotos[0].alt });
+    expect(noteTrigger.id).not.toBe(firstAidTrigger.id);
+    fireEvent.click(noteTrigger);
+    const noteGallery = screen.getByRole('dialog', { name: 'Notizfotogalerie' });
+    expectCurrentPhoto(noteGallery, recentNotePhoto);
+    expect(within(noteGallery).queryByRole('img', { name: recentPhotos[0].alt })).not.toBeInTheDocument();
+    fireEvent.click(within(noteGallery).getByRole('button', { name: 'Nächstes Notizfoto' }));
+    expectCurrentPhoto(noteGallery, olderNotePhoto);
+    fireEvent.click(within(noteGallery).getByRole('button', { name: 'Galerie schließen' }));
+
+    fireEvent.click(firstAidTrigger);
+    const firstAidGallery = screen.getByRole('dialog', { name: 'EH-Fotogalerie' });
+    expectCurrentPhoto(firstAidGallery, recentPhotos[0]);
+    expect(within(firstAidGallery).queryByRole('img', { name: recentNotePhoto.alt })).not.toBeInTheDocument();
+    expect(within(firstAidGallery).getByRole('button', { name: 'Nächstes EH-Foto' })).toBeInTheDocument();
   });
 
   it('closes by its visible action or Escape and restores focus to the activating photo', async () => {
@@ -273,14 +348,14 @@ describe('page-level EH photo gallery', () => {
     });
 
     const close = within(dialog).getByRole('button', { name: /Galerie schließen/i });
-    const next = within(dialog).getByRole('button', { name: /Nächstes Foto/i });
+    const next = within(dialog).getByRole('button', { name: /Nächstes EH-Foto/i });
     close.focus();
     await user.tab({ shift: true });
     await waitFor(() => expect(next).toHaveFocus());
     await user.tab();
     await waitFor(() => expect(close).toHaveFocus());
 
-    const backdrop = screen.getByTestId('first-aid-gallery-backdrop');
+    const backdrop = screen.getByTestId('entry-photo-gallery-backdrop');
     await user.click(backdrop);
     expect(gallery()).toBeInTheDocument();
 

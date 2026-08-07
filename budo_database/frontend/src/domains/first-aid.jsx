@@ -1,23 +1,24 @@
-import { firstAidPhotoLabel, FirstAidGalleryTrigger } from './first-aid-gallery';
+import { entryPhotoKinds, entryPhotoLabel, EntryPhotoGalleryTrigger } from './entry-photo-gallery';
 import { formatGermanDate } from './shared';
 
-export function FirstAidPhotoStrip({ childName, entryId, photos = [] }) {
+export function EntryPhotoStrip({ childName, entryId, photoKind = entryPhotoKinds.firstAid, photos = [] }) {
   if (!photos.length) return null;
   return (
     <div
       className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overflow-y-hidden py-1 overscroll-x-contain touch-pan-x"
       role="region"
-      aria-label={`EH-Fotos von ${childName}`}
+      aria-label={`${photoKind.photos} von ${childName}`}
       tabIndex={0}
     >
       {photos.map((photo, index) => {
         const ordinal = index + 1;
-        const alt = photo.alt || firstAidPhotoLabel(childName, entryId, ordinal);
+        const alt = photo.alt || entryPhotoLabel(photoKind, childName, entryId, ordinal);
         return (
-          <FirstAidGalleryTrigger
+          <EntryPhotoGalleryTrigger
             photo={photo}
             childName={childName}
             entryId={entryId}
+            photoKind={photoKind}
             ordinal={ordinal}
             key={photo.id}
           >
@@ -30,7 +31,7 @@ export function FirstAidPhotoStrip({ childName, entryId, photos = [] }) {
               decoding="async"
               alt={alt}
             />
-          </FirstAidGalleryTrigger>
+          </EntryPhotoGalleryTrigger>
         );
       })}
     </div>
@@ -48,7 +49,7 @@ export function FirstAidEntry({ entry, childName, showChildLink = false }) {
           : entry.text}
       </p>
       {showChildLink && <p>{entry.text}</p>}
-      <FirstAidPhotoStrip childName={name} entryId={entry.id} photos={entry.photos} />
+      <EntryPhotoStrip childName={name} entryId={entry.id} photos={entry.photos} />
     </li>
   );
 }
@@ -64,7 +65,7 @@ export function NoteEntry({ entry, childName, showChildLink = false }) {
           : entry.text}
       </p>
       {showChildLink && <p>{entry.text}</p>}
-      <FirstAidPhotoStrip childName={name} entryId={entry.id} photos={entry.photos} />
+      <EntryPhotoStrip childName={name} entryId={entry.id} photoKind={entryPhotoKinds.notes} photos={entry.photos} />
     </li>
   );
 }

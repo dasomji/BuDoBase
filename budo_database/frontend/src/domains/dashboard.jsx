@@ -4,7 +4,7 @@ import { Card, DataTable, ResponsiveCardGrid } from '../components';
 import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
-import { FirstAidGallery } from './first-aid-gallery';
+import { entryPhotoKinds, EntryPhotoGallery } from './entry-photo-gallery';
 import { HappyCleaningStationTodoDocument } from './happyCleaningStationDetail';
 import { formatGermanDate, formatKidBirthday, linkKid, money } from './shared';
 
@@ -227,7 +227,6 @@ export function DashboardPage({ data, fetchImpl = fetch, mutate, refresh, onFirs
     ))
     : [];
   return (
-    <FirstAidGallery entries={[...noteItems, ...firstAidItems]}>
       <ResponsiveCardGrid independentColumns>
       <Card title={`Kinder: ${totals.checked_in}`} id="db-kinderübersicht">
         <p><span className="label">Eingecheckt</span>: {totals.checked_in}/{totals.kids}</p>
@@ -236,8 +235,12 @@ export function DashboardPage({ data, fetchImpl = fetch, mutate, refresh, onFirs
         <p><span className="label">Zuganreise</span>: {totals.train_arrival}</p>
         <p><span className="label">Zugabreise</span>: {totals.train_departure}</p>
       </Card>
-      <Card title="Notizen" id="db-notizen"><ActivityList kind="notes" initialPage={activity.notes} fetchImpl={fetchImpl} onItemsChange={setNoteItems} /></Card>
-      <Card title="Erste Hilfe" id="db-erste-hilfe"><ActivityList kind="first_aid" initialPage={activity.first_aid} fetchImpl={fetchImpl} onItemsChange={handleFirstAidItemsChange} /></Card>
+      <EntryPhotoGallery entries={noteItems} photoKind={entryPhotoKinds.notes}>
+        <Card title="Notizen" id="db-notizen"><ActivityList kind="notes" initialPage={activity.notes} fetchImpl={fetchImpl} onItemsChange={setNoteItems} /></Card>
+      </EntryPhotoGallery>
+      <EntryPhotoGallery entries={firstAidItems}>
+        <Card title="Erste Hilfe" id="db-erste-hilfe"><ActivityList kind="first_aid" initialPage={activity.first_aid} fetchImpl={fetchImpl} onItemsChange={handleFirstAidItemsChange} /></Card>
+      </EntryPhotoGallery>
       <Card title={familyTitle} id="db-budo-familie">
         {profile?.budo_family
           ? familyKids.length
@@ -270,7 +273,6 @@ export function DashboardPage({ data, fetchImpl = fetch, mutate, refresh, onFirs
         </div>
       </Card>
       </ResponsiveCardGrid>
-    </FirstAidGallery>
   );
 }
 

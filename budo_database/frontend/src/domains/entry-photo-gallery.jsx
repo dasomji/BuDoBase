@@ -6,24 +6,41 @@ import { Button } from '../components/ui/button';
 const GalleryContext = createContext(null);
 const SWIPE_THRESHOLD = 60;
 
-export function firstAidPhotoLabel(childName, entryId, ordinal) {
-  return `EH-Foto ${ordinal} von ${childName || 'unbekanntem Kind'}, EH-Eintrag ${entryId}`;
+export const entryPhotoKinds = Object.freeze({
+  firstAid: Object.freeze({
+    id: 'first-aid',
+    entry: 'EH-Eintrag',
+    photo: 'EH-Foto',
+    photos: 'EH-Fotos',
+    title: 'EH-Fotogalerie',
+  }),
+  notes: Object.freeze({
+    id: 'notes',
+    entry: 'Notiz',
+    photo: 'Notizfoto',
+    photos: 'Notizfotos',
+    title: 'Notizfotogalerie',
+  }),
+});
+
+export function entryPhotoLabel(photoKind, childName, entryId, ordinal) {
+  return `${photoKind.photo} ${ordinal} von ${childName || 'unbekanntem Kind'}, ${photoKind.entry} ${entryId}`;
 }
 
-export function flattenFirstAidPhotos(entries = [], childName) {
+export function flattenEntryPhotos(entries = [], childName, photoKind = entryPhotoKinds.firstAid) {
   return entries.flatMap(entry => {
     const name = childName || entry.kid;
     return (entry.photos || []).map((photo, index) => ({
       ...photo,
       childName: name,
-      alt: photo.alt || firstAidPhotoLabel(name, entry.id, index + 1),
+      alt: photo.alt || entryPhotoLabel(photoKind, name, entry.id, index + 1),
     }));
   });
 }
 
-export function FirstAidGalleryTrigger({ photo, childName, entryId, ordinal, children }) {
+export function EntryPhotoGalleryTrigger({ photo, childName, entryId, photoKind = entryPhotoKinds.firstAid, ordinal, children }) {
   const gallery = useContext(GalleryContext);
-  const label = firstAidPhotoLabel(childName, entryId, ordinal);
+  const label = photo.alt || entryPhotoLabel(photoKind, childName, entryId, ordinal);
 
   if (!gallery) {
     return (
@@ -36,7 +53,7 @@ export function FirstAidGalleryTrigger({ photo, childName, entryId, ordinal, chi
   return (
     <Dialog.Trigger
       render={<Button className="h-auto max-w-full shrink-0 border-0 bg-transparent p-0" variant="ghost" />}
-      id={`first-aid-photo-${photo.id}`}
+      id={`${photoKind.id}-photo-${photo.id}`}
       type="button"
       aria-label={label}
       onClick={() => gallery.select(photo.id)}
@@ -46,7 +63,7 @@ export function FirstAidGalleryTrigger({ photo, childName, entryId, ordinal, chi
   );
 }
 
-function GalleryDialog({ inventory, selectedId, select }) {
+function GalleryDialog({ inventory, photoKind, selectedId, select }) {
   const touchStart = useRef(null);
   const selectedIndex = inventory.findIndex(photo => String(photo.id) === String(selectedId));
   const currentIndex = selectedIndex < 0 ? 0 : selectedIndex;
@@ -87,10 +104,10 @@ function GalleryDialog({ inventory, selectedId, select }) {
 
   return (
     <Dialog.Portal>
-      <Dialog.Backdrop className="fixed inset-0 z-1000 bg-black/80" data-testid="first-aid-gallery-backdrop" />
+      <Dialog.Backdrop className="fixed inset-0 z-1000 bg-black/80" data-testid="entry-photo-gallery-backdrop" />
       <Dialog.Viewport className="fixed inset-0 z-1001 grid place-items-center p-1 min-[901px]:p-3">
         <Dialog.Popup className="relative grid max-h-[calc(100dvh-0.5rem)] w-full max-w-275 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 rounded-lg bg-[#181818] p-2 text-white shadow-2xl min-[901px]:max-h-[calc(100dvh-1.5rem)] min-[901px]:gap-2 min-[901px]:p-3" aria-modal="true" onKeyDown={handleKeyDown}>
-          <Dialog.Title className="col-span-full m-0 px-10 text-center text-xl">EH-Fotogalerie</Dialog.Title>
+          <Dialog.Title className="col-span-full m-0 px-10 text-center text-xl">{photoKind.title}</Dialog.Title>
           <Dialog.Description className="col-span-full m-0 px-10 text-center text-[#eee]">
             {current.alt}; Bild {currentIndex + 1} von {inventory.length}
           </Dialog.Description>
@@ -102,7 +119,7 @@ function GalleryDialog({ inventory, selectedId, select }) {
             variant="ghost"
             size="icon"
             type="button"
-            aria-label="Vorheriges Foto"
+            aria-label={`Vorheriges ${photoKind.photo}`}
             onClick={() => move(-1)}
           >
             <span aria-hidden="true">‹</span>
@@ -124,7 +141,7 @@ function GalleryDialog({ inventory, selectedId, select }) {
             variant="ghost"
             size="icon"
             type="button"
-            aria-label="Nächstes Foto"
+            aria-label={`Nächstes ${photoKind.photo}`}
             onClick={() => move(1)}
           >
             <span aria-hidden="true">›</span>
@@ -135,10 +152,10 @@ function GalleryDialog({ inventory, selectedId, select }) {
   );
 }
 
-export function FirstAidGallery({ entries = [], childName, children }) {
+export function EntryPhotoGallery({ entries = [], childName, children, photoKind = entryPhotoKinds.firstAid }) {
   const inventory = useMemo(
-    () => flattenFirstAidPhotos(entries, childName),
-    [childName, entries],
+    () => flattenEntryPhotos(entries, childName, photoKind),
+    [childName, entries, photoKind],
   );
   const [selectedId, setSelectedId] = useState(null);
   const context = useMemo(() => ({ select: setSelectedId }), []);
@@ -148,7 +165,7 @@ export function FirstAidGallery({ entries = [], childName, children }) {
       <GalleryContext.Provider value={context}>
         {children}
       </GalleryContext.Provider>
-      <GalleryDialog inventory={inventory} selectedId={selectedId} select={setSelectedId} />
+      <GalleryDialog inventory={inventory} photoKind={photoKind} selectedId={selectedId} select={setSelectedId} />
     </Dialog.Root>
   );
 }
