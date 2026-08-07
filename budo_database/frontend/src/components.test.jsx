@@ -220,6 +220,7 @@ describe('reusable components', () => {
     );
 
     const title = screen.getByRole('heading', { name: 'Küche' });
+    expect(title).toHaveClass('max-[900px]:text-[1.2rem]');
     const action = screen.getByRole('button', { name: 'Drucken' });
     const search = await screen.findByRole('button', { name: 'Suche öffnen' });
     const burger = await screen.findByRole('button', { name: 'Sidebar ein- oder ausklappen' });
@@ -228,6 +229,13 @@ describe('reusable components', () => {
       expect(control).toHaveAttribute('data-slot', 'button');
     }
     expect(burger).toHaveAttribute('data-sidebar', 'trigger');
+    expect(burger).toHaveClass('max-[900px]:[&_svg]:size-[30px]!');
+    expect(search.querySelector('svg')).toHaveClass('size-[30px]');
+    expect(action.querySelector('svg')).not.toHaveClass('size-[30px]');
+    expect(action).toHaveClass('max-[900px]:size-8');
+    for (const control of [search, burger]) {
+      expect(control).toHaveClass('size-8');
+    }
 
     await waitFor(() => {
       expect(title.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -244,7 +252,10 @@ describe('reusable components', () => {
     expect(screen.getByRole('button', { name: 'Suche öffnen' })).toHaveAttribute('aria-expanded', 'false');
 
     fireEvent.click(burger);
-    expect(await screen.findByRole('dialog', { name: 'Sidebar' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Sidebar' }))
+      .toHaveClass('z-[var(--z-modal)]');
+    expect(document.querySelector('[data-slot="sheet-overlay"]'))
+      .toHaveClass('z-[var(--z-modal)]');
   });
 
   it('renders mobile Card and Header behavior in the first frame', () => {

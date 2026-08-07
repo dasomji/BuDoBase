@@ -139,9 +139,15 @@ export function Header({ title, authenticated, searchData, action }) {
       document.documentElement.style.removeProperty('--app-header-height');
     };
   }, [searchOpen]);
-  const titleNode = <div id="headertitle" key="title"><h1>{title}</h1></div>;
+  const titleNode = <div id="headertitle" key="title"><h1 className="max-[900px]:text-[1.2rem]">{title}</h1></div>;
   const sidebarTrigger = (
-    <SidebarTrigger key="sidebar-trigger" id="menu-button" size="icon" aria-label="Sidebar ein- oder ausklappen" />
+    <SidebarTrigger
+      key="sidebar-trigger"
+      id="menu-button"
+      className="max-[900px]:[&_svg]:size-[30px]!"
+      size="icon"
+      aria-label="Sidebar ein- oder ausklappen"
+    />
   );
   const searchToggle = (
     <Button
@@ -155,7 +161,7 @@ export function Header({ title, authenticated, searchData, action }) {
       aria-expanded={searchOpen}
       onClick={() => setSearchOpen(open => !open)}
     >
-      <SearchIcon aria-hidden="true" />
+      <SearchIcon className="size-[30px]" aria-hidden="true" />
     </Button>
   );
   const search = <GlobalSearch key="search" data={searchData} />;

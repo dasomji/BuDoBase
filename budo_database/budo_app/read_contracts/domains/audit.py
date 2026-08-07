@@ -1,5 +1,4 @@
 import math
-import uuid
 from urllib.parse import urlencode
 
 from django.core.exceptions import PermissionDenied
@@ -8,12 +7,6 @@ from django.http import Http404
 from rest_framework.exceptions import APIException
 from rest_framework.exceptions import ValidationError as ApiValidationError
 
-from budo_app.audit import (
-    AuditEventData,
-    actor_label_for_user,
-    client_ip_from_request,
-    record_audit_event,
-)
 from budo_app.audit_policy import can_view_audit, log_audit_denial
 from budo_app.audit_queries import (
     AuditFilters,
@@ -178,36 +171,6 @@ def audit_events(request):
             if export_query else "/api/audit-events/export/"
         ),
     }
-    try:
-        record_audit_event(AuditEventData(
-            turnus=turnus,
-            actor_id=request.user.id,
-            actor_label=actor_label_for_user(request.user),
-            action="audit.view",
-            outcome="success",
-            resource_type="audit_log",
-            resource_id=str(turnus_id),
-            resource_label=str(turnus),
-            request_id=(
-                request.META.get("HTTP_X_REQUEST_ID", "").strip()
-                or str(uuid.uuid4())
-            ),
-            client_ip=client_ip_from_request(request),
-            user_agent=request.META.get("HTTP_USER_AGENT", ""),
-            details={
-                "view_kind": "list",
-                "result_count": len(events),
-                "filter_count": sum(
-                    bool(value) for value in filters.as_query_dict().values()
-                ),
-                "page": page,
-                "page_size": page_size,
-                "snapshot_id": snapshot_id,
-                "sensitive_payload_count": 0,
-            },
-        ))
-    except Exception as error:
-        raise AuditListUnavailable from error
     return payload
 
 

@@ -242,7 +242,10 @@ export function AppSidebar({ happyCleaningEvents = [], permissions }) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <nav aria-label="Hauptnavigation">
+            <nav
+              className="max-[900px]:[&_[data-sidebar=menu-button]]:text-[1.2rem] max-[900px]:[&_[data-sidebar=menu-sub-button]]:text-[1.2rem]"
+              aria-label="Hauptnavigation"
+            >
               <SidebarMenu>
                 {items.map((item, index) => item.children ? (
                   <NavigationGroup item={item} index={index} key={item.label} />

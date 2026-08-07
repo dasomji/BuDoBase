@@ -4,7 +4,6 @@ import {
   Card,
   Column,
   Columns,
-  ConfirmationDialog,
   Table,
   TableBody,
   TableCell,
@@ -55,7 +54,7 @@ function AuditFilters({ data }) {
       </FilterField>
       <FilterField label="Von" name="from" type="datetime-local" value={filters.from} />
       <FilterField label="Bis" name="to" type="datetime-local" value={filters.to} />
-      <FilterField label="Akteur:in" name="actor" value={filters.actor} />
+      <FilterField label="Betreuer:in" name="actor" value={filters.actor} />
       <FilterField label="Aktion" name="action">
         <NativeSelect name="action" defaultValue={filters.action || ''}>
           <option value="">Alle</option>
@@ -142,7 +141,6 @@ function relationshipText(item, kind) {
 }
 
 function RelationshipGroup({ title, kind, before, after, changedPaths }) {
-  const [showUnchanged, setShowUnchanged] = useState(false);
   const idName = kind === 'swp' ? 'period_id' : 'event_id';
   const labelName = kind === 'swp' ? 'period_label' : 'event_label';
   const prefix = kind === 'swp' ? 'swp.' : 'happy_cleaning.';
@@ -150,8 +148,7 @@ function RelationshipGroup({ title, kind, before, after, changedPaths }) {
   const afterById = Object.fromEntries((after || []).map(item => [item[idName], item]));
   const ids = [...new Set([...Object.keys(beforeById), ...Object.keys(afterById)])];
   const changed = ids.filter(id => changedPaths.includes(`${prefix}${id}`));
-  const unchanged = ids.filter(id => !changed.includes(id));
-  const visible = showUnchanged ? ids : changed;
+  const visible = changed;
   return (
     <section className="grid gap-2" aria-label={title}>
       <h2>{title}</h2>
@@ -163,11 +160,7 @@ function RelationshipGroup({ title, kind, before, after, changedPaths }) {
           after={relationshipText(afterById[id], kind)}
         />
       ))}
-      {!showUnchanged && unchanged.length ? (
-        <Button type="button" variant="secondary" onClick={() => setShowUnchanged(true)}>
-          {unchanged.length} unveränderte Werte anzeigen
-        </Button>
-      ) : null}
+
     </section>
   );
 }
@@ -176,6 +169,7 @@ function SensitiveDetail({ event }) {
   const details = event.details;
   const before = details.before;
   const after = details.after;
+  const changedFields = new Set(details.changed_paths.filter(path => !path.includes('.')));
   const knownFields = new Set(Object.keys(DETAIL_LABELS));
   const extraFields = [...new Set([
     ...Object.keys(before.fields || {}),
@@ -189,7 +183,7 @@ function SensitiveDetail({ event }) {
       {groups.map(([title, fields]) => (
         <section className="grid gap-2" key={title} aria-label={title}>
           <h2>{title}</h2>
-          {fields.map(field => (
+          {fields.filter(field => changedFields.has(field)).map(field => (
             <BeforeAfter key={field} label={DETAIL_LABELS[field] || field} before={before.fields[field]} after={after.fields[field]} />
           ))}
         </section>
@@ -200,52 +194,47 @@ function SensitiveDetail({ event }) {
   );
 }
 
-function RevealWarning({ cancel, confirm }) {
-  return (
-    <ConfirmationDialog
-      open
-      title="Sensible Audit-Details laden?"
-      confirmLabel="Details laden und anzeigen"
-      cancelLabel="Abbrechen"
-      onConfirm={confirm}
-      onCancel={cancel}
-      role="alertdialog"
-    >
-      <p>Die Details können Gesundheit, Medikamente, Sozialversicherungsdaten, Familie, Telefon, E-Mail, Notfallkontakte und Zuteilungen enthalten.</p>
-    </ConfirmationDialog>
-  );
+function germanTimestamp(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'medium' }).format(date);
 }
 
-function AuditTable({ events, revealed, reveal }) {
+const AUDIT_COLUMNS = [
+  ['time', 'Zeit'], ['actor', 'Betreuer:in'], ['action', 'Aktion'], ['outcome', 'Ergebnis'],
+  ['resource', 'Ressource'], ['ip', 'IP'], ['userAgent', 'User-Agent'], ['details', 'Details'],
+];
+
+function AuditTable({ events, revealed, visibleColumns }) {
+  const visible = new Set(visibleColumns);
   if (!events.length) return <p>Keine Audit-Ereignisse gefunden.</p>;
   return (
     <TableScroll stickyHeader>
       <Table>
         <TableHeader><TableRow>
-          <TableHead scope="col">Zeit</TableHead><TableHead scope="col">Akteur:in</TableHead><TableHead scope="col">Aktion</TableHead><TableHead scope="col">Ergebnis</TableHead>
-          <TableHead scope="col">Ressource</TableHead><TableHead scope="col">IP</TableHead><TableHead scope="col">User-Agent</TableHead><TableHead scope="col">Details</TableHead>
+          {AUDIT_COLUMNS.filter(([key]) => visible.has(key)).map(([key, label]) => <TableHead key={key} scope="col">{label}</TableHead>)}
         </TableRow></TableHeader>
         <TableBody>{events.map(event => (
           <Fragment key={event.id}>
           <TableRow>
-            <TableCell>{event.timestamp}</TableCell>
-            <TableCell>{event.actor.label}{event.actor.id ? ` (#${event.actor.id})` : ''}</TableCell>
-            <TableCell>{event.action}</TableCell>
-            <TableCell>{event.outcome}</TableCell>
-            <TableCell><span>{event.resource.label}</span> ({event.resource.type} #{event.resource.id})</TableCell>
-            <TableCell>{event.client_ip || '—'}</TableCell>
-            <TableCell>{event.user_agent || '—'}</TableCell>
-            <TableCell>
+            {visible.has('time') ? <TableCell>{germanTimestamp(event.timestamp)}</TableCell> : null}
+            {visible.has('actor') ? <TableCell>{event.actor.label}{event.actor.id ? ` (#${event.actor.id})` : ''}</TableCell> : null}
+            {visible.has('action') ? <TableCell>{event.action}</TableCell> : null}
+            {visible.has('outcome') ? <TableCell>{event.outcome}</TableCell> : null}
+            {visible.has('resource') ? <TableCell><span>{event.resource.label}</span> ({event.resource.type} #{event.resource.id})</TableCell> : null}
+            {visible.has('ip') ? <TableCell>{event.client_ip || '—'}</TableCell> : null}
+            {visible.has('userAgent') ? <TableCell>{event.user_agent || '—'}</TableCell> : null}
+            {visible.has('details') ? <TableCell>
               <div className="flex min-w-48 flex-col items-start gap-2">
                 <span>{auditDetailsSummary(event.details_summary)}</span>
                 {event.details_summary?.sensitive
-                  ? <Button type="button" variant="secondary" onClick={() => reveal(event)}>Sensible Details anzeigen</Button>
+                  ? <span>{revealed[event.id] ? 'Details eingeblendet' : 'Details werden geladen…'}</span>
                   : <Button href={event.details_url} variant="secondary">Details anzeigen</Button>}
               </div>
-            </TableCell>
+            </TableCell> : null}
           </TableRow>
-          {revealed?.id === event.id ? (
-            <TableRow><TableCell colSpan={8}><SensitiveDetail event={revealed} /></TableCell></TableRow>
+          {visible.has('details') && revealed[event.id] ? (
+            <TableRow><TableCell colSpan={visible.size}><SensitiveDetail event={revealed[event.id]} /></TableCell></TableRow>
           ) : null}
           </Fragment>
         ))}
@@ -279,9 +268,16 @@ function exportFilename(response) {
 export function AuditPage({ data, fetchImpl = fetch }) {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [revealed, setRevealed] = useState(null);
-  const [warningSeen, setWarningSeen] = useState(false);
-  const [pendingReveal, setPendingReveal] = useState(null);
+  const [revealed, setRevealed] = useState({});
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('audit-visible-columns'));
+      const allowed = new Set(AUDIT_COLUMNS.map(([key]) => key));
+      const valid = Array.isArray(saved) ? saved.filter(key => allowed.has(key)) : [];
+      if (valid.length) return valid;
+    } catch {}
+    return AUDIT_COLUMNS.map(([key]) => key);
+  });
   const showError = useErrorToast();
   const listIdentity = JSON.stringify({
     filters: data.filters,
@@ -289,10 +285,7 @@ export function AuditPage({ data, fetchImpl = fetch }) {
     snapshot: data.pagination?.snapshot_id,
     ids: (data.events || []).map(event => event.id),
   });
-  useEffect(() => setRevealed(null), [listIdentity]);
-  if (!data.authorized) {
-    return <Columns><Column id="single-column"><Card title="Kein Zugriff"><p>Dir fehlt die Berechtigung, Audit-Ereignisse anzusehen.</p></Card></Column></Columns>;
-  }
+  useEffect(() => setRevealed({}), [listIdentity]);
   const download = async () => {
     if (!privacyAccepted || exporting) return;
     setExporting(true);
@@ -312,22 +305,24 @@ export function AuditPage({ data, fetchImpl = fetch }) {
     }
   };
   const loadDetail = async event => {
-    setRevealed(null);
     try {
       const response = await fetchImpl(event.details_url, { credentials: 'same-origin' });
       if (!response.ok) throw new Error(`Details konnten nicht geladen werden (${response.status})`);
       const payload = await response.json();
-      setRevealed(payload);
+      setRevealed(current => ({ ...current, [event.id]: payload }));
     } catch {
       showError('Die Audit-Details konnten nicht geladen werden.');
     }
   };
-  const reveal = event => {
-    if (warningSeen) loadDetail(event);
-    else setPendingReveal(event);
-  };
+  useEffect(() => {
+    if (!data.authorized) return;
+    (data.events || []).filter(event => event.details_summary?.sensitive).forEach(event => loadDetail(event));
+  }, [listIdentity]);
+  if (!data.authorized) {
+    return <Columns><Column id="single-column"><Card title="Kein Zugriff"><p>Dir fehlt die Berechtigung, Audit-Ereignisse anzusehen.</p></Card></Column></Columns>;
+  }
   return (
-    <Columns className="block p-3">
+    <Columns className="block space-y-4 p-3">
       <Card title="Audit-Ereignisse filtern">
         <AuditFilters data={data} />
         <div className="mt-3 border-t border-current pt-3">
@@ -341,20 +336,29 @@ export function AuditPage({ data, fetchImpl = fetch }) {
           </Button>
         </div>
       </Card>
-      <p>{data.pagination.total} Ereignisse</p>
-      <AuditTable events={data.events} revealed={revealed} reveal={reveal} />
+      <Card title="Spalten anzeigen">
+        <div className="flex flex-wrap gap-3">
+          {AUDIT_COLUMNS.map(([key, label]) => (
+            <label className="flex items-center gap-1" key={key}>
+              <input
+                type="checkbox"
+                checked={visibleColumns.includes(key)}
+                onChange={event => setVisibleColumns(current => {
+                  const next = event.target.checked ? [...current, key] : current.filter(value => value !== key);
+                  if (!next.length) return current;
+                  localStorage.setItem('audit-visible-columns', JSON.stringify(next));
+                  return next;
+                })}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </Card>
+      <h2 className="m-0 text-[1.2rem] font-normal">{data.pagination.total} Ereignisse</h2>
+      <AuditTable events={data.events} revealed={revealed} visibleColumns={visibleColumns} />
       <Pagination filters={data.filters} pagination={data.pagination} />
-      {pendingReveal ? (
-        <RevealWarning
-          cancel={() => setPendingReveal(null)}
-          confirm={() => {
-            const event = pendingReveal;
-            setPendingReveal(null);
-            setWarningSeen(true);
-            loadDetail(event);
-          }}
-        />
-      ) : null}
+
     </Columns>
   );
 }

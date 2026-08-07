@@ -79,12 +79,15 @@ describe('audit explorer', () => {
     expect(screen.getByLabelText('Turnus')).toHaveAttribute('data-slot', 'native-select');
     expect(screen.getByLabelText('Von')).toBeInTheDocument();
     expect(screen.getByLabelText('Bis')).toBeInTheDocument();
-    expect(screen.getByLabelText('Akteur:in')).toBeInTheDocument();
-    expect(screen.getByLabelText('Aktion')).toBeInTheDocument();
-    expect(screen.getByLabelText('Ergebnis')).toBeInTheDocument();
-    expect(screen.getByLabelText('Ressourcentyp')).toBeInTheDocument();
+    expect(document.querySelector('input[name="actor"]')).toHaveAccessibleName('Betreuer:in');
+    expect(document.querySelector('[name="action"]')).toHaveAccessibleName('Aktion');
+    expect(document.querySelector('[name="outcome"]')).toHaveAccessibleName('Ergebnis');
+    expect(document.querySelector('[name="resource_type"]')).toHaveAccessibleName('Ressourcentyp');
     expect(screen.getByLabelText('Ressourcen-ID')).toBeInTheDocument();
     expect(screen.getByText(/Ada Teamer/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Spalten anzeigen' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '51 Ereignisse' })).toHaveClass('m-0', 'text-[1.2rem]', 'font-normal');
+    expect(screen.getByRole('main')).toHaveClass('space-y-4');
     expect(screen.getByRole('table').closest('[data-slot="table-scroll"]')).not.toBeNull();
     expect(screen.getByRole('link', { name: 'Nächste Seite' })).toHaveAttribute(
       'href',
@@ -138,7 +141,7 @@ describe('audit explorer', () => {
       'href', event.details_url,
     );
     const kidRow = screen.getByText('kid.edit').closest('tr');
-    expect(within(kidRow).getByRole('button', { name: 'Sensible Details anzeigen' })).toBeEnabled();
+    expect(within(kidRow).getByText('Details werden geladen…')).toBeInTheDocument();
     expect(within(kidRow).queryByRole('link', { name: 'Details anzeigen' })).not.toBeInTheDocument();
   });
 

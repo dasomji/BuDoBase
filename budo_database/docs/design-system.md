@@ -183,8 +183,11 @@ imperatively mount into the header. Authenticated controls render in this order:
 | Mobile (below 901px) | Title, route action, search toggle, sidebar trigger, global-search region |
 
 The route action is omitted when absent. Unauthenticated headers render only the
-logo and title. On mobile, icon-only controls follow the 32px circular Button
-contract described above and require accessible names.
+logo and title. On mobile, icon-only controls follow the 32px circular Button contract
+described above and require accessible names. The search and sidebar controls
+use 30px glyphs; route-action glyphs retain the shared Button size so they fit
+inside their colored circles. Below 901px, the sidebar menu fills the viewport
+width and its primary and nested navigation items use 1.2rem text.
 
 `Header` measures itself on mount, resize, content resize, and search expansion,
 then publishes the result as `--app-header-height` on the document root. Sticky
