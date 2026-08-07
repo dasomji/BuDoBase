@@ -130,7 +130,7 @@ class UploadForm(forms.ModelForm):
         model = Turnus
         fields = ['turnus_nr', 'turnus_beginn', 'uploadedFile']
         labels = {"turnus_nr": "Turnus Nummer",
-                  "turnus_beginn": "Beginn des Turnus", "uploadedFile": "Excel-File"}
+                  "turnus_beginn": "Beginn des Turnus (muss ein Samstag sein)", "uploadedFile": "Excel-File"}
         widgets = {
             'uploadedFile': forms.ClearableFileInput(attrs={'required': False}),
             'turnus_beginn': forms.DateInput(attrs={'type': 'date', 'class': '', "value": f"{today}"}),

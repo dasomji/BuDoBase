@@ -62,7 +62,7 @@ describe('maintenance upload pages', () => {
 
     render(<TurnusUploadPage data={{ ...data, turnuses: [data.turnuses[0]] }} id="27" />);
     expect(screen.getByLabelText('Turnus Nummer')).toHaveValue(2);
-    expect(screen.getByLabelText('Beginn des Turnus')).toHaveValue('2026-07-01');
+    expect(screen.getByLabelText('Beginn des Turnus (muss ein Samstag sein)')).toHaveValue('2026-07-01');
     expect(screen.getByLabelText('Excel-File').form).toHaveAttribute('action', '/upload_excel/27/');
     expect(screen.getByRole('button', { name: 'Hochladen' })).toHaveValue('Hochladen');
   });
