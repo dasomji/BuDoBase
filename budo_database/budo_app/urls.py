@@ -11,6 +11,22 @@ from .happy_cleaning_page_views import (
 )
 from .kid_edit_views import kid_edit_page
 
+
+def legacy_slashless_page(route, view, *, name):
+    """Register a canonical page URL plus its legacy slashless form.
+
+    New page routes should use a trailing slash. This compatibility helper is
+    only for routes that were historically published without one, especially
+    POST targets that cannot rely on APPEND_SLASH without losing request data.
+    """
+    canonical_route = route.rstrip('/') + '/'
+    legacy_route = route.rstrip('/')
+    return (
+        path(canonical_route, view),
+        path(legacy_route, view, name=name),
+    )
+
+
 urlpatterns = [
     path(
         'api/attachments/<str:kind>/<int:photo_id>/',
@@ -25,37 +41,61 @@ urlpatterns = [
     path('download-updated-excel/', views.download_updated_excel,
          name='download_updated_excel'),
     #     path('', views.kids_list, name='kids_list'),
-    path('all_kids', views.kids_list, name='kids_list'),
-    path('zugabreise', views.zugabreise, name='zugabreise'),
-    path('zuganreise', views.zuganreise, name='zuganreise'),
-    path('kid_details/<int:id>', views.kid_details, name='kid_details'),
-    path('kid_details/<int:kid_id>/edit', kid_edit_page, name='kid-edit-page'),
-    path('check_in/<int:id>', views.check_in, name='check_in'),
-    path('check_out/<int:id>', views.check_out, name='check_out'),
-    path('serienbrief', views.serienbrief, name='serienbrief'),
-    path('murdergame', views.murdergame, name='murdergame'),
-    path('schwerpunkt/create',
-         SchwerpunkteCreate.as_view(), name='schwerpunkt-create'),
+    *legacy_slashless_page('all_kids', views.kids_list, name='kids_list'),
+    *legacy_slashless_page('zugabreise', views.zugabreise, name='zugabreise'),
+    *legacy_slashless_page('zuganreise', views.zuganreise, name='zuganreise'),
+    *legacy_slashless_page(
+        'kid_details/<int:id>', views.kid_details, name='kid_details'
+    ),
+    *legacy_slashless_page(
+        'kid_details/<int:kid_id>/edit', kid_edit_page, name='kid-edit-page'
+    ),
+    *legacy_slashless_page('check_in/<int:id>', views.check_in, name='check_in'),
+    *legacy_slashless_page(
+        'check_out/<int:id>', views.check_out, name='check_out'
+    ),
+    *legacy_slashless_page('serienbrief', views.serienbrief, name='serienbrief'),
+    *legacy_slashless_page('murdergame', views.murdergame, name='murdergame'),
+    *legacy_slashless_page(
+        'schwerpunkt/create',
+        SchwerpunkteCreate.as_view(),
+        name='schwerpunkt-create',
+    ),
     path('schwerpunkt/<int:pk>/', SchwerpunkteDetail.as_view(),
          name='schwerpunkt-detail'),
-    path('schwerpunkt/<int:pk>/update',
-         SchwerpunkteUpdate.as_view(), name='schwerpunkt-update'),
-    path('swpmeals/<int:pk>', MealUpdate.as_view(), name='swpmeals'),
+    *legacy_slashless_page(
+        'schwerpunkt/<int:pk>/update',
+        SchwerpunkteUpdate.as_view(),
+        name='schwerpunkt-update',
+    ),
+    *legacy_slashless_page(
+        'swpmeals/<int:pk>', MealUpdate.as_view(), name='swpmeals'
+    ),
     path("swp-dashboard/", views.swp_dashboard, name="swp-dashboard"),
     path("auslagerorte-list/", views.auslagerorte_list, name="auslagerorte-list"),
-    path('auslagerorte/create',
-         AuslagerorteCreate.as_view(), name='auslagerorte-create'),
+    *legacy_slashless_page(
+        'auslagerorte/create',
+        AuslagerorteCreate.as_view(),
+        name='auslagerorte-create',
+    ),
     path('auslagerorte/<int:pk>/', AuslagerorteDetail.as_view(),
          name='auslagerorte-detail'),
-    path('auslagerorte/<int:pk>/update',
-         AuslagerorteUpdate.as_view(), name='auslagerorte-update'),
+    *legacy_slashless_page(
+        'auslagerorte/<int:pk>/update',
+        AuslagerorteUpdate.as_view(),
+        name='auslagerorte-update',
+    ),
     path('auslagerorte/<int:pk>/upload-image/',
          AuslagerorteImageUpload.as_view(), name='auslagerorte-image-upload'),
     path('toggle_zug_abreise/', views.toggle_zug_abreise,
          name='toggle_zug_abreise'),
-    path('kitchen', views.kitchen, name='kitchen'),
-    path('swp-einteilung-w1', views.swp_einteilung_w1, name='swp-einteilung-w1'),
-    path('swp-einteilung-w2', views.swp_einteilung_w2, name='swp-einteilung-w2'),
+    *legacy_slashless_page('kitchen', views.kitchen, name='kitchen'),
+    *legacy_slashless_page(
+        'swp-einteilung-w1', views.swp_einteilung_w1, name='swp-einteilung-w1'
+    ),
+    *legacy_slashless_page(
+        'swp-einteilung-w2', views.swp_einteilung_w2, name='swp-einteilung-w2'
+    ),
     path('update-schwerpunkt-wahl/', views.update_schwerpunkt_wahl,
          name='update_schwerpunkt_wahl'),
     path('update_freunde/', views.update_freunde, name='update_freunde'),

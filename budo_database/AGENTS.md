@@ -16,6 +16,13 @@ This is a single-context repository using root `CONTEXT.md` and `docs/adr/`. See
 
 Frontend and UI work follows `docs/design-system.md` and the accepted ADR under `docs/adr/2026-07-26-frontend-design-system.md`.
 
+### Page URL convention
+
+Register new page routes with a trailing slash. `APPEND_SLASH` provides the
+redirect from slashless GET requests. For historically slashless routes—most
+importantly POST targets—use `legacy_slashless_page()` in `budo_app/urls.py`
+so both forms resolve directly without losing POST data.
+
 ### Static collection after asset removal
 
 After pulling a change that deletes static assets, run
