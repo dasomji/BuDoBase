@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
-import { FirstAidGallery } from './first-aid-gallery';
+import { entryPhotoKinds, EntryPhotoGallery } from './entry-photo-gallery';
 import {
   displayOrPlaceholder,
   formatGermanDate,
@@ -148,7 +148,7 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
     }
   };
   return (
-    <FirstAidGallery entries={[...(kid.notes || []), ...(kid.first_aid_entries || [])]} childName={kid.full_name}>
+    <>
       <ResponsiveCardGrid independentColumns>
         <Column id="left-column" className="min-w-0 gap-4">
           <Card title={`${kid.full_name}${kid.present ? '' : ' ❌'}`} id="kinderinfos"><FieldList items={[["Geschlecht", kid.sex], ["Alter", kid.age], ["Geburtstag", formatKidBirthday(kid)], ["Aufenthaltsdauer", `${kid.weeks}-wöchig`], ["Geschwister", kid.siblings], ["Zeltwunsch", kid.tent_request], ["War schon mal im Bunten Dorf", yesNo(kid.budo_experience)]]} /></Card>
@@ -159,14 +159,18 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
           <Card title="Familie" id="family_info"><FieldList items={[["Organisation", kid.organization], ["Anmelder:in", kid.registrant_name], ["Anmelder:in Email", <a href={`mailto:${kid.registrant_email}`}>{kid.registrant_email}</a>], ["Anmelder:in Mobil", <a href={`tel:${kid.registrant_phone}`}>{kid.registrant_phone}</a>], ["Hauptversichert bei", kid.insured_with], ["Notfallkontakte", kid.emergency_contacts]]} /></Card>
         </Column>
         <Column id="right-column" className="min-w-0 gap-4">
-          <Card title="Notizen" id="notizen"><FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} /><ul>{kid.notes.length ? kid.notes.map(note => <NoteEntry entry={note} childName={kid.full_name} key={note.id} />) : <li>Noch keine Notizen.</li>}</ul></Card>
-          <Card title="Erste Hilfe" id="erste-hilfe"><ul>{kid.first_aid_entries?.length ? kid.first_aid_entries.map(entry => <FirstAidEntry entry={entry} childName={kid.full_name} key={entry.id} />) : <li>Noch keine EH-Einträge.</li>}</ul></Card>
+          <EntryPhotoGallery entries={kid.notes} childName={kid.full_name} photoKind={entryPhotoKinds.notes}>
+            <Card title="Notizen" id="notizen"><FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} /><ul>{kid.notes.length ? kid.notes.map(note => <NoteEntry entry={note} childName={kid.full_name} key={note.id} />) : <li>Noch keine Notizen.</li>}</ul></Card>
+          </EntryPhotoGallery>
+          <EntryPhotoGallery entries={kid.first_aid_entries} childName={kid.full_name}>
+            <Card title="Erste Hilfe" id="erste-hilfe"><ul>{kid.first_aid_entries?.length ? kid.first_aid_entries.map(entry => <FirstAidEntry entry={entry} childName={kid.full_name} key={entry.id} />) : <li>Noch keine EH-Einträge.</li>}</ul></Card>
+          </EntryPhotoGallery>
           <Card title={`Taschengeld: ${money(kid.remaining_money)}${kid.remaining_money < 5 ? ' 🚨' : ''}`} id="taschengeld"><ul>{kid.transactions.length ? kid.transactions.map(item => <li key={item.id}>{item.author} am {formatGermanDate(item.date)}: {money(item.amount)}</li>) : <li>Dieses Kind ist arm.</li>}</ul></Card>
           <Card title={`Pfand: ${kid.deposit}`} id="pfand" actions={<><Button type="button" onClick={() => deposit('increase')}>+ Pfand</Button><Button type="button" variant="secondary" onClick={() => deposit('decrease')}>− Pfand</Button></>} />
         </Column>
       </ResponsiveCardGrid>
       <KidInteractionForm kid={kid} token={data.csrf_token} onSaved={onSaved} />
-    </FirstAidGallery>
+    </>
   );
 }
 
