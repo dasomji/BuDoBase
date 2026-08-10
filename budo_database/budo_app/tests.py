@@ -2,7 +2,7 @@ from django.test import TestCase, Client, SimpleTestCase, override_settings
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from .forms import AuslagerorteImageForm
-from .models import Auslagerorte, AuslagerorteImage, Document, Turnus, Kinder
+from .models import Auslagerorte, AuslagerorteImage, Document, Turnus, Kinder, Notizen
 from .excelProcessor import (
     parse_birthday,
     parse_budo_erfahrung,
@@ -650,6 +650,16 @@ class DownloadUpdatedExcelTest(TestCase):
 
         self.assertEqual(exported.loc[0, "verspätete Anreise"], "")
 
+    def test_export_does_not_include_pocket_money(self):
+        make_kid(self.turnus)
+
+        with TemporaryDirectory() as directory:
+            path = os.path.join(directory, "aufenthaltsdoku.xlsx")
+            update_excel_file(path, self.turnus)
+            exported = pd.read_excel(path, dtype=str).fillna("")
+
+        self.assertNotIn("Taschengeld", exported.columns)
+
     def test_checkout_note_is_written_to_its_own_export_column(self):
         kid = make_kid(self.turnus)
 
@@ -675,6 +685,79 @@ class DownloadUpdatedExcelTest(TestCase):
             exported.loc[0, "Check-Out-Notiz"],
             "Abholung durch Tante um 14 Uhr",
         )
+
+    def test_early_departure_uses_latest_note_when_departure_note_is_missing(self):
+        self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
+        self.turnus.save(update_fields=("turnus_beginn",))
+        kid = make_kid(self.turnus)
+        kid.turnus_dauer = 1
+        kid.early_abreise_date = date(2024, 7, 11)  # one day early
+        kid.save(update_fields=("turnus_dauer", "early_abreise_date"))
+        Notizen.objects.create(
+            kinder=kid,
+            notiz="Frühere allgemeine Notiz",
+            added_by=self.user,
+        )
+        Notizen.objects.create(
+            kinder=kid,
+            notiz="Abholung durch Tante um 14 Uhr",
+            added_by=self.user,
+        )
+
+        with TemporaryDirectory() as directory:
+            path = os.path.join(directory, "aufenthaltsdoku.xlsx")
+            update_excel_file(path, self.turnus)
+            exported = pd.read_excel(path, dtype=str).fillna("")
+
+        self.assertEqual(
+            exported.loc[0, "Abreisenotiz"],
+            "Abholung durch Tante um 14 Uhr",
+        )
+
+    def test_explicit_departure_note_takes_precedence_over_latest_note(self):
+        self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
+        self.turnus.save(update_fields=("turnus_beginn",))
+        kid = make_kid(self.turnus)
+        kid.turnus_dauer = 1
+        kid.early_abreise_date = date(2024, 7, 11)  # one day early
+        kid.notiz_abreise = "Explizit markierte Abreisenotiz"
+        kid.save(
+            update_fields=(
+                "turnus_dauer",
+                "early_abreise_date",
+                "notiz_abreise",
+            )
+        )
+        Notizen.objects.create(
+            kinder=kid,
+            notiz="Neuere allgemeine Notiz",
+            added_by=self.user,
+        )
+
+        with TemporaryDirectory() as directory:
+            path = os.path.join(directory, "aufenthaltsdoku.xlsx")
+            update_excel_file(path, self.turnus)
+            exported = pd.read_excel(path, dtype=str).fillna("")
+
+        self.assertEqual(
+            exported.loc[0, "Abreisenotiz"],
+            "Explizit markierte Abreisenotiz",
+        )
+
+    def test_latest_note_is_not_used_without_an_early_departure(self):
+        kid = make_kid(self.turnus)
+        Notizen.objects.create(
+            kinder=kid,
+            notiz="Allgemeine Notiz",
+            added_by=self.user,
+        )
+
+        with TemporaryDirectory() as directory:
+            path = os.path.join(directory, "aufenthaltsdoku.xlsx")
+            update_excel_file(path, self.turnus)
+            exported = pd.read_excel(path, dtype=str).fillna("")
+
+        self.assertEqual(exported.loc[0, "Abreisenotiz"], "")
 
     def test_export_marks_train_departure_and_stay_changes_from_original_workbook(self):
         kid = make_kid(self.turnus)
