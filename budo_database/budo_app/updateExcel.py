@@ -41,6 +41,25 @@ def _planned_departure(kid, turnus):
     return turnus.turnus_beginn + timedelta(days=days_after_start)
 
 
+def _is_early_departure(kid, turnus):
+    return (
+        kid.early_abreise_date
+        and kid.early_abreise_date < _planned_departure(kid, turnus)
+    )
+
+
+def _departure_note(kid, turnus):
+    if kid.notiz_abreise or not _is_early_departure(kid, turnus):
+        return kid.notiz_abreise
+
+    latest_note = max(
+        kid.notizen.all(),
+        key=lambda note: (note.date_added, note.pk),
+        default=None,
+    )
+    return latest_note.notiz if latest_note else ""
+
+
 def update_excel_file(file_path, turnus):
     logger.info("Starting update_excel_file with file_path=%s turnus=%s",
                 file_path, turnus)
@@ -48,7 +67,7 @@ def update_excel_file(file_path, turnus):
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
     # Create a new DataFrame with the required columns
-    columns = ['Index', 'Vorname', 'Nachname', 'Alter', 'Taschengeld', 'Anwesend 1. Woche',
+    columns = ['Index', 'Vorname', 'Nachname', 'Alter', 'Anwesend 1. Woche',
                'Anwesend 2. Woche', 'verspätete Anreise', 'vorzeitige Abreise',
                'Zuganreise', 'Zugabreise', 'Zugabreise geändert',
                'Aufenthalt geändert', 'Abreisenotiz', 'Check-Out-Notiz']
@@ -60,23 +79,22 @@ def update_excel_file(file_path, turnus):
     original_values = _original_booking_values(turnus)
 
     # Populate the DataFrame with data from the Kinder model
-    for kid in models.Kinder.objects.filter(turnus=turnus):
+    for kid in models.Kinder.objects.filter(turnus=turnus).prefetch_related("notizen"):
         original = original_values.get(str(kid.kid_index).strip())
         data = {
             'Index': kid.kid_index,
             'Vorname': kid.kid_vorname,
             'Nachname': kid.kid_nachname,
             'Alter': kid.get_alter(),
-            'Taschengeld': kid.get_taschengeld_sum(),
             'Anwesend 1. Woche': 'ja' if kid.check_in_date and kid.turnus_dauer in [1, 2] else '',
             'Anwesend 2. Woche': 'ja' if kid.check_in_date and kid.turnus_dauer == 2 else '',
             'verspätete Anreise': kid.check_in_date.strftime('%Y-%m-%d') if kid.check_in_date and kid.check_in_date != turnus.turnus_beginn + timedelta(days=1) else '',
-            'vorzeitige Abreise': kid.early_abreise_date.strftime('%Y-%m-%d') if kid.early_abreise_date and kid.early_abreise_date < _planned_departure(kid, turnus) else '',
+            'vorzeitige Abreise': kid.early_abreise_date.strftime('%Y-%m-%d') if _is_early_departure(kid, turnus) else '',
             'Zuganreise': 'ja' if kid.zug_anreise else '',
             'Zugabreise': 'ja' if kid.zug_abreise else '',
             'Zugabreise geändert': ('ja' if kid.zug_abreise != original['zug_abreise'] else 'nein') if original else '',
             'Aufenthalt geändert': ('ja' if kid.turnus_dauer != original['turnus_dauer'] else 'nein') if original else '',
-            'Abreisenotiz': kid.notiz_abreise,
+            'Abreisenotiz': _departure_note(kid, turnus),
             'Check-Out-Notiz': kid.checkout_notiz,
         }
         data_list.append(data)
