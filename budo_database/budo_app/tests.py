@@ -703,15 +703,28 @@ class DownloadUpdatedExcelTest(TestCase):
             notiz="Abholung durch Tante um 14 Uhr",
             added_by=self.user,
         )
+        regular_departure = make_kid(
+            self.turnus,
+            kid_index="regular-departure",
+        )
+        Notizen.objects.create(
+            kinder=regular_departure,
+            notiz="Allgemeine Notiz",
+            added_by=self.user,
+        )
 
         with TemporaryDirectory() as directory:
             path = os.path.join(directory, "aufenthaltsdoku.xlsx")
             update_excel_file(path, self.turnus)
-            exported = pd.read_excel(path, dtype=str).fillna("")
+            exported = pd.read_excel(path, dtype=str).fillna("").set_index("Index")
 
         self.assertEqual(
-            exported.loc[0, "Abreisenotiz"],
+            exported.loc[kid.kid_index, "Abreisenotiz"],
             "Abholung durch Tante um 14 Uhr",
+        )
+        self.assertEqual(
+            exported.loc[regular_departure.kid_index, "Abreisenotiz"],
+            "",
         )
 
     def test_explicit_departure_note_takes_precedence_over_latest_note(self):
@@ -743,21 +756,6 @@ class DownloadUpdatedExcelTest(TestCase):
             exported.loc[0, "Abreisenotiz"],
             "Explizit markierte Abreisenotiz",
         )
-
-    def test_latest_note_is_not_used_without_an_early_departure(self):
-        kid = make_kid(self.turnus)
-        Notizen.objects.create(
-            kinder=kid,
-            notiz="Allgemeine Notiz",
-            added_by=self.user,
-        )
-
-        with TemporaryDirectory() as directory:
-            path = os.path.join(directory, "aufenthaltsdoku.xlsx")
-            update_excel_file(path, self.turnus)
-            exported = pd.read_excel(path, dtype=str).fillna("")
-
-        self.assertEqual(exported.loc[0, "Abreisenotiz"], "")
 
     def test_export_marks_train_departure_and_stay_changes_from_original_workbook(self):
         kid = make_kid(self.turnus)
