@@ -15,6 +15,7 @@ from .models import (
     Schwerpunktzeit,
     Tag,
     Turnus,
+    normalize_tag_name,
 )
 from django import forms
 from django.contrib.auth.models import User
@@ -169,10 +170,6 @@ class SchwerpunktForm(forms.ModelForm):
             'betreuende': forms.CheckboxSelectMultiple,
             'schwerpunktzeit': forms.Select(choices=Schwerpunktzeit.WOCHEN_AUSWAHL)
         }
-
-
-def normalize_tag_name(value):
-    return " ".join(str(value).split())
 
 
 class TagNamesWidget(forms.TextInput):

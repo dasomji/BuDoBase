@@ -1,11 +1,12 @@
 from datetime import date
 from unittest.mock import patch
 
+from django.contrib import admin
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from budo_app.models import Auslagerorte, Turnus
+from budo_app.models import Auslagerorte, Tag, Turnus
 
 
 class PlaceTagContractTests(TestCase):
@@ -109,3 +110,16 @@ class PlaceTagContractTests(TestCase):
             update_payload["available_tags"],
             ["Badeplatz", "Schlechtwetter tauglich", "Wanderung"],
         )
+
+
+class TagAdminValidationTests(TestCase):
+    def test_admin_form_rejects_duplicate_after_normalizing_whitespace_and_case(self):
+        Tag.objects.create(name="Admin-Regressions Badeplatz See")
+        tag_admin = admin.site._registry[Tag]
+        form_class = tag_admin.get_form(request=None)
+
+        form = form_class(data={"name": "  aDMIN-rEGRESSIONS   bADEPLATZ   SEE  "})
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("__all__", form.errors)
+        self.assertEqual(form.instance.name, "aDMIN-rEGRESSIONS bADEPLATZ SEE")

@@ -1109,11 +1109,19 @@ class SchwerpunktWahl(models.Model):
     #     super().save(*args, **kwargs)
 
 
+def normalize_tag_name(value):
+    return " ".join(str(value).split())
+
+
 class Tag(models.Model):
     name = models.CharField(max_length=100)
 
+    def clean(self):
+        self.name = normalize_tag_name(self.name)
+        super().clean()
+
     def save(self, *args, **kwargs):
-        self.name = " ".join(self.name.split())
+        self.name = normalize_tag_name(self.name)
         super().save(*args, **kwargs)
 
     def __str__(self):
