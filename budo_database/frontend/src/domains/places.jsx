@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
-import { ArrowLeftIcon, CarIcon, ChevronLeftIcon, ChevronRightIcon, ExternalLinkIcon, FootprintsIcon, ImagePlusIcon, MapPinIcon, NavigationIcon, PencilIcon, PlusIcon, SearchIcon, XIcon } from 'lucide-react';
+import { ArrowLeftIcon, CarIcon, ChevronLeftIcon, ChevronRightIcon, ExternalLinkIcon, FootprintsIcon, ImagePlusIcon, ListFilterIcon, MapPinIcon, NavigationIcon, PencilIcon, PlusIcon, SearchIcon, XIcon } from 'lucide-react';
 
 import { Card, Column, Columns, findById, NativeForm, RestForm } from '../components';
 import { GoogleMap } from '../components/google-map';
@@ -30,9 +30,28 @@ function TimeBadges({ place }) {
 }
 
 function Filters({ filters, row = false }) {
+  const [walkingFiltersOpen, setWalkingFiltersOpen] = useState(false);
+  const walkingFiltersId = useId();
+  const walkingFilterLabel = filters.maximumWalkingMinutes == null
+    ? 'Gehzeit filtern'
+    : `Gehzeitfilter: höchstens ${filters.maximumWalkingMinutes} Minuten`;
   const chips = <>
     {filters.availableTags.map(tag => <Button className="h-auto min-h-8 shrink-0 rounded-full px-3 py-1" size="sm" variant={filters.tags.includes(tag) ? 'secondary' : 'outline'} type="button" aria-pressed={filters.tags.includes(tag)} onClick={() => filters.toggleTag(tag)} key={tag}>{tag}</Button>)}
-    {[30, 60, 90].map(minutes => <Button className="h-auto min-h-8 shrink-0 rounded-full px-3 py-1" size="sm" variant={filters.maximumWalkingMinutes === minutes ? 'secondary' : 'outline'} type="button" aria-pressed={filters.maximumWalkingMinutes === minutes} onClick={() => filters.setMaximumWalkingMinutes(filters.maximumWalkingMinutes === minutes ? null : minutes)} key={minutes}>Höchstens {minutes} Minuten zu Fuß</Button>)}
+    <Button
+      size="icon-sm"
+      variant={filters.maximumWalkingMinutes == null ? 'outline' : 'secondary'}
+      type="button"
+      aria-label={walkingFilterLabel}
+      aria-controls={walkingFiltersId}
+      aria-expanded={walkingFiltersOpen}
+      aria-pressed={filters.maximumWalkingMinutes != null}
+      onClick={() => setWalkingFiltersOpen(open => !open)}
+    >
+      <ListFilterIcon aria-hidden="true" />
+    </Button>
+    {walkingFiltersOpen && <span className="contents" id={walkingFiltersId}>
+      {[30, 60, 90].map(minutes => <Button className="h-auto min-h-8 shrink-0 rounded-full px-3 py-1" size="sm" variant={filters.maximumWalkingMinutes === minutes ? 'secondary' : 'outline'} type="button" aria-pressed={filters.maximumWalkingMinutes === minutes} onClick={() => { filters.setMaximumWalkingMinutes(filters.maximumWalkingMinutes === minutes ? null : minutes); setWalkingFiltersOpen(false); }} key={minutes}>Höchstens {minutes} Minuten zu Fuß</Button>)}
+    </span>}
     {filters.tags.length > 0 && <Button size="xs" variant="ghost" type="button" onClick={() => filters.setTags([])}>Tagfilter zurücksetzen</Button>}
   </>;
   return <div className={row ? 'flex gap-1.5 overflow-x-auto pb-1' : 'flex flex-wrap gap-1.5'} role="group" aria-label="Auslagerorte filtern">{chips}</div>;

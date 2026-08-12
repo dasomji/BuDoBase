@@ -139,9 +139,13 @@ describe('map-first Auslagerorte', () => {
     expect(new URLSearchParams(window.location.search).getAll('tag')).toEqual(['Wanderung', 'Lagerfeuer']);
 
     await user.click(screen.getByRole('button', { name: 'Tagfilter zurücksetzen' }));
+    expect(screen.queryByRole('button', { name: 'Höchstens 60 Minuten zu Fuß' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Gehzeit filtern' }));
     await user.click(screen.getByRole('button', { name: 'Höchstens 60 Minuten zu Fuß' }));
     expect(mapProps.places.map(place => place.name)).toEqual(['BuDo', 'Waldwiese', 'Scheune ohne Koordinaten']);
     expect(new URLSearchParams(window.location.search).get('max_walk')).toBe('60');
+    expect(screen.getByRole('button', { name: 'Gehzeitfilter: höchstens 60 Minuten' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: 'Höchstens 60 Minuten zu Fuß' })).not.toBeInTheDocument();
 
     await user.type(screen.getByRole('searchbox', { name: 'Auslagerort suchen' }), 'wald');
     expect(mapProps.places.map(place => place.name)).toEqual(['Waldwiese']);
