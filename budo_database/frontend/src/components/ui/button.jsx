@@ -20,6 +20,8 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         link: "text-link underline-offset-4 hover:underline",
+        "full-surface":
+          "h-auto w-full justify-start rounded-none border-0 bg-transparent p-0 text-inherit whitespace-normal hover:bg-muted hover:text-foreground",
       },
       size: {
         default:

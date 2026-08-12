@@ -11,3 +11,7 @@ _Avoid_: Notiz, Unfallprotokoll
 **EH-Foto**:
 Ein einem EH-Eintrag zugeordnetes Foto, das die Erste-Hilfe-Dokumentation ergänzt.
 _Avoid_: Anhang, Notizfoto
+
+**Tag**:
+Eine globale, wiederverwendbare Bezeichnung für die Art oder Eignung eines Auslagerorts. Tags werden ohne führende oder nachfolgende Leerzeichen und unabhängig von Groß-/Kleinschreibung eindeutig geführt.
+_Avoid_: Kategorie, Schlagwort

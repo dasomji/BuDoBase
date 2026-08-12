@@ -28,7 +28,7 @@ function AppContent({
   fetchImpl = fetch,
   navigate = browserNavigate,
 }) {
-  const route = useMemo(() => parseRoute(window.location.pathname), []);
+  const [route, setRoute] = useState(() => parseRoute(window.location.pathname));
   const [bootstrap, setBootstrap] = useState(null);
   const [bootstrapError, setBootstrapError] = useState(null);
   const [pageState, setPageState] = useState({});
@@ -41,6 +41,23 @@ function AppContent({
   });
   const routeRequestSequence = useRef(0);
   const request = useMemo(() => routeDataRequest(route), [route]);
+  const navigateRoute = useCallback((path, { replace = false } = {}) => {
+    routeRequestSequence.current += 1;
+    const target = new URL(path, window.location.origin);
+    window.history[replace ? 'replaceState' : 'pushState'](
+      window.history.state,
+      '',
+      `${target.pathname}${target.search}${target.hash}`,
+    );
+    setRoute(parseRoute(target.pathname));
+    setRouteState({
+      loading: true,
+      data: null,
+      error: null,
+      notFound: false,
+      authenticationRequired: false,
+    });
+  }, []);
 
   const refreshBootstrap = useCallback(async () => {
     try {
@@ -87,6 +104,21 @@ function AppContent({
   }, [fetchImpl, request, route]);
 
   useEffect(() => { refreshBootstrap(); }, [refreshBootstrap]);
+  useEffect(() => {
+    const handlePopState = () => {
+      routeRequestSequence.current += 1;
+      setRoute(parseRoute(window.location.pathname));
+      setRouteState({
+        loading: true,
+        data: null,
+        error: null,
+        notFound: false,
+        authenticationRequired: false,
+      });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   useEffect(() => {
     if (bootstrap?.authenticated && request) refreshRoute();
   }, [bootstrap?.authenticated, refreshRoute, request]);
@@ -177,7 +209,7 @@ function AppContent({
             : 'Realtime-Verbindung unterbrochen. Daten werden abgeglichen…'}
         </p>
       )}
-      {renderRoute(route, { data, mutate, navigate, refresh: refreshRoute, fetchImpl, realtimeSync, pageState, setPageState })}
+      {renderRoute(route, { data, mutate, navigate, navigateRoute, refresh: refreshRoute, fetchImpl, realtimeSync, pageState, setPageState })}
     </>
   );
   if (route.standalone) return content;

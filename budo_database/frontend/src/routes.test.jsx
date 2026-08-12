@@ -36,7 +36,7 @@ describe('route inventory', () => {
     ['/auslagerorte/create', 'place-create', 'places', 'place-create'],
     ['/auslagerorte/4/update', 'place-update', 'places', 'place-update'],
     ['/auslagerorte/4/upload-image/', 'place-images', 'places', 'place-images'],
-    ['/auslagerorte/4', 'place-detail', 'places', 'place-detail'],
+    ['/auslagerorte/4', 'place-detail', 'places', 'places-list'],
     ['/kitchen', 'kitchen', 'kitchen', 'kitchen'],
     ['/swp-einteilung-w2', 'allocation', 'allocation', 'allocation'],
     ['/kindergesamtzahl', 'kid-count', 'reports', 'kid-count'],

@@ -53,6 +53,10 @@ literals in component markup.
 | `success-foreground` | `#373737` | Text/icons on success |
 | `destructive` | `#b93f3b` | Destructive and money-remove actions |
 | `destructive-foreground` | `#ffffff` | Text/icons on destructive |
+| `warning` | `#fff1c2` | Warning backgrounds |
+| `warning-foreground` | `#7a4500` | Warning text and icons |
+| `modal-overlay` | `rgb(0 0 0 / 90%)` | Modal image-viewer backdrop |
+| `overlay-foreground` | `#ffffff` | Content placed on a dark modal overlay |
 | `border` | `#dddddd` | Borders |
 | `input` | `#686868` | Input borders; shared with `ring` |
 | `ring` | `#686868` | Focus rings, including card headers and table sort controls |
@@ -75,8 +79,8 @@ Roboto during font swap. Do not add external font stylesheets, preconnects, or
 requests.
 
 Third-party component CSS belongs in a named `vendor` cascade layer before
-`components` and `utilities`. Leaflet follows this contract, so an application
-utility on a map element wins without selector escalation.
+`components` and `utilities`. The Google Maps integration loads its own vendor
+UI and does not add a global stylesheet.
 
 ## Button
 
@@ -112,6 +116,7 @@ Available variants are:
 | `outline` | Neutral bordered action |
 | `ghost` | Low-emphasis action |
 | `link` | Link treatment; normally use with `href` |
+| `full-surface` | Full-row, image, or sheet-handle action; callers own its layout padding |
 
 Available sizes are `default`, `xs`, `sm`, `lg`, `responsive-icon`, `icon`,
 `icon-xs`, `icon-sm`, and `icon-lg`. `size="icon"` is the 32px circular icon
@@ -316,7 +321,14 @@ from `../components` rather than recreating their structure at page call sites.
 | `ResponsiveCardGrid` | Responsive Card collection; use `independentColumns` and `maxColumns` as documented above |
 | `RestForm` | CSRF-aware asynchronous `FormData` POST through the shared form-submit endpoint; owns busy state and error toasts |
 | `NativeForm` | Schema-driven native GET form or POST form built on `RestForm` and the shared `.form-grid` seam |
-| `MapCard` | Transparent expandable Card containing the shared Leaflet map; accepts `places` and an optional `headerAction` |
+| `GoogleMap` | Sole Google Maps JavaScript seam; loads `maps`, `marker`, and `core` through the official loader and owns controls, markers, bounds, and cleanup |
+| `GoogleMapCard` | Transparent expandable Card containing `GoogleMap`; accepts `apiKey`, `places`, and an optional `headerAction` |
+
+Map-first pages place application overlays at the viewport edges and configure
+Google's map-type and zoom controls at `RIGHT_CENTER`, keeping the Roadmap /
+Satellite selector clear of desktop sidebars, mobile filter bars, and bottom
+sheets. Marker colors come from semantic theme tokens; page code must not add
+vendor marker-image URLs or literal colors.
 
 ## Native form controls
 

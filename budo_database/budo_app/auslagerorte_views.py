@@ -12,7 +12,7 @@ from django.views.generic.edit import CreateView, FormView, UpdateView
 
 from . import models
 from .forms import AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm
-from .location_services import update_auslagerorte_coordinates
+from .location_services import BUDO_PLACE_NAME, update_auslagerorte_coordinates
 from .models import (
     Auslagerorte,
     AuslagerorteImage,
@@ -47,7 +47,13 @@ class AuslagerorteUpdate(
         return context
 
     def form_valid(self, form):
+        form.instance._maps_link_changed = 'maps_link' in form.changed_data
+        form.instance._maps_link_parkspot_changed = (
+            'maps_link_parkspot' in form.changed_data
+        )
         form.instance = update_auslagerorte_coordinates(form.instance)
+        for warning in getattr(form.instance, '_location_warnings', []):
+            messages.warning(self.request, warning)
         messages.success(self.request, "Auslagerort upgedatet!")
         return super(AuslagerorteUpdate, self).form_valid(form)
 
@@ -89,7 +95,7 @@ class AuslagerorteDetail(
         }]
 
         try:
-            budo_ort = Auslagerorte.objects.get(name="BuDo")
+            budo_ort = Auslagerorte.objects.get(name=BUDO_PLACE_NAME)
             auslagerorte_data.append({
                 'id': budo_ort.id,
                 'name': budo_ort.name,
@@ -170,6 +176,8 @@ class AuslagerorteCreate(
 
     def form_valid(self, form):
         form.instance = update_auslagerorte_coordinates(form.instance)
+        for warning in getattr(form.instance, '_location_warnings', []):
+            messages.warning(self.request, warning)
         messages.success(self.request, "Auslagerort hinzugefügt!")
         return super().form_valid(form)
 

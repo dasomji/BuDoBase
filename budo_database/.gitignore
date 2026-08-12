@@ -3,6 +3,7 @@
 db.sqlite3
 private-media/
 frontend/node_modules/
+/node_modules/
 staticfiles/
 *.pyc
 __pycache__/

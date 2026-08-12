@@ -1,5 +1,4 @@
 import { Children, useEffect, useId, useMemo, useRef, useState } from 'react';
-import L from 'leaflet';
 import { SearchIcon } from 'lucide-react';
 
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -524,6 +523,9 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
   const contents = (submitting = false) => (
     <>
       {fields.map(field => {
+        if (field.render) {
+          return <div key={field.name}>{field.render()}</div>;
+        }
         if (field.type === 'checkbox-group') {
           const selected = new Set((field.value || []).map(String));
           return <fieldset className="checkbox-group" key={field.name}><legend>{field.label}</legend><div className="checkbox-group-options">{field.options?.map(option => <label className="checkbox-row" key={option.value}><input type="checkbox" name={field.name} value={option.value} defaultChecked={selected.has(String(option.value))} />{option.label}</label>)}</div></fieldset>;
@@ -547,35 +549,6 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
     return <RestForm target={action} token={token} encType={encType} className="form-grid">{({ submitting }) => contents(submitting)}</RestForm>;
   }
   return <form action={action} method={method} encType={encType} className="form-grid">{contents()}</form>;
-}
-
-export function MapCard({ places = [], headerAction = null }) {
-  const element = useRef(null);
-  const locations = useMemo(() => places.map(place => ({
-    ...place,
-    point: (place.coordinates || '').split(',').map(Number),
-  })).filter(place => place.point.length === 2 && place.point.every(Number.isFinite)), [places]);
-  useEffect(() => {
-    if (!element.current || !locations.length) return undefined;
-    const map = L.map(element.current, { scrollWheelZoom: true, touchZoom: true });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd',
-      attribution: '© OpenStreetMap contributors © CARTO',
-    }).addTo(map);
-    const markers = locations.map(location => L.marker(location.point, {
-      icon: L.divIcon({
-        className: 'leaflet-text',
-        html: `<b><a href="${location.href || `/auslagerorte/${location.id}/`}">📍${location.name}</a></b>`,
-      }),
-    }).addTo(map));
-    const bounds = L.featureGroup(markers).getBounds();
-    map.fitBounds(bounds, { paddingBottomRight: [150, 0], maxZoom: 12 });
-    const observer = new ResizeObserver(() => map.invalidateSize());
-    observer.observe(element.current);
-    return () => { observer.disconnect(); map.remove(); };
-  }, [locations]);
-  return <Card title="Karte" id="swp-map" className="transparent" headerAction={headerAction}><div className="react-map interactive-map" id="map" ref={element}>{!locations.length && <p>Keine Koordinaten verfügbar.</p>}</div></Card>;
 }
 
 const MESSAGE_LEVELS = ['error', 'warning', 'success', 'info'];

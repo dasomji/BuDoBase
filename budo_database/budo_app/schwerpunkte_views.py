@@ -17,6 +17,7 @@ from django.views.generic.edit import CreateView, UpdateView
 from . import models
 from .forms import MealChoiceForm, SchwerpunktForm
 from .kid_edit_writes import versioned_child_write
+from .location_services import BUDO_PLACE_NAME
 from .models import (
     Auslagerorte,
     Kinder,
@@ -117,8 +118,8 @@ class SchwerpunkteDetail(
         }]
 
         try:
-            if schwerpunkt.ort.name != "BuDo":
-                budo_ort = Auslagerorte.objects.get(name="BuDo")
+            if schwerpunkt.ort.name != BUDO_PLACE_NAME:
+                budo_ort = Auslagerorte.objects.get(name=BUDO_PLACE_NAME)
                 auslagerorte_data.append({
                     'id': budo_ort.id,
                     'name': budo_ort.name,

@@ -1,4 +1,5 @@
 from django.db.models import Prefetch
+from django.db.models.functions import Lower
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
@@ -7,6 +8,7 @@ from budo_app.models import (
     AuslagerorteImage,
     AuslagerorteNotizen,
     Profil,
+    Tag,
 )
 from budo_app.read_contracts.common import (
     required_query_integer,
@@ -26,27 +28,43 @@ def _require_active_turnus(request):
         raise Http404
 
 
-def _list_place(place):
-    return {
-        "id": place["id"],
-        "name": place["name"],
-        "coordinates": place["koordinaten"],
-        "maps_link": place["maps_link"],
-        "parking_link": place["maps_link_parkspot"],
-    }
+def _available_tag_names(*, in_use=False):
+    tags = Tag.objects.all()
+    if in_use:
+        tags = tags.filter(auslagerorte__isnull=False).distinct()
+    return list(tags.order_by(Lower("name"), "id").values_list("name", flat=True))
+
+
+def _tag_prefetch():
+    return Prefetch(
+        "tags",
+        queryset=Tag.objects.order_by(Lower("name"), "id"),
+        to_attr="route_tags",
+    )
 
 
 def places_list(request):
     if not _has_active_turnus(request):
-        return {"places": []}
-    places = Auslagerorte.objects.values(
-        "id",
-        "name",
-        "koordinaten",
-        "maps_link",
-        "maps_link_parkspot",
+        return {"places": [], "available_tags": []}
+    images = AuslagerorteImage.objects.only(
+        "id", "auslagerort_id", "notiz_id", "image",
+    ).order_by("id")
+    notes = AuslagerorteNotizen.objects.select_related("added_by").prefetch_related(
+        Prefetch("images", queryset=images, to_attr="route_images"),
+    ).order_by("date_added", "id")
+    places = Auslagerorte.objects.prefetch_related(
+        Prefetch(
+            "images",
+            queryset=images.filter(notiz_id__isnull=True),
+            to_attr="route_images",
+        ),
+        Prefetch("auslagernotizen", queryset=notes, to_attr="route_notes"),
+        _tag_prefetch(),
     ).order_by("name", "id")
-    return {"places": [_list_place(place) for place in places]}
+    return {
+        "places": [_detail_place(place) for place in places],
+        "available_tags": _available_tag_names(in_use=True),
+    }
 
 
 def _detail_place(place):
@@ -59,6 +77,8 @@ def _detail_place(place):
         "postal_code": place.postleitzahl,
         "country": place.land,
         "coordinates": place.koordinaten,
+        "driving_minutes": place.driving_minutes,
+        "walking_minutes": place.walking_minutes,
         "maps_link": place.maps_link,
         "description": place.beschreibung,
         "contact": place.kontakt,
@@ -82,6 +102,7 @@ def _detail_place(place):
             }
             for note in place.route_notes
         ],
+        "tags": [tag.name for tag in place.route_tags],
     }
 
 
@@ -99,40 +120,46 @@ def place_detail(request):
         "id",
     )
     queryset = Auslagerorte.objects.prefetch_related(
-        Prefetch("images", queryset=images, to_attr="route_images"),
+        Prefetch(
+            "images",
+            queryset=images.filter(notiz_id__isnull=True),
+            to_attr="route_images",
+        ),
         Prefetch(
             "auslagernotizen",
             queryset=notes,
             to_attr="route_notes",
         ),
+        _tag_prefetch(),
     )
     place = get_object_or_404(queryset, id=required_query_integer(request))
     return {"places": [_detail_place(place)]}
 
 
 def place_create(request):
-    return {"places": []}
+    return {"places": [], "available_tags": _available_tag_names()}
 
 
 def _form_place(place):
     return {
-        "id": place["id"],
-        "name": place["name"],
-        "street": place["strasse"],
-        "city": place["ort"],
-        "state": place["bundesland"],
-        "postal_code": place["postleitzahl"],
-        "country": place["land"],
-        "maps_link": place["maps_link"],
-        "description": place["beschreibung"],
-        "parking_link": place["maps_link_parkspot"],
+        "id": place.id,
+        "name": place.name,
+        "street": place.strasse,
+        "city": place.ort,
+        "state": place.bundesland,
+        "postal_code": place.postleitzahl,
+        "country": place.land,
+        "maps_link": place.maps_link,
+        "description": place.beschreibung,
+        "parking_link": place.maps_link_parkspot,
+        "tags": [tag.name for tag in place.route_tags],
     }
 
 
 def place_update(request):
     _require_active_turnus(request)
     place = get_object_or_404(
-        Auslagerorte.objects.values(
+        Auslagerorte.objects.only(
             "id",
             "name",
             "strasse",
@@ -143,10 +170,13 @@ def place_update(request):
             "maps_link",
             "beschreibung",
             "maps_link_parkspot",
-        ),
+        ).prefetch_related(_tag_prefetch()),
         id=required_query_integer(request),
     )
-    return {"places": [_form_place(place)]}
+    return {
+        "places": [_form_place(place)],
+        "available_tags": _available_tag_names(),
+    }
 
 
 def place_images(request):

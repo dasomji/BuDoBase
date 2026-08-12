@@ -1,9 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
-import { parseRoute } from '../routes';
-import { ImageUploadPage, PlaceDetailPage, PlacesPage } from './places';
+import { parseRoute, routeHeaderAction } from '../routes';
+import { ImageUploadPage, PlacesPage } from './places';
 
 const response = (data, { ok = true, status = 200 } = {}) => ({
   ok,
@@ -16,15 +17,6 @@ describe('Auslagerorte workflows', () => {
     cleanup();
     vi.unstubAllGlobals();
     window.history.pushState({}, '', '/');
-  });
-
-  it('omits the redundant actions column from the places list', () => {
-    render(<PlacesPage data={{
-      places: [{ id: 4, name: 'Ada Hütte', maps_link: '', parking_link: '', coordinates: null }],
-    }} />);
-
-    expect(screen.queryByRole('columnheader', { name: 'Aktionen' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ada Hütte' })).toHaveAttribute('href', '/auslagerorte/4/');
   });
 
   it('requires multiple images and hints accepted file types', () => {
@@ -40,65 +32,72 @@ describe('Auslagerorte workflows', () => {
     expect(input).toHaveAttribute('accept', 'image/*');
   });
 
-  it('declares the Auslagerorte page contracts', () => {
+  it('uses the folded list contract for historic detail routes', () => {
     expect([
       '/auslagerorte-list',
       '/auslagerorte/create',
       '/auslagerorte/4/update',
       '/auslagerorte/4/upload-image/',
       '/auslagerorte/4',
-    ].map(path => {
-      const route = parseRoute(path);
-      return route.readContractKey;
-    })).toEqual([
+    ].map(path => parseRoute(path).readContractKey)).toEqual([
       'places-list',
       'place-create',
       'place-update',
       'place-images',
-      'place-detail',
+      'places-list',
     ]);
   });
 
-  it('refreshes a saved note in place without requesting bootstrap again', async () => {
+  it('offers a design-system map type segment in the page header', async () => {
+    const user = userEvent.setup();
+    const setPageState = vi.fn();
+    render(routeHeaderAction(
+      parseRoute('/auslagerorte-list/'),
+      {},
+      { pageState: { placesMapType: 'roadmap' }, setPageState },
+    ));
+
+    const mapTypeSegment = screen.getByRole('group', { name: 'Kartendarstellung' });
+    const roadmapButton = screen.getByRole('button', { name: 'Karte' });
+    const satelliteButton = screen.getByRole('button', { name: 'Satellit' });
+    expect(mapTypeSegment).toHaveClass('max-[900px]:rounded-full');
+    expect(roadmapButton).toHaveClass('h-8', 'max-[900px]:rounded-l-full', 'max-[900px]:rounded-r-none');
+    expect(satelliteButton).toHaveClass('h-8', 'max-[900px]:rounded-r-full', 'max-[900px]:rounded-l-none');
+    expect(roadmapButton).toHaveAttribute('aria-pressed', 'true');
+    await user.click(satelliteButton);
+
+    const update = setPageState.mock.calls[0][0];
+    expect(update({ placesMapType: 'roadmap', untouched: true })).toEqual({
+      placesMapType: 'satellite',
+      untouched: true,
+    });
+  });
+
+  it('refreshes the folded list after a sidebar comment without reloading bootstrap', async () => {
     window.history.pushState({}, '', '/auslagerorte/4');
-    let detailReads = 0;
-    const place = {
-      id: 4,
-      name: 'Ada Hütte',
-      coordinates: null,
-      notes: [],
-      images: [],
-    };
+    let listReads = 0;
+    const place = { id: 4, name: 'Ada Hütte', tags: [], coordinates: null, notes: [], images: [] };
     const fetchMock = vi.fn(async url => {
-      if (url === '/api/bootstrap/') {
-        return response({
-          authenticated: true,
-          csrf_token: 'csrf-token',
-          messages: [],
-          profile: { id: 1, rufname: 'Ada' },
-          turnus: { id: 2, label: 'T2' },
-          permissions: {},
-          search_index: { kids: [], focuses: [], places: [{ id: 4, name: 'Ada Hütte' }] },
-        });
+      if (url === '/api/bootstrap/') return response({
+        authenticated: true,
+        csrf_token: 'csrf-token',
+        messages: [],
+        profile: { id: 1, rufname: 'Ada' },
+        turnus: { id: 2, label: 'T2' },
+        permissions: {},
+        search_index: { kids: [], focuses: [], places: [{ id: 4, name: 'Ada Hütte' }] },
+      });
+      if (url === '/api/route-data/places-list/?id=4') {
+        listReads += 1;
+        return response({ places: [{ ...place, notes: listReads === 1 ? [] : [{ id: 7, author: 'ada', date: '2026-07-17', text: 'Wasser abdrehen', photos: [] }] }], available_tags: [] });
       }
-      if (url === '/api/route-data/place-detail/?id=4') {
-        detailReads += 1;
-        return response({
-          places: [{
-            ...place,
-            notes: detailReads === 1 ? [] : [{ id: 7, author: 'ada', date: '2026-07-17', text: 'Wasser abdrehen' }],
-          }],
-        });
-      }
-      if (url === '/api/form-submit/') {
-        return response({ ok: true, redirect: '/auslagerorte/4/' });
-      }
+      if (url === '/api/form-submit/') return response({ ok: true });
       throw new Error(`Unexpected request: ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<App fetchImpl={fetchMock} />);
-    const note = await screen.findByPlaceholderText('Kommentar...');
+    const note = await screen.findByRole('textbox', { name: 'Kommentar' });
     fireEvent.change(note, { target: { value: 'Wasser abdrehen' } });
     fireEvent.click(screen.getByRole('button', { name: 'Kommentar senden' }));
 
@@ -106,57 +105,119 @@ describe('Auslagerorte workflows', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
     expect(fetchMock.mock.calls.map(call => call[0])).toEqual([
       '/api/bootstrap/',
-      '/api/route-data/place-detail/?id=4',
+      '/api/route-data/places-list/?id=4',
       '/api/form-submit/',
-      '/api/route-data/place-detail/?id=4',
+      '/api/route-data/places-list/?id=4',
     ]);
-    expect(detailReads).toBe(2);
   });
 
-  it('submits detail notes through the established REST form seam', async () => {
-    const onSaved = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue(response({ ok: true }));
-    vi.stubGlobal('fetch', fetchMock);
-    render(<PlaceDetailPage data={{
-      csrf_token: 'csrf-token',
-      places: [{ id: 4, name: 'Ada Hütte', coordinates: null, notes: [], images: [] }],
-    }} id="4" onSaved={onSaved} />);
+  it('excludes places with unknown walking times from a walking maximum', () => {
+    window.history.pushState({}, '', '/auslagerorte-list/?max_walk=30');
+    const MapComponent = ({ places }) => (
+      <div aria-label="Testkarte">{places.map(place => place.name).join(', ')}</div>
+    );
 
-    const comment = screen.getByRole('textbox', { name: 'Kommentar' });
-    expect(comment.tagName).toBe('TEXTAREA');
-    expect(comment).toHaveAttribute('rows', '2');
-    expect(comment.form).toHaveAttribute('enctype', 'multipart/form-data');
-    fireEvent.change(comment, { target: { value: 'Neue Notiz' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Kommentar senden' }));
+    render(<PlacesPage data={{
+      available_tags: [],
+      places: [
+        { id: 1, name: 'Unknown', tags: [], walking_minutes: null },
+        { id: 2, name: 'Near', tags: [], walking_minutes: 20 },
+      ],
+    }} MapComponent={MapComponent} />);
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
-    expect(fetchMock.mock.calls[0][1].body.get('_target')).toBe('/auslagerorte/4/');
-    expect(fetchMock.mock.calls[0][1].body.get('notiz')).toBe('Neue Notiz');
+    expect(screen.getByLabelText('Testkarte')).toHaveTextContent('Near');
+    expect(screen.getByLabelText('Testkarte')).not.toHaveTextContent('Unknown');
   });
 
-  it('uploads comment images and shows them with the comment as well as in Bilder', async () => {
-    const onSaved = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue(response({ ok: true }));
-    vi.stubGlobal('fetch', fetchMock);
+  it('returns a historic detail deep link to the filtered trailing-slash list URL', async () => {
+    const user = userEvent.setup();
+    window.history.pushState({}, '', '/auslagerorte/4?q=Hütte&tag=ruhig');
+    render(<PlacesPage data={{
+      available_tags: ['ruhig'],
+      places: [{
+        id: 4,
+        name: 'Ada Hütte',
+        tags: ['ruhig'],
+        coordinates: null,
+        notes: [],
+        images: [],
+      }],
+    }} initialPlaceId="4" MapComponent={() => <div />} />);
+
+    await user.click(screen.getByRole('button', { name: 'Zurück zur Liste' }));
+
+    expect(window.location.pathname).toBe('/auslagerorte-list/');
+    expect(window.location.search).toBe('?q=H%C3%BCtte&tag=ruhig');
+  });
+
+  it('returns a deep link through App navigation and restores list header actions', async () => {
+    const user = userEvent.setup();
+    window.history.pushState({}, '', '/auslagerorte/4?q=Hütte');
     const place = {
       id: 4,
       name: 'Ada Hütte',
+      tags: [],
       coordinates: null,
-      notes: [{ id: 8, author: 'Ada', date: '2026-07-17', text: 'Feuerstelle', photos: [{ id: 9, url: '/media/damage.jpg', alt: 'Kommentarbild zu Ada Hütte' }] }],
-      images: ['/media/damage.jpg'],
+      notes: [],
+      images: [],
     };
-    render(<PlaceDetailPage data={{ csrf_token: 'csrf-token', places: [place] }} id="4" onSaved={onSaved} />);
+    const fetchMock = vi.fn(async url => {
+      if (url === '/api/bootstrap/') return response({
+        authenticated: true,
+        csrf_token: 'csrf-token',
+        messages: [],
+        permissions: {},
+        search_index: { kids: [], focuses: [], places: [place] },
+      });
+      if (url === '/api/route-data/places-list/?id=4') {
+        return response({ places: [place], available_tags: [] });
+      }
+      if (url === '/api/route-data/places-list/') {
+        return response({ places: [place], available_tags: [] });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
 
-    expect(screen.getAllByRole('img', { name: /Ada Hütte/ })).toHaveLength(2);
-    const photo = new File(['photo'], 'damage.jpg', { type: 'image/jpeg' });
-    fireEvent.change(screen.getByLabelText('Kommentar-Bilder'), { target: { files: [photo] } });
-    expect(within(screen.getByLabelText('Kommentar-Bilder').previousElementSibling).getByText('1')).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText('Kommentar...'), { target: { value: 'Mit Bild' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Kommentar senden' }));
+    render(<App fetchImpl={fetchMock} />);
+    expect(await screen.findByRole('heading', { name: 'Ada Hütte', level: 1 })).toBeInTheDocument();
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
-    const body = fetchMock.mock.calls[0][1].body;
-    expect(body.get('notiz')).toBe('Mit Bild');
-    expect(body.getAll('images')).toEqual([photo]);
+    await user.click(screen.getByRole('button', { name: 'Zurück zur Liste' }));
+
+    expect(await screen.findByRole('heading', { name: 'Auslagerorte', level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ort hinzufügen' })).toHaveAttribute(
+      'href',
+      '/auslagerorte/create',
+    );
+    expect(window.location.pathname).toBe('/auslagerorte-list/');
+    expect(window.location.search).toBe('?q=H%C3%BCtte');
+  });
+
+  it('keeps the gallery modal keyboard-contained, restores focus, and supports touch swipes', async () => {
+    const user = userEvent.setup();
+    const place = {
+      id: 4,
+      name: 'Ada Hütte',
+      tags: [],
+      coordinates: null,
+      notes: [],
+      images: ['/one.jpg', '/two.jpg'],
+    };
+    render(<PlacesPage data={{ available_tags: [], places: [place] }} MapComponent={() => <div />} />);
+    await user.click(screen.getByRole('button', { name: /Ada Hütte/ }));
+    const trigger = screen.getByRole('button', { name: 'Galerie öffnen' });
+    await user.click(trigger);
+
+    const dialog = screen.getByRole('dialog', { name: 'Bilder von Ada Hütte' });
+    expect(dialog).toContainElement(document.activeElement);
+    const image = within(dialog).getByAltText('Ada Hütte 1');
+    fireEvent.touchStart(image, { touches: [{ clientX: 100, clientY: 10 }] });
+    fireEvent.touchEnd(image, { changedTouches: [{ clientX: 20, clientY: 12 }] });
+    expect(within(dialog).getByAltText('Ada Hütte 2')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(within(dialog).getByAltText('Ada Hütte 1')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 });
