@@ -13,6 +13,7 @@ from .models import (
     Profil,
     Schwerpunkte,
     Schwerpunktzeit,
+    Tag,
     Turnus,
 )
 from django import forms
@@ -170,7 +171,63 @@ class SchwerpunktForm(forms.ModelForm):
         }
 
 
+def normalize_tag_name(value):
+    return " ".join(str(value).split())
+
+
+class TagNamesWidget(forms.TextInput):
+    def value_from_datadict(self, data, files, name):
+        return data.getlist(name)
+
+
+class TagNamesField(forms.Field):
+    widget = TagNamesWidget
+
+    def to_python(self, value):
+        values = value if isinstance(value, (list, tuple)) else [value]
+        normalized = []
+        seen = set()
+        for item in values:
+            name = normalize_tag_name(item)
+            key = name.casefold()
+            if name and key not in seen:
+                normalized.append(name)
+                seen.add(key)
+        return normalized
+
+    def validate(self, value):
+        super().validate(value)
+        for name in value:
+            if len(name) > 100:
+                raise forms.ValidationError(
+                    "Tags dürfen höchstens 100 Zeichen lang sein."
+                )
+
+
 class AuslagerForm(forms.ModelForm):
+    tags = TagNamesField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound and self.instance.pk:
+            self.initial["tags"] = list(
+                self.instance.tags.order_by("name", "id")
+                .values_list("name", flat=True)
+            )
+
+    def save(self, commit=True):
+        place = super().save(commit=commit)
+        if commit:
+            resolved = []
+            for name in self.cleaned_data["tags"]:
+                tag, _ = Tag.objects.get_or_create(
+                    name__iexact=name,
+                    defaults={"name": name},
+                )
+                resolved.append(tag)
+            place.tags.set(resolved)
+        return place
+
     class Meta:
         model = Auslagerorte
         fields = ['name', 'strasse', 'ort', 'bundesland', 'postleitzahl', 'land',

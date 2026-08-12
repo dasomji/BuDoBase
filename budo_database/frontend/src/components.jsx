@@ -524,6 +524,9 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
   const contents = (submitting = false) => (
     <>
       {fields.map(field => {
+        if (field.render) {
+          return <div key={field.name}>{field.render()}</div>;
+        }
         if (field.type === 'checkbox-group') {
           const selected = new Set((field.value || []).map(String));
           return <fieldset className="checkbox-group" key={field.name}><legend>{field.label}</legend><div className="checkbox-group-options">{field.options?.map(option => <label className="checkbox-row" key={option.value}><input type="checkbox" name={field.name} value={option.value} defaultChecked={selected.has(String(option.value))} />{option.label}</label>)}</div></fieldset>;

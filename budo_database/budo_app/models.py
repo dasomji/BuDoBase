@@ -2,6 +2,7 @@ import datetime
 from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.db.models.functions import Lower
 from django.dispatch import receiver
 from django.db.models.signals import post_save, post_delete, pre_delete, pre_save
 from django.contrib.auth.models import User
@@ -1108,6 +1109,26 @@ class SchwerpunktWahl(models.Model):
     #     super().save(*args, **kwargs)
 
 
+class Tag(models.Model):
+    name = models.CharField(max_length=100)
+
+    def save(self, *args, **kwargs):
+        self.name = " ".join(self.name.split())
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ("name", "id")
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                name="unique_tag_name_case_insensitive",
+            ),
+        ]
+
+
 class Auslagerorte(models.Model):
     name = models.CharField(max_length=255)
     strasse = models.CharField(
@@ -1134,6 +1155,7 @@ class Auslagerorte(models.Model):
     )
     koordinaten_parkspot = models.CharField(
         max_length=255, blank=True, null=True)
+    tags = models.ManyToManyField(Tag, blank=True, related_name="auslagerorte")
 
     def get_lat_ort(self):
         if self.koordinaten:

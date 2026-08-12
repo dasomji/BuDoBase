@@ -1,19 +1,73 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { PlusIcon } from 'lucide-react';
 
 import { Card, Column, Columns, DataTable, FieldList, findById, MapCard, NativeForm, RestForm } from '../components';
 import { Button } from '../components/ui/button';
-import { Textarea } from '../components/ui/input';
+import { Input, Textarea } from '../components/ui/input';
 import { formatGermanDate, NotFoundPage } from './shared';
 
 export function PlacesPage({ data }) {
-  const rows = data.places;
+  return <PlacesTablePage data={data} />;
+}
+
+const tagChipClass = 'inline-flex min-h-8 items-center rounded-full border border-input px-3 py-1 text-sm font-medium wrap-anywhere';
+
+function TagList({ tags = [], label = 'Tags' }) {
+  if (!tags.length) return null;
+  return (
+    <ul className="m-0 flex list-none flex-wrap gap-1 p-0" aria-label={label}>
+      {tags.map(tag => <li className={`${tagChipClass} bg-popover`} key={tag}>{tag}</li>)}
+    </ul>
+  );
+}
+
+function PlacesTablePage({ data }) {
+  const availableTags = data.available_tags || [];
+  const places = data.places || [];
+  const [selectedTags, setSelectedTags] = useState(() => {
+    const requested = new Set(new URLSearchParams(window.location.search).getAll('tag'));
+    return availableTags.filter(tag => requested.has(tag));
+  });
+
+  const setFilters = next => {
+    setSelectedTags(next);
+    const params = new URLSearchParams(window.location.search);
+    params.delete('tag');
+    next.forEach(tag => params.append('tag', tag));
+    const query = params.toString();
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+  };
+  const toggleTag = tag => setFilters(
+    selectedTags.includes(tag)
+      ? selectedTags.filter(selected => selected !== tag)
+      : [...selectedTags, tag],
+  );
+  const rows = places.filter(place => selectedTags.every(tag => (place.tags || []).includes(tag)));
   const columns = [
     { key: 'name', label: 'Name', render: row => <a href={`/auslagerorte/${row.id}/`}>{row.name}</a> },
+    { key: 'tags', label: 'Tags', render: row => <TagList tags={row.tags} label={`Tags für ${row.name}`} />, sortable: false },
     { key: 'maps_link', label: 'Wo', render: row => row.maps_link ? <a href={row.maps_link}>Google Maps</a> : '---' },
     { key: 'parking_link', label: 'Parkspot', render: row => row.parking_link ? <a href={row.parking_link}>Google Maps</a> : '---' },
   ];
-  return <Columns><Column id="left-column"><DataTable columns={columns} rows={rows} /></Column><Column id="right-column"><MapCard places={data.places} /></Column></Columns>;
+  const filters = availableTags.length > 0 && (
+    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Nach Tags filtern">
+      {availableTags.map(tag => (
+        <Button
+          className="h-auto min-h-8 rounded-full px-3 py-1 wrap-anywhere"
+          size="sm"
+          variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+          type="button"
+          aria-pressed={selectedTags.includes(tag)}
+          onClick={() => toggleTag(tag)}
+          key={tag}
+        >
+          {tag}
+        </Button>
+      ))}
+      {selectedTags.length > 0 && <Button size="xs" variant="ghost" type="button" onClick={() => setFilters([])}>Tagfilter zurücksetzen</Button>}
+    </div>
+  );
+  return <Columns><Column id="left-column"><DataTable beforeFilter={filters} columns={columns} rows={rows} empty={selectedTags.length ? 'Keine Auslagerorte entsprechen den ausgewählten Tags.' : 'Keine Auslagerorte'} /></Column><Column id="right-column"><MapCard places={rows} /></Column></Columns>;
 }
 
 function PlaceCommentForm({ place, token, onSaved }) {
@@ -54,6 +108,7 @@ export function PlaceDetailPage({ data, id, onSaved }) {
             title={place.name}
             actions={<Button href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</Button>}
           >
+            <div className="mb-3"><TagList tags={place.tags} /></div>
             <FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} />
           </Card>
           <Card title="Kommentare">
@@ -75,10 +130,56 @@ export function PlaceDetailPage({ data, id, onSaved }) {
   );
 }
 
+function TagInput({ availableTags, initialTags }) {
+  const [tags, setTags] = useState(initialTags || []);
+  const [draft, setDraft] = useState('');
+  const suggestionsId = useId();
+  const normalize = value => value.trim().replace(/\s+/g, ' ');
+  const addDraft = () => {
+    const normalized = normalize(draft);
+    if (!normalized) return;
+    const existing = availableTags.find(tag => tag.toLocaleLowerCase('de') === normalized.toLocaleLowerCase('de')) || normalized;
+    if (!tags.some(tag => tag.toLocaleLowerCase('de') === existing.toLocaleLowerCase('de'))) {
+      setTags(current => [...current, existing]);
+    }
+    setDraft('');
+  };
+  return (
+    <fieldset className="grid gap-2">
+      <legend className="font-medium">Tags</legend>
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {tags.map(tag => (
+            <span className={`${tagChipClass} gap-2 bg-popover`} key={tag}>
+              {tag}
+              <Button className="-mr-2" size="icon-xs" variant="ghost" type="button" aria-label={`Tag ${tag} entfernen`} onClick={() => setTags(current => current.filter(item => item !== tag))}>×</Button>
+              <input type="hidden" name="tags" value={tag} />
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="min-w-48 flex-1">Tag hinzufügen
+          <Input name="tags" value={draft} list={suggestionsId} onChange={event => setDraft(event.target.value)} onKeyDown={event => {
+            if (event.key === 'Enter' || event.key === ',') {
+              event.preventDefault();
+              addDraft();
+            }
+          }} />
+        </label>
+        <datalist id={suggestionsId}>{availableTags.filter(tag => !tags.includes(tag)).map(tag => <option value={tag} key={tag} />)}</datalist>
+        <Button size="sm" variant="secondary" type="button" onClick={addDraft}>Hinzufügen</Button>
+      </div>
+      <p className="m-0 text-sm text-muted-foreground">Mit Enter oder Komma hinzufügen. Neue Tags werden beim Speichern angelegt.</p>
+    </fieldset>
+  );
+}
+
 export function PlaceFormPage({ data, id }) {
   const place = id ? findById(data.places, id) : null;
   const keys = { name: 'name', strasse: 'street', ort: 'city', bundesland: 'state', postleitzahl: 'postal_code', land: 'country', maps_link: 'maps_link', beschreibung: 'description', maps_link_parkspot: 'parking_link' };
   const fields = [['name', 'Name'], ['strasse', 'Straße'], ['ort', 'Stadt'], ['bundesland', 'Bundesland'], ['postleitzahl', 'Postleitzahl'], ['land', 'Land'], ['maps_link', 'Google Maps Link'], ['beschreibung', 'Beschreibung', 'textarea'], ['maps_link_parkspot', 'Google Maps Link Parkspot']].map(([name, label, type]) => ({ name, label, type, value: place?.[keys[name]] }));
+  fields.push({ name: 'tags', render: () => <TagInput availableTags={data.available_tags || []} initialTags={place?.tags || []} /> });
   return <Columns><Column id="single-column"><Card title={`Auslagerort ${place ? 'updaten' : 'erstellen'}`}><NativeForm token={data.csrf_token} action={place ? `/auslagerorte/${place.id}/update` : '/auslagerorte/create'} fields={fields} /></Card></Column></Columns>;
 }
 

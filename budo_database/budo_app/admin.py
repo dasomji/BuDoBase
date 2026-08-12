@@ -25,6 +25,7 @@ from .models import (
     Schwerpunkte,
     Schwerpunktzeit,
     SpezialFamilien,
+    Tag,
     Turnus,
 )
 
@@ -232,6 +233,7 @@ class AuslagerorteImageInline(admin.TabularInline):
 
 class AuslagerorteAdmin(admin.ModelAdmin):
     list_display = ("__str__", "get_notizen_count", "get_images_count")
+    filter_horizontal = ("tags",)
     inlines = [AuslagerorteNotizenInline, AuslagerorteImageInline]
 
     def get_notizen_count(self, obj):
@@ -533,6 +535,7 @@ admin.site.register(Turnus, TurnusAdmin)
 admin.site.register(Auslagerorte, AuslagerorteAdmin)
 admin.site.register(AuslagerorteImage, AuslagerorteImageAdmin)
 admin.site.register(AuslagerorteNotizen, AuslagerorteNotizenAdmin)
+admin.site.register(Tag, admin.ModelAdmin)
 admin.site.register(Notizen, NotizenAdmin)
 admin.site.register(Document)
 admin.site.register(Profil, ProfilAdmin)
