@@ -313,9 +313,9 @@ const selectedPlaceTitle = (route, data) => findById(data.places, route.id)?.nam
 const placesMapType = pageState => pageState?.placesMapType === 'satellite' ? 'satellite' : 'roadmap';
 
 function MapTypeSegment({ mapTypeId, onMapTypeChange }) {
-  return <div className="inline-flex rounded-lg shadow-sm" role="group" aria-label="Kartendarstellung">
-    <Button className="rounded-r-none max-[900px]:size-8 max-[900px]:px-0" size="sm" variant={mapTypeId === 'roadmap' ? 'secondary' : 'outline'} type="button" aria-pressed={mapTypeId === 'roadmap'} onClick={() => onMapTypeChange('roadmap')}><MapIcon aria-hidden="true" /><span className="max-[900px]:sr-only">Karte</span></Button>
-    <Button className="rounded-l-none border-l-0 max-[900px]:size-8 max-[900px]:px-0" size="sm" variant={mapTypeId === 'satellite' ? 'secondary' : 'outline'} type="button" aria-pressed={mapTypeId === 'satellite'} onClick={() => onMapTypeChange('satellite')}><SatelliteIcon aria-hidden="true" /><span className="max-[900px]:sr-only">Satellit</span></Button>
+  return <div className="inline-flex rounded-lg shadow-sm max-[900px]:rounded-full" role="group" aria-label="Kartendarstellung">
+    <Button className="rounded-r-none max-[900px]:size-8 max-[900px]:rounded-l-full max-[900px]:rounded-r-none max-[900px]:px-0" variant={mapTypeId === 'roadmap' ? 'secondary' : 'outline'} type="button" aria-pressed={mapTypeId === 'roadmap'} onClick={() => onMapTypeChange('roadmap')}><MapIcon aria-hidden="true" /><span className="max-[900px]:sr-only">Karte</span></Button>
+    <Button className="rounded-l-none border-l-0 max-[900px]:size-8 max-[900px]:rounded-l-none max-[900px]:rounded-r-full max-[900px]:px-0" variant={mapTypeId === 'satellite' ? 'secondary' : 'outline'} type="button" aria-pressed={mapTypeId === 'satellite'} onClick={() => onMapTypeChange('satellite')}><SatelliteIcon aria-hidden="true" /><span className="max-[900px]:sr-only">Satellit</span></Button>
   </div>;
 }
 

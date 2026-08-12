@@ -57,9 +57,14 @@ describe('Auslagerorte workflows', () => {
       { pageState: { placesMapType: 'roadmap' }, setPageState },
     ));
 
-    expect(screen.getByRole('group', { name: 'Kartendarstellung' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Karte' })).toHaveAttribute('aria-pressed', 'true');
-    await user.click(screen.getByRole('button', { name: 'Satellit' }));
+    const mapTypeSegment = screen.getByRole('group', { name: 'Kartendarstellung' });
+    const roadmapButton = screen.getByRole('button', { name: 'Karte' });
+    const satelliteButton = screen.getByRole('button', { name: 'Satellit' });
+    expect(mapTypeSegment).toHaveClass('max-[900px]:rounded-full');
+    expect(roadmapButton).toHaveClass('h-8', 'max-[900px]:rounded-l-full', 'max-[900px]:rounded-r-none');
+    expect(satelliteButton).toHaveClass('h-8', 'max-[900px]:rounded-r-full', 'max-[900px]:rounded-l-none');
+    expect(roadmapButton).toHaveAttribute('aria-pressed', 'true');
+    await user.click(satelliteButton);
 
     const update = setPageState.mock.calls[0][0];
     expect(update({ placesMapType: 'roadmap', untouched: true })).toEqual({
