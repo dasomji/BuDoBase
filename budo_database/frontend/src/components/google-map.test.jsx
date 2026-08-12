@@ -2,7 +2,7 @@ import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mapsMock = vi.hoisted(() => {
-  const state = { mapOptions: null, mapConstructions: 0, fitBoundsCalls: 0, markerOptions: [], markerKinds: [], removedMarkers: 0 };
+  const state = { mapOptions: null, mapConstructions: 0, fitBoundsCalls: 0, mapTypeIds: [], markerOptions: [], markerKinds: [], removedMarkers: 0 };
   class Map {
     constructor(_element, options) {
       state.mapOptions = options;
@@ -10,6 +10,8 @@ const mapsMock = vi.hoisted(() => {
     }
 
     fitBounds() { state.fitBoundsCalls += 1; }
+
+    setMapTypeId(mapTypeId) { state.mapTypeIds.push(mapTypeId); }
   }
   class Marker {
     constructor(options) {
@@ -72,6 +74,7 @@ describe('GoogleMap loader seam', () => {
     mapsMock.state.mapOptions = null;
     mapsMock.state.mapConstructions = 0;
     mapsMock.state.fitBoundsCalls = 0;
+    mapsMock.state.mapTypeIds = [];
     mapsMock.state.markerOptions = [];
     mapsMock.state.markerKinds = [];
     mapsMock.state.removedMarkers = 0;
@@ -82,6 +85,7 @@ describe('GoogleMap loader seam', () => {
     render(<GoogleMap
       apiKey="browser-key"
       mapId="map-id"
+      mapTypeId="roadmap"
       places={[{ id: 1, name: 'Hütte', coordinates: '47.1,15.2' }]}
       selectedPlaceId={1}
     />);
@@ -90,14 +94,23 @@ describe('GoogleMap loader seam', () => {
     expect(mapsMock.importLibrary).toHaveBeenCalledWith('maps');
     expect(mapsMock.importLibrary).toHaveBeenCalledWith('marker');
     expect(mapsMock.importLibrary).toHaveBeenCalledWith('core');
-    expect(mapsMock.state.mapOptions.mapTypeControlOptions).toEqual({
-      mapTypeIds: ['roadmap', 'satellite'],
-      position: 6,
-    });
+    expect(mapsMock.state.mapOptions.mapTypeControl).toBe(false);
     expect(mapsMock.state.mapOptions.zoomControlOptions).toEqual({ position: 6 });
     expect(mapsMock.state.markerOptions).toHaveLength(1);
     expect(mapsMock.state.markerKinds).toEqual(['advanced']);
     expect(mapsMock.state.markerOptions[0].content).toHaveTextContent('Hütte');
+  });
+
+  it('switches map type without constructing another billable map', async () => {
+    const { rerender } = render(
+      <GoogleMap apiKey="browser-key" mapId="map-id" mapTypeId="roadmap" />,
+    );
+    await waitFor(() => expect(mapsMock.state.mapConstructions).toBe(1));
+
+    rerender(<GoogleMap apiKey="browser-key" mapId="map-id" mapTypeId="satellite" />);
+
+    await waitFor(() => expect(mapsMock.state.mapTypeIds).toContain('satellite'));
+    expect(mapsMock.state.mapConstructions).toBe(1);
   });
 
   it('creates the billable map once while selection only replaces markers', async () => {

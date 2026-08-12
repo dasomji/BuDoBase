@@ -45,6 +45,7 @@ export function GoogleMap({
   className = '',
   id,
   mapId = null,
+  mapTypeId = 'roadmap',
 }) {
   const element = useRef(null);
   const mapRef = useRef(null);
@@ -69,11 +70,7 @@ export function GoogleMap({
         center: { lat: 47.7, lng: 15.9 },
         zoom: 9,
         ...(mapId ? { mapId } : {}),
-        mapTypeControl: true,
-        mapTypeControlOptions: {
-          mapTypeIds: ['roadmap', 'satellite'],
-          position: ControlPosition.RIGHT_CENTER,
-        },
+        mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
         zoomControlOptions: { position: ControlPosition.RIGHT_CENTER },
@@ -91,6 +88,10 @@ export function GoogleMap({
       mapsApiRef.current = null;
     };
   }, [apiKey, mapId]);
+
+  useEffect(() => {
+    mapRef.current?.setMapTypeId(mapTypeId);
+  }, [mapTypeId, mapsReady]);
 
   useEffect(() => {
     const map = mapRef.current;

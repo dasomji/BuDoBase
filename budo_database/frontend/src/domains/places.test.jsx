@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
-import { parseRoute } from '../routes';
+import { parseRoute, routeHeaderAction } from '../routes';
 import { ImageUploadPage, PlacesPage } from './places';
 
 const response = (data, { ok = true, status = 200 } = {}) => ({
@@ -46,6 +46,26 @@ describe('Auslagerorte workflows', () => {
       'place-images',
       'places-list',
     ]);
+  });
+
+  it('offers a design-system map type segment in the page header', async () => {
+    const user = userEvent.setup();
+    const setPageState = vi.fn();
+    render(routeHeaderAction(
+      parseRoute('/auslagerorte-list/'),
+      {},
+      { pageState: { placesMapType: 'roadmap' }, setPageState },
+    ));
+
+    expect(screen.getByRole('group', { name: 'Kartendarstellung' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Karte' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('button', { name: 'Satellit' }));
+
+    const update = setPageState.mock.calls[0][0];
+    expect(update({ placesMapType: 'roadmap', untouched: true })).toEqual({
+      placesMapType: 'satellite',
+      untouched: true,
+    });
   });
 
   it('refreshes the folded list after a sidebar comment without reloading bootstrap', async () => {

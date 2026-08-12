@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
-import { ArrowLeftIcon, CarIcon, ChevronLeftIcon, ChevronRightIcon, ExternalLinkIcon, FootprintsIcon, ImagePlusIcon, ListFilterIcon, MapPinIcon, NavigationIcon, PencilIcon, PlusIcon, SearchIcon, XIcon } from 'lucide-react';
+import { ArrowLeftIcon, CarIcon, ChevronLeftIcon, ChevronRightIcon, ExternalLinkIcon, FootprintsIcon, ImagePlusIcon, ListFilterIcon, MapIcon, MapPinIcon, NavigationIcon, PencilIcon, PlusIcon, SatelliteIcon, SearchIcon, XIcon } from 'lucide-react';
 
 import { Card, Column, Columns, findById, NativeForm, RestForm } from '../components';
 import { GoogleMap } from '../components/google-map';
@@ -215,7 +215,7 @@ function MobileListSheet({ places, selectedPlaceId, onSelect }) {
   );
 }
 
-export function PlacesPage({ data, MapComponent = GoogleMap, initialPlaceId = null, onSaved, navigateRoute }) {
+export function PlacesPage({ data, MapComponent = GoogleMap, initialPlaceId = null, mapTypeId = 'roadmap', onSaved, navigateRoute }) {
   const isMobile = useIsMobile();
   const params = new URLSearchParams(window.location.search);
   const [query, setQueryState] = useState(params.get('q') || '');
@@ -289,7 +289,7 @@ export function PlacesPage({ data, MapComponent = GoogleMap, initialPlaceId = nu
       else window.history.replaceState(window.history.state, '', target);
     }
   };
-  return <div className="relative h-[calc(100svh-var(--app-header-height,0px))] min-h-80 w-full overflow-hidden"><MapComponent apiKey={data.google_maps_browser_api_key} mapId={data.google_maps_map_id} className="absolute inset-0 h-full w-full" places={filtered} homePlace={homePlace} selectedPlaceId={selectedPlaceId} parkingCoordinates={selected?.parking_coordinates} onSelectPlace={choose} />
+  return <div className="relative h-[calc(100svh-var(--app-header-height,0px))] min-h-80 w-full overflow-hidden"><MapComponent apiKey={data.google_maps_browser_api_key} mapId={data.google_maps_map_id} mapTypeId={mapTypeId} className="absolute inset-0 h-full w-full" places={filtered} homePlace={homePlace} selectedPlaceId={selectedPlaceId} parkingCoordinates={selected?.parking_coordinates} onSelectPlace={choose} />
     {isMobile ? <><div className="absolute top-2 right-2 left-2 z-10 flex flex-col gap-1.5 rounded-xl border border-border bg-card p-2 shadow-elevated backdrop-blur"><Search filters={filters} /><Filters filters={filters} row /></div>{!selected && <MobileListSheet places={filtered} selectedPlaceId={selectedPlaceId} onSelect={choose} />}</> : <div className="absolute top-3 left-3 z-10 flex max-h-[calc(100%-1.5rem)] w-80 max-w-[calc(100%-1.5rem)] flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-elevated backdrop-blur"><Search filters={filters} /><Filters filters={filters} /><PlaceList places={filtered} selectedPlaceId={selectedPlaceId} onSelect={choose} /></div>}
     {selected && !peek && <DetailSidebar place={selected} token={data.csrf_token} onBack={closeDetails} onSaved={onSaved} onPeek={isMobile ? () => setPeek(true) : undefined} />}
     {selected && isMobile && peek && <div className="absolute inset-x-0 bottom-0 z-20 rounded-t-2xl bg-surface-solid shadow-sheet"><Button className="h-auto flex-col items-stretch px-4 pt-2 pb-3 text-left" variant="full-surface" type="button" aria-label="Details ausklappen" onClick={() => setPeek(false)} onTouchStart={event => { event.currentTarget.dataset.touchY = event.touches[0].clientY; }} onTouchEnd={event => { if (Number(event.currentTarget.dataset.touchY) - event.changedTouches[0].clientY > 24) setPeek(false); }}><span className="mx-auto block h-1 w-10 rounded-full bg-ring/40" /><span className="mt-2 flex justify-between gap-2"><span><strong className="block">{selected.name}</strong><TimeBadges place={selected} /></span>{selected.images[0] && <img className="h-12 w-16 rounded-lg object-cover" src={selected.images[0]} alt="" />}</span></Button></div>}
@@ -310,10 +310,31 @@ export function PlaceFormPage({ data, id }) {
 
 export function ImageUploadPage({ data, id }) { const place = findById(data.places, id); return <Columns><Column id="single-column"><Card title={`Upload Images for ${place?.name || ''}`}><NativeForm token={data.csrf_token} action={`/auslagerorte/${id}/upload-image/`} encType="multipart/form-data" fields={[{ name: 'images', label: 'Select multiple images', type: 'file', multiple: true, required: true, accept: 'image/*' }]} submit="Upload" /></Card></Column></Columns>; }
 const selectedPlaceTitle = (route, data) => findById(data.places, route.id)?.name || route.title;
+const placesMapType = pageState => pageState?.placesMapType === 'satellite' ? 'satellite' : 'roadmap';
+
+function MapTypeSegment({ mapTypeId, onMapTypeChange }) {
+  return <div className="inline-flex rounded-lg shadow-sm" role="group" aria-label="Kartendarstellung">
+    <Button className="rounded-r-none max-[900px]:size-8 max-[900px]:px-0" size="sm" variant={mapTypeId === 'roadmap' ? 'secondary' : 'outline'} type="button" aria-pressed={mapTypeId === 'roadmap'} onClick={() => onMapTypeChange('roadmap')}><MapIcon aria-hidden="true" /><span className="max-[900px]:sr-only">Karte</span></Button>
+    <Button className="rounded-l-none border-l-0 max-[900px]:size-8 max-[900px]:px-0" size="sm" variant={mapTypeId === 'satellite' ? 'secondary' : 'outline'} type="button" aria-pressed={mapTypeId === 'satellite'} onClick={() => onMapTypeChange('satellite')}><SatelliteIcon aria-hidden="true" /><span className="max-[900px]:sr-only">Satellit</span></Button>
+  </div>;
+}
+
+const placesHeaderAction = (includeCreate = false) => (_data, { pageState, setPageState }) => {
+  const mapTypeId = placesMapType(pageState);
+  const setMapTypeId = nextMapType => setPageState?.(current => ({
+    ...current,
+    placesMapType: nextMapType,
+  }));
+  return <div className="flex items-center gap-2">
+    <MapTypeSegment mapTypeId={mapTypeId} onMapTypeChange={setMapTypeId} />
+    {includeCreate && <Button className="mobile-icon-action" size="responsive-icon" href="/auslagerorte/create" aria-label="Ort hinzufügen"><span className="desktop-action-label">Ort hinzufügen</span><PlusIcon className="mobile-action-label" aria-hidden="true" /></Button>}
+  </div>;
+};
+
 export const placeRoutes = [
-  { pattern: /^\/auslagerorte-list$/, page: 'places', title: 'Auslagerorte', domain: 'places', readContractKey: 'places-list', headerAction: () => <Button className="mobile-icon-action" size="responsive-icon" href="/auslagerorte/create" aria-label="Ort hinzufügen"><span className="desktop-action-label">Ort hinzufügen</span><PlusIcon className="mobile-action-label" aria-hidden="true" /></Button>, render: ({ data, refresh }) => <PlacesPage data={data} onSaved={refresh} /> },
+  { pattern: /^\/auslagerorte-list$/, page: 'places', title: 'Auslagerorte', domain: 'places', readContractKey: 'places-list', headerAction: placesHeaderAction(true), render: ({ data, refresh, pageState }) => <PlacesPage data={data} mapTypeId={placesMapType(pageState)} onSaved={refresh} /> },
   { pattern: /^\/auslagerorte\/create$/, page: 'place-create', title: 'Neuer Auslagerort', domain: 'places', readContractKey: 'place-create', render: ({ data }) => <PlaceFormPage data={data} /> },
   { pattern: /^\/auslagerorte\/(\d+)\/update$/, page: 'place-update', title: 'Auslagerort bearbeiten', domain: 'places', readContractKey: 'place-update', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, render: ({ route, data }) => <PlaceFormPage data={data} id={route.id} /> },
   { pattern: /^\/auslagerorte\/(\d+)\/upload-image$/, page: 'place-images', title: 'Bilder hochladen', domain: 'places', readContractKey: 'place-images', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, render: ({ route, data }) => <ImageUploadPage data={data} id={route.id} /> },
-  { pattern: /^\/auslagerorte\/(\d+)$/, page: 'place-detail', title: 'Auslagerort', domain: 'places', readContractKey: 'places-list', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, render: ({ route, data, refresh, navigateRoute }) => <PlacesPage data={data} initialPlaceId={route.id} onSaved={refresh} navigateRoute={navigateRoute} /> },
+  { pattern: /^\/auslagerorte\/(\d+)$/, page: 'place-detail', title: 'Auslagerort', domain: 'places', readContractKey: 'places-list', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, headerAction: placesHeaderAction(), render: ({ route, data, refresh, navigateRoute, pageState }) => <PlacesPage data={data} initialPlaceId={route.id} mapTypeId={placesMapType(pageState)} onSaved={refresh} navigateRoute={navigateRoute} /> },
 ];
