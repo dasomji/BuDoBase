@@ -1818,6 +1818,10 @@
   --color-success-foreground: #373737;
   --color-destructive: #b93f3b;
   --color-destructive-foreground: #ffffff;
+  --color-warning: #fff1c2;
+  --color-warning-foreground: #7a4500;
+  --color-modal-overlay: rgb(0 0 0 / 90%);
+  --color-overlay-foreground: #ffffff;
   --color-border: #dddddd;
   --color-input: #686868;
   --color-ring: #686868;
@@ -1825,6 +1829,8 @@
   --color-surface-solid: #def0ff;
   --color-surface-subtle: rgb(183 220 255 / 34%);
   --color-surface-header: rgb(179 202 217 / 95%);
+  --shadow-elevated: 0 10px 28px rgb(0 0 0 / 18%);
+  --shadow-sheet: 0 -4px 16px rgb(0 0 0 / 15%);
   /* Table surfaces are opaque on purpose: the page paints a gradient and a
      fixed illustration behind them, so a translucent row composites
      differently depending on where it sits and shows through sticky cells. */

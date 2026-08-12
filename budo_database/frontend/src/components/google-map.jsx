@@ -8,13 +8,30 @@ const parsePoint = coordinates => {
   return rest.length === 0 && Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 };
 
+const markerColor = token => getComputedStyle(document.documentElement)
+  .getPropertyValue(`--color-${token}`)
+  .trim();
+
+const markerIcon = token => ({
+  path: 'M 0,-10 A 10,10 0 1,1 0,10 A 10,10 0 1,1 0,-10',
+  fillColor: markerColor(token),
+  fillOpacity: 1,
+  strokeColor: markerColor('foreground'),
+  strokeWeight: 1,
+  scale: 1,
+});
+
 let configuredKey;
 const loadMaps = apiKey => {
   if (!configuredKey) {
     configuredKey = apiKey;
     setOptions({ key: apiKey, v: 'weekly', language: 'de', region: 'AT', authReferrerPolicy: 'origin' });
   }
-  return importLibrary('maps');
+  return Promise.all([
+    importLibrary('maps'),
+    importLibrary('marker'),
+    importLibrary('core'),
+  ]);
 };
 
 /** The sole seam that touches the Google Maps JavaScript library. */
@@ -36,27 +53,54 @@ export function GoogleMap({
     if (!apiKey || !element.current) return undefined;
     let disposed = false;
     let map;
+    let clearMapListeners;
     const listeners = [];
-    loadMaps(apiKey).then(({ Map }) => {
+    loadMaps(apiKey).then(([
+      { Map },
+      { Marker, AdvancedMarkerElement },
+      { ControlPosition, LatLngBounds, event: mapEvents },
+    ]) => {
       if (disposed) return;
+      clearMapListeners = mapEvents.clearInstanceListeners;
       map = new Map(element.current, {
         center: { lat: 47.7, lng: 15.9 },
         zoom: 9,
         mapTypeControl: true,
-        mapTypeControlOptions: { mapTypeIds: ['roadmap', 'satellite'] },
+        mapTypeControlOptions: {
+          mapTypeIds: ['roadmap', 'satellite'],
+          position: ControlPosition.RIGHT_CENTER,
+        },
         streetViewControl: false,
         fullscreenControl: false,
+        zoomControlOptions: { position: ControlPosition.RIGHT_CENTER },
       });
-      const bounds = new google.maps.LatLngBounds();
+      const bounds = new LatLngBounds();
       const addMarker = ({ point, name, id, href }, options = {}) => {
-        const marker = new google.maps.Marker({
+        const markerOptions = {
           map,
           position: point,
           title: name,
-          label: options.label || { text: name, color: '#373737', fontWeight: '600' },
-          icon: options.icon,
           zIndex: options.zIndex,
-        });
+        };
+        let marker;
+        if (Marker) {
+          marker = new Marker({
+            ...markerOptions,
+            label: options.label || {
+              text: name,
+              color: markerColor('foreground'),
+              fontWeight: '600',
+            },
+            icon: options.icon,
+          });
+        } else if (AdvancedMarkerElement) {
+          const content = document.createElement('span');
+          content.className = `rounded-full border border-foreground px-2 py-1 text-xs font-semibold ${options.markerClass || 'bg-primary text-primary-foreground'}`;
+          content.textContent = options.label?.text || name;
+          marker = new AdvancedMarkerElement({ ...markerOptions, content });
+        } else {
+          throw new Error('The Google Maps marker library did not provide a marker constructor.');
+        }
         bounds.extend(point);
         if (id != null && (onSelectPlace || href)) listeners.push(marker.addListener('click', () => {
           if (onSelectPlace) onSelectPlace(id);
@@ -65,18 +109,23 @@ export function GoogleMap({
       };
       locations.filter(place => place.id !== homePlace?.id).forEach(place => addMarker(place, {
         zIndex: Number(place.id) === Number(selectedPlaceId) ? 30 : 10,
-        icon: Number(place.id) === Number(selectedPlaceId) ? 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' : undefined,
+        icon: Number(place.id) === Number(selectedPlaceId) ? markerIcon('secondary') : undefined,
+        markerClass: Number(place.id) === Number(selectedPlaceId)
+          ? 'bg-secondary text-secondary-foreground'
+          : undefined,
       }));
       const homePoint = parsePoint(homePlace?.coordinates);
       if (homePoint) addMarker({ ...homePlace, point: homePoint }, {
-        label: { text: `⌂ ${homePlace.name}`, color: '#373737', fontWeight: '700' },
-        icon: 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png',
+        label: { text: `⌂ ${homePlace.name}`, color: markerColor('foreground'), fontWeight: '700' },
+        icon: markerIcon('primary'),
+        markerClass: 'bg-primary text-primary-foreground',
         zIndex: 40,
       });
       const parkingPoint = parsePoint(parkingCoordinates);
       if (parkingPoint) addMarker({ point: parkingPoint, name: 'Parkspot' }, {
-        label: { text: 'P Parkspot', color: '#373737', fontWeight: '700' },
-        icon: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
+        label: { text: 'P Parkspot', color: markerColor('foreground'), fontWeight: '700' },
+        icon: markerIcon('success'),
+        markerClass: 'bg-success text-success-foreground',
         zIndex: 50,
       });
       if (!bounds.isEmpty()) map.fitBounds(bounds, 64);
@@ -86,12 +135,12 @@ export function GoogleMap({
     return () => {
       disposed = true;
       listeners.forEach(listener => listener.remove());
-      if (map) google.maps.event.clearInstanceListeners(map);
+      if (map) clearMapListeners?.(map);
     };
   }, [apiKey, homePlace, locations, onSelectPlace, parkingCoordinates, selectedPlaceId]);
 
   if (!apiKey) return <div id={id} className={`grid place-items-center bg-muted p-4 text-center text-muted-foreground ${className}`} role="region" aria-label="Google Karte"><span>Google-Maps-Browser-Key ist nicht konfiguriert.</span><span className="sr-only">{places.map(place => place.name).join(', ')}</span></div>;
-  return <div id={id} className={`relative ${className}`} role="region" aria-label="Google Karte"><div className="absolute inset-0" ref={element} />{error && <p className="absolute inset-x-4 top-4 rounded-lg bg-background p-3 text-center shadow">{error}</p>}</div>;
+  return <div id={id} className={`relative ${className}`} role="region" aria-label="Google Karte"><div className="absolute inset-0" ref={element} />{error && <p className="absolute inset-x-4 top-4 rounded-lg bg-background p-3 text-center shadow-elevated">{error}</p>}</div>;
 }
 
 export function GoogleMapCard({ apiKey, places = [], headerAction = null }) {

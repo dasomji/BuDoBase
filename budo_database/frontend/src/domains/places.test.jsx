@@ -1,9 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
 import { parseRoute } from '../routes';
-import { ImageUploadPage } from './places';
+import { ImageUploadPage, PlacesPage } from './places';
 
 const response = (data, { ok = true, status = 200 } = {}) => ({
   ok,
@@ -83,5 +84,73 @@ describe('Auslagerorte workflows', () => {
       '/api/form-submit/',
       '/api/route-data/places-list/?id=4',
     ]);
+  });
+
+  it('excludes places with unknown walking times from a walking maximum', () => {
+    window.history.pushState({}, '', '/auslagerorte-list/?max_walk=30');
+    const MapComponent = ({ places }) => (
+      <div aria-label="Testkarte">{places.map(place => place.name).join(', ')}</div>
+    );
+
+    render(<PlacesPage data={{
+      available_tags: [],
+      places: [
+        { id: 1, name: 'Unknown', tags: [], walking_minutes: null },
+        { id: 2, name: 'Near', tags: [], walking_minutes: 20 },
+      ],
+    }} MapComponent={MapComponent} />);
+
+    expect(screen.getByLabelText('Testkarte')).toHaveTextContent('Near');
+    expect(screen.getByLabelText('Testkarte')).not.toHaveTextContent('Unknown');
+  });
+
+  it('returns a historic detail deep link to the filtered trailing-slash list URL', async () => {
+    const user = userEvent.setup();
+    window.history.pushState({}, '', '/auslagerorte/4?q=Hütte&tag=ruhig');
+    render(<PlacesPage data={{
+      available_tags: ['ruhig'],
+      places: [{
+        id: 4,
+        name: 'Ada Hütte',
+        tags: ['ruhig'],
+        coordinates: null,
+        notes: [],
+        images: [],
+      }],
+    }} initialPlaceId="4" MapComponent={() => <div />} />);
+
+    await user.click(screen.getByRole('button', { name: 'Zurück zur Liste' }));
+
+    expect(window.location.pathname).toBe('/auslagerorte-list/');
+    expect(window.location.search).toBe('?q=H%C3%BCtte&tag=ruhig');
+  });
+
+  it('keeps the gallery modal keyboard-contained, restores focus, and supports touch swipes', async () => {
+    const user = userEvent.setup();
+    const place = {
+      id: 4,
+      name: 'Ada Hütte',
+      tags: [],
+      coordinates: null,
+      notes: [],
+      images: ['/one.jpg', '/two.jpg'],
+    };
+    render(<PlacesPage data={{ available_tags: [], places: [place] }} MapComponent={() => <div />} />);
+    await user.click(screen.getByRole('button', { name: /Ada Hütte/ }));
+    const trigger = screen.getByRole('button', { name: 'Galerie öffnen' });
+    await user.click(trigger);
+
+    const dialog = screen.getByRole('dialog', { name: 'Bilder von Ada Hütte' });
+    expect(dialog).toContainElement(document.activeElement);
+    const image = within(dialog).getByAltText('Ada Hütte 1');
+    fireEvent.touchStart(image, { touches: [{ clientX: 100, clientY: 10 }] });
+    fireEvent.touchEnd(image, { changedTouches: [{ clientX: 20, clientY: 12 }] });
+    expect(within(dialog).getByAltText('Ada Hütte 2')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(within(dialog).getByAltText('Ada Hütte 1')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 });
