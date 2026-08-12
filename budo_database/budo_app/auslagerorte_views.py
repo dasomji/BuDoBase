@@ -47,7 +47,13 @@ class AuslagerorteUpdate(
         return context
 
     def form_valid(self, form):
+        form.instance._maps_link_changed = 'maps_link' in form.changed_data
+        form.instance._maps_link_parkspot_changed = (
+            'maps_link_parkspot' in form.changed_data
+        )
         form.instance = update_auslagerorte_coordinates(form.instance)
+        for warning in getattr(form.instance, '_location_warnings', []):
+            messages.warning(self.request, warning)
         messages.success(self.request, "Auslagerort upgedatet!")
         return super(AuslagerorteUpdate, self).form_valid(form)
 
@@ -170,6 +176,8 @@ class AuslagerorteCreate(
 
     def form_valid(self, form):
         form.instance = update_auslagerorte_coordinates(form.instance)
+        for warning in getattr(form.instance, '_location_warnings', []):
+            messages.warning(self.request, warning)
         messages.success(self.request, "Auslagerort hinzugefügt!")
         return super().form_valid(form)
 

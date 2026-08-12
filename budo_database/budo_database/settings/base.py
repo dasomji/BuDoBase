@@ -144,6 +144,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'login'
 
 REGISTRATION_PASSPHRASE = os.environ.get('REGISTRATION_PASSPHRASE')
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 
 # Cache configuration
 CACHES = {
