@@ -12,7 +12,7 @@ from django.views.generic.edit import CreateView, FormView, UpdateView
 
 from . import models
 from .forms import AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm
-from .location_services import update_auslagerorte_coordinates
+from .location_services import BUDO_PLACE_NAME, update_auslagerorte_coordinates
 from .models import (
     Auslagerorte,
     AuslagerorteImage,
@@ -95,7 +95,7 @@ class AuslagerorteDetail(
         }]
 
         try:
-            budo_ort = Auslagerorte.objects.get(name="BuDo")
+            budo_ort = Auslagerorte.objects.get(name=BUDO_PLACE_NAME)
             auslagerorte_data.append({
                 'id': budo_ort.id,
                 'name': budo_ort.name,

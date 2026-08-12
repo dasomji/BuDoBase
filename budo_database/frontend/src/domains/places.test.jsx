@@ -37,14 +37,30 @@ describe('Auslagerorte workflows', () => {
       ],
     }} />);
 
-    expect(screen.getByText('Mit dem Auto: 38 min')).toBeInTheDocument();
-    expect(screen.getByText('Zu Fuß: 125 min')).toBeInTheDocument();
+    expect(screen.getByText('38 min')).toBeInTheDocument();
+    expect(screen.getByText('125 min')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Reisezeit vom BuDo sortieren' }));
+    await user.click(screen.getByRole('button', { name: 'Mit dem Auto vom BuDo sortieren' }));
     const names = screen.getAllByRole('row').slice(1).map(row => (
       within(row).getByRole('link', { name: /Wald|See/ }).textContent
     ));
     expect(names).toEqual(['Naher Wald', 'Ferner See']);
+  });
+
+  it('sorts places independently by walking minutes', async () => {
+    const user = userEvent.setup();
+    render(<PlacesPage data={{
+      places: [
+        { id: 4, name: 'Kurze Fahrt', driving_minutes: 5, walking_minutes: 80, maps_link: '', parking_link: '', coordinates: null },
+        { id: 5, name: 'Kurzer Weg', driving_minutes: 20, walking_minutes: 25, maps_link: '', parking_link: '', coordinates: null },
+      ],
+    }} />);
+
+    await user.click(screen.getByRole('button', { name: 'Zu Fuß vom BuDo sortieren' }));
+    const names = screen.getAllByRole('row').slice(1).map(row => (
+      within(row).getByRole('link').textContent
+    ));
+    expect(names).toEqual(['Kurzer Weg', 'Kurze Fahrt']);
   });
 
   it('shows missing travel times per mode instead of inventing a duration', () => {
@@ -61,8 +77,9 @@ describe('Auslagerorte workflows', () => {
     }} />);
 
     const row = screen.getByRole('link', { name: 'Ort ohne Route' }).closest('tr');
-    expect(within(row).getByText('Mit dem Auto: ---')).toBeInTheDocument();
-    expect(within(row).getByText('Zu Fuß: ---')).toBeInTheDocument();
+    const cells = within(row).getAllByRole('cell');
+    expect(cells[2]).toHaveTextContent('---');
+    expect(cells[3]).toHaveTextContent('---');
   });
 
   it('renders place tags and filters with AND semantics using accessible chips', async () => {

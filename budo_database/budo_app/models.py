@@ -1175,6 +1175,48 @@ class Auslagerorte(models.Model):
         if self.koordinaten:
             return self.koordinaten.split(",")[1].strip()
 
+    def save(self, *args, **kwargs):
+        """Keep stored travel times aligned with directly persisted coordinates."""
+        update_fields = kwargs.get("update_fields")
+        coordinate_is_written = (
+            update_fields is None or "koordinaten" in update_fields
+        )
+        previous_coordinates = None
+        if self.pk and coordinate_is_written:
+            previous_coordinates = type(self).objects.filter(pk=self.pk).values_list(
+                "koordinaten", flat=True
+            ).first()
+
+        from .location_services import (
+            _stored_coordinates,
+            update_auslagerorte_travel_times,
+        )
+
+        current_coordinates = _stored_coordinates(self.koordinaten)
+        coordinates_changed = (
+            self.pk is not None
+            and coordinate_is_written
+            and previous_coordinates != self.koordinaten
+        )
+        new_place_needs_times = (
+            self.pk is None
+            and current_coordinates is not None
+            and (self.driving_minutes is None or self.walking_minutes is None)
+        )
+        already_current = (
+            getattr(self, "_travel_times_coordinates", object())
+            == current_coordinates
+        )
+        if (coordinates_changed or new_place_needs_times) and not already_current:
+            update_auslagerorte_travel_times(self)
+
+        if update_fields is not None and (coordinates_changed or new_place_needs_times):
+            kwargs["update_fields"] = set(update_fields) | {
+                "driving_minutes",
+                "walking_minutes",
+            }
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
 

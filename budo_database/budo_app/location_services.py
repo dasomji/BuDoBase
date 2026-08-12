@@ -13,6 +13,8 @@ from . import google_maps_gateway
 
 logger = logging.getLogger(__name__)
 
+BUDO_PLACE_NAME = "BuDo"
+
 _NUMBER = r"-?(?:\d+(?:\.\d*)?|\.\d+)"
 _DATA_COORDINATES = re.compile(rf"!3d({_NUMBER})!4d({_NUMBER})")
 _AT_COORDINATES = re.compile(rf"@({_NUMBER}),({_NUMBER})(?:,|/|$)")
@@ -23,6 +25,11 @@ _GOOGLE_HOST = re.compile(
     re.IGNORECASE,
 )
 _SHORT_LINK_HOSTS = frozenset({"maps.app.goo.gl", "app.goo.gl", "goo.gl", "g.co"})
+
+
+def is_budo_place(auslagerort):
+    """Return whether a place is the configured origin for route estimates."""
+    return auslagerort.name == BUDO_PLACE_NAME
 
 
 def _validated_coordinates(latitude, longitude):
@@ -112,15 +119,16 @@ def update_auslagerorte_travel_times(auslagerort):
     auslagerort.driving_minutes = None
     auslagerort.walking_minutes = None
     if destination is None:
+        auslagerort._travel_times_coordinates = destination
         return auslagerort
 
-    if auslagerort.name == "BuDo":
+    if is_budo_place(auslagerort):
         origin = destination
     else:
         from .models import Auslagerorte
 
         budo = (
-            Auslagerorte.objects.filter(name="BuDo")
+            Auslagerorte.objects.filter(name=BUDO_PLACE_NAME)
             .only("koordinaten")
             .order_by("id")
             .first()
@@ -131,6 +139,7 @@ def update_auslagerorte_travel_times(auslagerort):
             "Skipping travel-time lookup for %s: BuDo coordinates are unavailable",
             auslagerort.name,
         )
+        auslagerort._travel_times_coordinates = destination
         return auslagerort
 
     failed = False
@@ -160,6 +169,7 @@ def update_auslagerorte_travel_times(auslagerort):
         getattr(auslagerort, "_location_warnings", []).append(
             "Die Reisezeiten vom BuDo konnten nicht vollständig ermittelt werden."
         )
+    auslagerort._travel_times_coordinates = destination
     return auslagerort
 
 

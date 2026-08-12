@@ -2,9 +2,10 @@ from datetime import date
 from io import StringIO
 from unittest.mock import Mock, patch
 
+from django.contrib import admin
 from django.contrib.auth.models import User
 from django.core.management import call_command
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from budo_app import google_maps_gateway, location_services
@@ -63,6 +64,68 @@ class TravelTimeStorageTests(TestCase):
             Auslagerorte._meta.get_field("walking_minutes").get_internal_type(),
             "IntegerField",
         )
+
+    def test_direct_coordinate_save_recomputes_both_travel_times(self):
+        Auslagerorte.objects.create(name="BuDo", koordinaten="48.0,15.0")
+        place = Auslagerorte.objects.create(
+            name="Waldlichtung",
+            koordinaten="48.1,15.1",
+            driving_minutes=8,
+            walking_minutes=25,
+        )
+        gateway = RouteDurationGatewayStub({"DRIVE": 12, "WALK": 47})
+
+        place.koordinaten = "48.2,15.2"
+        with patch.object(location_services, "google_maps_gateway", gateway):
+            place.save(update_fields=["koordinaten"])
+
+        place.refresh_from_db()
+        self.assertEqual((place.driving_minutes, place.walking_minutes), (12, 47))
+        self.assertEqual(
+            gateway.route_requests,
+            [
+                ((48.0, 15.0), (48.2, 15.2), "DRIVE"),
+                ((48.0, 15.0), (48.2, 15.2), "WALK"),
+            ],
+        )
+
+    def test_direct_coordinate_clear_clears_both_travel_times(self):
+        place = Auslagerorte.objects.create(
+            name="Waldlichtung",
+            koordinaten="48.1,15.1",
+            driving_minutes=8,
+            walking_minutes=25,
+        )
+
+        place.koordinaten = None
+        place.save()
+
+        place.refresh_from_db()
+        self.assertIsNone(place.driving_minutes)
+        self.assertIsNone(place.walking_minutes)
+
+    def test_admin_save_uses_the_coordinate_travel_time_invariant(self):
+        Auslagerorte.objects.create(name="BuDo", koordinaten="48.0,15.0")
+        place = Auslagerorte.objects.create(
+            name="Waldlichtung",
+            koordinaten="48.1,15.1",
+            driving_minutes=8,
+            walking_minutes=25,
+        )
+        place.koordinaten = "48.2,15.2"
+        gateway = RouteDurationGatewayStub({"DRIVE": 12, "WALK": 47})
+        model_admin = admin.site._registry[Auslagerorte]
+
+        with patch.object(location_services, "google_maps_gateway", gateway):
+            model_admin.save_model(
+                RequestFactory().post("/admin/budo_app/auslagerorte/"),
+                place,
+                form=None,
+                change=True,
+            )
+
+        place.refresh_from_db()
+        self.assertEqual((place.driving_minutes, place.walking_minutes), (12, 47))
 
 
 class TravelTimeWriteContractTests(TestCase):
