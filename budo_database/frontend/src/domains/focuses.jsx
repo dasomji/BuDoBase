@@ -66,6 +66,7 @@ export function FocusDashboardPage({ data }) {
     <Column id="right-column" className="min-w-0 min-[901px]:[&_.card-info-container]:min-h-0 min-[901px]:[&_.card-info-content]:min-h-0 min-[901px]:[&_.interactive-map]:h-full min-[901px]:[&_.interactive-map]:min-h-70 min-[901px]:[&>#swp-map]:flex min-[901px]:[&>#swp-map]:h-full min-[901px]:[&>#swp-map]:min-h-0 min-[901px]:[&>#swp-map]:flex-col min-[901px]:[&>#swp-map:not(.closed-card)>.card-info-container]:flex-1">
       <GoogleMapCard
         apiKey={data.google_maps_browser_api_key}
+        mapId={data.google_maps_map_id}
         places={data.focuses.filter(focus => focus.week === mapWeek && focus.coordinates).map(focus => ({ id: focus.id, name: focus.name, coordinates: focus.coordinates, href: `/schwerpunkt/${focus.id}/` }))}
         headerAction={<span className="inline-flex gap-1" role="group" aria-label="Kartenwoche">
           {['w1', 'w2'].map(week => <Button key={week} type="button" variant={mapWeek === week ? 'default' : 'outline'} aria-pressed={mapWeek === week} onClick={() => selectMapWeek(week)}>Woche {week.slice(1)}</Button>)}
@@ -93,7 +94,7 @@ export function FocusDetailPage({ data, id }) {
   if (!focus) return <NotFoundPage />;
   const kids = data.kids;
   const mapPlaces = focus.place_id ? [{ id: focus.place_id, name: focus.place, coordinates: focus.coordinates }] : [];
-  return <Columns><Column id="left-column"><Card title={focus.name} actions={<Button href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</Button>}><FocusDetails focus={focus} kidCount={kids.length} /></Card><Card title="Essen" actions={<Button href={`/swpmeals/${focus.id}`}>Essen bearbeiten</Button>}><MealTable focus={focus} /></Card><GoogleMapCard apiKey={data.google_maps_browser_api_key} places={mapPlaces} /></Column><Column id="right-column"><DataTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
+  return <Columns><Column id="left-column"><Card title={focus.name} actions={<Button href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</Button>}><FocusDetails focus={focus} kidCount={kids.length} /></Card><Card title="Essen" actions={<Button href={`/swpmeals/${focus.id}`}>Essen bearbeiten</Button>}><MealTable focus={focus} /></Card><GoogleMapCard apiKey={data.google_maps_browser_api_key} mapId={data.google_maps_map_id} places={mapPlaces} /></Column><Column id="right-column"><DataTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
 }
 
 export function FocusFormPage({ data, id }) {

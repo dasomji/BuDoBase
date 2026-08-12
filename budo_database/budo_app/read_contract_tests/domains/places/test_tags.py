@@ -4,8 +4,10 @@ from unittest.mock import patch
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.http import QueryDict
 from django.urls import reverse
 
+from budo_app.forms import AuslagerForm
 from budo_app.models import Auslagerorte, Tag, Turnus
 
 
@@ -110,6 +112,21 @@ class PlaceTagContractTests(TestCase):
             update_payload["available_tags"],
             ["Badeplatz", "Schlechtwetter tauglich", "Wanderung"],
         )
+
+    def test_save_recovers_when_a_concurrent_writer_creates_the_same_tag(self):
+        existing = Tag.objects.create(name="Wanderung")
+        data = QueryDict(mutable=True)
+        data.update({"name": "Waldhütte"})
+        data.setlist("tags", ["wanderung"])
+        form = AuslagerForm(data=data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+        from django.db import IntegrityError
+
+        with patch.object(Tag.objects, "get_or_create", side_effect=IntegrityError):
+            place = form.save()
+
+        self.assertEqual(list(place.tags.all()), [existing])
 
 
 class TagAdminValidationTests(TestCase):

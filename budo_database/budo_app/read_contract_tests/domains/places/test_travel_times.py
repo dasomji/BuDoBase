@@ -127,6 +127,54 @@ class TravelTimeStorageTests(TestCase):
         place.refresh_from_db()
         self.assertEqual((place.driving_minutes, place.walking_minutes), (12, 47))
 
+    def test_equivalent_coordinate_formatting_does_not_recompute_routes(self):
+        place = Auslagerorte.objects.create(
+            name="Waldlichtung",
+            koordinaten="48.2,15.2",
+            driving_minutes=12,
+            walking_minutes=47,
+        )
+
+        place.koordinaten = "48.2000, 15.2000"
+        with patch.object(
+            location_services,
+            "google_maps_gateway",
+            RejectingRouteDurationGatewayStub(),
+        ):
+            place.save(update_fields=["koordinaten"])
+
+        place.refresh_from_db()
+        self.assertEqual((place.driving_minutes, place.walking_minutes), (12, 47))
+
+    def test_budo_coordinate_change_recomputes_every_other_destination(self):
+        budo = Auslagerorte.objects.create(name="  bUdO  ", koordinaten="48.0,15.0")
+        destination = Auslagerorte.objects.create(
+            name="Waldlichtung",
+            koordinaten="48.2,15.2",
+            driving_minutes=8,
+            walking_minutes=25,
+        )
+        gateway = RouteDurationGatewayStub({"DRIVE": 19, "WALK": 63})
+
+        budo.koordinaten = "48.1,15.1"
+        with patch.object(location_services, "google_maps_gateway", gateway):
+            budo.save(update_fields=["koordinaten"])
+
+        budo.refresh_from_db()
+        destination.refresh_from_db()
+        self.assertEqual((budo.driving_minutes, budo.walking_minutes), (0, 0))
+        self.assertEqual(
+            (destination.driving_minutes, destination.walking_minutes),
+            (19, 63),
+        )
+        self.assertEqual(
+            gateway.route_requests,
+            [
+                ((48.1, 15.1), (48.2, 15.2), "DRIVE"),
+                ((48.1, 15.1), (48.2, 15.2), "WALK"),
+            ],
+        )
+
 
 class TravelTimeWriteContractTests(TestCase):
     def setUp(self):
@@ -373,6 +421,22 @@ class BackfillTravelTimesCommandTests(TestCase):
             ],
         )
         self.assertIn("Alter Waldplatz", output.getvalue())
+
+    def test_all_option_repairs_stale_complete_values(self):
+        Auslagerorte.objects.create(name="budo", koordinaten="48.0,15.0")
+        stale = Auslagerorte.objects.create(
+            name="Veralteter Waldplatz",
+            koordinaten="48.5,15.5",
+            driving_minutes=2,
+            walking_minutes=3,
+        )
+        gateway = RouteDurationGatewayStub({"DRIVE": 22, "WALK": 71})
+
+        with patch.object(location_services, "google_maps_gateway", gateway):
+            call_command("backfill_auslagerorte_travel_times", all=True)
+
+        stale.refresh_from_db()
+        self.assertEqual((stale.driving_minutes, stale.walking_minutes), (22, 71))
 
 
 @override_settings(GOOGLE_MAPS_API_KEY="routes-test-key")

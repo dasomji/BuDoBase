@@ -146,6 +146,7 @@ LOGIN_URL = 'login'
 REGISTRATION_PASSPHRASE = os.environ.get('REGISTRATION_PASSPHRASE')
 GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 GOOGLE_MAPS_BROWSER_API_KEY = os.environ.get('GOOGLE_MAPS_BROWSER_API_KEY', '')
+GOOGLE_MAPS_MAP_ID = os.environ.get('GOOGLE_MAPS_MAP_ID', '')
 
 # Cache configuration
 CACHES = {

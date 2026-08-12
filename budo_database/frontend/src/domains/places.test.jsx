@@ -125,6 +125,48 @@ describe('Auslagerorte workflows', () => {
     expect(window.location.search).toBe('?q=H%C3%BCtte&tag=ruhig');
   });
 
+  it('returns a deep link through App navigation and restores list header actions', async () => {
+    const user = userEvent.setup();
+    window.history.pushState({}, '', '/auslagerorte/4?q=Hütte');
+    const place = {
+      id: 4,
+      name: 'Ada Hütte',
+      tags: [],
+      coordinates: null,
+      notes: [],
+      images: [],
+    };
+    const fetchMock = vi.fn(async url => {
+      if (url === '/api/bootstrap/') return response({
+        authenticated: true,
+        csrf_token: 'csrf-token',
+        messages: [],
+        permissions: {},
+        search_index: { kids: [], focuses: [], places: [place] },
+      });
+      if (url === '/api/route-data/places-list/?id=4') {
+        return response({ places: [place], available_tags: [] });
+      }
+      if (url === '/api/route-data/places-list/') {
+        return response({ places: [place], available_tags: [] });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<App fetchImpl={fetchMock} />);
+    expect(await screen.findByRole('heading', { name: 'Ada Hütte', level: 1 })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Zurück zur Liste' }));
+
+    expect(await screen.findByRole('heading', { name: 'Auslagerorte', level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ort hinzufügen' })).toHaveAttribute(
+      'href',
+      '/auslagerorte/create',
+    );
+    expect(window.location.pathname).toBe('/auslagerorte-list/');
+    expect(window.location.search).toBe('?q=H%C3%BCtte');
+  });
+
   it('keeps the gallery modal keyboard-contained, restores focus, and supports touch swipes', async () => {
     const user = userEvent.setup();
     const place = {

@@ -1177,18 +1177,28 @@ class Auslagerorte(models.Model):
 
     def save(self, *args, **kwargs):
         """Keep stored travel times aligned with directly persisted coordinates."""
+        is_new = self.pk is None
         update_fields = kwargs.get("update_fields")
         coordinate_is_written = (
             update_fields is None or "koordinaten" in update_fields
         )
+        name_is_written = update_fields is None or "name" in update_fields
         previous_coordinates = None
-        if self.pk and coordinate_is_written:
-            previous_coordinates = type(self).objects.filter(pk=self.pk).values_list(
-                "koordinaten", flat=True
+        previous_name = None
+        if self.pk and (coordinate_is_written or name_is_written):
+            previous = type(self).objects.filter(pk=self.pk).values(
+                "koordinaten", "name"
             ).first()
+            if previous:
+                previous_coordinates = previous["koordinaten"]
+                previous_name = previous["name"]
 
         from .location_services import (
+            coordinates_equal,
+            is_budo_name,
+            is_budo_place,
             _stored_coordinates,
+            refresh_all_auslagerorte_travel_times,
             update_auslagerorte_travel_times,
         )
 
@@ -1196,17 +1206,15 @@ class Auslagerorte(models.Model):
         coordinates_changed = (
             self.pk is not None
             and coordinate_is_written
-            and previous_coordinates != self.koordinaten
+            and not coordinates_equal(previous_coordinates, self.koordinaten)
         )
         new_place_needs_times = (
             self.pk is None
             and current_coordinates is not None
             and (self.driving_minutes is None or self.walking_minutes is None)
         )
-        already_current = (
-            getattr(self, "_travel_times_coordinates", object())
-            == current_coordinates
-        )
+        tracked_coordinates = getattr(self, "_travel_times_coordinates", object())
+        already_current = tracked_coordinates == current_coordinates
         if (coordinates_changed or new_place_needs_times) and not already_current:
             update_auslagerorte_travel_times(self)
 
@@ -1215,7 +1223,17 @@ class Auslagerorte(models.Model):
                 "driving_minutes",
                 "walking_minutes",
             }
+        origin_identity_changed = self.pk is not None and name_is_written and (
+            is_budo_name(previous_name) != is_budo_place(self)
+        )
+        origin_coordinates_changed = coordinates_changed and is_budo_place(self)
         super().save(*args, **kwargs)
+        if (
+            (is_new and is_budo_place(self))
+            or origin_identity_changed
+            or origin_coordinates_changed
+        ):
+            refresh_all_auslagerorte_travel_times(exclude_id=self.pk)
 
     def __str__(self):
         return self.name

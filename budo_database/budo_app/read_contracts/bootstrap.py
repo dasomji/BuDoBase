@@ -116,6 +116,7 @@ def bootstrap(request):
             "search_index": _search_index(turnus),
             "happy_cleaning_events": _happy_cleaning_events(turnus),
             "google_maps_browser_api_key": settings.GOOGLE_MAPS_BROWSER_API_KEY,
+            "google_maps_map_id": settings.GOOGLE_MAPS_MAP_ID,
         }
     )
     return Response(payload)

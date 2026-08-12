@@ -167,13 +167,14 @@ describe('map-first Auslagerorte', () => {
     expect(within(details).getByRole('link', { name: 'Bearbeiten' })).toHaveAttribute('href', '/auslagerorte/7/update');
     expect(within(details).getByRole('link', { name: 'Route zur Adresse' })).toHaveAttribute(
       'href',
-      'https://www.google.com/maps/dir/?api=1&destination=Waldweg%204%2C%203931%20Sallingstadt%2C%20%C3%96sterreich',
+      'https://www.google.com/maps/dir/?api=1&destination=Waldweg%204%2C%203931%20Sallingstadt%2C%20Nieder%C3%B6sterreich%2C%20%C3%96sterreich',
     );
     expect(within(details).getByRole('link', { name: 'Route zum Parkspot' })).toHaveAttribute(
       'href',
       'https://www.google.com/maps/dir/?api=1&destination=48.51000%2C15.01000',
     );
     expect(mapProps.parkingCoordinates).toBe('48.51000, 15.01000');
+    expect(screen.getByRole('button', { name: /^Waldwiese/ })).toHaveAttribute('aria-current', 'true');
 
     await user.click(within(details).getByRole('button', { name: 'Galerie öffnen' }));
     expect(screen.getByRole('dialog', { name: 'Bilder von Waldwiese' })).toHaveTextContent('1 / 2');
@@ -231,6 +232,9 @@ describe('map-first Auslagerorte', () => {
     await user.click(screen.getByRole('button', { name: /^Waldwiese/ }));
 
     expect(screen.queryByRole('button', { name: /Liste (ein|aus)klappen/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Details einklappen' }));
+    expect(screen.getByRole('button', { name: 'Details ausklappen' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Details ausklappen' }));
     const gallery = screen.getByRole('button', { name: 'Galerie öffnen' });
     fireEvent.touchStart(gallery, { touches: [{ clientY: 100 }] });
     fireEvent.touchEnd(gallery, { changedTouches: [{ clientY: 180 }] });

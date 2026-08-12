@@ -27,6 +27,7 @@ class Command(BaseCommand):
         ).order_by("id")
 
         updated = 0
+        failed = 0
         for place in candidates.iterator():
             main_missing = bool(place.maps_link) and not place.koordinaten
             parking_missing = (
@@ -39,7 +40,17 @@ class Command(BaseCommand):
             update_auslagerorte_coordinates(place)
 
             place.save()
-            updated += 1
-            self.stdout.write(f"{place.name}: Koordinaten aktualisiert")
+            warnings = getattr(place, "_location_warnings", [])
+            main_updated = main_missing and bool(place.koordinaten)
+            parking_updated = parking_missing and bool(place.koordinaten_parkspot)
+            if main_updated or parking_updated:
+                updated += 1
+                self.stdout.write(f"{place.name}: Koordinaten aktualisiert")
+            if warnings:
+                failed += 1
+                for warning in warnings:
+                    self.stderr.write(self.style.WARNING(f"{place.name}: {warning}"))
 
-        self.stdout.write(self.style.SUCCESS(f"{updated} Auslagerorte verarbeitet."))
+        self.stdout.write(self.style.SUCCESS(
+            f"{updated} Auslagerorte aktualisiert; {failed} mit Warnungen."
+        ))

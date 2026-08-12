@@ -390,3 +390,21 @@ class BackfillGoogleMapsLocationsCommandTests(TestCase):
         self.assertEqual(complete.strasse, "Bestehender Weg 1")
         self.assertNotIn(complete.maps_link, gateway.expanded_links)
         self.assertIn("Alter Waldplatz", output.getvalue())
+
+    def test_reports_links_that_could_not_be_backfilled_as_warnings(self):
+        Auslagerorte.objects.create(
+            name="Unauflösbarer Ort",
+            maps_link="https://www.google.com/maps/place/NoCoordinates",
+        )
+        output = StringIO()
+        errors = StringIO()
+
+        call_command(
+            "backfill_auslagerorte_coordinates",
+            stdout=output,
+            stderr=errors,
+        )
+
+        self.assertIn("0 Auslagerorte aktualisiert; 1 mit Warnungen", output.getvalue())
+        self.assertIn("Unauflösbarer Ort", errors.getvalue())
+        self.assertIn("keine Koordinaten", errors.getvalue())

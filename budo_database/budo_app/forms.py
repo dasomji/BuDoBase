@@ -18,6 +18,7 @@ from .models import (
     normalize_tag_name,
 )
 from django import forms
+from django.db import IntegrityError
 from django.contrib.auth.models import User
 import datetime
 
@@ -217,10 +218,15 @@ class AuslagerForm(forms.ModelForm):
         if commit:
             resolved = []
             for name in self.cleaned_data["tags"]:
-                tag, _ = Tag.objects.get_or_create(
-                    name__iexact=name,
-                    defaults={"name": name},
-                )
+                try:
+                    tag, _ = Tag.objects.get_or_create(
+                        name__iexact=name,
+                        defaults={"name": name},
+                    )
+                except IntegrityError:
+                    # A concurrent form may have created the normalized tag
+                    # between our read and insert attempt.
+                    tag = Tag.objects.get(name__iexact=name)
                 resolved.append(tag)
             place.tags.set(resolved)
         return place

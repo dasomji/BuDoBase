@@ -27,9 +27,13 @@ _GOOGLE_HOST = re.compile(
 _SHORT_LINK_HOSTS = frozenset({"maps.app.goo.gl", "app.goo.gl", "goo.gl", "g.co"})
 
 
+def is_budo_name(name):
+    return (name or "").strip().casefold() == BUDO_PLACE_NAME.casefold()
+
+
 def is_budo_place(auslagerort):
     """Return whether a place is the configured origin for route estimates."""
-    return auslagerort.name == BUDO_PLACE_NAME
+    return is_budo_name(auslagerort.name)
 
 
 def _validated_coordinates(latitude, longitude):
@@ -113,6 +117,30 @@ def _stored_coordinates(value):
     return _validated_coordinates(*match.groups())
 
 
+def coordinates_equal(left, right):
+    """Compare stored coordinates by their validated numeric meaning."""
+    return _stored_coordinates(left) == _stored_coordinates(right)
+
+
+def _budo_origin():
+    from django.db.models.functions import Lower, Trim
+
+    from .models import Auslagerorte
+
+    candidates = list(
+        Auslagerorte.objects.annotate(_origin_name=Lower(Trim("name")))
+        .filter(_origin_name=BUDO_PLACE_NAME.casefold())
+        .only("id", "name", "koordinaten")
+        .order_by("id")[:2]
+    )
+    if len(candidates) > 1:
+        logger.warning(
+            "Multiple Auslagerorte match the BuDo travel-time origin; using id=%s",
+            candidates[0].id,
+        )
+    return _stored_coordinates(candidates[0].koordinaten) if candidates else None
+
+
 def update_auslagerorte_travel_times(auslagerort):
     """Update route estimates from BuDo, leaving failures as missing data."""
     destination = _stored_coordinates(auslagerort.koordinaten)
@@ -123,17 +151,12 @@ def update_auslagerorte_travel_times(auslagerort):
         return auslagerort
 
     if is_budo_place(auslagerort):
-        origin = destination
+        auslagerort.driving_minutes = 0
+        auslagerort.walking_minutes = 0
+        auslagerort._travel_times_coordinates = destination
+        return auslagerort
     else:
-        from .models import Auslagerorte
-
-        budo = (
-            Auslagerorte.objects.filter(name=BUDO_PLACE_NAME)
-            .only("koordinaten")
-            .order_by("id")
-            .first()
-        )
-        origin = _stored_coordinates(budo.koordinaten) if budo else None
+        origin = _budo_origin()
     if origin is None:
         logger.info(
             "Skipping travel-time lookup for %s: BuDo coordinates are unavailable",
@@ -166,11 +189,32 @@ def update_auslagerorte_travel_times(auslagerort):
         failed = failed or duration is None
 
     if failed:
-        getattr(auslagerort, "_location_warnings", []).append(
+        warnings = getattr(auslagerort, "_location_warnings", None)
+        if warnings is None:
+            warnings = []
+            auslagerort._location_warnings = warnings
+        warnings.append(
             "Die Reisezeiten vom BuDo konnten nicht vollständig ermittelt werden."
         )
     auslagerort._travel_times_coordinates = destination
     return auslagerort
+
+
+def refresh_all_auslagerorte_travel_times(*, exclude_id=None):
+    """Recompute every destination after the configured BuDo origin changes."""
+    from .models import Auslagerorte
+
+    places = Auslagerorte.objects.exclude(id=exclude_id).order_by("id")
+    updated = []
+    for place in places.iterator():
+        update_auslagerorte_travel_times(place)
+        updated.append(place)
+    if updated:
+        Auslagerorte.objects.bulk_update(
+            updated,
+            ["driving_minutes", "walking_minutes"],
+        )
+    return len(updated)
 
 
 def enrich_empty_address_fields(auslagerort, coordinates):
@@ -221,9 +265,7 @@ def update_auslagerorte_coordinates(auslagerort):
                 if getattr(auslagerort, "_enrich_address", True):
                     enrich_empty_address_fields(auslagerort, coordinates)
 
-        if _stored_coordinates(previous_coordinates) != _stored_coordinates(
-            auslagerort.koordinaten
-        ):
+        if not coordinates_equal(previous_coordinates, auslagerort.koordinaten):
             update_auslagerorte_travel_times(auslagerort)
 
     if parking_changed:

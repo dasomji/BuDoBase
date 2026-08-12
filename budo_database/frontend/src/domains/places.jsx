@@ -43,7 +43,31 @@ function Search({ filters }) {
 }
 
 function PlaceList({ places, selectedPlaceId, onSelect }) {
-  return <ul className="m-0 min-h-0 list-none divide-y divide-border overflow-y-auto p-0">{places.map(place => <li key={place.id}><Button className={`h-auto flex-col items-start gap-1 px-1 py-2 text-left ${Number(selectedPlaceId) === place.id ? 'bg-surface-subtle' : ''}`} variant="full-surface" type="button" onClick={() => onSelect(place.id)}><strong className="text-sm">{place.name}{!place.coordinates && <span className="ml-1 text-xs font-normal text-warning-foreground">(kein Pin)</span>}</strong><TimeBadges place={place} /></Button></li>)}{!places.length && <li className="py-3 text-sm text-muted-foreground">Keine Orte für diesen Filter.</li>}</ul>;
+  return (
+    <ul className="m-0 h-full min-h-0 list-none divide-y divide-border overflow-y-auto p-0">
+      {places.map(place => {
+        const selected = Number(selectedPlaceId) === place.id;
+        return (
+          <li key={place.id}>
+            <Button
+              className={`h-auto flex-col items-start gap-1 px-1 py-2 text-left ${selected ? 'bg-secondary' : ''}`}
+              variant="full-surface"
+              type="button"
+              aria-current={selected ? 'true' : undefined}
+              onClick={() => onSelect(place.id)}
+            >
+              <strong className="text-sm">
+                {place.name}
+                {!place.coordinates && <span className="ml-1 text-xs font-normal text-warning-foreground">(kein Pin)</span>}
+              </strong>
+              <TimeBadges place={place} />
+            </Button>
+          </li>
+        );
+      })}
+      {!places.length && <li className="py-3 text-sm text-muted-foreground">Keine Orte für diesen Filter.</li>}
+    </ul>
+  );
 }
 
 function Gallery({ place, initialIndex, onClose }) {
@@ -114,6 +138,7 @@ function Carousel({ place, onBack, onPeek }) {
     {images.length ? <Button className="h-full" variant="full-surface" type="button" aria-label="Galerie öffnen" onClick={() => setGallery(true)}><img className="h-full w-full object-cover" src={images[index]} alt={`${place.name} ${index + 1}`} /></Button> : <div className="grid h-full place-items-center text-muted-foreground">Keine Bilder</div>}
     <Button className="absolute top-3 left-3" size="icon" variant="outline" type="button" aria-label="Zurück zur Liste" onClick={onBack}><ArrowLeftIcon aria-hidden="true" /></Button>
     {images.length > 1 && <><Button className="absolute top-1/2 left-2 -translate-y-1/2" size="icon" variant="outline" aria-label="Vorheriges Bild" onClick={() => setIndex((index - 1 + images.length) % images.length)}><ChevronLeftIcon aria-hidden="true" /></Button><Button className="absolute top-1/2 right-2 -translate-y-1/2" size="icon" variant="outline" aria-label="Nächstes Bild" onClick={() => setIndex((index + 1) % images.length)}><ChevronRightIcon aria-hidden="true" /></Button><div className="absolute inset-x-0 bottom-2 flex justify-center gap-1">{images.map((_, dot) => <span className={`size-2 rounded-full ${dot === index ? 'bg-secondary' : 'bg-background/75'}`} key={dot} />)}</div></>}
+    {onPeek && <Button className="absolute inset-x-1/2 bottom-2 z-10 h-auto w-20 -translate-x-1/2 py-2" variant="outline" type="button" aria-label="Details einklappen" onClick={onPeek}><span className="block h-1 w-10 rounded-full bg-ring/60" /></Button>}
     {gallery && <Gallery place={place} initialIndex={index} onClose={() => setGallery(false)} />}
   </div>;
 }
@@ -129,14 +154,14 @@ function CommentForm({ place, token, onSaved }) {
 }
 
 function DetailSidebar({ place, token, onBack, onSaved, onPeek }) {
-  const address = [place.street, [place.postal_code, place.city].filter(Boolean).join(' '), place.country].filter(Boolean).join(', ');
-  return <aside className="absolute inset-y-0 left-0 z-20 flex w-full max-w-100 flex-col overflow-y-auto bg-background shadow-elevated max-[900px]:max-w-none" aria-label={place.name}><Carousel place={place} onBack={onBack} onPeek={onPeek} /><div className="border-b border-border px-4 py-3"><div className="flex items-start justify-between gap-2"><h2 className="m-0 text-lg font-bold">{place.name}</h2><Button size="icon" variant="outline" href={`/auslagerorte/${place.id}/update`} aria-label="Bearbeiten"><PencilIcon aria-hidden="true" /></Button></div><div className="mt-2 flex flex-wrap gap-1">{place.tags.map(tag => <span className="rounded-full bg-muted px-2 py-1 text-xs" key={tag}>{tag}</span>)}</div><div className="mt-2"><TimeBadges place={place} /></div>{!place.coordinates && <p className="mt-2 text-xs text-warning-foreground">Keine Koordinaten — kein Pin auf der Karte.</p>}</div>
+  const address = [place.street, [place.postal_code, place.city].filter(Boolean).join(' '), place.state, place.country].filter(Boolean).join(', ');
+  return <aside className="absolute inset-y-0 left-0 z-20 flex w-full max-w-100 flex-col overflow-y-auto bg-surface-solid shadow-elevated max-[900px]:max-w-none" aria-label={place.name}><Carousel place={place} onBack={onBack} onPeek={onPeek} /><div className="border-b border-border px-4 py-3"><div className="flex items-start justify-between gap-2"><h2 className="m-0 text-lg font-bold">{place.name}</h2><Button size="icon" variant="outline" href={`/auslagerorte/${place.id}/update`} aria-label="Bearbeiten"><PencilIcon aria-hidden="true" /></Button></div><div className="mt-2 flex flex-wrap gap-1">{place.tags.map(tag => <span className="rounded-full bg-muted px-2 py-1 text-xs" key={tag}>{tag}</span>)}</div><div className="mt-2"><TimeBadges place={place} /></div>{!place.coordinates && <p className="mt-2 text-xs text-warning-foreground">Keine Koordinaten — kein Pin auf der Karte.</p>}</div>
     {place.description && <div className="border-b border-border px-4 py-3 text-sm"><p className="text-xs text-muted-foreground">Beschreibung</p><p>{place.description}</p></div>}
     {address && <InfoRow icon={<MapPinIcon className="size-4" />} label="Adresse" action={<Button size="icon" variant="secondary" target="_blank" rel="noreferrer" href={directionsUrl(address)} aria-label="Route zur Adresse"><NavigationIcon aria-hidden="true" /></Button>}>{address}</InfoRow>}
     {place.coordinates && <InfoRow icon={<MapPinIcon className="size-4" />} label="Koordinaten">{place.coordinates}</InfoRow>}
     {place.contact && <InfoRow icon={<span aria-hidden="true">☎</span>} label="Kontakt">{place.contact}</InfoRow>}
     {place.maps_link && <InfoRow icon={<ExternalLinkIcon className="size-4" />} label="Google Maps"><a className="text-link underline" href={place.maps_link} target="_blank" rel="noreferrer">Link öffnen</a></InfoRow>}
-    {(place.parking_coordinates || place.parking_link) && <InfoRow icon={<CarIcon className="size-4" />} label="Parkspot" action={place.parking_coordinates && <Button size="icon" variant="secondary" target="_blank" rel="noreferrer" href={directionsUrl(place.parking_coordinates.replace(/\s/g, ''))} aria-label="Route zum Parkspot"><NavigationIcon aria-hidden="true" /></Button>}>{place.parking_coordinates || <a className="text-link underline" href={place.parking_link}>Google Maps Link</a>}</InfoRow>}
+    {(place.parking_coordinates || place.parking_link) && <InfoRow icon={<CarIcon className="size-4" />} label="Parkspot" action={place.parking_coordinates && <Button size="icon" variant="secondary" target="_blank" rel="noreferrer" href={directionsUrl(place.parking_coordinates.replace(/\s/g, ''))} aria-label="Route zum Parkspot"><NavigationIcon aria-hidden="true" /></Button>}>{place.parking_coordinates || <a className="text-link underline" href={place.parking_link} target="_blank" rel="noreferrer">Google Maps Link</a>}</InfoRow>}
     <div className="px-4 py-3"><p className="text-xs text-muted-foreground">Kommentare</p><ul className="mt-2 grid gap-3">{place.notes.map(note => <li className="text-sm" key={note.id}><p className="text-xs text-muted-foreground"><strong className="text-foreground">{note.author}</strong> am {formatGermanDate(note.date)}</p><p>{note.text}</p>{note.photos?.length > 0 && <div className="mt-1 flex gap-1 overflow-x-auto">{note.photos.map(photo => <img className="h-24 rounded-lg object-cover" src={photo.url} alt={photo.alt} key={photo.id} />)}</div>}</li>)}</ul><CommentForm place={place} token={token} onSaved={onSaved} /></div>
   </aside>;
 }
@@ -164,14 +189,14 @@ function MobileListSheet({ places, selectedPlaceId, onSelect }) {
         <span className="mx-auto block h-1 w-10 rounded-full bg-ring/40" />
         <strong className="mt-2 block text-sm">{places.length} Auslagerorte</strong>
       </Button>
-      <div className="min-h-0 px-4">
+      <div className="min-h-0 flex-1 overflow-hidden px-4" inert={open ? undefined : ''} aria-hidden={!open}>
         <PlaceList places={places} selectedPlaceId={selectedPlaceId} onSelect={onSelect} />
       </div>
     </div>
   );
 }
 
-export function PlacesPage({ data, MapComponent = GoogleMap, initialPlaceId = null, onSaved }) {
+export function PlacesPage({ data, MapComponent = GoogleMap, initialPlaceId = null, onSaved, navigateRoute }) {
   const isMobile = useIsMobile();
   const params = new URLSearchParams(window.location.search);
   const [query, setQueryState] = useState(params.get('q') || '');
@@ -233,19 +258,19 @@ export function PlacesPage({ data, MapComponent = GoogleMap, initialPlaceId = nu
       )
   )), [data.places, maximumWalkingMinutes, query, tags]);
   const selected = findById(data.places || [], selectedPlaceId);
-  const homePlace = (data.places || []).find(place => place.name.toLocaleLowerCase('de') === 'budo') || null;
+  const homePlace = (data.places || []).find(
+    place => place.name.trim().toLocaleLowerCase('de') === 'budo',
+  ) || null;
   const choose = id => { setSelectedPlaceId(Number(id)); setPeek(false); };
   const closeDetails = () => {
     setSelectedPlaceId(null);
     if (initialPlaceId != null) {
-      window.history.replaceState(
-        window.history.state,
-        '',
-        `/auslagerorte-list/${window.location.search}`,
-      );
+      const target = `/auslagerorte-list/${window.location.search}`;
+      if (navigateRoute) navigateRoute(target, { replace: true });
+      else window.history.replaceState(window.history.state, '', target);
     }
   };
-  return <div className="relative h-[calc(100svh-var(--app-header-height,0px))] min-h-80 w-full overflow-hidden"><MapComponent apiKey={data.google_maps_browser_api_key} className="absolute inset-0 h-full w-full" places={filtered} homePlace={homePlace} selectedPlaceId={selectedPlaceId} parkingCoordinates={selected?.parking_coordinates} onSelectPlace={choose} />
+  return <div className="relative h-[calc(100svh-var(--app-header-height,0px))] min-h-80 w-full overflow-hidden"><MapComponent apiKey={data.google_maps_browser_api_key} mapId={data.google_maps_map_id} className="absolute inset-0 h-full w-full" places={filtered} homePlace={homePlace} selectedPlaceId={selectedPlaceId} parkingCoordinates={selected?.parking_coordinates} onSelectPlace={choose} />
     {isMobile ? <><div className="absolute top-2 right-2 left-2 z-10 flex flex-col gap-1.5 rounded-xl border border-border bg-card p-2 shadow-elevated backdrop-blur"><Search filters={filters} /><Filters filters={filters} row /></div>{!selected && <MobileListSheet places={filtered} selectedPlaceId={selectedPlaceId} onSelect={choose} />}</> : <div className="absolute top-3 left-3 z-10 flex max-h-[calc(100%-1.5rem)] w-80 max-w-[calc(100%-1.5rem)] flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-elevated backdrop-blur"><Search filters={filters} /><Filters filters={filters} /><PlaceList places={filtered} selectedPlaceId={selectedPlaceId} onSelect={choose} /></div>}
     {selected && !peek && <DetailSidebar place={selected} token={data.csrf_token} onBack={closeDetails} onSaved={onSaved} onPeek={isMobile ? () => setPeek(true) : undefined} />}
     {selected && isMobile && peek && <div className="absolute inset-x-0 bottom-0 z-20 rounded-t-2xl bg-surface-solid shadow-sheet"><Button className="h-auto flex-col items-stretch px-4 pt-2 pb-3 text-left" variant="full-surface" type="button" aria-label="Details ausklappen" onClick={() => setPeek(false)} onTouchStart={event => { event.currentTarget.dataset.touchY = event.touches[0].clientY; }} onTouchEnd={event => { if (Number(event.currentTarget.dataset.touchY) - event.changedTouches[0].clientY > 24) setPeek(false); }}><span className="mx-auto block h-1 w-10 rounded-full bg-ring/40" /><span className="mt-2 flex justify-between gap-2"><span><strong className="block">{selected.name}</strong><TimeBadges place={selected} /></span>{selected.images[0] && <img className="h-12 w-16 rounded-lg object-cover" src={selected.images[0]} alt="" />}</span></Button></div>}
@@ -271,5 +296,5 @@ export const placeRoutes = [
   { pattern: /^\/auslagerorte\/create$/, page: 'place-create', title: 'Neuer Auslagerort', domain: 'places', readContractKey: 'place-create', render: ({ data }) => <PlaceFormPage data={data} /> },
   { pattern: /^\/auslagerorte\/(\d+)\/update$/, page: 'place-update', title: 'Auslagerort bearbeiten', domain: 'places', readContractKey: 'place-update', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, render: ({ route, data }) => <PlaceFormPage data={data} id={route.id} /> },
   { pattern: /^\/auslagerorte\/(\d+)\/upload-image$/, page: 'place-images', title: 'Bilder hochladen', domain: 'places', readContractKey: 'place-images', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, render: ({ route, data }) => <ImageUploadPage data={data} id={route.id} /> },
-  { pattern: /^\/auslagerorte\/(\d+)$/, page: 'place-detail', title: 'Auslagerort', domain: 'places', readContractKey: 'places-list', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, render: ({ route, data, refresh }) => <PlacesPage data={data} initialPlaceId={route.id} onSaved={refresh} /> },
+  { pattern: /^\/auslagerorte\/(\d+)$/, page: 'place-detail', title: 'Auslagerort', domain: 'places', readContractKey: 'places-list', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, render: ({ route, data, refresh, navigateRoute }) => <PlacesPage data={data} initialPlaceId={route.id} onSaved={refresh} navigateRoute={navigateRoute} /> },
 ];
