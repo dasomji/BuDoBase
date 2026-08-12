@@ -28,6 +28,8 @@ LIST_FIELDS = {
     "id",
     "name",
     "coordinates",
+    "driving_minutes",
+    "walking_minutes",
     "maps_link",
     "parking_link",
     "tags",
@@ -42,6 +44,8 @@ DETAIL_FIELDS = {
     "postal_code",
     "country",
     "coordinates",
+    "driving_minutes",
+    "walking_minutes",
     "maps_link",
     "description",
     "contact",
@@ -91,6 +95,8 @@ class PlacesContractTests(TestCase):
             postleitzahl="3931",
             land="Österreich",
             koordinaten="48.5, 15.0",
+            driving_minutes=14,
+            walking_minutes=51,
             maps_link="https://maps.example.test/ada",
             maps_link_parkspot="https://maps.example.test/parking",
             koordinaten_parkspot="48.51, 15.01",
@@ -120,6 +126,8 @@ class PlacesContractTests(TestCase):
                 "id": self.place.id,
                 "name": "Ada Hütte",
                 "coordinates": "48.5, 15.0",
+                "driving_minutes": 14,
+                "walking_minutes": 51,
                 "maps_link": "https://maps.example.test/ada",
                 "parking_link": "https://maps.example.test/parking",
                 "tags": [],
@@ -157,6 +165,8 @@ class PlacesContractTests(TestCase):
         self.assertEqual(set(place), DETAIL_FIELDS)
         self.assertEqual(place["contact"], "Ada +43 123")
         self.assertEqual(place["parking_coordinates"], "48.51, 15.01")
+        self.assertEqual(place["driving_minutes"], 14)
+        self.assertEqual(place["walking_minutes"], 51)
         self.assertEqual(place["images"], [image.image.url])
         self.assertEqual(place["notes"], [{
             "id": note.id,

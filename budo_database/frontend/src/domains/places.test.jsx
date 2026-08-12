@@ -28,6 +28,43 @@ describe('Auslagerorte workflows', () => {
     expect(screen.getByRole('link', { name: 'Ada Hütte' })).toHaveAttribute('href', '/auslagerorte/4/');
   });
 
+  it('renders both travel times and sorts places by driving minutes', async () => {
+    const user = userEvent.setup();
+    render(<PlacesPage data={{
+      places: [
+        { id: 4, name: 'Ferner See', driving_minutes: 38, walking_minutes: 125, maps_link: '', parking_link: '', coordinates: null },
+        { id: 5, name: 'Naher Wald', driving_minutes: 9, walking_minutes: 32, maps_link: '', parking_link: '', coordinates: null },
+      ],
+    }} />);
+
+    expect(screen.getByText('Mit dem Auto: 38 min')).toBeInTheDocument();
+    expect(screen.getByText('Zu Fuß: 125 min')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Reisezeit vom BuDo sortieren' }));
+    const names = screen.getAllByRole('row').slice(1).map(row => (
+      within(row).getByRole('link', { name: /Wald|See/ }).textContent
+    ));
+    expect(names).toEqual(['Naher Wald', 'Ferner See']);
+  });
+
+  it('shows missing travel times per mode instead of inventing a duration', () => {
+    render(<PlacesPage data={{
+      places: [{
+        id: 4,
+        name: 'Ort ohne Route',
+        driving_minutes: null,
+        walking_minutes: null,
+        maps_link: '',
+        parking_link: '',
+        coordinates: null,
+      }],
+    }} />);
+
+    const row = screen.getByRole('link', { name: 'Ort ohne Route' }).closest('tr');
+    expect(within(row).getByText('Mit dem Auto: ---')).toBeInTheDocument();
+    expect(within(row).getByText('Zu Fuß: ---')).toBeInTheDocument();
+  });
+
   it('renders place tags and filters with AND semantics using accessible chips', async () => {
     const user = userEvent.setup();
     render(<PlacesPage data={{
@@ -118,6 +155,30 @@ describe('Auslagerorte workflows', () => {
       'Badeplatz',
       'Wanderung',
     ]);
+  });
+
+  it('shows both travel times alongside the coordinates on the detail page', () => {
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      disconnect() {}
+    });
+    render(<PlaceDetailPage data={{
+      csrf_token: 'token',
+      places: [{
+        id: 4,
+        name: 'Ada Hütte',
+        tags: [],
+        coordinates: '48.2,15.2',
+        driving_minutes: 12,
+        walking_minutes: 47,
+        notes: [],
+        images: [],
+      }],
+    }} id="4" />);
+
+    expect(screen.getByText('Koordinaten').closest('p')).toHaveTextContent('48.2,15.2');
+    expect(screen.getByText('Mit dem Auto vom BuDo').closest('p')).toHaveTextContent('12 min');
+    expect(screen.getByText('Zu Fuß vom BuDo').closest('p')).toHaveTextContent('47 min');
   });
 
   it('requires multiple images and hints accepted file types', () => {
