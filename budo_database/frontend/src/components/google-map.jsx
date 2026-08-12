@@ -111,7 +111,12 @@ export function GoogleMap({
         zIndex: options.zIndex,
       };
       let marker;
-      if (Marker) {
+      if (AdvancedMarkerElement && mapId) {
+        const content = document.createElement('span');
+        content.className = `rounded-full border border-foreground px-2 py-1 text-xs font-semibold ${options.markerClass || 'bg-primary text-primary-foreground'}`;
+        content.textContent = options.label?.text || name;
+        marker = new AdvancedMarkerElement({ ...markerOptions, content });
+      } else if (Marker) {
         marker = new Marker({
           ...markerOptions,
           label: options.label || {
@@ -121,11 +126,6 @@ export function GoogleMap({
           },
           icon: options.icon,
         });
-      } else if (AdvancedMarkerElement && mapId) {
-        const content = document.createElement('span');
-        content.className = `rounded-full border border-foreground px-2 py-1 text-xs font-semibold ${options.markerClass || 'bg-primary text-primary-foreground'}`;
-        content.textContent = options.label?.text || name;
-        marker = new AdvancedMarkerElement({ ...markerOptions, content });
       } else {
         throw new Error('The Google Maps marker library did not provide a marker constructor.');
       }

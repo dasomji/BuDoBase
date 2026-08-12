@@ -2,7 +2,7 @@ import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mapsMock = vi.hoisted(() => {
-  const state = { mapOptions: null, mapConstructions: 0, fitBoundsCalls: 0, markerOptions: [], removedMarkers: 0 };
+  const state = { mapOptions: null, mapConstructions: 0, fitBoundsCalls: 0, markerOptions: [], markerKinds: [], removedMarkers: 0 };
   class Map {
     constructor(_element, options) {
       state.mapOptions = options;
@@ -14,6 +14,7 @@ const mapsMock = vi.hoisted(() => {
   class Marker {
     constructor(options) {
       state.markerOptions.push(options);
+      state.markerKinds.push('legacy');
     }
 
     addListener() {
@@ -22,6 +23,17 @@ const mapsMock = vi.hoisted(() => {
 
     setMap(map) {
       if (map === null) state.removedMarkers += 1;
+    }
+  }
+  class AdvancedMarkerElement {
+    constructor(options) {
+      Object.assign(this, options);
+      state.markerOptions.push(options);
+      state.markerKinds.push('advanced');
+    }
+
+    addListener() {
+      return { remove: vi.fn() };
     }
   }
   class LatLngBounds {
@@ -36,7 +48,7 @@ const mapsMock = vi.hoisted(() => {
     LatLngBounds,
     importLibrary: vi.fn(name => ({
       maps: { Map },
-      marker: { Marker },
+      marker: { Marker, AdvancedMarkerElement },
       core: {
         ControlPosition: { RIGHT_CENTER: 6 },
         LatLngBounds,
@@ -61,6 +73,7 @@ describe('GoogleMap loader seam', () => {
     mapsMock.state.mapConstructions = 0;
     mapsMock.state.fitBoundsCalls = 0;
     mapsMock.state.markerOptions = [];
+    mapsMock.state.markerKinds = [];
     mapsMock.state.removedMarkers = 0;
     mapsMock.importLibrary.mockClear();
   });
@@ -68,6 +81,7 @@ describe('GoogleMap loader seam', () => {
   it('loads marker constructors officially and keeps map controls clear of overlays', async () => {
     render(<GoogleMap
       apiKey="browser-key"
+      mapId="map-id"
       places={[{ id: 1, name: 'Hütte', coordinates: '47.1,15.2' }]}
       selectedPlaceId={1}
     />);
@@ -82,7 +96,8 @@ describe('GoogleMap loader seam', () => {
     });
     expect(mapsMock.state.mapOptions.zoomControlOptions).toEqual({ position: 6 });
     expect(mapsMock.state.markerOptions).toHaveLength(1);
-    expect(mapsMock.state.markerOptions[0].icon).toMatchObject({ fillColor: expect.any(String) });
+    expect(mapsMock.state.markerKinds).toEqual(['advanced']);
+    expect(mapsMock.state.markerOptions[0].content).toHaveTextContent('Hütte');
   });
 
   it('creates the billable map once while selection only replaces markers', async () => {
