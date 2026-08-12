@@ -228,6 +228,41 @@ class GoogleMapsPlaceWriteContractTests(TestCase):
         self.assertEqual(place.bundesland, "Google-Land")
         self.assertEqual(place.postleitzahl, "9999")
 
+    def test_create_accepts_long_google_maps_parkspot_link(self):
+        parking_link = (
+            "https://www.google.com/maps/?q=48.2,15.2&entry=ttu&padding="
+            + "x" * 220
+        )
+
+        response = self.submit(
+            "/auslagerorte/create",
+            maps_link_parkspot=parking_link,
+        )
+
+        place = Auslagerorte.objects.get(name="Waldlichtung")
+        self.assertGreater(len(parking_link), 200)
+        self.assertEqual(response.status_code, 200, response.json())
+        self.assertEqual(place.maps_link_parkspot, parking_link)
+        self.assertEqual(place.koordinaten_parkspot, "48.2,15.2")
+
+    def test_update_accepts_long_google_maps_main_link(self):
+        place = Auslagerorte.objects.create(name="Waldlichtung")
+        main_link = (
+            "https://www.google.com/maps/@48.3,15.8,17z?entry=ttu&padding="
+            + "x" * 220
+        )
+
+        response = self.submit(
+            f"/auslagerorte/{place.id}/update",
+            maps_link=main_link,
+        )
+
+        place.refresh_from_db()
+        self.assertGreater(len(main_link), 200)
+        self.assertEqual(response.status_code, 200, response.json())
+        self.assertEqual(place.maps_link, main_link)
+        self.assertEqual(place.koordinaten, "48.3,15.8")
+
     def test_changed_invalid_links_clear_stale_coordinates_and_warn_user(self):
         place = Auslagerorte.objects.create(
             name="Waldlichtung",

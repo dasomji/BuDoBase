@@ -1120,11 +1120,18 @@ class Auslagerorte(models.Model):
     land = models.CharField(
         max_length=100, verbose_name="Land", default="Österreich", blank=True)
     koordinaten = models.CharField(max_length=255, blank=True, null=True)
-    maps_link = models.URLField(blank=True, verbose_name="Google Maps Link")
+    maps_link = models.URLField(
+        blank=True,
+        max_length=2048,
+        verbose_name="Google Maps Link",
+    )
     beschreibung = models.TextField(blank=True)
     kontakt = models.TextField(blank=True)
     maps_link_parkspot = models.URLField(
-        blank=True, verbose_name="Google Maps Link Parkspot")
+        blank=True,
+        max_length=2048,
+        verbose_name="Google Maps Link Parkspot",
+    )
     koordinaten_parkspot = models.CharField(
         max_length=255, blank=True, null=True)
 
