@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 SHORT_LINK_HOSTS = frozenset({"maps.app.goo.gl", "app.goo.gl", "goo.gl", "g.co"})
 _EXPANSION_TIMEOUT_SECONDS = 5
 _GEOCODING_TIMEOUT_SECONDS = 8
+_ROUTES_TIMEOUT_SECONDS = 8
 
 
 def expand_short_link(url):
@@ -108,3 +109,70 @@ def reverse_geocode(latitude, longitude):
         "postal_code": by_type.get("postal_code", ""),
         "country": by_type.get("country", ""),
     }
+
+
+def route_duration_minutes(
+    origin_coordinates,
+    destination_coordinates,
+    travel_mode,
+):
+    """Return a Google Routes estimate rounded to whole minutes."""
+    if travel_mode not in {"DRIVE", "WALK"}:
+        raise ValueError(f"Unsupported Google Routes travel mode: {travel_mode}")
+
+    api_key = settings.GOOGLE_MAPS_API_KEY
+    if not api_key:
+        logger.info("Skipping Google route lookup: GOOGLE_MAPS_API_KEY is unset")
+        return None
+
+    origin_latitude, origin_longitude = origin_coordinates
+    destination_latitude, destination_longitude = destination_coordinates
+    payload = {
+        "origin": {
+            "location": {
+                "latLng": {
+                    "latitude": origin_latitude,
+                    "longitude": origin_longitude,
+                },
+            },
+        },
+        "destination": {
+            "location": {
+                "latLng": {
+                    "latitude": destination_latitude,
+                    "longitude": destination_longitude,
+                },
+            },
+        },
+        "travelMode": travel_mode,
+    }
+
+    try:
+        response = requests.post(
+            "https://routes.googleapis.com/directions/v2:computeRoutes",
+            json=payload,
+            headers={
+                "X-Goog-Api-Key": api_key,
+                "X-Goog-FieldMask": "routes.duration",
+            },
+            timeout=_ROUTES_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        routes = response.json().get("routes", [])
+        duration = routes[0].get("duration") if routes else None
+        if not duration or not duration.endswith("s"):
+            logger.warning("Google Routes returned no usable duration")
+            return None
+        seconds = float(duration[:-1])
+    except (
+        requests.RequestException,
+        AttributeError,
+        ValueError,
+        TypeError,
+        IndexError,
+    ) as error:
+        # The request headers contain the API key, so do not log response details.
+        logger.warning("Google Routes request failed (%s)", type(error).__name__)
+        return None
+
+    return int(seconds / 60 + 0.5)

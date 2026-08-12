@@ -46,6 +46,17 @@ function PlacesTablePage({ data }) {
   const columns = [
     { key: 'name', label: 'Name', render: row => <a href={`/auslagerorte/${row.id}/`}>{row.name}</a> },
     { key: 'tags', label: 'Tags', render: row => <TagList tags={row.tags} label={`Tags für ${row.name}`} />, sortable: false },
+    {
+      key: 'driving_minutes',
+      label: 'Reisezeit vom BuDo',
+      sortValue: row => row.driving_minutes,
+      render: row => (
+        <span className="grid gap-1">
+          <span>Mit dem Auto: {row.driving_minutes == null ? '---' : `${row.driving_minutes} min`}</span>
+          <span>Zu Fuß: {row.walking_minutes == null ? '---' : `${row.walking_minutes} min`}</span>
+        </span>
+      ),
+    },
     { key: 'maps_link', label: 'Wo', render: row => row.maps_link ? <a href={row.maps_link}>Google Maps</a> : '---' },
     { key: 'parking_link', label: 'Parkspot', render: row => row.parking_link ? <a href={row.parking_link}>Google Maps</a> : '---' },
   ];
@@ -109,7 +120,7 @@ export function PlaceDetailPage({ data, id, onSaved }) {
             actions={<Button href={`/auslagerorte/${place.id}/update`}>Ort bearbeiten</Button>}
           >
             <div className="mb-3"><TagList tags={place.tags} /></div>
-            <FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} />
+            <FieldList items={[["Name", place.name], ["Beschreibung", place.description], ["Koordinaten", place.coordinates], ["Mit dem Auto vom BuDo", place.driving_minutes == null ? '---' : `${place.driving_minutes} min`], ["Zu Fuß vom BuDo", place.walking_minutes == null ? '---' : `${place.walking_minutes} min`], ["Google Maps Link", place.maps_link && <a href={place.maps_link}>Link</a>], ["Google Maps Link Parkspot", place.parking_link && <a href={place.parking_link}>Link</a>], ["Koordinaten Parkspot", place.parking_coordinates], ["Straße", place.street], ["Stadt", place.city], ["Bundesland", place.state], ["Postleitzahl", place.postal_code], ["Land", place.country]]} />
           </Card>
           <Card title="Kommentare">
             <ul>{place.notes.map(note => <li key={note.id}><strong>{note.author}</strong> am {formatGermanDate(note.date)}: {note.text}{note.photos?.length > 0 && <div className="mt-1 flex gap-1 overflow-x-auto">{note.photos.map(photo => <img className="h-32 w-auto max-w-48 rounded-lg object-cover" src={photo.url} alt={photo.alt} key={photo.id} />)}</div>}</li>)}</ul>

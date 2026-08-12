@@ -99,6 +99,70 @@ def _coordinate_string(coordinates):
     return f"{latitude},{longitude}"
 
 
+def _stored_coordinates(value):
+    match = _PAIR.fullmatch(value or "")
+    if not match:
+        return None
+    return _validated_coordinates(*match.groups())
+
+
+def update_auslagerorte_travel_times(auslagerort):
+    """Update route estimates from BuDo, leaving failures as missing data."""
+    destination = _stored_coordinates(auslagerort.koordinaten)
+    auslagerort.driving_minutes = None
+    auslagerort.walking_minutes = None
+    if destination is None:
+        return auslagerort
+
+    if auslagerort.name == "BuDo":
+        origin = destination
+    else:
+        from .models import Auslagerorte
+
+        budo = (
+            Auslagerorte.objects.filter(name="BuDo")
+            .only("koordinaten")
+            .order_by("id")
+            .first()
+        )
+        origin = _stored_coordinates(budo.koordinaten) if budo else None
+    if origin is None:
+        logger.info(
+            "Skipping travel-time lookup for %s: BuDo coordinates are unavailable",
+            auslagerort.name,
+        )
+        return auslagerort
+
+    failed = False
+    for field_name, travel_mode in (
+        ("driving_minutes", "DRIVE"),
+        ("walking_minutes", "WALK"),
+    ):
+        try:
+            duration = google_maps_gateway.route_duration_minutes(
+                origin,
+                destination,
+                travel_mode,
+            )
+        except Exception as error:
+            logger.warning(
+                "Travel-time lookup failed for %s (%s): %s",
+                auslagerort.name,
+                travel_mode,
+                error,
+            )
+            failed = True
+            continue
+        setattr(auslagerort, field_name, duration)
+        failed = failed or duration is None
+
+    if failed:
+        getattr(auslagerort, "_location_warnings", []).append(
+            "Die Reisezeiten vom BuDo konnten nicht vollständig ermittelt werden."
+        )
+    return auslagerort
+
+
 def enrich_empty_address_fields(auslagerort, coordinates):
     """Reverse-geocode coordinates and fill only address fields still empty."""
     try:
@@ -131,8 +195,10 @@ def update_auslagerorte_coordinates(auslagerort):
     main_changed = getattr(auslagerort, "_maps_link_changed", True)
     parking_changed = getattr(auslagerort, "_maps_link_parkspot_changed", True)
     warnings = []
+    auslagerort._location_warnings = warnings
 
     if main_changed:
+        previous_coordinates = auslagerort.koordinaten
         auslagerort.koordinaten = None
         if auslagerort.maps_link:
             coordinates = _coordinates_for_link(auslagerort.maps_link)
@@ -144,6 +210,11 @@ def update_auslagerorte_coordinates(auslagerort):
                 auslagerort.koordinaten = _coordinate_string(coordinates)
                 if getattr(auslagerort, "_enrich_address", True):
                     enrich_empty_address_fields(auslagerort, coordinates)
+
+        if _stored_coordinates(previous_coordinates) != _stored_coordinates(
+            auslagerort.koordinaten
+        ):
+            update_auslagerorte_travel_times(auslagerort)
 
     if parking_changed:
         auslagerort.koordinaten_parkspot = None

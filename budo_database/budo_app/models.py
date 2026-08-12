@@ -1149,6 +1149,8 @@ class Auslagerorte(models.Model):
     land = models.CharField(
         max_length=100, verbose_name="Land", default="Österreich", blank=True)
     koordinaten = models.CharField(max_length=255, blank=True, null=True)
+    driving_minutes = models.IntegerField(blank=True, null=True)
+    walking_minutes = models.IntegerField(blank=True, null=True)
     maps_link = models.URLField(
         blank=True,
         max_length=2048,
