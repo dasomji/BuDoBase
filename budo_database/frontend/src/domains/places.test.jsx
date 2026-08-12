@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../App';
@@ -25,6 +26,98 @@ describe('Auslagerorte workflows', () => {
 
     expect(screen.queryByRole('columnheader', { name: 'Aktionen' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ada Hütte' })).toHaveAttribute('href', '/auslagerorte/4/');
+  });
+
+  it('renders place tags and filters with AND semantics using accessible chips', async () => {
+    const user = userEvent.setup();
+    render(<PlacesPage data={{
+      available_tags: ['Badeplatz', 'Schlechtwetter-tauglich'],
+      places: [
+        { id: 4, name: 'Badesee', tags: ['Badeplatz'], maps_link: '', parking_link: '', coordinates: null },
+        { id: 5, name: 'Hallenbad', tags: ['Badeplatz', 'Schlechtwetter-tauglich'], maps_link: '', parking_link: '', coordinates: null },
+        { id: 6, name: 'Museum', tags: ['Schlechtwetter-tauglich'], maps_link: '', parking_link: '', coordinates: null },
+      ],
+    }} />);
+
+    const filters = screen.getByRole('group', { name: 'Nach Tags filtern' });
+    const swimming = within(filters).getByRole('button', { name: 'Badeplatz' });
+    const rainyDay = within(filters).getByRole('button', { name: 'Schlechtwetter-tauglich' });
+    expect(swimming).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getAllByText('Badeplatz')).toHaveLength(3);
+
+    await user.click(swimming);
+    expect(swimming).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('link', { name: 'Badesee' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Hallenbad' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Museum' })).not.toBeInTheDocument();
+
+    await user.click(rainyDay);
+    expect(screen.queryByRole('link', { name: 'Badesee' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Hallenbad' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Museum' })).not.toBeInTheDocument();
+  });
+
+  it('clears tag filters in one action and explains an empty result', async () => {
+    const user = userEvent.setup();
+    render(<PlacesPage data={{
+      available_tags: ['Badeplatz', 'Wanderung'],
+      places: [
+        { id: 4, name: 'Badesee', tags: ['Badeplatz'], maps_link: '', parking_link: '', coordinates: null },
+        { id: 5, name: 'Waldweg', tags: ['Wanderung'], maps_link: '', parking_link: '', coordinates: null },
+      ],
+    }} />);
+
+    const filters = screen.getByRole('group', { name: 'Nach Tags filtern' });
+    await user.click(within(filters).getByRole('button', { name: 'Badeplatz' }));
+    await user.click(within(filters).getByRole('button', { name: 'Wanderung' }));
+
+    expect(screen.getByText('Keine Auslagerorte entsprechen den ausgewählten Tags.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tagfilter zurücksetzen' }));
+    expect(screen.getByRole('link', { name: 'Badesee' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Waldweg' })).toBeInTheDocument();
+    expect(within(filters).getByRole('button', { name: 'Badeplatz' })).toHaveAttribute('aria-pressed', 'false');
+    expect(within(filters).getByRole('button', { name: 'Wanderung' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('restores tag filters from a shareable URL and keeps changes in the URL', async () => {
+    window.history.pushState({}, '', '/auslagerorte-list?tag=Badeplatz&tag=Wanderung');
+    const user = userEvent.setup();
+    render(<PlacesPage data={{
+      available_tags: ['Badeplatz', 'Wanderung'],
+      places: [
+        { id: 4, name: 'Badesee', tags: ['Badeplatz'], maps_link: '', parking_link: '', coordinates: null },
+        { id: 5, name: 'Badeweg', tags: ['Badeplatz', 'Wanderung'], maps_link: '', parking_link: '', coordinates: null },
+      ],
+    }} />);
+
+    const filters = screen.getByRole('group', { name: 'Nach Tags filtern' });
+    expect(within(filters).getByRole('button', { name: 'Badeplatz' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(filters).getByRole('button', { name: 'Wanderung' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('link', { name: 'Badesee' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Badeweg' })).toBeInTheDocument();
+
+    await user.click(within(filters).getByRole('button', { name: 'Wanderung' }));
+    expect(new URLSearchParams(window.location.search).getAll('tag')).toEqual(['Badeplatz']);
+  });
+
+  it('shows an Auslagerort tags on its detail page', () => {
+    render(<PlaceDetailPage data={{
+      csrf_token: 'token',
+      places: [{
+        id: 4,
+        name: 'Ada Hütte',
+        tags: ['Badeplatz', 'Wanderung'],
+        coordinates: null,
+        notes: [],
+        images: [],
+      }],
+    }} id="4" />);
+
+    const tags = screen.getByRole('list', { name: 'Tags' });
+    expect(within(tags).getAllByRole('listitem').map(item => item.textContent)).toEqual([
+      'Badeplatz',
+      'Wanderung',
+    ]);
   });
 
   it('requires multiple images and hints accepted file types', () => {

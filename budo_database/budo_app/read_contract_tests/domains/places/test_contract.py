@@ -30,6 +30,7 @@ LIST_FIELDS = {
     "coordinates",
     "maps_link",
     "parking_link",
+    "tags",
 }
 
 DETAIL_FIELDS = {
@@ -48,6 +49,7 @@ DETAIL_FIELDS = {
     "parking_coordinates",
     "images",
     "notes",
+    "tags",
 }
 
 FORM_FIELDS = {
@@ -61,6 +63,7 @@ FORM_FIELDS = {
     "maps_link",
     "description",
     "parking_link",
+    "tags",
 }
 
 REFERENCE_FIELDS = {"id", "name"}
@@ -105,7 +108,7 @@ class PlacesContractTests(TestCase):
         response = self.client.get(self.contract_url("places-list"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(set(response.json()), {"places"})
+        self.assertEqual(set(response.json()), {"places", "available_tags"})
         self.assertEqual(
             [place["name"] for place in response.json()["places"]],
             ["Ada Hütte", "Zeltplatz"],
@@ -119,8 +122,10 @@ class PlacesContractTests(TestCase):
                 "coordinates": "48.5, 15.0",
                 "maps_link": "https://maps.example.test/ada",
                 "parking_link": "https://maps.example.test/parking",
+                "tags": [],
             },
         )
+        self.assertEqual(response.json()["available_tags"], [])
 
     def test_list_preserves_empty_behavior(self):
         Auslagerorte.objects.all().delete()
@@ -128,7 +133,7 @@ class PlacesContractTests(TestCase):
         response = self.client.get(self.contract_url("places-list"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"places": []})
+        self.assertEqual(response.json(), {"places": [], "available_tags": []})
 
     def test_detail_returns_one_explicit_place_with_notes_and_storage_urls(self):
         note = AuslagerorteNotizen.objects.create(
@@ -161,6 +166,7 @@ class PlacesContractTests(TestCase):
             "day": note.date_added.strftime("%d.%m."),
             "photos": [],
         }])
+        self.assertEqual(place["tags"], [])
 
     def test_form_and_image_contracts_return_only_their_required_initial_values(self):
         create_response = self.client.get(self.contract_url("place-create"))
@@ -172,7 +178,10 @@ class PlacesContractTests(TestCase):
         )
 
         self.assertEqual(create_response.status_code, 200)
-        self.assertEqual(create_response.json(), {"places": []})
+        self.assertEqual(
+            create_response.json(),
+            {"places": [], "available_tags": []},
+        )
         self.assertEqual(update_response.status_code, 200)
         self.assertEqual(len(update_response.json()["places"]), 1)
         update_place = update_response.json()["places"][0]
@@ -180,6 +189,8 @@ class PlacesContractTests(TestCase):
         self.assertEqual(update_place["name"], "Ada Hütte")
         self.assertEqual(update_place["street"], "Waldweg 4")
         self.assertEqual(update_place["description"], "Lagerplatz am Wald")
+        self.assertEqual(update_place["tags"], [])
+        self.assertEqual(update_response.json()["available_tags"], [])
         self.assertNotIn("contact", update_place)
         self.assertNotIn("images", update_place)
         self.assertNotIn("notes", update_place)
@@ -234,7 +245,10 @@ class PlacesContractTests(TestCase):
         )
 
         self.assertEqual(list_response.status_code, 200)
-        self.assertEqual(list_response.json(), {"places": []})
+        self.assertEqual(
+            list_response.json(),
+            {"places": [], "available_tags": []},
+        )
         self.assertEqual(detail_response.status_code, 404)
 
     def test_note_write_requires_csrf_and_is_current_in_the_detail_contract(self):
