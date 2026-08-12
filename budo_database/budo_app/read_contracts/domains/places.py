@@ -28,19 +28,6 @@ def _require_active_turnus(request):
         raise Http404
 
 
-def _list_place(place):
-    return {
-        "id": place.id,
-        "name": place.name,
-        "coordinates": place.koordinaten,
-        "driving_minutes": place.driving_minutes,
-        "walking_minutes": place.walking_minutes,
-        "maps_link": place.maps_link,
-        "parking_link": place.maps_link_parkspot,
-        "tags": [tag.name for tag in place.route_tags],
-    }
-
-
 def _available_tag_names(*, in_use=False):
     tags = Tag.objects.all()
     if in_use:
@@ -59,17 +46,23 @@ def _tag_prefetch():
 def places_list(request):
     if not _has_active_turnus(request):
         return {"places": [], "available_tags": []}
-    places = Auslagerorte.objects.only(
-        "id",
-        "name",
-        "koordinaten",
-        "driving_minutes",
-        "walking_minutes",
-        "maps_link",
-        "maps_link_parkspot",
-    ).prefetch_related(_tag_prefetch()).order_by("name", "id")
+    images = AuslagerorteImage.objects.only(
+        "id", "auslagerort_id", "notiz_id", "image",
+    ).order_by("id")
+    notes = AuslagerorteNotizen.objects.select_related("added_by").prefetch_related(
+        Prefetch("images", queryset=images, to_attr="route_images"),
+    ).order_by("date_added", "id")
+    places = Auslagerorte.objects.prefetch_related(
+        Prefetch(
+            "images",
+            queryset=images.filter(notiz_id__isnull=True),
+            to_attr="route_images",
+        ),
+        Prefetch("auslagernotizen", queryset=notes, to_attr="route_notes"),
+        _tag_prefetch(),
+    ).order_by("name", "id")
     return {
-        "places": [_list_place(place) for place in places],
+        "places": [_detail_place(place) for place in places],
         "available_tags": _available_tag_names(in_use=True),
     }
 
@@ -127,7 +120,11 @@ def place_detail(request):
         "id",
     )
     queryset = Auslagerorte.objects.prefetch_related(
-        Prefetch("images", queryset=images, to_attr="route_images"),
+        Prefetch(
+            "images",
+            queryset=images.filter(notiz_id__isnull=True),
+            to_attr="route_images",
+        ),
         Prefetch(
             "auslagernotizen",
             queryset=notes,

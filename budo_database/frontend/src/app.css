@@ -3,7 +3,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "leaflet/dist/leaflet.css" layer(vendor);
 
 @font-face {
   font-family: "Roboto";
@@ -676,11 +675,6 @@
 
 .kitchen-print-pages {
   display: none;
-}
-
-.leaflet-text {
-  width: max-content;
-  min-width: 10rem;
 }
 
 #pfand .card-info-container {

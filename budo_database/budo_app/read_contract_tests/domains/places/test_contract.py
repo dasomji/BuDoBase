@@ -24,17 +24,6 @@ TEST_STORAGES = {
 }
 
 
-LIST_FIELDS = {
-    "id",
-    "name",
-    "coordinates",
-    "driving_minutes",
-    "walking_minutes",
-    "maps_link",
-    "parking_link",
-    "tags",
-}
-
 DETAIL_FIELDS = {
     "id",
     "name",
@@ -55,6 +44,8 @@ DETAIL_FIELDS = {
     "notes",
     "tags",
 }
+
+LIST_FIELDS = DETAIL_FIELDS
 
 FORM_FIELDS = {
     "id",
@@ -108,7 +99,7 @@ class PlacesContractTests(TestCase):
         url = reverse("route-data-api", kwargs={"contract_key": key})
         return f"{url}?id={place.id}" if place else url
 
-    def test_list_returns_only_the_lightweight_ordered_map_projection(self):
+    def test_list_returns_the_ordered_complete_map_sidebar_projection(self):
         Auslagerorte.objects.create(name="Zeltplatz")
 
         response = self.client.get(self.contract_url("places-list"))
@@ -125,11 +116,21 @@ class PlacesContractTests(TestCase):
             {
                 "id": self.place.id,
                 "name": "Ada Hütte",
+                "street": "Waldweg 4",
+                "city": "Sallingstadt",
+                "state": "Niederösterreich",
+                "postal_code": "3931",
+                "country": "Österreich",
                 "coordinates": "48.5, 15.0",
                 "driving_minutes": 14,
                 "walking_minutes": 51,
                 "maps_link": "https://maps.example.test/ada",
                 "parking_link": "https://maps.example.test/parking",
+                "parking_coordinates": "48.51, 15.01",
+                "description": "Lagerplatz am Wald",
+                "contact": "Ada +43 123",
+                "images": [],
+                "notes": [],
                 "tags": [],
             },
         )
@@ -291,7 +292,7 @@ class PlacesContractTests(TestCase):
             ["Neue Ortsnotiz"],
         )
 
-    def test_comment_images_are_tied_to_the_note_and_included_in_the_gallery(self):
+    def test_comment_images_are_tied_to_the_note_but_not_the_place_carousel(self):
         target = f"/auslagerorte/{self.place.id}/"
 
         response = self.client.post(
@@ -310,7 +311,7 @@ class PlacesContractTests(TestCase):
         note = AuslagerorteNotizen.objects.get(notiz="Beschädigte Feuerstelle")
         image = self.place.images.get()
         self.assertEqual(image.notiz, note)
-        self.assertEqual(refreshed["images"], [image.image.url])
+        self.assertEqual(refreshed["images"], [])
         self.assertEqual(refreshed["notes"][0]["photos"], [{
             "id": image.id,
             "url": image.image.url,

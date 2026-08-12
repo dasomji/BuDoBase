@@ -379,16 +379,7 @@ describe('native form control ownership', () => {
       && !isVisuallyHiddenPlaceCommentAttachmentInput(control)
     ));
 
-    expect(attachmentExceptions).toEqual([{
-      fileName: 'places.jsx',
-      element: 'input',
-      className: 'absolute size-px overflow-hidden [clip-path:inset(50%)]',
-    }]);
-    expect(
-      domainSources.find(({ fileName }) => fileName === 'places.jsx')?.source,
-    ).toMatch(
-      /<input id="id_place_comment_images"[^>]*aria-label="Kommentar-Bilder"[^>]*name="images"[^>]*type="file"/,
-    );
+    expect(attachmentExceptions).toEqual([]);
     expect(utilityOwnedControls).toEqual([]);
   });
 });

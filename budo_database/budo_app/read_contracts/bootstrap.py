@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.middleware.csrf import get_token
 from rest_framework.decorators import api_view, permission_classes
@@ -114,6 +115,7 @@ def bootstrap(request):
             "permissions": _permissions(request.user),
             "search_index": _search_index(turnus),
             "happy_cleaning_events": _happy_cleaning_events(turnus),
+            "google_maps_browser_api_key": settings.GOOGLE_MAPS_BROWSER_API_KEY,
         }
     )
     return Response(payload)
