@@ -111,12 +111,14 @@ export function GoogleMap({
         title: name,
         zIndex: options.zIndex,
       };
+      const clickable = id != null && (onSelectPlaceRef.current || href);
       let marker;
-      if (AdvancedMarkerElement && mapId) {
+      const usesAdvancedMarker = AdvancedMarkerElement && mapId;
+      if (usesAdvancedMarker) {
         const content = document.createElement('span');
         content.className = `rounded-full border border-foreground px-2 py-1 text-xs font-semibold ${options.markerClass || 'bg-primary text-primary-foreground'}`;
         content.textContent = options.label?.text || name;
-        marker = new AdvancedMarkerElement({ ...markerOptions, content });
+        marker = new AdvancedMarkerElement({ ...markerOptions, content, gmpClickable: Boolean(clickable) });
       } else if (Marker) {
         marker = new Marker({
           ...markerOptions,
@@ -131,10 +133,18 @@ export function GoogleMap({
         throw new Error('The Google Maps marker library did not provide a marker constructor.');
       }
       markers.push(marker);
-      if (id != null && (onSelectPlaceRef.current || href)) listeners.push(marker.addListener('click', () => {
+      if (!clickable) return;
+      const selectMarker = () => {
         if (onSelectPlaceRef.current) onSelectPlaceRef.current(id);
         else window.location.assign(href);
-      }));
+      };
+      if (usesAdvancedMarker) {
+        marker.addEventListener('gmp-click', selectMarker);
+        listeners.push(() => marker.removeEventListener('gmp-click', selectMarker));
+      } else {
+        const listener = marker.addListener('click', selectMarker);
+        listeners.push(() => listener.remove());
+      }
     };
     locations.filter(place => place.id !== homePlace?.id).forEach(place => addMarker(place, {
       zIndex: Number(place.id) === Number(selectedPlaceId) ? 30 : 10,
@@ -158,7 +168,7 @@ export function GoogleMap({
       zIndex: 50,
     });
     return () => {
-      listeners.forEach(listener => listener.remove());
+      listeners.forEach(removeListener => removeListener());
       markers.forEach(marker => {
         if (typeof marker.setMap === 'function') marker.setMap(null);
         else marker.map = null;

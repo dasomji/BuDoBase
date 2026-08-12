@@ -2,7 +2,7 @@ import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mapsMock = vi.hoisted(() => {
-  const state = { mapOptions: null, mapConstructions: 0, fitBoundsCalls: 0, mapTypeIds: [], markerOptions: [], markerKinds: [], removedMarkers: 0 };
+  const state = { mapOptions: null, mapConstructions: 0, fitBoundsCalls: 0, mapTypeIds: [], markerOptions: [], markerKinds: [], advancedEventTypes: [], removedMarkers: 0 };
   class Map {
     constructor(_element, options) {
       state.mapOptions = options;
@@ -34,9 +34,9 @@ const mapsMock = vi.hoisted(() => {
       state.markerKinds.push('advanced');
     }
 
-    addListener() {
-      return { remove: vi.fn() };
-    }
+    addEventListener(eventType) { state.advancedEventTypes.push(eventType); }
+
+    removeEventListener() {}
   }
   class LatLngBounds {
     extend() {}
@@ -77,6 +77,7 @@ describe('GoogleMap loader seam', () => {
     mapsMock.state.mapTypeIds = [];
     mapsMock.state.markerOptions = [];
     mapsMock.state.markerKinds = [];
+    mapsMock.state.advancedEventTypes = [];
     mapsMock.state.removedMarkers = 0;
     mapsMock.importLibrary.mockClear();
   });
@@ -99,6 +100,20 @@ describe('GoogleMap loader seam', () => {
     expect(mapsMock.state.markerOptions).toHaveLength(1);
     expect(mapsMock.state.markerKinds).toEqual(['advanced']);
     expect(mapsMock.state.markerOptions[0].content).toHaveTextContent('Hütte');
+    expect(mapsMock.state.markerOptions[0].gmpClickable).toBe(false);
+  });
+
+  it('uses the Advanced Marker click event instead of the deprecated legacy event', async () => {
+    render(<GoogleMap
+      apiKey="browser-key"
+      mapId="map-id"
+      places={[{ id: 1, name: 'Hütte', coordinates: '47.1,15.2' }]}
+      onSelectPlace={vi.fn()}
+    />);
+
+    await waitFor(() => expect(mapsMock.state.markerOptions).toHaveLength(1));
+    expect(mapsMock.state.markerOptions[0].gmpClickable).toBe(true);
+    expect(mapsMock.state.advancedEventTypes).toEqual(['gmp-click']);
   });
 
   it('switches map type without constructing another billable map', async () => {
