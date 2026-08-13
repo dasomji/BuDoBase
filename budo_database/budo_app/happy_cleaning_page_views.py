@@ -4,14 +4,16 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_GET
 
 from budo_app.models import HappyCleaning
+from budo_app.memberships import selected_turnus_for_read
 from budo_app.react_views import render_react_page
 
 
 def _event_in_active_turnus_or_404(request, event_id):
+    turnus = selected_turnus_for_read(request.user)
     return get_object_or_404(
         HappyCleaning.objects.only("id"),
         id=event_id,
-        turnus_id=request.user.profil.turnus_id,
+        turnus=turnus,
     )
 
 
@@ -25,7 +27,7 @@ def assignment_page(request, event_id):
 @require_GET
 @login_required
 def print_number_page(request):
-    if request.user.profil.turnus_id is None:
+    if selected_turnus_for_read(request.user) is None:
         raise Http404
     return render_react_page(request)
 

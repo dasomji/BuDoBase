@@ -30,12 +30,11 @@ def has_approved_membership(user, turnus):
 
 
 def selected_profile_for_read(user):
-    """Lock and return a profile whose selection is membership-backed."""
+    """Return a profile only when its selection is membership-backed."""
     if not getattr(user, "is_authenticated", False):
         return None
     profile = (
         Profil.objects
-        .select_for_update()
         .select_related("selected_turnus", "user")
         .filter(
             user_id=user.id,
@@ -47,7 +46,7 @@ def selected_profile_for_read(user):
 
 
 def selected_turnus_for_read(user):
-    """Lock and return the membership-backed selection in one read query."""
+    """Return the membership-backed selection in one read query."""
     profile = selected_profile_for_read(user)
     return profile.selected_turnus if profile is not None else None
 

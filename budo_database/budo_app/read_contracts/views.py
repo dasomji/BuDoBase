@@ -1,4 +1,3 @@
-from django.db import transaction
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
@@ -9,7 +8,6 @@ from .registry import get_contract
 
 @api_view(["GET"])
 @permission_classes([AuditAwareIsAuthenticated])
-@transaction.atomic
 def route_data(request, contract_key):
     """Dispatch an authenticated route read without falling back to app-data."""
     contract = get_contract(contract_key)

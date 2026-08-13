@@ -7,9 +7,8 @@ from budo_app.memberships import selected_turnus_for_read
 def active_turnus_id(request):
     """Return the selected Turnus only while its membership is approved.
 
-    Callers must run inside a transaction. ``selected_turnus_for_read`` locks the
-    selection and authority rows, so a concurrent membership removal cannot
-    race the protected query which follows this check.
+    The selection and approved membership are validated together by one query.
+    Callers never accept the legacy profile Turnus as authority.
     """
     turnus = selected_turnus_for_read(request.user)
     return turnus.id if turnus is not None else None

@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from .forms import AuslagerorteImageForm
 from .models import Auslagerorte, AuslagerorteImage, Document, Turnus, Kinder, Notizen
+from .test_membership_fixtures import approve_and_select_turnus
 from .excelProcessor import (
     parse_birthday,
     parse_budo_erfahrung,
@@ -104,8 +105,7 @@ class SchwerpunktAllocationCachingTest(TestCase):
             username="allocation-cache-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save()
+        approve_and_select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
 
     def test_allocation_pages_are_not_browser_cached(self):
@@ -610,8 +610,7 @@ class DownloadUpdatedExcelTest(TestCase):
             turnus_nr=1,
             turnus_beginn=date(2024, 7, 1),
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save()
+        approve_and_select_turnus(self.user, self.turnus)
         self.client.login(username="download-user", password="testpass123")
 
     def test_generated_download_uses_a_cleaned_up_temporary_file(self):

@@ -9,6 +9,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from budo_app.models import Kinder, SpezialFamilien, Turnus
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 
 
 class UncoveredStaleSaveTests(TestCase):
@@ -21,8 +22,7 @@ class UncoveredStaleSaveTests(TestCase):
             username="final-repair-writer",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("turnus",))
+        approve_and_select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.child = Kinder.objects.create(
             kid_index="SYNTHETIC-FINAL-REPAIR",

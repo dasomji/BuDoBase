@@ -22,6 +22,7 @@ from budo_app.models import (
     TurnusJoinRequestNotification,
     TurnusMembership,
 )
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 
 
 class JoinRequestHttpTests(TestCase):
@@ -150,7 +151,7 @@ class JoinRequestHttpTests(TestCase):
         self.assertEqual(payload["focuses"], [])
         self.assertEqual(payload["happy_cleanings"], [])
 
-    def test_untouched_legacy_profile_still_uses_expand_phase_dashboard(self):
+    def test_legacy_profile_without_membership_awaits_approved_access(self):
         profile = self.requester.profil
         profile.turnus = self.turnus
         profile.save(update_fields=["turnus"])
@@ -159,7 +160,9 @@ class JoinRequestHttpTests(TestCase):
             reverse("route-data-api", args=["dashboard"])
         ).json()
 
-        self.assertNotIn("membership_awaiting", payload)
+        self.assertTrue(payload["membership_awaiting"])
+        self.assertEqual(payload["kids"], [])
+        self.assertEqual(payload["team"], [])
 
     def test_anonymous_and_csrf_requests_are_rejected(self):
         self.client.logout()
@@ -359,10 +362,7 @@ class JoinRequestHttpTests(TestCase):
         self.assertEqual(notification.last_error, "")
 
     def test_approved_member_can_discover_other_turnuses_without_data_leak(self):
-        TurnusMembership.objects.create(user=self.requester, turnus=self.turnus)
-        profile = self.requester.profil
-        profile.turnus = self.turnus
-        profile.save(update_fields=["turnus"])
+        approve_and_select_turnus(self.requester, self.turnus)
         other = Turnus.objects.create(turnus_nr=3, turnus_beginn=date(2027, 8, 1))
 
         payload = self.client.get(

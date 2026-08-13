@@ -19,6 +19,7 @@ from .models import (
     Schwerpunkte,
     Turnus,
 )
+from .test_membership_fixtures import approve_and_select_turnus
 
 
 def unstructured_form_response(request):
@@ -340,8 +341,7 @@ class ReactPageRouteSmokeTests(TestCase):
             turnus_nr=1,
             turnus_beginn=date(2026, 7, 1),
         )
-        cls.user.profil.turnus = cls.turnus
-        cls.user.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(cls.user, cls.turnus)
         cls.place = Auslagerorte.objects.create(
             name="Route smoke place",
             koordinaten="48.5, 15.0",
@@ -511,8 +511,7 @@ class PocketMoneyFormTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("money-user", password="secret")
         self.turnus = Turnus.objects.create(turnus_nr=3, turnus_beginn=date(2026, 7, 1))
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save()
+        approve_and_select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T3-1",
             kid_vorname="Ada",

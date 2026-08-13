@@ -13,10 +13,10 @@ from django.views.generic.edit import CreateView, FormView, UpdateView
 from . import models
 from .forms import AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm
 from .location_services import BUDO_PLACE_NAME, update_auslagerorte_coordinates
+from .memberships import selected_turnus_for_read
 from .models import (
     Auslagerorte,
     AuslagerorteImage,
-    Profil,
     Schwerpunkte,
 )
 from .react_views import ReactPageTemplateMixin, render_react_page
@@ -33,8 +33,7 @@ class AuslagerorteUpdate(
     form_class = AuslagerForm
 
     def get_context_data(self, **kwargs):
-        profil = Profil.objects.get(user=self.request.user)
-        active_turnus = profil.turnus
+        active_turnus = selected_turnus_for_read(self.request.user)
         schwerpunkte = Schwerpunkte.objects.filter(
             schwerpunktzeit__turnus=active_turnus)
         auslagerorte = Auslagerorte.objects.all()
@@ -71,8 +70,7 @@ class AuslagerorteDetail(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        profil = Profil.objects.get(user=self.request.user)
-        active_turnus = profil.turnus
+        active_turnus = selected_turnus_for_read(self.request.user)
         schwerpunkte = Schwerpunkte.objects.filter(
             schwerpunktzeit__turnus=active_turnus)
         auslagerorte = Auslagerorte.objects.all()
@@ -235,8 +233,7 @@ class AuslagerorteImageUpload(
 
 @login_required
 def auslagerorte_list(request):
-    profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
+    active_turnus = selected_turnus_for_read(request.user)
     kids = models.Kinder.objects.all().values()
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)

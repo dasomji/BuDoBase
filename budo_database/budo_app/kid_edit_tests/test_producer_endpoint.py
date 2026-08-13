@@ -32,6 +32,7 @@ from budo_app.models import (
     Schwerpunkte,
     Turnus,
 )
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 
 
 FIELD_NAMES = tuple(field.api_name for field in FIELD_CONTRACTS)
@@ -79,9 +80,9 @@ class KidEditProducerFixture(TransactionTestCase):
             turnus_nr=167, turnus_beginn=date(2026, 8, 1),
         )
         self.user = User.objects.create_user(username="kid-edit-producer")
-        self.user.profil.rufname = "Operator"
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("rufname", "turnus"))
+        profile = approve_and_select_turnus(self.user, self.turnus)
+        profile.rufname = "Operator"
+        profile.save(update_fields=("rufname",))
         self.client.force_login(self.user)
 
         self.child = Kinder.objects.create(

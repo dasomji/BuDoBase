@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from budo_app.models import HappyCleaning, Turnus
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 
 
 class HappyCleaningAssignmentPageTests(TestCase):
@@ -18,8 +19,7 @@ class HappyCleaningAssignmentPageTests(TestCase):
             turnus_beginn=date(2026, 8, 1),
         )
         self.user = User.objects.create_user(username="assignment-page")
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("turnus",))
+        approve_and_select_turnus(self.user, self.turnus)
         self.event = HappyCleaning.objects.create(
             turnus=self.turnus,
             display_number=1,

@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from budo_app.happy_cleaning_tests.task_fixtures import CanonicalTask
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 
 from budo_app.models import (
     HappyCleaning,
@@ -29,8 +30,7 @@ class HappyCleaningContractTests(TestCase):
             username="happy-cleaning-reader",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(self.user, self.turnus)
         self.event = HappyCleaning.objects.create(
             turnus=self.turnus,
             display_number=1,
