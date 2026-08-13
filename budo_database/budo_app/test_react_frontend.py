@@ -293,6 +293,11 @@ class ReactPageRouteSmokeTests(TestCase):
     non_page_route_names = {
         "attachment-media",
         "download_updated_excel",
+        "place-delete-api",
+        "place-image-delete-api",
+        "place-tag-create-api",
+        "place-tag-update-api",
+        "place-tag-delete-api",
         "logout",
         "toggle_zug_abreise",
         "update_birthdays_from_sv",
@@ -369,6 +374,7 @@ class ReactPageRouteSmokeTests(TestCase):
             "swpmeals": reverse("swpmeals", args=(self.focus.id,)),
             "swp-dashboard": reverse("swp-dashboard"),
             "auslagerorte-list": reverse("auslagerorte-list"),
+            "place-tag-settings": reverse("place-tag-settings"),
             "auslagerorte-create": reverse("auslagerorte-create"),
             "auslagerorte-detail": reverse(
                 "auslagerorte-detail",

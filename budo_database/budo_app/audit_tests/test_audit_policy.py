@@ -198,7 +198,8 @@ class AuditAuthorizationHttpTests(TestCase):
             permission_payload = response.json()["permissions"]
             self.assertEqual(set(permission_payload), {
                 "change_kids", "change_profiles", "change_focuses",
-                "change_places", "view_auditevent", "export_auditevent",
+                "change_places", "delete_places", "delete_place_images",
+                "change_tags", "delete_tags", "view_auditevent", "export_auditevent",
             })
             self.assertIs(permission_payload["view_auditevent"], expected_view)
             self.assertIs(permission_payload["export_auditevent"], expected_export)

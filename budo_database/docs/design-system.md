@@ -69,6 +69,32 @@ The retired legacy color aliases have no consumers and are not part of the
 design-system API. Use the semantic tokens above. Dark mode is not part of the
 current system.
 
+## Map markers
+
+Maps use one icon-first marker hierarchy, implemented at the shared Google Maps
+seam in `frontend/src/components/google-map.jsx`:
+
+- An unselected place is a compact circular marker. Its icon comes from the
+  place's primary tag and falls back to `map-pin`.
+- Selecting a place expands that marker to show its name, raises it above other
+  places, and pans the map to its coordinates. Desktop hover and keyboard focus
+  also reveal an unselected marker's name without changing selection.
+- The BuDo/home marker uses the same shape with the `house` icon and accent
+  surface. It follows the same selected behavior as another place.
+- Parkspots are not rendered as markers. They remain available through the
+  parkspot route action, which opens the official Google Maps app or site.
+- Opaque surfaces, a light edge, and elevation keep markers legible over both
+  roadmap and satellite imagery. Do not restore text glow or permanently label
+  every marker.
+- The Advanced Marker and legacy Marker paths preserve the same icon, role
+  color, compact/expanded state, and stacking hierarchy. Legacy markers may
+  omit hover-only expansion because their content is rendered as an image.
+
+Marker color communicates state or map role; the icon communicates place type.
+Do not assign arbitrary colors per tag. Marker activation uses native Google
+Maps marker accessibility and a meaningful `title`; icon graphics remain
+decorative.
+
 ## Fonts and vendor styles
 
 Roboto is self-hosted as variable WOFF2 assets for normal and italic text,

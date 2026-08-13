@@ -29,6 +29,10 @@ def _permissions(user):
         "change_profiles": user.has_perm("budo_app.change_profil"),
         "change_focuses": user.has_perm("budo_app.change_schwerpunkte"),
         "change_places": user.has_perm("budo_app.change_auslagerorte"),
+        "delete_places": user.has_perm("budo_app.delete_auslagerorte"),
+        "delete_place_images": user.has_perm("budo_app.delete_auslagerorteimage"),
+        "change_tags": user.has_perm("budo_app.change_tag"),
+        "delete_tags": user.has_perm("budo_app.delete_tag"),
         "view_auditevent": can_view_audit(user),
         "export_auditevent": can_export_audit(user),
     }

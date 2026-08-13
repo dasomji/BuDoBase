@@ -63,6 +63,17 @@ describe('Audit-Log navigation capability', () => {
     expect(screen.getByRole('button', { name: 'Orgi' })).not.toHaveAttribute('data-active');
   });
 
+  it('shows tag settings only with tag change permission', () => {
+    renderSidebar({ change_tags: true }, '/auslagerorte/tags/');
+
+    expect(screen.getByRole('link', { name: 'Auslagerort-Tags' })).toHaveAttribute(
+      'href',
+      '/auslagerorte/tags/',
+    );
+    expect(screen.getByRole('link', { name: 'Auslagerort-Tags' })).toHaveAttribute('data-active');
+    expect(screen.getByRole('button', { name: 'Orgi' })).toHaveAttribute('data-active');
+  });
+
   it('does not treat export permission alone as view authorization', () => {
     renderSidebar({ view_auditevent: false, export_auditevent: true });
 

@@ -3,6 +3,8 @@ from . import views
 from django.conf import settings
 from django.conf.urls.static import static
 from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail, SchwerpunkteCreate, AuslagerorteCreate, AuslagerorteImageUpload, AuslagerorteDetail, AuslagerorteUpdate
+from .tag_views import create_tag, delete_tag, tag_settings_page, update_tag
+from .place_views import delete_place, delete_place_image
 from .first_aid_media import attachment_media
 from .happy_cleaning_page_views import (
     assignment_page,
@@ -28,6 +30,16 @@ def legacy_slashless_page(route, view, *, name):
 
 
 urlpatterns = [
+    path('api/places/<int:place_id>/delete/', delete_place, name='place-delete-api'),
+    path(
+        'api/places/<int:place_id>/images/<int:image_id>/delete/',
+        delete_place_image,
+        name='place-image-delete-api',
+    ),
+    path('api/place-tags/', create_tag, name='place-tag-create-api'),
+    path('api/place-tags/<int:tag_id>/update/', update_tag, name='place-tag-update-api'),
+    path('api/place-tags/<int:tag_id>/delete/', delete_tag, name='place-tag-delete-api'),
+    path('auslagerorte/tags/', tag_settings_page, name='place-tag-settings'),
     path(
         'api/attachments/<str:kind>/<int:photo_id>/',
         attachment_media,

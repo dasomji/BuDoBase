@@ -1,0 +1,1 @@
+import{d as e,l as t}from"../app.js";var n=e({__iconNode:()=>r,default:()=>i}),r=[[`path`,{d:`M12 6v16`,key:`nqf5sj`}],[`path`,{d:`m19 13 2-1a9 9 0 0 1-18 0l2 1`,key:`y7qv08`}],[`path`,{d:`M9 11h6`,key:`1fldmi`}],[`circle`,{cx:`12`,cy:`4`,r:`2`,key:`muu5ef`}]],i=t(`anchor`,r);export{n,i as t};

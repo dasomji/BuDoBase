@@ -15,6 +15,7 @@ from .storage_lifecycle import (
     delete_field_file_on_commit,
     delete_storage_object_on_commit,
 )
+from .tag_icons import TAG_ICON_CHOICES
 from .happy_cleaning_station_documents import (
     empty_station_document,
     validate_station_document,
@@ -1115,6 +1116,11 @@ def normalize_tag_name(value):
 
 class Tag(models.Model):
     name = models.CharField(max_length=100)
+    icon = models.CharField(
+        max_length=40,
+        choices=TAG_ICON_CHOICES,
+        default="map-pin",
+    )
 
     def clean(self):
         self.name = normalize_tag_name(self.name)
@@ -1166,6 +1172,13 @@ class Auslagerorte(models.Model):
     koordinaten_parkspot = models.CharField(
         max_length=255, blank=True, null=True)
     tags = models.ManyToManyField(Tag, blank=True, related_name="auslagerorte")
+    primary_tag = models.ForeignKey(
+        Tag,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="primary_for_auslagerorte",
+    )
 
     def get_lat_ort(self):
         if self.koordinaten:

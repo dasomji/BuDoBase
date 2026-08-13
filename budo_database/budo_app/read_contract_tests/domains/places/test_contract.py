@@ -41,8 +41,10 @@ DETAIL_FIELDS = {
     "parking_link",
     "parking_coordinates",
     "images",
+    "gallery_images",
     "notes",
     "tags",
+    "marker_icon",
 }
 
 LIST_FIELDS = DETAIL_FIELDS
@@ -57,6 +59,7 @@ FORM_FIELDS = {
     "country",
     "maps_link",
     "description",
+    "contact",
     "parking_link",
     "tags",
 }
@@ -105,7 +108,7 @@ class PlacesContractTests(TestCase):
         response = self.client.get(self.contract_url("places-list"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(set(response.json()), {"places", "available_tags"})
+        self.assertEqual(set(response.json()), {"places", "available_tags", "tag_catalog"})
         self.assertEqual(
             [place["name"] for place in response.json()["places"]],
             ["Ada Hütte", "Zeltplatz"],
@@ -130,11 +133,14 @@ class PlacesContractTests(TestCase):
                 "description": "Lagerplatz am Wald",
                 "contact": "Ada +43 123",
                 "images": [],
+                "gallery_images": [],
                 "notes": [],
                 "tags": [],
+                "marker_icon": "map-pin",
             },
         )
         self.assertEqual(response.json()["available_tags"], [])
+        self.assertEqual(response.json()["tag_catalog"], [])
 
     def test_list_preserves_empty_behavior(self):
         Auslagerorte.objects.all().delete()
@@ -142,7 +148,7 @@ class PlacesContractTests(TestCase):
         response = self.client.get(self.contract_url("places-list"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"places": [], "available_tags": []})
+        self.assertEqual(response.json(), {"places": [], "available_tags": [], "tag_catalog": []})
 
     def test_detail_returns_one_explicit_place_with_notes_and_storage_urls(self):
         note = AuslagerorteNotizen.objects.create(
@@ -169,6 +175,12 @@ class PlacesContractTests(TestCase):
         self.assertEqual(place["driving_minutes"], 14)
         self.assertEqual(place["walking_minutes"], 51)
         self.assertEqual(place["images"], [image.image.url])
+        self.assertEqual(place["gallery_images"], [{
+            "id": image.id,
+            "url": image.image.url,
+            "alt": "Bild von Ada Hütte",
+            "comment_text": None,
+        }])
         self.assertEqual(place["notes"], [{
             "id": note.id,
             "text": "Wasser abdrehen",
@@ -191,7 +203,7 @@ class PlacesContractTests(TestCase):
         self.assertEqual(create_response.status_code, 200)
         self.assertEqual(
             create_response.json(),
-            {"places": [], "available_tags": []},
+            {"places": [], "available_tags": [], "tag_catalog": []},
         )
         self.assertEqual(update_response.status_code, 200)
         self.assertEqual(len(update_response.json()["places"]), 1)
@@ -199,10 +211,10 @@ class PlacesContractTests(TestCase):
         self.assertEqual(set(update_place), FORM_FIELDS)
         self.assertEqual(update_place["name"], "Ada Hütte")
         self.assertEqual(update_place["street"], "Waldweg 4")
+        self.assertEqual(update_place["contact"], "Ada +43 123")
         self.assertEqual(update_place["description"], "Lagerplatz am Wald")
         self.assertEqual(update_place["tags"], [])
         self.assertEqual(update_response.json()["available_tags"], [])
-        self.assertNotIn("contact", update_place)
         self.assertNotIn("images", update_place)
         self.assertNotIn("notes", update_place)
         self.assertEqual(images_response.status_code, 200)
@@ -258,7 +270,7 @@ class PlacesContractTests(TestCase):
         self.assertEqual(list_response.status_code, 200)
         self.assertEqual(
             list_response.json(),
-            {"places": [], "available_tags": []},
+            {"places": [], "available_tags": [], "tag_catalog": []},
         )
         self.assertEqual(detail_response.status_code, 404)
 
@@ -312,10 +324,15 @@ class PlacesContractTests(TestCase):
         image = self.place.images.get()
         self.assertEqual(image.notiz, note)
         self.assertEqual(refreshed["images"], [])
-        self.assertEqual(refreshed["notes"][0]["photos"], [{
+        expected_photo = {
             "id": image.id,
             "url": image.image.url,
             "alt": "Kommentarbild zu Ada Hütte",
+        }
+        self.assertEqual(refreshed["notes"][0]["photos"], [expected_photo])
+        self.assertEqual(refreshed["gallery_images"], [{
+            **expected_photo,
+            "comment_text": "Beschädigte Feuerstelle",
         }])
 
     def test_create_update_and_searchable_name_refresh_use_existing_forms(self):
@@ -341,6 +358,7 @@ class PlacesContractTests(TestCase):
                     "land": "Österreich",
                     "maps_link": "https://maps.example.test/ada",
                     "beschreibung": "Lagerplatz am Wald",
+                    "kontakt": "Ada aktualisiert\n+43 456",
                     "maps_link_parkspot": "https://maps.example.test/parking",
                 },
             )
@@ -350,6 +368,7 @@ class PlacesContractTests(TestCase):
                     "_target": "/auslagerorte/create",
                     "name": "Neue Waldhütte",
                     "land": "Österreich",
+                    "kontakt": "Förster Max\n+43 789",
                 },
             )
 
@@ -382,6 +401,11 @@ class PlacesContractTests(TestCase):
             refreshed.json()["places"][0]["name"],
             "Neue Ada Hütte",
         )
+        self.assertEqual(
+            refreshed.json()["places"][0]["contact"],
+            "Ada aktualisiert\n+43 456",
+        )
+        self.assertEqual(created_place.kontakt, "Förster Max\n+43 789")
         self.assertIn(
             {"id": self.place.id, "name": "Neue Ada Hütte"},
             bootstrap.json()["search_index"]["places"],

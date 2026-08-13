@@ -13,9 +13,13 @@ ALLOWED_HOSTS = [
     'localhost',
     'coolify.tailf5ea68.ts.net',
 ]
+# Lizardtail terminates HTTPS and forwards the original host/protocol. Trust
+# those proxy headers in development so Django's same-origin CSRF check works
+# for whichever HTTPS port Lizardtail allocates.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
 CSRF_TRUSTED_ORIGINS = [
     'https://coolify.tailf5ea68.ts.net',
-    'https://coolify.tailf5ea68.ts.net:8447',
 ]
 
 # Database

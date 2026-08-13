@@ -95,7 +95,6 @@ function MapStub(props) {
         <button type="button" aria-label={`Marker ${place.name}`} onClick={() => props.onSelectPlace(place.id)} key={place.id}>{place.name}</button>
       ))}
       {props.homePlace && <span>Heimatmarker {props.homePlace.name}</span>}
-      {props.parkingCoordinates && <span>Parkspotmarker {props.parkingCoordinates}</span>}
     </section>
   );
 }
@@ -132,6 +131,10 @@ describe('map-first Auslagerorte', () => {
     expect(mapProps.homePlace).toMatchObject({ id: 1, name: 'BuDo' });
     expect(mapProps.places.map(place => place.name)).toEqual(['BuDo', 'Waldwiese', 'Badesee', 'Scheune ohne Koordinaten']);
     expect(screen.getByText('Scheune ohne Koordinaten').closest('button')).toHaveTextContent('kein Pin');
+    const badeMetadata = screen.getByRole('group', { name: 'Reisezeiten und Tags für Badesee' });
+    expect(badeMetadata).toHaveTextContent('20 min');
+    expect(badeMetadata).toHaveTextContent('75 min');
+    expect(badeMetadata).toHaveTextContent('Badeplatz');
 
     await user.click(screen.getByRole('button', { name: 'Wanderung' }));
     await user.click(screen.getByRole('button', { name: 'Lagerfeuer' }));
@@ -164,20 +167,35 @@ describe('map-first Auslagerorte', () => {
     expect(details).toHaveTextContent('51 min');
     expect(details).toHaveTextContent('Schattiger Lagerplatz am Waldrand.');
     expect(details).toHaveTextContent('Waldweg 4');
-    expect(details).toHaveTextContent('48.50000, 15.00000');
+    expect(details).not.toHaveTextContent('48.50000, 15.00000');
     expect(details).toHaveTextContent('Försterin Ada');
     expect(details).toHaveTextContent('Das Gatter bitte schließen.');
+    const description = within(details).getByText('Beschreibung').parentElement;
+    const contact = within(details).getByText('Kontakt').closest('.border-b');
+    expect(description.compareDocumentPosition(contact) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(details).getByRole('img', { name: 'Kommentarbild zu Waldwiese' })).toBeInTheDocument();
+    expect(within(details).getByRole('button', { name: 'Bilder hinzufügen' })).toBeInTheDocument();
+    const imagePicker = within(details).getByLabelText('Bilder auswählen');
+    expect(imagePicker).toHaveAttribute('type', 'file');
+    expect(imagePicker).toHaveAttribute('accept', 'image/*');
+    expect(imagePicker).toHaveAttribute('multiple');
+    expect(imagePicker).not.toHaveAttribute('capture');
     expect(within(details).getByRole('link', { name: 'Bearbeiten' })).toHaveAttribute('href', '/auslagerorte/7/update');
-    expect(within(details).getByRole('link', { name: 'Route zur Adresse' })).toHaveAttribute(
+    const addressDirections = within(details).getByRole('link', { name: 'Route zur Adresse' });
+    expect(addressDirections).toHaveAttribute(
       'href',
-      'https://www.google.com/maps/dir/?api=1&destination=Waldweg%204%2C%203931%20Sallingstadt%2C%20Nieder%C3%B6sterreich%2C%20%C3%96sterreich',
+      'https://www.google.com/maps/dir/?api=1&destination=48.50000%2C15.00000',
     );
+    expect(addressDirections.querySelector('svg')).toHaveClass('lucide-route');
+    expect(within(details).queryByText('Koordinaten')).not.toBeInTheDocument();
+    expect(within(details).queryByRole('link', { name: 'Route zu den Koordinaten' })).not.toBeInTheDocument();
+    expect(within(details).queryByRole('button', { name: 'Koordinaten kopieren' })).not.toBeInTheDocument();
+    expect(within(details).queryByText('Google Maps')).not.toBeInTheDocument();
     expect(within(details).getByRole('link', { name: 'Route zum Parkspot' })).toHaveAttribute(
       'href',
       'https://www.google.com/maps/dir/?api=1&destination=48.51000%2C15.01000',
     );
-    expect(mapProps.parkingCoordinates).toBe('48.51000, 15.01000');
+    expect(mapProps).not.toHaveProperty('parkingCoordinates');
     expect(screen.getByRole('button', { name: /^Waldwiese/ })).toHaveAttribute('aria-current', 'true');
 
     await user.click(within(details).getByRole('button', { name: 'Galerie öffnen' }));
