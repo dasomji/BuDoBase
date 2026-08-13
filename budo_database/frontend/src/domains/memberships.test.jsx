@@ -144,6 +144,54 @@ describe('admin team overview', () => {
     expect(screen.getByRole('button', { name: '2025 schließen' })).toBeInTheDocument();
   });
 
+  it('reconciles refreshed membership data while preserving local navigation state', async () => {
+    const user = userEvent.setup();
+    const mutate = vi.fn().mockResolvedValue({ functional_role: 'leitung' });
+    const multiple = {
+      ...data,
+      years: [{ year: 2026, turnuses: [
+        data.years[0].turnuses[0],
+        { id: 5, label: 'T3-2026', members: [{ id: 13, name: 'Chris Demo', functional_role: 'teamer', role_label: 'Teamer', team_label: '' }], request_summary: { pending: 0 }, pending_requests: [] },
+      ] }, { year: 2025, turnuses: [{ id: 3, label: 'T1-2025', members: [], request_summary: { pending: 0 }, pending_requests: [] }] }],
+    };
+    const view = render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={mutate} /></Toaster>);
+    await user.click(screen.getByRole('button', { name: 'T3-2026 auswählen' }));
+    await user.click(screen.getByRole('button', { name: '2025 schließen' }));
+    await user.click(screen.getByRole('button', { name: 'Chris Demo bearbeiten: als Leitung einsetzen' }));
+
+    // Parent rerenders with its still-stale route data before App's mutation
+    // refresh completes. That must not undo the local mutation result.
+    view.rerender(<Toaster><AdminTeamOverviewPage data={{ ...multiple }} mutate={mutate} /></Toaster>);
+    expect(screen.getByRole('button', { name: 'Chris Demo bearbeiten: Leitung entfernen' })).toBeInTheDocument();
+
+    const refreshed = {
+      ...multiple,
+      years: multiple.years.map(year => ({
+        ...year,
+        turnuses: year.turnuses.map(turnus => turnus.id === 5 ? {
+          ...turnus,
+          members: [
+            { ...turnus.members[0], functional_role: 'leitung', role_label: 'Leitung' },
+            { id: 14, name: 'Neue Person', functional_role: 'teamer', role_label: 'Teamer', team_label: 'Logistik' },
+          ],
+          request_summary: { pending: 1 },
+          pending_requests: [{ id: 22, name: 'Neue Anfrage' }],
+        } : turnus),
+      })),
+      people: [...multiple.people, { id: 31, name: 'Neue Suche', relationships: [], turnus_ids: [], available: true }],
+    };
+    view.rerender(<Toaster><AdminTeamOverviewPage data={refreshed} mutate={mutate} /></Toaster>);
+
+    expect(screen.getByRole('button', { name: 'T3-2026 auswählen' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '2025 öffnen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Chris Demo bearbeiten: Leitung entfernen' })).toBeInTheDocument();
+    expect(screen.getByText('Neue Person')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Offene Anfragen (1)' })).toBeInTheDocument();
+    expect(screen.getByText('Neue Anfrage')).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Neue Suche');
+    expect(screen.getByText('Neue Suche')).toBeInTheDocument();
+  });
+
   it('finds registered users without memberships and communicates availability', async () => {
     const user = userEvent.setup();
     render(<Toaster><AdminTeamOverviewPage data={data} mutate={vi.fn()} /></Toaster>);

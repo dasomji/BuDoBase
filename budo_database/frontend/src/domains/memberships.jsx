@@ -73,6 +73,8 @@ export function AdminTeamOverviewPage({ data, mutate }) {
   const [query, setQuery] = useState('');
   const [years, setYears] = useState(data.years || []);
   const [people, setPeople] = useState(data.people || []);
+  useEffect(() => setYears(data.years || []), [data.years]);
+  useEffect(() => setPeople(data.people || []), [data.people]);
   const isMobile = useIsMobile();
   const canManageLeitung = data.can_manage_leitung !== false;
   const [expandedYears, setExpandedYears] = useState(() => new Set(
