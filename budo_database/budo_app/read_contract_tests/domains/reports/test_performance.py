@@ -82,7 +82,7 @@ class ReportContractPerformanceTests(QueryBudgetAssertions, TestCase):
             with self.subTest(contract=key):
                 self.assertEqual(small[key].status_code, 200)
                 self.assertEqual(realistic[key].status_code, 200)
-                self.assertQueryCountAtMost(realistic[key], 7)
+                self.assertQueryCountAtMost(realistic[key], 6)
                 self.assertQueryGrowthAtMost(small[key], realistic[key], 1)
                 self.assertLess(
                     realistic[key].response_bytes,

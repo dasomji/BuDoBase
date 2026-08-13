@@ -168,40 +168,24 @@ def authorized_turnus_scope(user):
     authorization check and its command nor invalidate a file snapshot while
     it is being opened.
     """
+    if not getattr(user, "is_authenticated", False):
+        yield None
+        return
+    profile = user._state.fields_cache.get("profil")
+    if profile is None:
+        profile = Profil.objects.select_related("turnus").filter(user_id=user.pk).first()
+    if profile is None:
+        yield None
+        return
+    # Authentication eagerly loads this legacy-only authority. Avoid opening a
+    # transaction for accounts that have not entered membership selection yet.
+    if not profile.membership_selection_enabled:
+        yield profile.turnus
+        return
+    # The membership is the authority row and the deletion conflict point. Its
+    # joined Turnus supplies the complete request scope without separately
+    # locking User, Profil, and Turnus rows on every protected read.
     with transaction.atomic():
-        if not getattr(user, "is_authenticated", False):
-            yield None
-            return
-        profile_snapshot = (
-            Profil.objects.select_related("turnus").filter(user_id=user.pk).first()
-        )
-        if profile_snapshot is None:
-            yield None
-            return
-        # Legacy-only profiles have no membership authority to protect.  Keep
-        # their expand-phase read path at its established single-query cost;
-        # #196 removes this branch with the legacy field.
-        if not profile_snapshot.membership_selection_enabled:
-            yield profile_snapshot.turnus
-            return
-        # Canonical order shared with membership writers.
-        get_user_model().objects.select_for_update().get(pk=user.pk)
-        # The pre-lock read only establishes existence. Re-read after the User
-        # lock because a selector may have committed while we waited for it.
-        profile_snapshot = Profil.objects.filter(user_id=user.pk).values(
-            "selected_turnus_id", "turnus_id", "membership_selection_enabled",
-        ).get()
-        turnus_id = (
-            profile_snapshot["selected_turnus_id"]
-            if profile_snapshot["membership_selection_enabled"]
-            else profile_snapshot["turnus_id"]
-        )
-        if turnus_id is not None:
-            Turnus.objects.select_for_update().filter(pk=turnus_id).first()
-        profile = Profil.objects.select_for_update().get(user_id=user.pk)
-        if not profile.membership_selection_enabled:
-            yield None
-            return
         membership = (
             TurnusMembership.objects.select_for_update()
             .select_related("turnus")
