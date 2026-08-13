@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
@@ -98,6 +98,32 @@ describe('application loading', () => {
       'href',
       '/happy-cleaning/9/assignment/',
     );
+  });
+
+  it('keeps the current page and shows the shared error toast when a Turnus switch fails', async () => {
+    window.history.pushState({}, '', '/all_kids');
+    const bootstrap = {
+      authenticated: true, csrf_token: 'token', messages: [], permissions: {},
+      profile: { id: 1, rufname: 'Ada' }, search_index: { kids: [], focuses: [], places: [] },
+      turnus: { id: 2, label: 'T2' },
+      turnus_selection: { selected_id: 2, options: [{ id: 2, label: 'T2' }, { id: 4, label: 'T4' }] },
+    };
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response(bootstrap))
+      .mockResolvedValueOnce(response({ kids: [] }))
+      .mockResolvedValueOnce(response({}, { ok: false, status: 403 }))
+      .mockResolvedValueOnce(response(bootstrap));
+
+    render(<App fetchImpl={fetchImpl} />);
+    const switcher = await screen.findByRole('combobox', { name: 'Aktiver Turnus' });
+    fireEvent.change(switcher, { target: { value: '4' } });
+
+    expect(await screen.findByText(
+      'Der Turnus konnte nicht gewechselt werden. Bitte erneut versuchen.',
+      { selector: '.app-toast-description' },
+    )).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Sitzung konnte nicht geladen werden' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Aktiver Turnus' })).toHaveValue('2');
   });
 
   it('redirects an unauthenticated protected route without loading route data', async () => {

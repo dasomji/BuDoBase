@@ -21,15 +21,21 @@ from budo_app.models import Turnus
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def turnus_selection(request):
+    request_id = request.headers.get("X-Request-ID") or str(uuid4())
+    previous = selected_turnus_for(request.user)
     value = request.data.get("turnus_id")
     if isinstance(value, bool) or not str(value).isdigit():
+        if previous is not None:
+            # Do not copy an attacker-controlled value into the audit payload.
+            _record_rejected_switch(request, previous, previous.id, request_id)
         return Response({"code": "invalid_turnus_selection"}, status=400)
 
     turnus = Turnus.objects.filter(pk=int(value)).first()
     if turnus is None:
+        if previous is not None:
+            _record_rejected_switch(request, previous, int(value), request_id)
         return Response({"code": "forbidden_turnus_selection"}, status=403)
 
-    previous = selected_turnus_for(request.user)
     try:
         with transaction.atomic():
             select_turnus(request.user, turnus)
@@ -42,7 +48,7 @@ def turnus_selection(request):
                 resource_type="turnus_selection",
                 resource_id=str(turnus.id),
                 resource_label=f"Turnus selection {turnus.id}",
-                request_id=request.headers.get("X-Request-ID") or str(uuid4()),
+                request_id=request_id,
                 client_ip=client_ip_from_request(request),
                 user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 details={
@@ -51,5 +57,28 @@ def turnus_selection(request):
                 },
             ))
     except ValidationError:
+        if previous is not None:
+            _record_rejected_switch(request, previous, turnus.id, request_id)
         return Response({"code": "forbidden_turnus_selection"}, status=403)
     return Response({"selected_id": turnus.id})
+
+
+def _record_rejected_switch(request, previous, requested_id, request_id):
+    """Audit denial in the actor's current scope, never the probed Turnus."""
+    record_audit_event(AuditEventData(
+        turnus=previous,
+        actor_id=request.user.id,
+        actor_label=actor_label_for_user(request.user),
+        action="turnus.selection.switch",
+        outcome="forbidden",
+        resource_type="turnus_selection",
+        resource_id=str(previous.id),
+        resource_label="Rejected Turnus selection",
+        request_id=request_id,
+        client_ip=client_ip_from_request(request),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        details={
+            "previous_turnus_id": previous.id,
+            "selected_turnus_id": requested_id,
+        },
+    ))

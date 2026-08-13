@@ -77,46 +77,46 @@ def update_membership(membership, *, functional_role=None, team_label=None):
 @transaction.atomic
 def select_turnus(user, turnus):
     """Select an approved Turnus, without treating selection as authority."""
-    if not has_approved_membership(user, turnus):
-        raise ValidationError("Der ausgewählte Turnus erfordert eine Mitgliedschaft.")
-
     profile = Profil.objects.select_for_update().get(user=user)
+    membership = (
+        approved_memberships_for(user)
+        .select_for_update()
+        .filter(turnus_id=turnus.pk)
+        .first()
+    )
+    if membership is None:
+        raise ValidationError("Der ausgewählte Turnus erfordert eine Mitgliedschaft.")
     profile.selected_turnus = turnus
     profile.save(update_fields=("selected_turnus",))
     return turnus
 
 
+@transaction.atomic
 def selected_turnus_for(user):
     """Return selected Turnus only while an approved membership exists."""
     if not getattr(user, "is_authenticated", False):
         return None
 
-    profile_values = (
-        Profil.objects.filter(user=user)
-        .values_list("selected_turnus_id", "turnus_id")
-        .first()
-    )
-    if profile_values is None:
+    profile = Profil.objects.select_for_update().filter(user=user).first()
+    if profile is None:
         return None
-    turnus_id, legacy_turnus_id = profile_values
-    if turnus_id is not None and has_approved_membership(user, turnus_id):
-        return Turnus.objects.filter(pk=turnus_id).first()
+
+    memberships = approved_memberships_for(user).select_for_update()
+    membership = memberships.filter(turnus_id=profile.selected_turnus_id).first()
+    if membership is not None:
+        return membership.turnus
 
     # A missing or revoked selection must never remain an authority source.
     # Choose another approved membership deterministically, or clear the stale
     # value so callers enter the awaiting-membership experience.
-    fallback_id = (
-        approved_memberships_for(user)
+    fallback_membership = (
+        memberships
         .order_by("turnus__turnus_beginn", "turnus_id")
-        .values_list("turnus_id", flat=True)
         .first()
     )
-    Profil.objects.filter(user=user).update(selected_turnus_id=fallback_id)
-    if fallback_id is None:
-        # Expand-and-contract compatibility: callers whose legacy assignment
-        # has not yet been converted continue to work. A stale explicit
-        # selection never falls back to this field.
-        if turnus_id is None and legacy_turnus_id is not None:
-            return Turnus.objects.filter(pk=legacy_turnus_id).first()
-        return None
-    return Turnus.objects.filter(pk=fallback_id).first()
+    fallback_id = (
+        fallback_membership.turnus_id if fallback_membership is not None else None
+    )
+    profile.selected_turnus_id = fallback_id
+    profile.save(update_fields=("selected_turnus",))
+    return fallback_membership.turnus if fallback_membership is not None else None

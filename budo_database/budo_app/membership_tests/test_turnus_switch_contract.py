@@ -130,3 +130,29 @@ class TurnusSwitchContractTests(TestCase):
             "selected_turnus_id": second.id,
         })
         self.assertNotIn(user.email, str(event.details))
+
+    def test_forged_and_stale_switches_are_audited_in_current_scope(self):
+        current = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
+        forbidden = Turnus.objects.create(turnus_nr=2, turnus_beginn=date(2026, 7, 15))
+        user = User.objects.create_user(username="rejected", email="secret@example.test")
+        create_membership(user=user, turnus=current)
+        select_turnus(user, current)
+        self.client.force_login(user)
+
+        for requested_id in (forbidden.id, 999999, "not-an-id"):
+            response = self.client.post(
+                reverse("turnus-selection-api"),
+                {"turnus_id": requested_id},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 400 if isinstance(requested_id, str) else 403)
+
+        events = AuditEvent.objects.filter(action="turnus.selection.switch")
+        self.assertEqual(events.count(), 3)
+        self.assertEqual({event.turnus_id for event in events}, {current.id})
+        self.assertEqual({event.outcome for event in events}, {"forbidden"})
+        self.assertEqual(
+            {event.details["selected_turnus_id"] for event in events},
+            {current.id, forbidden.id, 999999},
+        )
+        self.assertNotIn(user.email, str([event.details for event in events]))

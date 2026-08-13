@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppSidebar, ApplicationShell } from './app-sidebar';
 import { Header, Messages } from './components';
-import { Toaster } from './components/ui/toast';
+import { Toaster, useErrorToast } from './components/ui/toast';
 import {
   loadBootstrap,
   loadRouteData,
@@ -28,6 +28,7 @@ function AppContent({
   fetchImpl = fetch,
   navigate = browserNavigate,
 }) {
+  const showError = useErrorToast();
   const [route, setRoute] = useState(() => parseRoute(window.location.pathname));
   const [bootstrap, setBootstrap] = useState(null);
   const [bootstrapError, setBootstrapError] = useState(null);
@@ -195,7 +196,8 @@ function AppContent({
       body: JSON.stringify({ turnus_id: turnusId }),
     });
     if (!response.ok) {
-      setBootstrapError(new Error(`Turnuswechsel fehlgeschlagen (${response.status})`));
+      showError('Der Turnus konnte nicht gewechselt werden. Bitte erneut versuchen.');
+      await refreshBootstrap();
       return;
     }
     await refreshBootstrap();
