@@ -6,6 +6,9 @@ from budo_app.models import Profil
 
 def active_turnus_id(request):
     """Return the request user's selected Turnus without loading its profile."""
+    if hasattr(request, "active_turnus"):
+        turnus = request.active_turnus
+        return turnus.pk if turnus is not None else None
     return (
         Profil.objects.filter(user_id=request.user.id)
         .values_list("turnus_id", flat=True)

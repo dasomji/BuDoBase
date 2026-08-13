@@ -9,6 +9,15 @@ from django.db import transaction
 from .models import Profil, Turnus, TurnusJoinRequest, TurnusMembership
 
 
+def _synchronize_cached_profile(user, profile):
+    """Keep Django's reverse one-to-one cache from restoring stale authority."""
+    cached = user._state.fields_cache.get("profil")
+    if cached is not None:
+        cached.turnus_id = profile.turnus_id
+        cached.selected_turnus_id = profile.selected_turnus_id
+        cached.membership_selection_enabled = profile.membership_selection_enabled
+
+
 def lock_membership_scope(*, user_id, turnus_id):
     """Lock the stable parents used by all membership/request write workflows."""
     get_user_model().objects.select_for_update().get(pk=user_id)
@@ -47,7 +56,10 @@ def create_membership(
     )
     membership.full_clean()
     membership.save()
-    Profil.objects.filter(user=user).update(membership_selection_enabled=True)
+    profile = Profil.objects.get(user=user)
+    profile.membership_selection_enabled = True
+    profile.save(update_fields=("membership_selection_enabled",))
+    _synchronize_cached_profile(user, profile)
     TurnusJoinRequest.objects.filter(
         user=user,
         turnus=turnus,
@@ -94,6 +106,7 @@ def select_turnus(user, turnus):
     profile.selected_turnus = turnus
     profile.membership_selection_enabled = True
     profile.save(update_fields=("selected_turnus", "membership_selection_enabled"))
+    _synchronize_cached_profile(user, profile)
     return turnus
 
 
@@ -125,6 +138,7 @@ def selected_turnus_for(user):
     )
     profile.selected_turnus_id = fallback_id
     profile.save(update_fields=("selected_turnus",))
+    _synchronize_cached_profile(user, profile)
     return fallback_membership.turnus if fallback_membership is not None else None
 
 
@@ -158,11 +172,17 @@ def authorized_turnus_scope(user):
         if not getattr(user, "is_authenticated", False):
             yield None
             return
-        profile_snapshot = Profil.objects.filter(user_id=user.pk).values(
-            "selected_turnus_id", "turnus_id", "membership_selection_enabled",
-        ).first()
+        profile_snapshot = (
+            Profil.objects.select_related("turnus").filter(user_id=user.pk).first()
+        )
         if profile_snapshot is None:
             yield None
+            return
+        # Legacy-only profiles have no membership authority to protect.  Keep
+        # their expand-phase read path at its established single-query cost;
+        # #196 removes this branch with the legacy field.
+        if not profile_snapshot.membership_selection_enabled:
+            yield profile_snapshot.turnus
             return
         # Canonical order shared with membership writers.
         get_user_model().objects.select_for_update().get(pk=user.pk)
@@ -180,7 +200,7 @@ def authorized_turnus_scope(user):
             Turnus.objects.select_for_update().filter(pk=turnus_id).first()
         profile = Profil.objects.select_for_update().get(user_id=user.pk)
         if not profile.membership_selection_enabled:
-            yield profile.turnus
+            yield None
             return
         membership = (
             TurnusMembership.objects.select_for_update()

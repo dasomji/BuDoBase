@@ -191,10 +191,10 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
 
         # The active overview includes one bounded query for create-station
         # responsible-person choices.
-        self.assertQueryCountAtMost(initial_small, 7)
-        self.assertQueryCountAtMost(initial_large, 7)
-        self.assertQueryCountAtMost(active_year, 7)
-        self.assertQueryCountAtMost(historical, 6)
+        self.assertQueryCountAtMost(initial_small, 9)
+        self.assertQueryCountAtMost(initial_large, 9)
+        self.assertQueryCountAtMost(active_year, 9)
+        self.assertQueryCountAtMost(historical, 8)
         self.assertQueryGrowthAtMost(initial_small, initial_large, 0)
         self.assertEqual(initial_small.response_bytes, initial_large.response_bytes)
         self.assertLess(initial_large.response_bytes, 24_000)

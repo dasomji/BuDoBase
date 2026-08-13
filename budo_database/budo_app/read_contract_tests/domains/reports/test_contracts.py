@@ -8,6 +8,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from budo_app.models import Kinder, Notizen, SpezialFamilien, Turnus
+from budo_app.memberships import create_membership, select_turnus
 
 
 class ReportContractTests(TestCase):
@@ -24,6 +25,8 @@ class ReportContractTests(TestCase):
         self.user.profil.rufname = "Zora"
         self.user.profil.rolle = "o"
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
             kid_vorname="Ada",
@@ -99,10 +102,12 @@ class ReportContractTests(TestCase):
         teammate.profil.rolle = "b"
         teammate.profil.telefonnummer = "+436641234567"
         teammate.profil.save()
-        other_turnus = Turnus.objects.create(
+        create_membership(user=teammate, turnus=self.turnus)
+        teammate.profil.turnus = other_turnus = Turnus.objects.create(
             turnus_nr=3,
             turnus_beginn=date(2026, 8, 1),
         )
+        teammate.profil.save(update_fields=("turnus",))
         other_user = User.objects.create_user(username="other-murder-teamer")
         other_user.profil.turnus = other_turnus
         other_user.profil.rufname = "Private Other Teamer"

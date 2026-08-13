@@ -489,6 +489,8 @@ class TurnusEntryAdmin(admin.ModelAdmin):
     ordering = ("-date_added", "-id")
 
     def _authorized_admin_operation(self, request, operation, *args, **kwargs):
+        if request.user.is_superuser:
+            return operation(request, *args, **kwargs)
         from .memberships import authorized_turnus_scope
         with authorized_turnus_scope(request.user) as turnus:
             if turnus is None:
@@ -512,11 +514,15 @@ class TurnusEntryAdmin(admin.ModelAdmin):
         )
 
     def has_module_permission(self, request):
+        if request.user.is_superuser:
+            return True
         from .memberships import scoped_turnus_for
         return request.user.is_staff and scoped_turnus_for(request.user) is not None
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
+        if request.user.is_superuser:
+            return queryset
         from .memberships import scoped_turnus_for
         turnus = scoped_turnus_for(request.user)
         turnus_id = turnus.pk if turnus is not None else None
@@ -536,6 +542,8 @@ class TurnusEntryAdmin(admin.ModelAdmin):
 
     @staticmethod
     def _same_turnus(request, obj):
+        if request.user.is_superuser:
+            return True
         from .memberships import scoped_turnus_for
         if obj is None:
             return True

@@ -63,8 +63,12 @@ def murder_game(request):
         .order_by("kid_vorname", "kid_nachname", "id")
     )
     team = (
-        Profil.objects.filter(turnus_id=turnus_id)
+        Profil.objects.filter(
+            Q(user__turnus_memberships__turnus_id=turnus_id)
+            | Q(membership_selection_enabled=False, turnus_id=turnus_id)
+        )
         .only("id", "rufname", "rolle")
+        .distinct()
         .order_by("rufname", "id")
     )
     return {

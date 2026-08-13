@@ -74,11 +74,9 @@ def cache_user_profile(view_func):
         if request.user.is_authenticated:
             profile = get_cached_user_profile(request.user)
             request.user_profile = profile
-            if request.method not in {"GET", "HEAD", "OPTIONS", "TRACE"}:
-                with authorized_turnus_scope(request.user) as turnus:
-                    request.active_turnus = turnus
-                    return view_func(request, *args, **kwargs)
-            request.active_turnus = scoped_turnus_for(request.user)
+            with authorized_turnus_scope(request.user) as turnus:
+                request.active_turnus = turnus
+                return view_func(request, *args, **kwargs)
         else:
             request.user_profile = None
             request.active_turnus = None

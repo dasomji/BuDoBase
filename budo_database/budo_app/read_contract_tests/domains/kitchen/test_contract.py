@@ -12,6 +12,7 @@ from budo_app.models import (
     Schwerpunktzeit,
     Turnus,
 )
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
     RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
@@ -49,6 +50,8 @@ class KitchenContractTests(TestCase):
         self.user.profil.essen = "vt"
         self.user.profil.allergien = "Haselnüsse"
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
 
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
