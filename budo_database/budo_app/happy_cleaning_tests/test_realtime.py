@@ -12,6 +12,7 @@ from budo_app.happy_cleaning_consumers import (
     HappyCleaningInvalidationConsumer,
     may_access_happy_cleaning_event,
 )
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import HappyCleaning, Turnus
 from budo_database.asgi import application
 
@@ -47,6 +48,15 @@ class HappyCleaningSocketAuthorizationTests(TestCase):
         stale_id = self.event.id
         self.event.delete()
         self.assertFalse(may_access_happy_cleaning_event(self.user.id, stale_id))
+
+    def test_removed_membership_immediately_blocks_realtime_access(self):
+        membership = create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(user=self.user, turnus=self.turnus)
+        self.assertTrue(may_access_happy_cleaning_event(self.user.id, self.event.id))
+
+        membership.delete()
+
+        self.assertFalse(may_access_happy_cleaning_event(self.user.id, self.event.id))
 
 
 class HappyCleaningConsumerProtocolTests(SimpleTestCase):
