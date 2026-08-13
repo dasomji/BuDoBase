@@ -1,1 +1,0 @@
-import{d as e,l as t}from"../app.js";var n=e({__iconNode:()=>r,default:()=>i}),r=[[`polygon`,{points:`3 11 22 2 13 21 11 13 3 11`,key:`1ltx0t`}]],i=t(`navigation`,r);export{n,i as t};

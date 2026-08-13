@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { ArrowLeftIcon, CarIcon, ChevronLeftIcon, ChevronRightIcon, FootprintsIcon, ImagePlusIcon, ListFilterIcon, MapIcon, MapPinIcon, PencilIcon, PlusIcon, SatelliteIcon, SearchIcon, Trash2Icon, XIcon } from 'lucide-react';
 
@@ -6,6 +6,7 @@ import { Card, Column, Columns, ConfirmationDialog, findById, NativeForm, RestFo
 import { DirectionsButton } from '../components/directions-button';
 import { GoogleMap } from '../components/google-map';
 import { TagIcon, tagIconForName } from '../components/tag-icon';
+import SettingsTagIconPicker from '../components/tag-icon-picker';
 import { Button } from '../components/ui/button';
 import { Input, Textarea } from '../components/ui/input';
 import { useErrorToast, useSuccessToast } from '../components/ui/toast';
@@ -16,7 +17,6 @@ const tagChipClass = 'inline-flex min-h-8 items-center rounded-full border borde
 const formatTravelMinutes = minutes => minutes == null ? '---' : `${minutes} min`;
 const GALLERY_SWIPE_THRESHOLD = 48;
 const galleryButtonClass = 'border-overlay-foreground/50 bg-modal-overlay text-overlay-foreground hover:bg-overlay-foreground hover:text-foreground';
-const SettingsTagIconPicker = lazy(() => import('../components/tag-icon-picker'));
 
 function TimeBadges({ place }) {
   return (
@@ -455,7 +455,7 @@ const placesHeaderAction = (includeCreate = false) => (_data, { pageState, setPa
 };
 
 function IconPicker(props) {
-  return <Suspense fallback={<p className="text-sm text-muted-foreground">Symbole werden geladen…</p>}><SettingsTagIconPicker {...props} /></Suspense>;
+  return <SettingsTagIconPicker {...props} />;
 }
 
 function TagEditor({ tag, choices, canDelete, mutate }) {

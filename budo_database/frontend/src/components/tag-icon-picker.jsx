@@ -105,7 +105,7 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
-const settingsTagIcons = {
+export const settingsTagIcons = {
   'map-pin': MapPinIcon,
   'tent-tree': TentTreeIcon,
   'house': HouseIcon,
