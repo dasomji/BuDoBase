@@ -110,6 +110,18 @@ class LeitungTeamManagementHttpTests(TestCase):
         self.assertEqual(other.team_label, "Küche")
         self.assertTrue(AuditEvent.objects.filter(action="membership.label.change").exists())
 
+    def test_invalid_label_returns_a_field_addressable_400(self):
+        response = self.client.post(
+            reverse("membership-label-api", args=(self.membership.id,)),
+            {"team_label": "x" * 256},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(list(response.json()), ["team_label"])
+        self.assertTrue(response.json()["team_label"])
+        self.membership.refresh_from_db()
+        self.assertEqual(self.membership.team_label, "")
+
     def test_remove_immediately_repairs_selection_and_is_audited(self):
         fallback = Turnus.objects.create(turnus_nr=3, turnus_beginn=date(2028, 8, 1))
         TurnusMembership.objects.create(user=self.member, turnus=fallback)

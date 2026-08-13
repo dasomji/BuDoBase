@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .audit import AuditEventData, actor_label_for_user, client_ip_from_request, record_audit_event
-from .memberships import create_membership, lock_membership_scope, remove_membership, update_membership
+from .memberships import create_membership, lock_membership_scopes, remove_membership, update_membership
 from .models import Turnus, TurnusMembership
 from .turnus_selection_views import _positive_bigint
 
@@ -64,10 +64,8 @@ def create_teamer_membership(request, turnus_id):
     if user_id is None:
         raise ValidationError({"user_id": "Eine gültige Person ist erforderlich."})
     with transaction.atomic():
+        lock_membership_scopes(user_ids=(request.user.pk, user_id), turnus_id=turnus_id)
         turnus = _managed_turnus_or_404(request.user, turnus_id)
-        # Lock the actor's authority for the lifetime of the mutation. Removal
-        # follows the same parent-lock order and therefore cannot race this check.
-        lock_membership_scope(user_id=request.user.pk, turnus_id=turnus.pk)
         if not _can_manage_turnus(request.user, turnus.pk):
             from django.http import Http404
             raise Http404
@@ -101,8 +99,9 @@ def update_team_membership_label(request, membership_id):
         raise ValidationError({"team_label": "Eine gültige Bezeichnung ist erforderlich."})
     label = label.strip()
     with transaction.atomic():
+        scope = get_object_or_404(TurnusMembership.objects.values("user_id", "turnus_id"), pk=membership_id)
+        lock_membership_scopes(user_ids=(request.user.pk, scope["user_id"]), turnus_id=scope["turnus_id"])
         membership = _managed_membership_or_404(request.user, membership_id)
-        lock_membership_scope(user_id=request.user.pk, turnus_id=membership.turnus_id)
         if not _can_manage_turnus(request.user, membership.turnus_id):
             from django.http import Http404
             raise Http404
@@ -122,8 +121,9 @@ def update_team_membership_label(request, membership_id):
 @permission_classes([IsAuthenticated])
 def remove_team_membership(request, membership_id):
     with transaction.atomic():
+        scope = get_object_or_404(TurnusMembership.objects.values("user_id", "turnus_id"), pk=membership_id)
+        lock_membership_scopes(user_ids=(request.user.pk, scope["user_id"]), turnus_id=scope["turnus_id"])
         membership = _managed_membership_or_404(request.user, membership_id)
-        lock_membership_scope(user_id=request.user.pk, turnus_id=membership.turnus_id)
         if not _can_manage_turnus(request.user, membership.turnus_id):
             from django.http import Http404
             raise Http404

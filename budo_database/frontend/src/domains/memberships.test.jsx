@@ -79,7 +79,7 @@ describe('admin team overview', () => {
       { id: 5, label: 'T3-2026', members: [{ id: 13, name: 'Chris Demo', functional_role: 'leitung', role_label: 'Leitung', team_label: '' }] },
     ] }] };
     render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn().mockResolvedValue({})} /></Toaster>);
-    expect(screen.getByText('Alex Muster')).toBeInTheDocument();
+    expect(screen.getAllByText('Alex Muster')).not.toHaveLength(0);
     expect(screen.queryByText('Chris Demo')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'T3-2026 auswählen' }));
     await user.click(screen.getByRole('button', { name: 'Chris Demo bearbeiten: Leitung entfernen' }));
@@ -113,6 +113,8 @@ describe('admin team overview', () => {
     ] }] };
     render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
 
+    expect(document.querySelector('[data-slot="team-master-detail"]')).toHaveAttribute('data-layout', 'stacked');
+    expect(screen.getByRole('navigation', { name: 'Turnus auswählen' })).toHaveClass('overflow-x-auto');
     expect(screen.getByRole('button', { name: '2026 schließen' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '2026 schließen' }));
     expect(screen.getByRole('button', { name: '2026 öffnen' })).toHaveAttribute('aria-expanded', 'false');
@@ -234,6 +236,39 @@ describe('admin team overview', () => {
     await user.click(screen.getByRole('button', { name: 'Alex Muster entfernen' }));
     expect(mutate).toHaveBeenCalledWith('/api/memberships/11/remove/', {});
     expect(screen.queryByText('Alex Muster')).not.toBeInTheDocument();
+  });
+
+  it('makes a removed Teamer immediately available to add again', async () => {
+    const user = userEvent.setup();
+    const person = { id: 30, name: 'Alex Muster', relationships: ['T2-2026'], turnus_ids: [4], available: false };
+    const mutate = vi.fn()
+      .mockResolvedValueOnce({ membership_id: 11, removed: true })
+      .mockResolvedValueOnce({ membership_id: 41, role_label: 'Teamer', team_label: '' });
+    const removableData = { ...data, years: [{ ...data.years[0], turnuses: [{ ...data.years[0].turnuses[0], members: [
+      { ...data.years[0].turnuses[0].members[0], user_id: 30 },
+      data.years[0].turnuses[0].members[1],
+    ] }] }] };
+    render(<Toaster><AdminTeamOverviewPage data={{ ...removableData, can_manage_leitung: false, can_manage_memberships: true, people: [person] }} mutate={mutate} /></Toaster>);
+    await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
+    await user.click(screen.getByRole('button', { name: 'Alex Muster entfernen' }));
+    await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Alex Muster als Teamer zu T2-2026 hinzufügen' }));
+    expect(mutate).toHaveBeenLastCalledWith('/api/turnusse/4/memberships/', { user_id: 30 });
+    expect(screen.getAllByText('Alex Muster')).not.toHaveLength(0);
+  });
+
+  it('renders label field errors inline and focuses the invalid input without a generic toast', async () => {
+    const user = userEvent.setup();
+    const mutate = vi.fn().mockRejectedValue({ payload: { team_label: ['Höchstens 255 Zeichen.'] } });
+    render(<Toaster><AdminTeamOverviewPage data={{ ...data, can_manage_leitung: false, can_manage_memberships: true }} mutate={mutate} /></Toaster>);
+    await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
+    const input = screen.getByRole('textbox', { name: 'Bezeichnung für Alex Muster' });
+    await user.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(await screen.findByText('Höchstens 255 Zeichen.', { selector: '[role="alert"]' })).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveAttribute('aria-describedby', 'team-label-11-error');
+    expect(input).toHaveFocus();
+    expect(screen.queryByText('Die Bezeichnung konnte nicht gespeichert werden.', { selector: '.app-toast-description' })).not.toBeInTheDocument();
   });
 
   it('keeps the selected assignment target visible when search matches a person and another Turnus', async () => {

@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .audit import AuditEventData, actor_label_for_user, client_ip_from_request, record_audit_event
-from .memberships import create_membership, update_membership
+from .memberships import create_membership, lock_membership_scopes, update_membership
 from .models import Turnus, TurnusMembership
 from .product_admin_policy import require_product_admin
 from .react_views import render_react_page
@@ -46,10 +46,9 @@ def set_membership_leadership(request, membership_id):
     if role not in TurnusMembership.FunctionalRole.values:
         raise ValidationError({"functional_role": "Ungültige Funktionsrolle."})
     with transaction.atomic():
-        membership = get_object_or_404(
-            TurnusMembership.objects.select_for_update().select_related("turnus", "user"),
-            pk=membership_id,
-        )
+        scope = get_object_or_404(TurnusMembership.objects.values("user_id", "turnus_id"), pk=membership_id)
+        lock_membership_scopes(user_ids=(request.user.pk, scope["user_id"]), turnus_id=scope["turnus_id"])
+        membership = get_object_or_404(TurnusMembership.objects.select_for_update().select_related("turnus", "user"), pk=membership_id)
         previous_role = membership.functional_role
         if previous_role == role:
             return Response({
@@ -86,6 +85,7 @@ def create_leitung_membership(request, turnus_id):
     if user_id is None:
         raise ValidationError({"user_id": "Eine gültige Person ist erforderlich."})
     with transaction.atomic():
+        lock_membership_scopes(user_ids=(request.user.pk, user_id), turnus_id=turnus_id)
         turnus = get_object_or_404(Turnus, pk=turnus_id)
         user = get_object_or_404(get_user_model(), pk=user_id, is_active=True)
         if TurnusMembership.objects.filter(user=user, turnus=turnus).exists():

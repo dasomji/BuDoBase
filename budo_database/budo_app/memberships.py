@@ -20,11 +20,29 @@ def _synchronize_cached_profile(user, profile):
         cached.membership_selection_enabled = profile.membership_selection_enabled
 
 
-def lock_membership_scope(*, user_id, turnus_id):
-    """Lock the stable parents used by all membership/request write workflows."""
-    get_user_model().objects.select_for_update().get(pk=user_id)
+def lock_membership_scopes(*, user_ids, turnus_id):
+    """Lock membership parents in the one global order used by writers.
+
+    Commands which involve an actor and a target must acquire both User rows
+    before the Turnus. Sorting makes opposite-direction operations compatible.
+    """
+    ordered_user_ids = sorted(set(user_ids))
+    list(
+        get_user_model().objects.select_for_update()
+        .filter(pk__in=ordered_user_ids)
+        .order_by("pk")
+    )
     Turnus.objects.select_for_update().get(pk=turnus_id)
-    Profil.objects.select_for_update().filter(user_id=user_id).first()
+    list(
+        Profil.objects.select_for_update()
+        .filter(user_id__in=ordered_user_ids)
+        .order_by("user_id")
+    )
+
+
+def lock_membership_scope(*, user_id, turnus_id):
+    """Compatibility seam for workflows with a single participating user."""
+    lock_membership_scopes(user_ids=(user_id,), turnus_id=turnus_id)
 
 
 def approved_memberships_for(user):

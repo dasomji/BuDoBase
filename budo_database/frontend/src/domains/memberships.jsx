@@ -11,15 +11,20 @@ function Member({ member, mutate, onChanged, canManageLeitung, canManageMembersh
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [teamLabel, setTeamLabel] = useState(member.team_label || '');
+  const [labelError, setLabelError] = useState('');
+  const labelInput = useRef(null);
   const showError = useErrorToast();
   const showSuccess = useSuccessToast();
   const isLead = member.functional_role === 'leitung';
+  useEffect(() => {
+    if (labelError) labelInput.current?.querySelector('input')?.focus();
+  }, [labelError]);
   const changeRole = async () => {
     const functionalRole = isLead ? 'teamer' : 'leitung';
     setBusy(true);
     try {
       await mutate(`/api/admin/memberships/${member.id}/role/`, { functional_role: functionalRole });
-      onChanged(member.id, { functional_role: functionalRole });
+      onChanged(member, { functional_role: functionalRole });
       showSuccess(isLead ? `${member.name} ist jetzt Teamer.` : `${member.name} ist jetzt Leitung.`);
     } catch (error) {
       showError(error.payload?.detail || 'Die Funktionsrolle konnte nicht geändert werden.');
@@ -29,20 +34,23 @@ function Member({ member, mutate, onChanged, canManageLeitung, canManageMembersh
   };
   const saveLabel = async () => {
     setBusy(true);
+    setLabelError('');
     try {
       const result = await mutate(`/api/memberships/${member.id}/label/`, { team_label: teamLabel });
-      onChanged(member.id, { team_label: result.team_label });
+      onChanged(member, { team_label: result.team_label });
       setEditing(false);
       showSuccess(`Bezeichnung für ${member.name} gespeichert.`);
     } catch (error) {
-      showError(error.payload?.detail || 'Die Bezeichnung konnte nicht gespeichert werden.');
+      const fieldError = error.payload?.team_label;
+      const message = Array.isArray(fieldError) ? fieldError.join(' ') : fieldError;
+      setLabelError(message || 'Die Bezeichnung konnte nicht gespeichert werden.');
     } finally { setBusy(false); }
   };
   const remove = async () => {
     setBusy(true);
     try {
       await mutate(`/api/memberships/${member.id}/remove/`, {});
-      onChanged(member.id, { removed: true });
+      onChanged(member, { removed: true });
       showSuccess(`${member.name} wurde aus dem Turnus entfernt.`);
     } catch (error) {
       showError(error.payload?.detail || 'Die Mitgliedschaft konnte nicht entfernt werden.');
@@ -60,7 +68,8 @@ function Member({ member, mutate, onChanged, canManageLeitung, canManageMembersh
         <Pencil aria-hidden="true" />
       </Button>}</div>
       {editing && !canManageLeitung && <div className="grid gap-3 rounded-md border border-border p-3">
-        <label className="grid gap-1"><span className="text-sm font-medium">Bezeichnung für {member.name}</span><Input maxLength={255} value={teamLabel} onChange={event => setTeamLabel(event.target.value)} /></label>
+        {labelError && <p className="text-sm font-medium text-destructive" role="alert" id={`team-label-${member.id}-error`}>{labelError}</p>}
+        <label className="grid gap-1" ref={labelInput}><span className="text-sm font-medium">Bezeichnung für {member.name}</span><Input maxLength={255} value={teamLabel} aria-invalid={labelError ? 'true' : undefined} aria-describedby={labelError ? `team-label-${member.id}-error` : undefined} onChange={event => { setTeamLabel(event.target.value); setLabelError(''); }} /></label>
         <div className="flex flex-wrap gap-2">
           <Button type="button" disabled={busy} onClick={saveLabel}>Speichern</Button>
           {canManageLeitung && <Button type="button" variant="outline" disabled={busy} onClick={changeRole}>{isLead ? 'Zu Teamer ändern' : 'Zu Leitung ändern'}</Button>}
@@ -144,7 +153,9 @@ export function AdminTeamOverviewPage({ data, mutate }) {
     const selectedYear = years.find(year => year.turnuses.some(turnus => turnus.id === selectedTurnusId));
     setExpandedYears(new Set([selectedYear?.year ?? years[0]?.year].filter(year => year != null)));
   }, [isMobile, selectedTurnusId, years]);
-  const changed = (membershipId, change) => setYears(current => current.map(year => ({
+  const changed = (changedMember, change) => {
+    const membershipId = changedMember.id;
+    setYears(current => current.map(year => ({
     ...year,
     turnuses: year.turnuses.map(turnus => ({
       ...turnus,
@@ -153,7 +164,14 @@ export function AdminTeamOverviewPage({ data, mutate }) {
         ...(change.functional_role ? { role_label: change.functional_role === 'leitung' ? 'Leitung' : 'Teamer' } : {}),
       } : member),
     })),
-  })));
+    })));
+    if (change.removed) setPeople(current => current.map(person => person.id === changedMember.user_id ? {
+      ...person,
+      relationships: person.relationships.filter(label => label !== selectedContext?.label),
+      turnus_ids: (person.turnus_ids || []).filter(id => id !== selectedTurnusId),
+      available: (person.turnus_ids || []).filter(id => id !== selectedTurnusId).length === 0,
+    } : person));
+  };
   const requestDecided = (requestId, approvedMember) => setYears(current => current.map(year => ({
     ...year,
     turnuses: year.turnuses.map(turnus => ({
@@ -166,9 +184,9 @@ export function AdminTeamOverviewPage({ data, mutate }) {
         : turnus.members,
     })),
   })));
-  const addLeitung = async person => {
+  const addPerson = async (person, { role, url }) => {
     try {
-      const result = await mutate(`/api/admin/turnusse/${selectedTurnusId}/leitung/`, { user_id: person.id });
+      const result = await mutate(url, { user_id: person.id });
       setYears(current => current.map(year => ({
         ...year,
         turnuses: year.turnuses.map(turnus => turnus.id === selectedTurnusId ? {
@@ -177,8 +195,8 @@ export function AdminTeamOverviewPage({ data, mutate }) {
             id: result.membership_id,
             user_id: person.id,
             name: person.name,
-            functional_role: 'leitung',
-            role_label: result.role_label || 'Leitung',
+            functional_role: role,
+            role_label: result.role_label || (role === 'leitung' ? 'Leitung' : 'Teamer'),
             team_label: result.team_label || '',
           }],
         } : turnus),
@@ -189,21 +207,13 @@ export function AdminTeamOverviewPage({ data, mutate }) {
         turnus_ids: [...(item.turnus_ids || []), selectedTurnusId],
         available: false,
       } : item));
-      showSuccess(`${person.name} ist jetzt Leitung.`);
+      showSuccess(`${person.name} ist jetzt ${role === 'leitung' ? 'Leitung' : 'Teamer'}.`);
     } catch (error) {
-      showError(error.payload?.detail || 'Die Leitung konnte nicht hinzugefügt werden.');
+      showError(error.payload?.detail || (role === 'leitung' ? 'Die Leitung konnte nicht hinzugefügt werden.' : 'Die Person konnte nicht hinzugefügt werden.'));
     }
   };
-  const addTeamer = async person => {
-    try {
-      const result = await mutate(`/api/turnusse/${selectedTurnusId}/memberships/`, { user_id: person.id });
-      setYears(current => current.map(year => ({ ...year, turnuses: year.turnuses.map(turnus => turnus.id === selectedTurnusId ? {
-        ...turnus, members: [...turnus.members, { id: result.membership_id, user_id: person.id, name: person.name, functional_role: 'teamer', role_label: result.role_label || 'Teamer', team_label: result.team_label || '' }],
-      } : turnus) })));
-      setPeople(current => current.map(item => item.id === person.id ? { ...item, relationships: [...item.relationships, selectedContext.label], turnus_ids: [...(item.turnus_ids || []), selectedTurnusId], available: false } : item));
-      showSuccess(`${person.name} ist jetzt Teamer.`);
-    } catch (error) { showError(error.payload?.detail || 'Die Person konnte nicht hinzugefügt werden.'); }
-  };
+  const addLeitung = person => addPerson(person, { role: 'leitung', url: `/api/admin/turnusse/${selectedTurnusId}/leitung/` });
+  const addTeamer = person => addPerson(person, { role: 'teamer', url: `/api/turnusse/${selectedTurnusId}/memberships/` });
   return (
     <Columns className="mx-auto grid w-full max-w-6xl px-4 py-5">
       <Column className="min-w-0" id="team-management">
@@ -212,7 +222,7 @@ export function AdminTeamOverviewPage({ data, mutate }) {
           <Search className="pointer-events-none absolute left-3 top-2.5 size-5 text-muted-foreground" aria-hidden="true" />
           <Input className="pl-10" value={query} onChange={event => setQuery(event.target.value)} placeholder="Turnusse und Personen suchen" />
         </label>
-        <div className={isMobile ? 'grid items-start gap-4' : 'grid grid-cols-[minmax(14rem,1fr)_minmax(0,3fr)] items-start gap-4'} data-slot="team-master-detail">
+        <div className={isMobile ? 'grid items-start gap-4' : 'grid grid-cols-[minmax(14rem,1fr)_minmax(0,3fr)] items-start gap-4'} data-slot="team-master-detail" data-layout={isMobile ? 'stacked' : 'master-detail'}>
           <nav className={isMobile ? 'flex min-w-0 gap-4 overflow-x-auto pb-2' : 'flex min-w-0 flex-col gap-4'} aria-label="Turnus auswählen">
             {filtered.map(year => (
               <TranslucentCard
