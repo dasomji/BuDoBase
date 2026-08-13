@@ -25,7 +25,7 @@ from .react_views import ReactPageTemplateMixin, render_react_page
 logger = logging.getLogger(__name__)
 
 
-@method_decorator(membership_scoped_read, name="get")
+@method_decorator(membership_scoped_read, name="dispatch")
 class AuslagerorteUpdate(
     ReactPageTemplateMixin,
     LoginRequiredMixin,
@@ -62,7 +62,7 @@ class AuslagerorteUpdate(
         return reverse_lazy('auslagerorte-detail', kwargs={'pk': self.object.pk})
 
 
-@method_decorator(membership_scoped_read, name="get")
+@method_decorator(membership_scoped_read, name="dispatch")
 class AuslagerorteDetail(
     ReactPageTemplateMixin,
     LoginRequiredMixin,

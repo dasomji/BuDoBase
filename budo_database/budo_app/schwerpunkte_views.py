@@ -40,7 +40,7 @@ from .utils import (
 )
 
 
-@method_decorator(membership_scoped_read, name="get")
+@method_decorator(membership_scoped_read, name="dispatch")
 class SchwerpunkteUpdate(
     ReactPageTemplateMixin,
     LoginRequiredMixin,
@@ -80,7 +80,7 @@ class SchwerpunkteUpdate(
         return reverse_lazy('schwerpunkt-detail', kwargs={'pk': self.object.pk})
 
 
-@method_decorator(membership_scoped_read, name="get")
+@method_decorator(membership_scoped_read, name="dispatch")
 class SchwerpunkteDetail(
     ReactPageTemplateMixin,
     LoginRequiredMixin,

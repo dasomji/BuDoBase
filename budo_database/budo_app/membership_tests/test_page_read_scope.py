@@ -188,6 +188,42 @@ class PageReadMembershipScopeTests(TransactionTestCase):
         self.assertEqual(list(response.context_data["kids"]), [])
         self.assertNotIn(b"Private", response.content)
 
+    def test_invalid_post_render_is_scoped_and_hides_revoked_membership_data(self):
+        Kinder.objects.create(
+            kid_index="private-invalid-post",
+            kid_vorname="Private",
+            kid_nachname="Invalid Post",
+            turnus=self.turnus,
+        )
+        self.membership.delete()
+
+        @method_decorator(membership_scoped_read, name="dispatch")
+        class InvalidFormPage(TemplateView):
+            template_name = "react_app.html"
+
+            def post(inner_self, request, *args, **kwargs):
+                return inner_self.render_to_response(
+                    inner_self.get_context_data(form_errors=["required"]),
+                )
+
+            def get_context_data(inner_self, **kwargs):
+                active_turnus = inner_self.request.active_turnus
+                return {
+                    **kwargs,
+                    "kids": Kinder.objects.filter(turnus=active_turnus)
+                    if active_turnus is not None
+                    else Kinder.objects.none(),
+                }
+
+        request = RequestFactory().post("/invalid-form-page/", {})
+        request.user = User.objects.get(pk=self.user.pk)
+        response = InvalidFormPage.as_view()(request)
+
+        self.assertTrue(response.is_rendered)
+        self.assertEqual(response.context_data["form_errors"], ["required"])
+        self.assertEqual(list(response.context_data["kids"]), [])
+        self.assertNotIn(b"Private", response.content)
+
     def test_streaming_response_is_not_eagerly_consumed(self):
         consumed = []
 
