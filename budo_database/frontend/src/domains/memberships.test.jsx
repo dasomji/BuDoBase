@@ -27,7 +27,13 @@ describe('admin team overview', () => {
 
   it('prominently repeats the email identity warning and resolves a request explicitly', async () => {
     const user = userEvent.setup();
-    const mutate = vi.fn().mockResolvedValue({ status: 'approved', membership_id: 40 });
+    const mutate = vi.fn().mockResolvedValue({
+      status: 'approved',
+      membership_id: 40,
+      approved_member: {
+        id: 40, user_id: 41, name: 'Dana Anfrage', functional_role: 'teamer', role_label: 'Teamer', team_label: '',
+      },
+    });
     const warning = 'Bitte kontaktiere die Person über einen dir bekannten, unabhängigen Kanal. Prüfe dabei, dass die E-Mail-Adresse wirklich zu ihr gehört und dass sie diese Anfrage selbst gestellt hat.';
     render(<Toaster><AdminTeamOverviewPage data={{ ...data, identity_verification_warning: warning, can_manage_leitung: false }} mutate={mutate} /></Toaster>);
 
@@ -35,6 +41,9 @@ describe('admin team overview', () => {
     await user.click(screen.getByRole('button', { name: 'Dana Anfrage annehmen' }));
     expect(mutate).toHaveBeenCalledWith('/api/join-requests/21/decision/', { decision: 'approve' });
     expect(await screen.findByText('Keine offenen Anfragen.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Team (3)' })).toBeInTheDocument();
+    expect(screen.getByText('Dana Anfrage')).toBeInTheDocument();
+    expect(screen.getByText('Teamer', { selector: 'p' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Alex Muster bearbeiten/ })).not.toBeInTheDocument();
   });
 

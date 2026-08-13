@@ -50,7 +50,11 @@ class JoinRequestDecisionForbidden(Exception):
 def can_decide_join_requests(user, turnus):
     if not getattr(user, "is_authenticated", False):
         return False
-    return user.is_superuser or TurnusMembership.objects.filter(
+    is_current_admin = user.__class__.objects.filter(
+        pk=user.pk,
+        is_superuser=True,
+    ).exists()
+    return is_current_admin or TurnusMembership.objects.filter(
         user=user,
         turnus=turnus,
         functional_role=TurnusMembership.FunctionalRole.LEITUNG,
@@ -64,13 +68,18 @@ def decide_join_request(*, join_request_id, actor, decision, http_request=None):
 
     with transaction.atomic():
         candidate = TurnusJoinRequest.objects.filter(pk=join_request_id).first()
-        if candidate is None or not can_decide_join_requests(actor, candidate.turnus):
-            # Do not reveal whether a cross-Turnus request exists.
+        if candidate is None:
             raise JoinRequestDecisionForbidden
         lock_membership_scope(
             user_id=candidate.user_id,
             turnus_id=candidate.turnus_id,
         )
+        # Authorization belongs inside the same Turnus-locked critical section as
+        # the decision. If leadership was removed first, this fresh check must fail;
+        # if this transaction acquired the lock first, removal waits until it ends.
+        if not can_decide_join_requests(actor, candidate.turnus):
+            # Do not reveal whether a cross-Turnus request exists.
+            raise JoinRequestDecisionForbidden
         join_request = TurnusJoinRequest.objects.select_for_update().select_related(
             "turnus", "user"
         ).get(pk=join_request_id)

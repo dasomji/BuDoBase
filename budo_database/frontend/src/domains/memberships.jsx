@@ -47,8 +47,8 @@ function PendingRequest({ request, mutate, onDecided }) {
   const decide = async decision => {
     setBusy(true);
     try {
-      await mutate(`/api/join-requests/${request.id}/decision/`, { decision });
-      onDecided(request.id);
+      const result = await mutate(`/api/join-requests/${request.id}/decision/`, { decision });
+      onDecided(request.id, result.approved_member);
       showSuccess(decision === 'approve'
         ? `${request.name} wurde als Teamer aufgenommen.`
         : `Die Anfrage von ${request.name} wurde abgelehnt.`);
@@ -120,12 +120,16 @@ export function AdminTeamOverviewPage({ data, mutate }) {
       } : member),
     })),
   })));
-  const requestDecided = requestId => setYears(current => current.map(year => ({
+  const requestDecided = (requestId, approvedMember) => setYears(current => current.map(year => ({
     ...year,
     turnuses: year.turnuses.map(turnus => ({
       ...turnus,
       pending_requests: (turnus.pending_requests || []).filter(request => request.id !== requestId),
       request_summary: { pending: Math.max(0, (turnus.request_summary?.pending || 0) - (turnus.pending_requests || []).some(request => request.id === requestId)) },
+      members: approvedMember && (turnus.pending_requests || []).some(request => request.id === requestId)
+        && !turnus.members.some(member => member.id === approvedMember.id)
+        ? [...turnus.members, approvedMember]
+        : turnus.members,
     })),
   })));
   const addLeitung = async person => {

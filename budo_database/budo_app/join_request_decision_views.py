@@ -27,8 +27,19 @@ def decide_turnus_join_request(request, join_request_id):
         raise NotFound("Beitrittsanfrage nicht gefunden.") from error
     except JoinRequestAlreadyResolved as error:
         raise ValidationError({"detail": "Diese Beitrittsanfrage wurde bereits bearbeitet."}) from error
+    approved_member = None
+    if membership is not None:
+        approved_member = {
+            "id": membership.pk,
+            "user_id": membership.user_id,
+            "name": membership.user.get_full_name().strip() or membership.user.username,
+            "functional_role": membership.functional_role,
+            "role_label": membership.get_functional_role_display(),
+            "team_label": membership.team_label,
+        }
     return Response({
         "request_id": join_request.pk,
         "status": join_request.status,
         "membership_id": membership.pk if membership is not None else None,
+        "approved_member": approved_member,
     })

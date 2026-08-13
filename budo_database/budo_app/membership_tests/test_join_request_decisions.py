@@ -1,14 +1,19 @@
 from datetime import date
-from threading import Barrier, Thread
+from threading import Barrier, Event, Thread
 from unittest import skipUnless
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from django.db import close_old_connections, connection
+from django.db import close_old_connections, connection, transaction
 from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
 
-from budo_app.join_requests import JoinRequestAlreadyResolved, decide_join_request
+from budo_app.join_requests import (
+    JoinRequestAlreadyResolved,
+    JoinRequestDecisionForbidden,
+    decide_join_request,
+)
+from budo_app.memberships import lock_membership_scope
 from budo_app.models import AuditEvent, Turnus, TurnusJoinRequest, TurnusMembership
 
 
@@ -47,6 +52,14 @@ class JoinRequestDecisionHttpTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], TurnusJoinRequest.Status.APPROVED)
+        self.assertEqual(response.json()["approved_member"], {
+            "id": response.json()["membership_id"],
+            "user_id": requester.id,
+            "name": "requester",
+            "functional_role": TurnusMembership.FunctionalRole.TEAMER,
+            "role_label": "Teamer",
+            "team_label": "",
+        })
         join_request.refresh_from_db()
         self.assertEqual(join_request.status, TurnusJoinRequest.Status.APPROVED)
         memberships = TurnusMembership.objects.filter(
@@ -150,6 +163,65 @@ class JoinRequestDecisionHttpTests(TestCase):
 
 @skipUnless(connection.vendor == "postgresql", "requires PostgreSQL row locks")
 class JoinRequestDecisionConcurrencyTests(TransactionTestCase):
+    def test_leitung_removed_while_decision_waits_cannot_approve(self):
+        turnus = Turnus.objects.create(turnus_nr=2, turnus_beginn=date(2028, 6, 20))
+        requester = User.objects.create_user("removed-lead-requester")
+        leitung = User.objects.create_user("removed-lead")
+        leadership = TurnusMembership.objects.create(
+            user=leitung,
+            turnus=turnus,
+            functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+        )
+        join_request = TurnusJoinRequest.objects.create(user=requester, turnus=turnus)
+        removal_locked = Event()
+        allow_removal = Event()
+        decision_started = Event()
+        outcome = []
+
+        def remove_leitung():
+            close_old_connections()
+            with transaction.atomic():
+                lock_membership_scope(user_id=leitung.id, turnus_id=turnus.id)
+                TurnusMembership.objects.filter(pk=leadership.id).delete()
+                removal_locked.set()
+                allow_removal.wait(5)
+            close_old_connections()
+
+        def approve():
+            close_old_connections()
+            decision_started.set()
+            try:
+                decide_join_request(
+                    join_request_id=join_request.id,
+                    actor=User.objects.get(pk=leitung.id),
+                    decision="approve",
+                )
+                outcome.append("approved")
+            except JoinRequestDecisionForbidden:
+                outcome.append("forbidden")
+            finally:
+                close_old_connections()
+
+        remover = Thread(target=remove_leitung)
+        remover.start()
+        self.assertTrue(removal_locked.wait(5))
+        decider = Thread(target=approve)
+        decider.start()
+        self.assertTrue(decision_started.wait(5))
+        self.assertTrue(decider.is_alive())
+        allow_removal.set()
+        remover.join(10)
+        decider.join(10)
+
+        self.assertFalse(remover.is_alive())
+        self.assertFalse(decider.is_alive())
+        self.assertEqual(outcome, ["forbidden"])
+        join_request.refresh_from_db()
+        self.assertEqual(join_request.status, TurnusJoinRequest.Status.PENDING)
+        self.assertFalse(
+            TurnusMembership.objects.filter(user=requester, turnus=turnus).exists()
+        )
+
     def test_concurrent_approvals_create_exactly_one_membership(self):
         turnus = Turnus.objects.create(turnus_nr=3, turnus_beginn=date(2028, 7, 1))
         requester = User.objects.create_user("race-requester")
