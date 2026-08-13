@@ -3,6 +3,15 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
+LEGACY_TEAM_LABELS = {
+    "b": "Betreuer:in",
+    "k": "Küche",
+    "o": "Organisator",
+    "f": "Freiwillige:r",
+    "": "",
+}
+
+
 def backfill_memberships(apps, schema_editor):
     Profil = apps.get_model("budo_app", "Profil")
     TurnusMembership = apps.get_model("budo_app", "TurnusMembership")
@@ -14,7 +23,7 @@ def backfill_memberships(apps, schema_editor):
             turnus_id=profile.turnus_id,
             defaults={
                 "functional_role": "teamer",
-                "team_label": profile.rolle,
+                "team_label": LEGACY_TEAM_LABELS.get(profile.rolle, ""),
             },
         )
         profile.selected_turnus_id = profile.turnus_id

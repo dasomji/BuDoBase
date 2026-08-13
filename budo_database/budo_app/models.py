@@ -108,12 +108,12 @@ class Profil(models.Model):
 
     def clean(self):
         super().clean()
+        from .memberships import has_approved_membership
+
         if (
             self.selected_turnus_id is not None
             and self.user_id is not None
-            and not TurnusMembership.objects.filter(
-                user_id=self.user_id, turnus_id=self.selected_turnus_id
-            ).exists()
+            and not has_approved_membership(self.user, self.selected_turnus_id)
         ):
             raise ValidationError(
                 {"selected_turnus": "Der ausgewählte Turnus erfordert eine Mitgliedschaft."}
