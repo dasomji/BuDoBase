@@ -3,7 +3,8 @@
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-from budo_app.models import HappyCleaning, Profil
+from budo_app.memberships import scoped_turnus_for
+from budo_app.models import HappyCleaning
 
 
 INVALIDATION_FIELDS = frozenset({
@@ -22,16 +23,15 @@ def happy_cleaning_group_name(event_id):
 
 
 def may_access_happy_cleaning_event(user_id, event_id):
-    turnus_id = (
-        Profil.objects.filter(user_id=user_id)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
-    if turnus_id is None:
+    from django.contrib.auth import get_user_model
+
+    user = get_user_model().objects.filter(pk=user_id).first()
+    turnus = scoped_turnus_for(user) if user is not None else None
+    if turnus is None:
         return False
     return HappyCleaning.objects.filter(
         pk=event_id,
-        turnus_id=turnus_id,
+        turnus_id=turnus.pk,
     ).exists()
 
 
@@ -62,8 +62,16 @@ class HappyCleaningInvalidationConsumer(AsyncJsonWebsocketConsumer):
 
     async def happy_cleaning_invalidation(self, event):
         envelope = event.get("envelope", {})
-        if self._valid_envelope(envelope):
-            await self.send_json({key: envelope[key] for key in INVALIDATION_FIELDS})
+        if not self._valid_envelope(envelope):
+            return
+        user = self.scope.get("user")
+        if not user or not await self._may_access_event(
+            user.id,
+            envelope["event_id"],
+        ):
+            await self.close(code=4404)
+            return
+        await self.send_json({key: envelope[key] for key in INVALIDATION_FIELDS})
 
     @staticmethod
     def _valid_envelope(envelope):

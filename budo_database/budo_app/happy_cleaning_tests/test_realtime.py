@@ -119,6 +119,24 @@ class HappyCleaningConsumerProtocolTests(SimpleTestCase):
 
         consumer.send_json.assert_awaited_once_with(envelope)
 
+    def test_membership_is_revalidated_before_each_invalidation(self):
+        consumer = self._consumer(allowed=False)
+        envelope = {
+            "version": 1,
+            "event_id": 7,
+            "projection": "todos",
+            "revision": 9,
+            "invalidation_id": "evt-9",
+            "request_id": "todo-9",
+        }
+
+        async_to_sync(consumer.happy_cleaning_invalidation)({
+            "envelope": envelope,
+        })
+
+        consumer.close.assert_awaited_once_with(code=4404)
+        consumer.send_json.assert_not_awaited()
+
     def test_asgi_stack_applies_origin_validation_before_session_authentication(self):
         websocket = application.application_mapping["websocket"]
         self.assertIsInstance(websocket, OriginValidator)

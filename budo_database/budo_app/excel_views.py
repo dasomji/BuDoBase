@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect
 from . import models
 from .excelProcessor import process_excel
 from .forms import UploadForm
-from .models import Profil
+from .memberships import scoped_turnus_for
 from .react_views import render_react_page
 from .storage_lifecycle import delete_storage_object_on_commit
 from .updateExcel import update_excel_file
@@ -110,8 +110,7 @@ def upload_excel(request, turnus_id):
 
 @login_required
 def download_updated_excel(request):
-    profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
+    active_turnus = scoped_turnus_for(request.user)
 
     if not active_turnus:
         return HttpResponse("No active turnus found.", status=404)

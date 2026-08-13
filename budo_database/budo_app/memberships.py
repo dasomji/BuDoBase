@@ -122,3 +122,20 @@ def selected_turnus_for(user):
     profile.selected_turnus_id = fallback_id
     profile.save(update_fields=("selected_turnus",))
     return fallback_membership.turnus if fallback_membership is not None else None
+
+
+def scoped_turnus_for(user):
+    """Resolve authority for a Turnus-scoped boundary during migration.
+
+    Membership-enabled accounts always use the validated approved selection.
+    The legacy branch exists only for profiles not activated by the expand
+    migration and is removed with the profile authority field in #196.
+    """
+    if not getattr(user, "is_authenticated", False):
+        return None
+    profile = Profil.objects.select_related("turnus").filter(user=user).first()
+    if profile is None:
+        return None
+    if profile.membership_selection_enabled:
+        return selected_turnus_for(user)
+    return profile.turnus

@@ -2,19 +2,16 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 
-from .models import ErsteHilfeFoto, NotizFoto, Profil
+from .memberships import scoped_turnus_for
+from .models import ErsteHilfeFoto, NotizFoto
 
 
 @login_required
 def attachment_media(request, kind, photo_id):
     # Authorization-sensitive media reads deliberately bypass the five-minute
     # profile cache so a Turnus reassignment revokes access immediately.
-    active_turnus_id = (
-        Profil.objects.filter(user_id=request.user.id)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
-    if active_turnus_id is None:
+    active_turnus = scoped_turnus_for(request.user)
+    if active_turnus is None:
         raise Http404
 
     model = {"notes": NotizFoto, "first-aid": ErsteHilfeFoto}.get(kind)
@@ -23,7 +20,7 @@ def attachment_media(request, kind, photo_id):
     photo = get_object_or_404(
         model.objects.select_related("eintrag__kinder"),
         pk=photo_id,
-        eintrag__kinder__turnus_id=active_turnus_id,
+        eintrag__kinder__turnus_id=active_turnus.id,
     )
     try:
         stored_file = photo.datei.open("rb")

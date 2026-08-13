@@ -489,13 +489,14 @@ class TurnusEntryAdmin(admin.ModelAdmin):
     ordering = ("-date_added", "-id")
 
     def has_module_permission(self, request):
-        return request.user.is_staff and getattr(
-            getattr(request.user, "profil", None), "turnus_id", None
-        ) is not None
+        from .memberships import scoped_turnus_for
+        return request.user.is_staff and scoped_turnus_for(request.user) is not None
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
-        turnus_id = getattr(getattr(request.user, "profil", None), "turnus_id", None)
+        from .memberships import scoped_turnus_for
+        turnus = scoped_turnus_for(request.user)
+        turnus_id = turnus.pk if turnus is not None else None
         return queryset.filter(kinder__turnus_id=turnus_id) if turnus_id else queryset.none()
 
     def has_add_permission(self, request):
@@ -512,11 +513,11 @@ class TurnusEntryAdmin(admin.ModelAdmin):
 
     @staticmethod
     def _same_turnus(request, obj):
+        from .memberships import scoped_turnus_for
         if obj is None:
             return True
-        return obj.kinder.turnus_id == getattr(
-            getattr(request.user, "profil", None), "turnus_id", None
-        )
+        turnus = scoped_turnus_for(request.user)
+        return turnus is not None and obj.kinder.turnus_id == turnus.pk
 
 
 class NotizenAdmin(TurnusEntryAdmin):

@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 
 from .models import Profil, Kinder, Schwerpunkte, Auslagerorte, Turnus
+from .memberships import scoped_turnus_for
 
 
 def parse_sv_birthday(value):
@@ -73,7 +74,7 @@ def cache_user_profile(view_func):
         if request.user.is_authenticated:
             profile = get_cached_user_profile(request.user)
             request.user_profile = profile
-            request.active_turnus = profile.turnus if profile else None
+            request.active_turnus = scoped_turnus_for(request.user)
         else:
             request.user_profile = None
             request.active_turnus = None
@@ -82,10 +83,7 @@ def cache_user_profile(view_func):
 
 
 def get_active_turnus(request):
-    profile = getattr(request, 'user_profile', None)
-    if profile is None and request.user.is_authenticated:
-        profile = get_cached_user_profile(request.user)
-    return profile.turnus if profile else None
+    return scoped_turnus_for(request.user)
 
 
 def get_active_kid_or_404(request, kid_id):

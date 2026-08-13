@@ -30,6 +30,7 @@ from budo_app.models import (
     Profil,
     Turnus,
 )
+from budo_app.memberships import scoped_turnus_for
 
 
 class CommandError(Exception):
@@ -81,15 +82,11 @@ def command_context(request, payload):
             "validation_error",
             errors={"request_id": ["Must be at most 255 characters."]},
         )
-    profile = (
-        Profil.objects.select_related("turnus")
-        .filter(user_id=request.user.id, turnus__isnull=False)
-        .first()
-    )
-    if profile is None:
+    turnus = scoped_turnus_for(request.user)
+    if turnus is None:
         raise CommandError("not_found", status=404)
     return CommandContext(
-        turnus=profile.turnus,
+        turnus=turnus,
         actor_id=request.user.id,
         actor_label=actor_label_for_user(request.user),
         request_id=request_id.strip(),

@@ -1,9 +1,10 @@
 from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.contrib import messages
 from .models import Kinder, SpezialFamilien, Profil
+from .memberships import scoped_turnus_for
 from .react_views import render_react_page
 from .forms import CSVUploadForm, BirthdayNotizForm
 from .kid_edit_writes import versioned_child_write
@@ -125,9 +126,9 @@ def upload_spezialfamilien(request):
         form = CSVUploadForm(request.POST, request.FILES)
         if form.is_valid():
             xlsx_file = request.FILES['csv_file']
-            current_user = request.user
-            profil = Profil.objects.get(user=current_user)
-            active_turnus = profil.turnus
+            active_turnus = scoped_turnus_for(request.user)
+            if active_turnus is None:
+                return HttpResponse(status=404)
 
             try:
                 with transaction.atomic():
