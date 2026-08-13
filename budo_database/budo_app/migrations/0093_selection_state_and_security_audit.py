@@ -9,7 +9,7 @@ def mark_existing_selection(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("budo_app", "0090_turnus_memberships")]
+    dependencies = [("budo_app", "0092_turnus_join_request_notifications")]
 
     operations = [
         migrations.AddField(

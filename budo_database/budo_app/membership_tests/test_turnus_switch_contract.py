@@ -3,12 +3,53 @@ from threading import Event, Thread
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db import close_old_connections
 from django.test import Client, TestCase, TransactionTestCase, skipUnlessDBFeature
 from django.urls import reverse
 
 from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import AuditEvent, Kinder, Profil, SecurityAuditEvent, Turnus
+
+
+class SecurityAuditEventImmutabilityTests(TestCase):
+    def setUp(self):
+        self.event = SecurityAuditEvent.objects.create(
+            actor_id=1,
+            action="turnus.selection.switch",
+            reason="forbidden",
+            request_id="request-1",
+            attempted_turnus_id=42,
+        )
+
+    def test_manager_create_remains_available_to_the_audit_writer(self):
+        self.assertIsNotNone(self.event.pk)
+
+    def test_instance_save_is_blocked(self):
+        self.event.reason = "malformed"
+
+        with self.assertRaisesMessage(ValidationError, "Audit events are immutable."):
+            self.event.save()
+
+    def test_instance_delete_is_blocked(self):
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Audit events may only be deleted by Turnus retention.",
+        ):
+            self.event.delete()
+
+    def test_queryset_update_is_blocked(self):
+        with self.assertRaisesMessage(ValidationError, "Audit events are immutable."):
+            SecurityAuditEvent.objects.filter(pk=self.event.pk).update(
+                reason="malformed"
+            )
+
+    def test_queryset_delete_is_blocked(self):
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Audit events may only be deleted by Turnus retention.",
+        ):
+            SecurityAuditEvent.objects.filter(pk=self.event.pk).delete()
 
 
 class TurnusSwitchContractTests(TestCase):
