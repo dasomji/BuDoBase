@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from budo_app.memberships import create_membership, select_turnus
-from budo_app.models import Kinder, Turnus
+from budo_app.models import AuditEvent, Kinder, Profil, Turnus
 
 
 class TurnusSwitchContractTests(TestCase):
@@ -89,3 +89,44 @@ class TurnusSwitchContractTests(TestCase):
             ],
             second.id,
         )
+
+    def test_revoked_selection_falls_back_to_an_approved_membership_and_persists(self):
+        first = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
+        second = Turnus.objects.create(turnus_nr=2, turnus_beginn=date(2026, 7, 15))
+        user = User.objects.create_user(username="fallback")
+        first_membership = create_membership(user=user, turnus=first)
+        create_membership(user=user, turnus=second)
+        select_turnus(user, first)
+        first_membership.delete()
+        self.client.force_login(user)
+
+        selection = self.client.get(reverse("bootstrap-api")).json()["turnus_selection"]
+
+        self.assertEqual(selection["selected_id"], second.id)
+        self.assertEqual(selection["options"], [{"id": second.id, "label": str(second)}])
+        self.assertEqual(Profil.objects.get(user=user).selected_turnus_id, second.id)
+
+    def test_successful_switch_is_audited_without_personal_details(self):
+        first = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
+        second = Turnus.objects.create(turnus_nr=2, turnus_beginn=date(2026, 7, 15))
+        user = User.objects.create_user(username="audited", email="private@example.test")
+        create_membership(user=user, turnus=first)
+        create_membership(user=user, turnus=second)
+        select_turnus(user, first)
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("turnus-selection-api"),
+            {"turnus_id": second.id},
+            content_type="application/json",
+            HTTP_X_REQUEST_ID="switch-request",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        event = AuditEvent.objects.get(action="turnus.selection.switch")
+        self.assertEqual(event.turnus, second)
+        self.assertEqual(event.details, {
+            "previous_turnus_id": first.id,
+            "selected_turnus_id": second.id,
+        })
+        self.assertNotIn(user.email, str(event.details))

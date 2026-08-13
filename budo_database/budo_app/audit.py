@@ -76,6 +76,10 @@ AUDIT_VIEW_DETAIL_DETAIL_KEYS = frozenset({
 AUDIT_EXPORT_DETAIL_KEYS = frozenset({"result_count", "filter_count"})
 
 ACTION_DETAIL_FIELDS = {
+    "turnus.selection.switch": {
+        "previous_turnus_id": (int, type(None)),
+        "selected_turnus_id": (int,),
+    },
     "happy_cleaning.event.create": COMMON_DETAIL_FIELDS,
     "happy_cleaning.event.update": COMMON_DETAIL_FIELDS,
     "happy_cleaning.event.delete": COMMON_DETAIL_FIELDS,

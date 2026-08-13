@@ -91,13 +91,32 @@ def selected_turnus_for(user):
     if not getattr(user, "is_authenticated", False):
         return None
 
-    turnus_id = (
+    profile_values = (
         Profil.objects.filter(user=user)
-        .values_list("selected_turnus_id", flat=True)
+        .values_list("selected_turnus_id", "turnus_id")
         .first()
     )
-    if turnus_id is None:
+    if profile_values is None:
         return None
-    if not has_approved_membership(user, turnus_id):
+    turnus_id, legacy_turnus_id = profile_values
+    if turnus_id is not None and has_approved_membership(user, turnus_id):
+        return Turnus.objects.filter(pk=turnus_id).first()
+
+    # A missing or revoked selection must never remain an authority source.
+    # Choose another approved membership deterministically, or clear the stale
+    # value so callers enter the awaiting-membership experience.
+    fallback_id = (
+        approved_memberships_for(user)
+        .order_by("turnus__turnus_beginn", "turnus_id")
+        .values_list("turnus_id", flat=True)
+        .first()
+    )
+    Profil.objects.filter(user=user).update(selected_turnus_id=fallback_id)
+    if fallback_id is None:
+        # Expand-and-contract compatibility: callers whose legacy assignment
+        # has not yet been converted continue to work. A stale explicit
+        # selection never falls back to this field.
+        if turnus_id is None and legacy_turnus_id is not None:
+            return Turnus.objects.filter(pk=legacy_turnus_id).first()
         return None
-    return Turnus.objects.filter(pk=turnus_id).first()
+    return Turnus.objects.filter(pk=fallback_id).first()

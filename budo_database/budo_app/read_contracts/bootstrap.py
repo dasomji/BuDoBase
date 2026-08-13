@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from budo_app.audit_policy import can_export_audit, can_view_audit
+from budo_app.memberships import approved_memberships_for, selected_turnus_for
 from budo_app.models import (
     Auslagerorte,
     HappyCleaning,
@@ -94,7 +95,13 @@ def bootstrap(request):
     except Profil.DoesNotExist:
         profile = None
 
-    turnus = profile.turnus if profile else None
+    turnus = selected_turnus_for(request.user)
+    turnus_options = [
+        {"id": membership.turnus_id, "label": str(membership.turnus)}
+        for membership in approved_memberships_for(request.user)
+        .select_related("turnus")
+        .order_by("turnus__turnus_beginn", "turnus_id")
+    ]
     payload.update(
         {
             "profile": (
@@ -117,6 +124,10 @@ def bootstrap(request):
                 if turnus
                 else None
             ),
+            "turnus_selection": {
+                "selected_id": turnus.id if turnus else None,
+                "options": turnus_options,
+            },
             "permissions": _permissions(request.user),
             "search_index": _search_index(turnus),
             "happy_cleaning_events": _happy_cleaning_events(turnus),

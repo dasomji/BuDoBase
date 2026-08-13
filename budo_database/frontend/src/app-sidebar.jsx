@@ -231,8 +231,14 @@ function withDynamicNavEntries(events, permissions) {
   });
 }
 
-export function AppSidebar({ happyCleaningEvents = [], permissions }) {
+export function AppSidebar({
+  happyCleaningEvents = [],
+  permissions,
+  turnusSelection,
+  onTurnusChange,
+}) {
   const items = withDynamicNavEntries(happyCleaningEvents, permissions);
+  const options = turnusSelection?.options || [];
   return (
     <Sidebar side="left" collapsible="icon">
       <SidebarHeader>
@@ -250,6 +256,23 @@ export function AppSidebar({ happyCleaningEvents = [], permissions }) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
+        {options.length > 0 && (
+          <div className="px-2 py-2 group-data-[collapsible=icon]:hidden">
+            <label htmlFor="turnus-switcher" className="mb-1 block text-sm font-medium">
+              Aktiver Turnus
+            </label>
+            <select
+              id="turnus-switcher"
+              className="w-full rounded-md border bg-background px-2 py-2 text-sm"
+              value={turnusSelection.selected_id ?? ''}
+              onChange={event => onTurnusChange?.(Number(event.target.value))}
+            >
+              {options.map(option => (
+                <option value={option.id} key={option.id}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <SidebarGroup>
           <SidebarGroupContent>
             <nav

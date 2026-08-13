@@ -184,6 +184,23 @@ function AppContent({
     if (refreshAfter) await refreshRoute({ preserveData: true });
     return responsePayload;
   };
+  const switchTurnus = async turnusId => {
+    const response = await fetchImpl('/api/turnus-selection/', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': bootstrap.csrf_token,
+      },
+      body: JSON.stringify({ turnus_id: turnusId }),
+    });
+    if (!response.ok) {
+      setBootstrapError(new Error(`Turnuswechsel fehlgeschlagen (${response.status})`));
+      return;
+    }
+    await refreshBootstrap();
+    await refreshRoute();
+  };
 
   if (bootstrapError) return <ErrorState title="Sitzung konnte nicht geladen werden" error={bootstrapError} />;
   if (!bootstrap) return <div className="react-loading">Sitzung wird geladen…</div>;
@@ -224,7 +241,9 @@ function AppContent({
           route.page === 'happy-cleaning-overview'
             ? overviewSidebarEvents
             : data.happy_cleaning_events
-        } permissions={data.permissions} />
+        } permissions={data.permissions}
+        turnusSelection={data.turnus_selection}
+        onTurnusChange={switchTurnus} />
       ) : null}
       header={<Header title={resolveRouteHeaderTitle(route, data, title)} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data, { pageState, setPageState, mutate }) : null} />}
     >

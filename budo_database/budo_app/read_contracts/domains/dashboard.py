@@ -40,6 +40,7 @@ from budo_app.models import (
     TurnusMembership,
 )
 from budo_app.read_contracts.common import (
+    active_turnus_id,
     kid_full_name,
     serialize_first_aid_photos,
     serialize_photos,
@@ -362,7 +363,9 @@ def build_dashboard_contract(request):
             "turnuses": _membership_turnuses(request.user),
         }
 
-    turnus_id = profile.turnus_id
+    # The dashboard is the representative vertical seam for selection. The
+    # remaining scoped contracts migrate under #193.
+    turnus_id = active_turnus_id(request)
     activity_kind = request.query_params.get("activity")
     cursor = request.query_params.get("cursor")
     if activity_kind is not None:
