@@ -55,11 +55,11 @@ describe('admin team overview', () => {
     expect(screen.getByText('Leitung · Organisation')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Offene Anfragen (1)' })).toBeInTheDocument();
     expect(screen.getByText('Dana Anfrage')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Alex Muster bearbeiten: als Leitung einsetzen' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Bea Beispiel bearbeiten: Leitung entfernen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Alex Muster bearbeiten' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bea Beispiel bearbeiten' })).toBeInTheDocument();
   });
 
-  it('searches people and Turnusse and changes Leitung through the mutation seam', async () => {
+  it('opens the admin member editor before changing Leitung through an explicit action', async () => {
     const user = userEvent.setup();
     const mutate = vi.fn().mockResolvedValue({ functional_role: 'leitung' });
     render(<Toaster><AdminTeamOverviewPage data={data} mutate={mutate} /></Toaster>);
@@ -67,9 +67,14 @@ describe('admin team overview', () => {
     await user.type(search, 'niemand');
     expect(screen.getByText('Keine Turnusse oder Personen gefunden.')).toBeInTheDocument();
     await user.clear(search);
-    await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten: als Leitung einsetzen' }));
+    await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
+    expect(mutate).not.toHaveBeenCalled();
+    expect(screen.getByRole('textbox', { name: 'Bezeichnung für Alex Muster' })).toHaveValue('Küche');
+    expect(screen.getByRole('button', { name: 'Alex Muster als Leitung einsetzen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Alex Muster aus dem Turnus entfernen' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Alex Muster als Leitung einsetzen' }));
     expect(mutate).toHaveBeenCalledWith('/api/admin/memberships/11/role/', { functional_role: 'leitung' });
-    expect(await screen.findByRole('button', { name: 'Alex Muster bearbeiten: Leitung entfernen' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Alex Muster Leitung entfernen' })).toBeInTheDocument();
   });
 
   it('shows one selected Turnus detail and keeps it selected after a demotion', async () => {
@@ -82,7 +87,8 @@ describe('admin team overview', () => {
     expect(screen.getAllByText('Alex Muster')).not.toHaveLength(0);
     expect(screen.queryByText('Chris Demo')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'T3-2026 auswählen' }));
-    await user.click(screen.getByRole('button', { name: 'Chris Demo bearbeiten: Leitung entfernen' }));
+    await user.click(screen.getByRole('button', { name: 'Chris Demo bearbeiten' }));
+    await user.click(screen.getByRole('button', { name: 'Chris Demo Leitung entfernen' }));
     expect(screen.getByText('Chris Demo')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'T3-2026 auswählen' })).toHaveAttribute('aria-pressed', 'true');
   });
@@ -159,12 +165,13 @@ describe('admin team overview', () => {
     const view = render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={mutate} /></Toaster>);
     await user.click(screen.getByRole('button', { name: 'T3-2026 auswählen' }));
     await user.click(screen.getByRole('button', { name: '2025 schließen' }));
-    await user.click(screen.getByRole('button', { name: 'Chris Demo bearbeiten: als Leitung einsetzen' }));
+    await user.click(screen.getByRole('button', { name: 'Chris Demo bearbeiten' }));
+    await user.click(screen.getByRole('button', { name: 'Chris Demo als Leitung einsetzen' }));
 
     // Parent rerenders with its still-stale route data before App's mutation
     // refresh completes. That must not undo the local mutation result.
     view.rerender(<Toaster><AdminTeamOverviewPage data={{ ...multiple }} mutate={mutate} /></Toaster>);
-    expect(screen.getByRole('button', { name: 'Chris Demo bearbeiten: Leitung entfernen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Chris Demo bearbeiten' })).toBeInTheDocument();
 
     const refreshed = {
       ...multiple,
@@ -186,7 +193,7 @@ describe('admin team overview', () => {
 
     expect(screen.getByRole('button', { name: 'T3-2026 auswählen' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: '2025 öffnen' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Chris Demo bearbeiten: Leitung entfernen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Chris Demo bearbeiten' })).toBeInTheDocument();
     expect(screen.getByText('Neue Person')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Offene Anfragen (1)' })).toBeInTheDocument();
     expect(screen.getByText('Neue Anfrage')).toBeInTheDocument();
@@ -233,7 +240,7 @@ describe('admin team overview', () => {
     await user.click(screen.getByRole('button', { name: 'Speichern' }));
     expect(mutate).toHaveBeenCalledWith('/api/memberships/11/label/', { team_label: 'Material' });
     await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
-    await user.click(screen.getByRole('button', { name: 'Alex Muster entfernen' }));
+    await user.click(screen.getByRole('button', { name: 'Alex Muster aus dem Turnus entfernen' }));
     expect(mutate).toHaveBeenCalledWith('/api/memberships/11/remove/', {});
     expect(screen.queryByText('Alex Muster')).not.toBeInTheDocument();
   });
@@ -250,7 +257,7 @@ describe('admin team overview', () => {
     ] }] }] };
     render(<Toaster><AdminTeamOverviewPage data={{ ...removableData, can_manage_leitung: false, can_manage_memberships: true, people: [person] }} mutate={mutate} /></Toaster>);
     await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
-    await user.click(screen.getByRole('button', { name: 'Alex Muster entfernen' }));
+    await user.click(screen.getByRole('button', { name: 'Alex Muster aus dem Turnus entfernen' }));
     await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Alex');
     await user.click(screen.getByRole('button', { name: 'Alex Muster als Teamer zu T2-2026 hinzufügen' }));
     expect(mutate).toHaveBeenLastCalledWith('/api/turnusse/4/memberships/', { user_id: 30 });

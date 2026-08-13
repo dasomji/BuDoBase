@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from .audit import AuditEventData, actor_label_for_user, client_ip_from_request, record_audit_event
 from .memberships import create_membership, lock_membership_scopes, update_membership
 from .models import Turnus, TurnusMembership
-from .product_admin_policy import require_product_admin
+from .product_admin_policy import require_locked_product_admin, require_product_admin
 from .react_views import render_react_page
 from .turnus_selection_views import _positive_bigint
 
@@ -41,13 +41,13 @@ def admin_teams_page(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def set_membership_leadership(request, membership_id):
-    require_product_admin(request.user, "Admin team management access denied.")
     role = request.data.get("functional_role")
     if role not in TurnusMembership.FunctionalRole.values:
         raise ValidationError({"functional_role": "Ungültige Funktionsrolle."})
     with transaction.atomic():
         scope = get_object_or_404(TurnusMembership.objects.values("user_id", "turnus_id"), pk=membership_id)
         lock_membership_scopes(user_ids=(request.user.pk, scope["user_id"]), turnus_id=scope["turnus_id"])
+        require_locked_product_admin(request.user, "Admin team management access denied.")
         membership = get_object_or_404(TurnusMembership.objects.select_for_update().select_related("turnus", "user"), pk=membership_id)
         previous_role = membership.functional_role
         if previous_role == role:
@@ -80,12 +80,12 @@ def set_membership_leadership(request, membership_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_leitung_membership(request, turnus_id):
-    require_product_admin(request.user, "Admin team management access denied.")
     user_id = _positive_bigint(request.data.get("user_id"))
     if user_id is None:
         raise ValidationError({"user_id": "Eine gültige Person ist erforderlich."})
     with transaction.atomic():
         lock_membership_scopes(user_ids=(request.user.pk, user_id), turnus_id=turnus_id)
+        require_locked_product_admin(request.user, "Admin team management access denied.")
         turnus = get_object_or_404(Turnus, pk=turnus_id)
         user = get_object_or_404(get_user_model(), pk=user_id, is_active=True)
         if TurnusMembership.objects.filter(user=user, turnus=turnus).exists():

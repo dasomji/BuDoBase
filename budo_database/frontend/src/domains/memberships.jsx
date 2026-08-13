@@ -64,16 +64,16 @@ function Member({ member, mutate, onChanged, canManageLeitung, canManageMembersh
         <p className="text-sm text-muted-foreground">
           {member.role_label}{member.team_label ? ` · ${member.team_label}` : ''}
         </p>
-      </div>{manageable && <Button aria-label={canManageLeitung ? `${member.name} bearbeiten: ${isLead ? 'Leitung entfernen' : 'als Leitung einsetzen'}` : `${member.name} bearbeiten`} title={`${member.name} bearbeiten`} type="button" size="icon-sm" variant="ghost" disabled={busy} onClick={canManageLeitung ? changeRole : () => setEditing(value => !value)}>
+      </div>{manageable && <Button aria-label={`${member.name} bearbeiten`} aria-expanded={editing} title={`${member.name} bearbeiten`} type="button" size="icon-sm" variant="ghost" disabled={busy} onClick={() => setEditing(value => !value)}>
         <Pencil aria-hidden="true" />
       </Button>}</div>
-      {editing && !canManageLeitung && <div className="grid gap-3 rounded-md border border-border p-3">
+      {editing && <div className="grid gap-3 rounded-md border border-border p-3">
         {labelError && <p className="text-sm font-medium text-destructive" role="alert" id={`team-label-${member.id}-error`}>{labelError}</p>}
         <label className="grid gap-1" ref={labelInput}><span className="text-sm font-medium">Bezeichnung für {member.name}</span><Input maxLength={255} value={teamLabel} aria-invalid={labelError ? 'true' : undefined} aria-describedby={labelError ? `team-label-${member.id}-error` : undefined} onChange={event => { setTeamLabel(event.target.value); setLabelError(''); }} /></label>
         <div className="flex flex-wrap gap-2">
           <Button type="button" disabled={busy} onClick={saveLabel}>Speichern</Button>
-          {canManageLeitung && <Button type="button" variant="outline" disabled={busy} onClick={changeRole}>{isLead ? 'Zu Teamer ändern' : 'Zu Leitung ändern'}</Button>}
-          <Button type="button" variant="destructive" disabled={busy} onClick={remove}>{member.name} entfernen</Button>
+          {canManageLeitung && <Button type="button" variant="outline" disabled={busy} onClick={changeRole}>{isLead ? `${member.name} Leitung entfernen` : `${member.name} als Leitung einsetzen`}</Button>}
+          <Button type="button" variant="destructive" disabled={busy} onClick={remove}>{member.name} aus dem Turnus entfernen</Button>
           <Button type="button" variant="ghost" disabled={busy} onClick={() => setEditing(false)}>Abbrechen</Button>
         </div>
       </div>}

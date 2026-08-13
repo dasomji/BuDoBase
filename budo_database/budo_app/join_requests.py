@@ -20,7 +20,7 @@ from django.db.models import F, Q
 from django.utils import timezone
 
 from .audit import AuditEventData, actor_label_for_user, client_ip_from_request, record_audit_event
-from .memberships import create_membership, lock_membership_scope
+from .memberships import create_membership, lock_membership_scope, lock_membership_scopes
 from .models import TurnusJoinRequest, TurnusJoinRequestNotification, TurnusMembership
 
 
@@ -70,8 +70,8 @@ def decide_join_request(*, join_request_id, actor, decision, http_request=None):
         candidate = TurnusJoinRequest.objects.filter(pk=join_request_id).first()
         if candidate is None:
             raise JoinRequestDecisionForbidden
-        lock_membership_scope(
-            user_id=candidate.user_id,
+        lock_membership_scopes(
+            user_ids=(actor.pk, candidate.user_id),
             turnus_id=candidate.turnus_id,
         )
         # Authorization belongs inside the same Turnus-locked critical section as
