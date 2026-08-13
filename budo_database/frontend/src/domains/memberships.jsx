@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 
 import { Column, Columns, TranslucentCard } from '../components';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { useErrorToast, useSuccessToast } from '../components/ui/toast';
 
 function Member({ member, mutate, onChanged }) {
@@ -31,7 +32,7 @@ function Member({ member, mutate, onChanged }) {
           {member.role_label}{member.team_label ? ` · ${member.team_label}` : ''}
         </p>
       </div>
-      <Button type="button" size="sm" variant={isLead ? 'outline' : 'secondary'} disabled={busy} onClick={changeRole}>
+      <Button aria-label={`${member.name} ${isLead ? 'als Leitung entfernen' : 'als Leitung einsetzen'}`} type="button" size="sm" variant={isLead ? 'outline' : 'secondary'} disabled={busy} onClick={changeRole}>
         {busy ? 'Wird gespeichert…' : isLead ? 'Leitung entfernen' : 'Als Leitung einsetzen'}
       </Button>
     </li>
@@ -41,6 +42,7 @@ function Member({ member, mutate, onChanged }) {
 export function AdminTeamOverviewPage({ data, mutate }) {
   const [query, setQuery] = useState('');
   const [years, setYears] = useState(data.years || []);
+  const [selectedTurnusId, setSelectedTurnusId] = useState(() => data.years?.[0]?.turnuses?.[0]?.id ?? null);
   const normalized = query.trim().toLocaleLowerCase('de');
   const filtered = useMemo(() => years.map(year => ({
     ...year,
@@ -48,6 +50,12 @@ export function AdminTeamOverviewPage({ data, mutate }) {
       || turnus.label.toLocaleLowerCase('de').includes(normalized)
       || turnus.members.some(member => `${member.name} ${member.team_label} ${member.role_label}`.toLocaleLowerCase('de').includes(normalized))),
   })).filter(year => year.turnuses.length), [years, normalized]);
+  const visibleTurnuses = useMemo(() => filtered.flatMap(year => year.turnuses), [filtered]);
+  const selectedTurnus = visibleTurnuses.find(turnus => turnus.id === selectedTurnusId) || null;
+  useEffect(() => {
+    if (!selectedTurnus && visibleTurnuses.length) setSelectedTurnusId(visibleTurnuses[0].id);
+    if (!visibleTurnuses.length && selectedTurnusId !== null) setSelectedTurnusId(null);
+  }, [selectedTurnus, selectedTurnusId, visibleTurnuses]);
   const changed = (membershipId, functionalRole) => setYears(current => current.map(year => ({
     ...year,
     turnuses: year.turnuses.map(turnus => ({
@@ -60,28 +68,48 @@ export function AdminTeamOverviewPage({ data, mutate }) {
     })),
   })));
   return (
-    <Columns className="mx-auto w-full max-w-6xl px-4 py-5">
-      <Column id="single-column">
+    <Columns className="mx-auto grid w-full max-w-6xl px-4 py-5">
+      <Column className="min-w-0" id="team-management">
         <label className="relative mb-5 block max-w-xl">
           <span className="sr-only">Turnusse und Personen suchen</span>
           <Search className="pointer-events-none absolute left-3 top-2.5 size-5 text-muted-foreground" aria-hidden="true" />
-          <input className="w-full rounded-md border border-input bg-popover py-2 pl-10 pr-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" value={query} onChange={event => setQuery(event.target.value)} placeholder="Turnusse und Personen suchen" />
+          <Input className="pl-10" value={query} onChange={event => setQuery(event.target.value)} placeholder="Turnusse und Personen suchen" />
         </label>
-        <div className="space-y-6">
-          {filtered.map(year => (
-            <TranslucentCard key={year.year} title={String(year.year)} showToggleIcon>
-              <div className="grid gap-4 min-[901px]:grid-cols-2">
-                {year.turnuses.map(turnus => (
-                  <TranslucentCard key={turnus.id} title={turnus.label} showToggleIcon>
-                    <p className="mb-2 text-sm text-muted-foreground">{turnus.request_summary.pending} offene Anfragen</p>
-                    {turnus.members.length ? <ul>{turnus.members.map(member => <Member key={member.id} member={member} mutate={mutate} onChanged={changed} />)}</ul> : <p>Noch keine Teammitglieder.</p>}
-                  </TranslucentCard>
-                ))}
-              </div>
+        <div className="grid items-start gap-4 min-[901px]:grid-cols-[minmax(14rem,1fr)_minmax(0,3fr)]" data-slot="team-master-detail">
+          <nav className="flex min-w-0 gap-4 overflow-x-visible max-[900px]:overflow-x-auto min-[901px]:flex-col" aria-label="Turnus auswählen">
+            {filtered.map(year => (
+              <section className="min-w-max min-[901px]:min-w-0" key={year.year}>
+                <h2 className="mb-2 text-lg font-semibold">{year.year}</h2>
+                <div className="flex gap-2 min-[901px]:flex-col">
+                  {year.turnuses.map(turnus => (
+                    <Button
+                      className="justify-start whitespace-nowrap"
+                      key={turnus.id}
+                      type="button"
+                      variant={turnus.id === selectedTurnusId ? 'secondary' : 'outline'}
+                      aria-label={`${turnus.label} auswählen`}
+                      aria-pressed={turnus.id === selectedTurnusId}
+                      onClick={() => setSelectedTurnusId(turnus.id)}
+                    >
+                      {turnus.label}
+                    </Button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </nav>
+          {selectedTurnus && (
+            <TranslucentCard title={selectedTurnus.label} expanded onExpandedChange={() => {}}>
+              {Number.isInteger(selectedTurnus.request_summary?.pending) && (
+                <p className="mb-2 text-sm text-muted-foreground">{selectedTurnus.request_summary.pending} offene Anfragen</p>
+              )}
+              {selectedTurnus.members.length
+                ? <ul>{selectedTurnus.members.map(member => <Member key={member.id} member={member} mutate={mutate} onChanged={changed} />)}</ul>
+                : <p>Noch keine Teammitglieder.</p>}
             </TranslucentCard>
-          ))}
-          {!filtered.length && <p>Keine Turnusse oder Personen gefunden.</p>}
+          )}
         </div>
+        {!filtered.length && <p>Keine Turnusse oder Personen gefunden.</p>}
       </Column>
     </Columns>
   );

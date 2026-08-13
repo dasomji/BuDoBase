@@ -1,11 +1,9 @@
-from django.core.exceptions import PermissionDenied
-
 from budo_app.models import Turnus
+from budo_app.product_admin_policy import require_product_admin
 
 
 def admin_team_overview(request):
-    if not request.user.is_superuser:
-        raise PermissionDenied("Admin team overview access denied.")
+    require_product_admin(request.user, "Admin team overview access denied.")
     turnuses = Turnus.objects.prefetch_related("memberships__user__profil").order_by(
         "-turnus_beginn", "turnus_nr", "id"
     )
@@ -32,7 +30,6 @@ def admin_team_overview(request):
             "number": turnus.turnus_nr,
             "start": turnus.turnus_beginn.isoformat(),
             "members": members,
-            "request_summary": {"pending": 0},
         })
     return {"years": [{"year": int(year), "turnuses": items} for year, items in years.items()]}
 

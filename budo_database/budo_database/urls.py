@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path, re_path
 from budo_app.api_views import submit_form
+from budo_app.admin_team_views import admin_teams_page
 from budo_app.audit_views import audit_event_detail, audit_page, export_audit_events
 from budo_app.kid_edit_views import kid_edit
 from budo_app.read_contracts.bootstrap import bootstrap
@@ -24,6 +25,7 @@ from budo_app.read_contracts.views import route_data
 from budo_app.turnus_selection_views import turnus_selection
 
 urlpatterns = [
+    path('admin/teams/', admin_teams_page, name='admin-team-overview-page'),
     path('admin/', admin.site.urls),
     path('audit/', audit_page, name='audit-page'),
     path('api/bootstrap/', bootstrap, name='bootstrap-api'),
