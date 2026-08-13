@@ -245,6 +245,33 @@ class TurnusSwitchContractTests(TestCase):
         self.assertEqual({event.reason for event in events}, {"invalid"})
         self.assertNotIn(user.email, str(list(events.values())))
 
+    def test_malformed_json_is_rejected_and_privacy_safe_audited(self):
+        turnus = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
+        user = User.objects.create_user(
+            username="malformed-json",
+            email="private@example.test",
+        )
+        create_membership(user=user, turnus=turnus)
+        select_turnus(user, turnus)
+        self.client.force_login(user)
+
+        secret = "SECRET-MALFORMED-PAYLOAD"
+        response = self.client.post(
+            reverse("turnus-selection-api"),
+            data='{"turnus_id": "' + secret,
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"code": "invalid_turnus_selection"})
+        self.assertNotIn(secret, response.content.decode())
+        self.assertFalse(AuditEvent.objects.filter(action="turnus.selection.switch").exists())
+        event = SecurityAuditEvent.objects.get(action="turnus.selection.switch")
+        self.assertIsNone(event.actor_id)
+        self.assertEqual(event.reason, "invalid")
+        self.assertNotIn(secret, str(SecurityAuditEvent.objects.values()))
+        self.assertNotIn(user.email, str(SecurityAuditEvent.objects.values()))
+
 
 @skipUnlessDBFeature("has_select_for_update")
 class TurnusSelectionConcurrencyTests(TransactionTestCase):

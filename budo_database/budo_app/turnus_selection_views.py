@@ -6,6 +6,7 @@ from uuid import uuid4
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import ParseError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -51,10 +52,15 @@ def _positive_bigint(value):
 def turnus_selection(request):
     request_id = _request_id(request)
     previous = selected_turnus_for(request.user)
-    if not isinstance(request.data, Mapping):
+    try:
+        data = request.data
+    except ParseError:
         _record_unscoped_rejection(request_id, "invalid")
         return Response({"code": "invalid_turnus_selection"}, status=400)
-    value = request.data.get("turnus_id")
+    if not isinstance(data, Mapping):
+        _record_unscoped_rejection(request_id, "invalid")
+        return Response({"code": "invalid_turnus_selection"}, status=400)
+    value = data.get("turnus_id")
     turnus_id = _positive_bigint(value)
     if turnus_id is None:
         _record_unscoped_rejection(request_id, "invalid")
