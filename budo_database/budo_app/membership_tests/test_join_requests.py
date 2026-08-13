@@ -13,8 +13,8 @@ from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from budo_app.join_requests import deliver_pending_join_request_notifications
-from budo_app.memberships import create_membership
+from budo_app.join_requests import CLAIM_LEASE, deliver_pending_join_request_notifications
+from budo_app.memberships import create_membership, update_membership
 from budo_app.memberships import lock_membership_scope as real_lock_membership_scope
 from budo_app.models import (
     Turnus,
@@ -240,6 +240,57 @@ class JoinRequestHttpTests(TestCase):
         self.assertEqual(live.state, TurnusJoinRequestNotification.State.SENDING)
         self.assertEqual(len(mail.outbox), 1)
 
+    def test_expired_worker_cannot_acknowledge_a_newer_delivery_claim(self):
+        request = TurnusJoinRequest.objects.create(user=self.requester, turnus=self.turnus)
+        notification = TurnusJoinRequestNotification.objects.create(
+            join_request=request,
+            recipient_user=self.leitung,
+            recipient_email=self.leitung.email,
+        )
+
+        def replace_claim(*args, **kwargs):
+            notification.refresh_from_db()
+            TurnusJoinRequestNotification.objects.filter(pk=notification.pk).update(
+                state=TurnusJoinRequestNotification.State.SENDING,
+                claimed_at=notification.claimed_at + CLAIM_LEASE,
+            )
+            return 1
+
+        with patch("budo_app.join_requests.EmailMessage.send", side_effect=replace_claim):
+            deliver_pending_join_request_notifications([notification.pk])
+
+        notification.refresh_from_db()
+        self.assertEqual(notification.state, TurnusJoinRequestNotification.State.SENDING)
+        self.assertIsNotNone(notification.claimed_at)
+        self.assertIsNone(notification.delivered_at)
+
+    def test_expired_worker_cannot_release_a_newer_claim_after_send_failure(self):
+        request = TurnusJoinRequest.objects.create(user=self.requester, turnus=self.turnus)
+        notification = TurnusJoinRequestNotification.objects.create(
+            join_request=request,
+            recipient_user=self.leitung,
+            recipient_email=self.leitung.email,
+        )
+
+        def replace_claim_then_fail(*args, **kwargs):
+            notification.refresh_from_db()
+            TurnusJoinRequestNotification.objects.filter(pk=notification.pk).update(
+                state=TurnusJoinRequestNotification.State.SENDING,
+                claimed_at=notification.claimed_at + timedelta(minutes=15),
+            )
+            raise RuntimeError("old worker failed")
+
+        with patch(
+            "budo_app.join_requests.EmailMessage.send",
+            side_effect=replace_claim_then_fail,
+        ):
+            deliver_pending_join_request_notifications([notification.pk])
+
+        notification.refresh_from_db()
+        self.assertEqual(notification.state, TurnusJoinRequestNotification.State.SENDING)
+        self.assertIsNotNone(notification.claimed_at)
+        self.assertEqual(notification.last_error, "")
+
     def test_approved_member_can_discover_other_turnuses_without_data_leak(self):
         TurnusMembership.objects.create(user=self.requester, turnus=self.turnus)
         profile = self.requester.profil
@@ -320,4 +371,53 @@ class MembershipRequestConcurrencyTests(TransactionTestCase):
         self.assertEqual(join_request.status, TurnusJoinRequest.Status.SUPERSEDED)
         self.assertTrue(
             TurnusMembership.objects.filter(user=requester, turnus=turnus).exists()
+        )
+
+    def test_role_update_and_leitung_notification_snapshot_share_turnus_lock(self):
+        turnus = Turnus.objects.create(turnus_nr=9, turnus_beginn=date(2028, 7, 15))
+        requester = User.objects.create_user("snapshot-requester", "requester@example.com")
+        leader = User.objects.create_user("new-leader", "leader@example.com")
+        membership = create_membership(user=leader, turnus=turnus)
+        locked = Event()
+        release = Event()
+        outcomes = []
+
+        def pausing_lock(*, user_id, turnus_id):
+            real_lock_membership_scope(user_id=user_id, turnus_id=turnus_id)
+            locked.set()
+            release.wait(timeout=5)
+
+        def update_worker():
+            close_old_connections()
+            current = TurnusMembership.objects.get(pk=membership.pk)
+            with patch("budo_app.memberships.lock_membership_scope", pausing_lock):
+                update_membership(
+                    current,
+                    functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+                )
+            close_old_connections()
+
+        def request_worker():
+            close_old_connections()
+            from budo_app.join_requests import create_join_request
+
+            outcomes.append(create_join_request(user=requester, turnus=turnus))
+            close_old_connections()
+
+        update_thread = Thread(target=update_worker)
+        update_thread.start()
+        self.assertTrue(locked.wait(timeout=5))
+        request_thread = Thread(target=request_worker)
+        request_thread.start()
+        sleep(0.2)
+        release.set()
+        update_thread.join(timeout=5)
+        request_thread.join(timeout=5)
+
+        self.assertFalse(update_thread.is_alive())
+        self.assertFalse(request_thread.is_alive())
+        self.assertEqual(len(outcomes), 1)
+        request = outcomes[0][0]
+        self.assertTrue(
+            request.notifications.filter(recipient_user=leader).exists()
         )

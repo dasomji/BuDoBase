@@ -56,7 +56,7 @@ def _is_pending_constraint(error):
 def _claim_notification(notification_id, *, now=None):
     now = now or timezone.now()
     stale_before = now - CLAIM_LEASE
-    return (
+    claimed = (
         TurnusJoinRequestNotification.objects.filter(pk=notification_id)
         .filter(
             Q(state=TurnusJoinRequestNotification.State.PENDING)
@@ -73,6 +73,7 @@ def _claim_notification(notification_id, *, now=None):
         )
         == 1
     )
+    return now if claimed else None
 
 
 def _delivery_headers(notification):
@@ -89,11 +90,14 @@ def _deliver_notification(notification_id):
     """Claim and attempt one recipient delivery using durable at-least-once semantics.
 
     The claim is committed before SMTP so workers cannot concurrently send the same
-    row. A crash after SMTP accepts the message but before the delivered update can
-    cause a retry; generic SMTP offers no atomic acknowledgement, so Message-ID and
-    X-Idempotency-Key are deterministic to permit provider-side deduplication.
+    row, and each acknowledgement is conditional on the exact lease timestamp so an
+    expired worker cannot mutate its successor's claim. A crash after SMTP accepts
+    the message but before the delivered update can cause a retry; generic SMTP
+    offers no atomic acknowledgement, so Message-ID and X-Idempotency-Key are
+    deterministic to permit provider-side deduplication.
     """
-    if not _claim_notification(notification_id):
+    claim_token = _claim_notification(notification_id)
+    if claim_token is None:
         return False
 
     notification = (
@@ -122,6 +126,7 @@ def _deliver_notification(notification_id):
         TurnusJoinRequestNotification.objects.filter(
             pk=notification_id,
             state=TurnusJoinRequestNotification.State.SENDING,
+            claimed_at=claim_token,
         ).update(
             state=TurnusJoinRequestNotification.State.PENDING,
             claimed_at=None,
@@ -136,6 +141,7 @@ def _deliver_notification(notification_id):
     TurnusJoinRequestNotification.objects.filter(
         pk=notification_id,
         state=TurnusJoinRequestNotification.State.SENDING,
+        claimed_at=claim_token,
     ).update(
         state=TurnusJoinRequestNotification.State.DELIVERED,
         claimed_at=None,

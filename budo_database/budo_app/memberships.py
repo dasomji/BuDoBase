@@ -55,6 +55,11 @@ def create_membership(
 @transaction.atomic
 def update_membership(membership, *, functional_role=None, team_label=None):
     """Change authority and/or its independent descriptive label explicitly."""
+    lock_membership_scope(
+        user_id=membership.user_id,
+        turnus_id=membership.turnus_id,
+    )
+    membership = TurnusMembership.objects.select_for_update().get(pk=membership.pk)
     update_fields = []
     if functional_role is not None:
         membership.functional_role = functional_role
