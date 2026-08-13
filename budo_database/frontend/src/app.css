@@ -340,6 +340,15 @@
   box-shadow: none;
 }
 
+.card.translucent-card {
+  border: 1px solid color-mix(in srgb, var(--color-border) 65%, var(--color-secondary));
+  background-color: var(--color-card);
+  color: var(--color-card-foreground);
+  box-shadow:
+    0 0.55rem 1.55rem rgb(55 55 55 / 10%),
+    0 0.0625rem 0.25rem rgb(55 55 55 / 10%);
+}
+
 .card > .card-info-container {
   display: grid;
   grid-template-rows: 0fr;

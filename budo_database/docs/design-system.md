@@ -321,6 +321,22 @@ Card props:
 Do not build a second collapse state around Card. Use `expanded` and
 `onExpandedChange` when another component must control it.
 
+### Translucent card
+
+Use `TranslucentCard` for the approved translucent hierarchy in Turnus team
+management. It preserves every Card prop and interaction while adding the
+semantic `card` surface and foreground, a visible token-derived boundary, and
+the scoped elevation treatment. Existing screens should keep using `Card`
+until their design explicitly adopts this surface.
+
+```jsx
+import { TranslucentCard } from '../components';
+
+<TranslucentCard title="Turnus 2026" actions={<Button>Team öffnen</Button>}>
+  <p>12 Teammitglieder</p>
+</TranslucentCard>
+```
+
 ### Responsive card grids
 
 Use `ResponsiveCardGrid` for responsive card collections. Its default Tailwind

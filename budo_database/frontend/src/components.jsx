@@ -259,6 +259,15 @@ export function Card({
   );
 }
 
+export function TranslucentCard({ className = '', ...props }) {
+  return (
+    <Card
+      {...props}
+      className={['translucent-card', className].filter(Boolean).join(' ')}
+    />
+  );
+}
+
 export function Columns({ children, className = '' }) {
   return <main className={className} id="body-container">{children}</main>;
 }
