@@ -8,6 +8,7 @@ import { GoogleMap } from '../components/google-map';
 import { TagIcon, tagIconForName } from '../components/tag-icon';
 import SettingsTagIconPicker from '../components/tag-icon-picker';
 import { Button } from '../components/ui/button';
+import { Drawer, DrawerContent, DrawerTitle } from '../components/ui/drawer';
 import { Input, Textarea } from '../components/ui/input';
 import { useErrorToast, useSuccessToast } from '../components/ui/toast';
 import { useIsMobile } from '../hooks/use-mobile';
@@ -75,7 +76,7 @@ function PlaceTags({ tags, catalog, className = '' }) {
 
 function PlaceList({ places, selectedPlaceId, onSelect, tagCatalog }) {
   return (
-    <ul className="m-0 h-full min-h-0 list-none divide-y divide-border overflow-y-auto p-0">
+    <ul data-slot="places-list-scroll" className="m-0 h-full min-h-0 list-none divide-y divide-border overflow-y-auto overscroll-y-contain p-0">
       {places.map(place => {
         const selected = Number(selectedPlaceId) === place.id;
         return (
@@ -177,11 +178,18 @@ function Carousel({ place, onBack, onPeek, onOpenGallery }) {
   const [index, setIndex] = useState(0);
   const touchY = useRef(null);
   const images = place.images || [];
-  return <div className="relative h-52 shrink-0 bg-muted max-[900px]:h-72" onTouchStart={event => { touchY.current = event.touches[0].clientY; }} onTouchEnd={event => { if (touchY.current !== null && event.changedTouches[0].clientY - touchY.current > 24) onPeek?.(); touchY.current = null; }}>
+  const finishPeekGesture = event => {
+    const downwardDistance = touchY.current === null ? 0 : event.changedTouches[0].clientY - touchY.current;
+    touchY.current = null;
+    if (downwardDistance <= 24) return;
+    event.preventDefault();
+    onPeek?.();
+  };
+  return <div className="relative h-52 shrink-0 bg-surface-solid max-[900px]:h-72" onTouchStart={event => { touchY.current = event.touches[0].clientY; }} onTouchEnd={finishPeekGesture} onTouchCancel={() => { touchY.current = null; }}>
     {images.length ? <Button className="h-full" variant="full-surface" type="button" aria-label="Galerie öffnen" onClick={() => onOpenGallery(images[index])}><img className="h-full w-full object-cover" src={images[index]} alt={`${place.name} ${index + 1}`} /></Button> : <div className="grid h-full place-items-center text-muted-foreground">Keine Bilder</div>}
     <Button className="absolute top-3 left-3" size="icon" variant="outline" type="button" aria-label="Zurück zur Liste" onClick={onBack}><ArrowLeftIcon aria-hidden="true" /></Button>
     {images.length > 1 && <><Button className="absolute top-1/2 left-2 -translate-y-1/2" size="icon" variant="outline" aria-label="Vorheriges Bild" onClick={() => setIndex((index - 1 + images.length) % images.length)}><ChevronLeftIcon aria-hidden="true" /></Button><Button className="absolute top-1/2 right-2 -translate-y-1/2" size="icon" variant="outline" aria-label="Nächstes Bild" onClick={() => setIndex((index + 1) % images.length)}><ChevronRightIcon aria-hidden="true" /></Button><div className="absolute inset-x-0 bottom-2 flex justify-center gap-1">{images.map((_, dot) => <span className={`size-2 rounded-full ${dot === index ? 'bg-secondary' : 'bg-background/75'}`} key={dot} />)}</div></>}
-    {onPeek && <Button className="absolute inset-x-1/2 bottom-2 z-10 h-auto w-20 -translate-x-1/2 py-2" variant="outline" type="button" aria-label="Details einklappen" onClick={onPeek}><span className="block h-1 w-10 rounded-full bg-ring/60" /></Button>}
+    {onPeek && <Button className="absolute inset-x-1/2 bottom-2 z-10 h-auto w-20 touch-none -translate-x-1/2 py-2" variant="outline" type="button" aria-label="Details einklappen" onClick={onPeek} onTouchMove={event => event.preventDefault()}><span className="block h-1 w-10 rounded-full bg-ring/60" /></Button>}
   </div>;
 }
 
@@ -243,8 +251,9 @@ function ImageDeleteDialog({ onCancel, onConfirm }) {
   </ConfirmationDialog>;
 }
 
-function DetailSidebar({ place, token, onBack, onSaved, onPeek, tagCatalog, permissions = {}, mutate, navigateRoute }) {
+function DetailSidebar({ place, token, onBack, onSaved, onPeek, motion = 'enter', onMotionEnd, tagCatalog, permissions = {}, mutate, navigateRoute }) {
   const [galleryIndex, setGalleryIndex] = useState(null);
+  const galleryFullscreenRequest = useRef(null);
   const [deleteImage, setDeleteImage] = useState(null);
   const [deletePlace, setDeletePlace] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -254,10 +263,34 @@ function DetailSidebar({ place, token, onBack, onSaved, onPeek, tagCatalog, perm
   const openGallery = image => {
     const url = typeof image === 'string' ? image : image.url;
     const nextIndex = galleryImages.findIndex(item => item.url === url);
-    if (nextIndex >= 0) setGalleryIndex(nextIndex);
+    if (nextIndex < 0) return;
+    if (!document.fullscreenElement && typeof document.documentElement.requestFullscreen === 'function') {
+      try {
+        galleryFullscreenRequest.current = document.documentElement
+          .requestFullscreen({ navigationUI: 'hide' })
+          .then(() => true)
+          .catch(() => false);
+      } catch {
+        galleryFullscreenRequest.current = null;
+      }
+    }
+    setGalleryIndex(nextIndex);
+  };
+  const closeGallery = () => {
+    setGalleryIndex(null);
+    const fullscreenRequest = galleryFullscreenRequest.current;
+    galleryFullscreenRequest.current = null;
+    if (fullscreenRequest) {
+      void fullscreenRequest.then(entered => {
+        if (entered && document.fullscreenElement && typeof document.exitFullscreen === 'function') {
+          return document.exitFullscreen().catch(() => {});
+        }
+        return undefined;
+      });
+    }
   };
   const requestImageDelete = image => {
-    setGalleryIndex(null);
+    closeGallery();
     setDeleteImage(image);
   };
   const removeImage = async () => {
@@ -283,7 +316,11 @@ function DetailSidebar({ place, token, onBack, onSaved, onPeek, tagCatalog, perm
     }
   };
   const address = [place.street, [place.postal_code, place.city].filter(Boolean).join(' '), place.state, place.country].filter(Boolean).join(', ');
-  return <aside className="absolute inset-y-0 left-0 z-20 flex w-full max-w-100 flex-col overflow-y-auto bg-surface-solid shadow-elevated max-[900px]:max-w-none" aria-label={place.name}>
+  const hidden = motion === 'exit';
+  const motionClass = hidden
+    ? 'max-[900px]:animate-out max-[900px]:fade-out max-[900px]:slide-out-to-bottom max-[900px]:duration-300 motion-reduce:animate-none'
+    : 'max-[900px]:animate-in max-[900px]:fade-in max-[900px]:slide-in-from-bottom max-[900px]:duration-300 motion-reduce:animate-none';
+  return <aside className={`absolute inset-y-0 left-0 z-20 flex w-full max-w-100 flex-col overflow-y-auto overscroll-y-none bg-surface-solid shadow-elevated max-[900px]:max-w-none max-[900px]:pt-2 ${motionClass}`} aria-label={place.name} aria-hidden={hidden || undefined} inert={hidden || undefined} data-motion={motion} onAnimationEnd={onMotionEnd}>
     <Carousel place={place} onBack={onBack} onPeek={onPeek} onOpenGallery={openGallery} />
     <div className="border-b border-border px-4 py-3"><div className="flex items-start justify-between gap-2"><h2 className="m-0 text-lg font-bold">{place.name}</h2><div className="flex shrink-0 gap-2"><AddPlaceImagesButton place={place} token={token} onSaved={onSaved} /><Button size="icon" variant="outline" href={`/auslagerorte/${place.id}/update`} aria-label="Bearbeiten"><PencilIcon aria-hidden="true" /></Button>{permissions.delete_places && <Button size="icon" variant="destructive" type="button" aria-label="Auslagerort löschen" onClick={() => setDeletePlace(true)}><Trash2Icon aria-hidden="true" /></Button>}</div></div><PlaceTags className="mt-2" tags={place.tags} catalog={tagCatalog} /><div className="mt-2"><TimeBadges place={place} /></div>{!place.coordinates && <p className="mt-2 text-xs text-warning-foreground">Keine Koordinaten — kein Pin auf der Karte.</p>}</div>
     {place.description && <div className="border-b border-border px-4 py-3 text-sm"><p className="text-xs text-muted-foreground">Beschreibung</p><p>{place.description}</p></div>}
@@ -291,45 +328,52 @@ function DetailSidebar({ place, token, onBack, onSaved, onPeek, tagCatalog, perm
     {address && <InfoRow icon={<MapPinIcon className="size-4" />} label="Adresse" action={<DirectionsButton destination={place.coordinates?.replace(/\s/g, '') || address} label="Route zur Adresse" />}>{address}</InfoRow>}
     {(place.parking_coordinates || place.parking_link) && <InfoRow icon={<CarIcon className="size-4" />} label="Parkspot" action={place.parking_coordinates && <DirectionsButton destination={place.parking_coordinates.replace(/\s/g, '')} label="Route zum Parkspot" />}>{place.parking_coordinates || <a className="text-link underline" href={place.parking_link} target="_blank" rel="noreferrer">Google Maps Link</a>}</InfoRow>}
     <div className="px-4 py-3"><p className="text-xs text-muted-foreground">Kommentare</p><ul className="mt-2 grid gap-3">{place.notes.map(note => <li className="text-sm" key={note.id}><p className="text-xs text-muted-foreground"><strong className="text-foreground">{note.author}</strong> am {formatGermanDate(note.date)}</p><p>{note.text}</p>{note.photos?.length > 0 && <div className="mt-1 flex gap-1 overflow-x-auto">{note.photos.map(photo => <Button className="h-24 w-auto shrink-0 overflow-hidden rounded-lg p-0" variant="full-surface" type="button" aria-label={`Kommentarbild öffnen: ${note.text}`} onClick={() => openGallery(photo)} key={photo.id}><img className="h-24 object-cover" src={photo.url} alt={photo.alt} /></Button>)}</div>}</li>)}</ul><CommentForm place={place} token={token} onSaved={onSaved} /></div>
-    {galleryIndex != null && galleryImages.length > 0 && <Gallery place={place} images={galleryImages} initialIndex={galleryIndex} onClose={() => setGalleryIndex(null)} onRequestDelete={permissions.delete_place_images ? requestImageDelete : null} />}
+    {galleryIndex != null && galleryImages.length > 0 && <Gallery place={place} images={galleryImages} initialIndex={galleryIndex} onClose={closeGallery} onRequestDelete={permissions.delete_place_images ? requestImageDelete : null} />}
     {deleteImage && <ImageDeleteDialog onCancel={() => setDeleteImage(null)} onConfirm={busy ? null : removeImage} />}
     {deletePlace && <PlaceDeleteDialog place={place} onCancel={() => setDeletePlace(false)} onConfirm={busy ? null : removePlace} />}
   </aside>;
 }
 
 function MobileListSheet({ places, selectedPlaceId, onSelect, tagCatalog }) {
-  const [open, setOpen] = useState(false);
-  const touchY = useRef(null);
-  const finishSwipe = event => {
-    const delta = touchY.current - event.changedTouches[0].clientY;
-    if (Math.abs(delta) > 24) setOpen(delta > 0);
-    touchY.current = null;
-  };
+  const compactSnapPoint = '5.5rem';
+  const expandedSnapPoint = 0.55;
+  const [snapPoint, setSnapPoint] = useState(compactSnapPoint);
+  const open = snapPoint === expandedSnapPoint;
   return (
-    <div className={`absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-2xl bg-surface-solid shadow-sheet transition-[height] ${open ? 'h-[55%]' : 'h-[5.5rem]'}`}>
-      <Button
-        className="h-auto shrink-0 flex-col items-stretch px-4 pt-2 pb-1 text-left"
-        variant="full-surface"
-        type="button"
-        aria-expanded={open}
-        aria-label={open ? 'Liste einklappen' : 'Liste ausklappen'}
-        onClick={() => setOpen(current => !current)}
-        onTouchStart={event => { touchY.current = event.touches[0].clientY; }}
-        onTouchEnd={finishSwipe}
-      >
-        <span className="mx-auto block h-1 w-10 rounded-full bg-ring/40" />
-        <strong className="mt-2 block text-sm">{places.length} Auslagerorte</strong>
-      </Button>
-      <div className="min-h-0 flex-1 overflow-hidden px-4" inert={open ? undefined : ''} aria-hidden={!open}>
-        <PlaceList places={places} selectedPlaceId={selectedPlaceId} onSelect={onSelect} tagCatalog={tagCatalog} />
-      </div>
-    </div>
+    <Drawer
+      open
+      modal={false}
+      disablePointerDismissal
+      snapPoints={[compactSnapPoint, expandedSnapPoint]}
+      snapPoint={snapPoint}
+      onSnapPointChange={nextSnapPoint => { if (nextSnapPoint != null) setSnapPoint(nextSnapPoint); }}
+      snapToSequentialPoints
+      showSwipeHandle
+    >
+      <DrawerContent className="z-10 bg-surface-solid shadow-sheet">
+        <DrawerTitle className="sr-only">Auslagerorte</DrawerTitle>
+        <Button
+          className="h-auto shrink-0 flex-col items-stretch px-4 pt-1 pb-1 text-left"
+          variant="full-surface"
+          type="button"
+          aria-expanded={open}
+          aria-label={open ? 'Liste einklappen' : 'Liste ausklappen'}
+          onClick={() => setSnapPoint(open ? compactSnapPoint : expandedSnapPoint)}
+        >
+          <strong className="block text-sm">{places.length} Auslagerorte</strong>
+        </Button>
+        <div className="min-h-0 flex-1 overflow-hidden px-4" inert={!open} aria-hidden={!open}>
+          <PlaceList places={places} selectedPlaceId={selectedPlaceId} onSelect={onSelect} tagCatalog={tagCatalog} />
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
-export function PlacesPage({ data, MapComponent = GoogleMap, initialPlaceId = null, mapTypeId = 'roadmap', onSaved, navigateRoute, mutate }) {
+export function PlacesPage({ data, MapComponent = GoogleMap, initialPlaceId = null, mapTypeId = 'roadmap', fetchImpl = fetch, onSaved, navigateRoute, mutate }) {
   const isMobile = useIsMobile();
   const params = new URLSearchParams(window.location.search);
+  const [placeDetails, setPlaceDetails] = useState({});
   const [query, setQueryState] = useState(params.get('q') || '');
   const [tags, setTagsState] = useState(() => (data.available_tags || []).filter(tag => params.getAll('tag').includes(tag)));
   const [maximumWalkingMinutes, setMaximumWalkingMinutesState] = useState(
@@ -337,6 +381,9 @@ export function PlacesPage({ data, MapComponent = GoogleMap, initialPlaceId = nu
   );
   const [selectedPlaceId, setSelectedPlaceId] = useState(initialPlaceId ? Number(initialPlaceId) : null);
   const [peek, setPeek] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [detailMounted, setDetailMounted] = useState(Boolean(initialPlaceId));
+  useEffect(() => setPlaceDetails({}), [data.places]);
   const updateUrl = (nextQuery, nextTags, nextMaximumWalkingMinutes) => {
     const nextParameters = new URLSearchParams(window.location.search);
     nextParameters.delete('q');
@@ -389,23 +436,57 @@ export function PlacesPage({ data, MapComponent = GoogleMap, initialPlaceId = nu
         )
       )
   )), [data.places, maximumWalkingMinutes, query, tags]);
-  const selected = findById(data.places || [], selectedPlaceId);
+  const selected = placeDetails[selectedPlaceId] || findById(data.places || [], selectedPlaceId);
   const homePlace = (data.places || []).find(
     place => place.name.trim().toLocaleLowerCase('de') === 'budo',
   ) || null;
-  const choose = id => { setSelectedPlaceId(Number(id)); setPeek(false); };
-  const closeDetails = () => {
+  const refreshSelectedPlace = async () => {
+    const response = await fetchImpl(`/api/route-data/place-detail/?id=${encodeURIComponent(selectedPlaceId)}`, {
+      credentials: 'same-origin',
+    });
+    if (!response.ok) throw new Error('Auslagerort konnte nicht aktualisiert werden.');
+    const result = await response.json();
+    const updatedPlace = findById(result.places || [], selectedPlaceId);
+    if (!updatedPlace) throw new Error('Auslagerort konnte nicht aktualisiert werden.');
+    setPlaceDetails(current => ({ ...current, [updatedPlace.id]: updatedPlace }));
+    await onSaved?.(updatedPlace);
+  };
+  const choose = id => { setSelectedPlaceId(Number(id)); setPeek(false); setClosing(false); setDetailMounted(true); };
+  const finishCloseDetails = () => {
     setSelectedPlaceId(null);
+    setClosing(false);
+    setDetailMounted(false);
     if (initialPlaceId != null) {
       const target = `/auslagerorte-list/${window.location.search}`;
       if (navigateRoute) navigateRoute(target, { replace: true });
       else window.history.replaceState(window.history.state, '', target);
     }
   };
-  return <div className="relative h-[calc(100svh-var(--app-header-height,0px))] min-h-80 w-full overflow-hidden"><MapComponent apiKey={data.google_maps_browser_api_key} mapId={data.google_maps_map_id} mapTypeId={mapTypeId} className="absolute inset-0 h-full w-full" places={filtered} homePlace={homePlace} selectedPlaceId={selectedPlaceId} onSelectPlace={choose} />
+  const closeDetails = () => {
+    if (isMobile && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) setClosing(true);
+    else finishCloseDetails();
+  };
+  const collapseDetails = () => {
+    setPeek(true);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) setDetailMounted(false);
+  };
+  const openDetails = () => {
+    setDetailMounted(true);
+    setPeek(false);
+  };
+  const finishDetailMotion = () => {
+    if (closing) finishCloseDetails();
+    else if (peek) setDetailMounted(false);
+  };
+  useEffect(() => {
+    if (!detailMounted || (!closing && !peek)) return undefined;
+    const timeout = window.setTimeout(finishDetailMotion, 400);
+    return () => window.clearTimeout(timeout);
+  }, [closing, detailMounted, peek]);
+  return <div className="relative h-[calc(100dvh-var(--app-header-height,0px))] min-h-80 w-full overflow-hidden"><MapComponent apiKey={data.google_maps_browser_api_key} mapId={data.google_maps_map_id} mapTypeId={mapTypeId} className="absolute inset-0 h-full w-full" places={filtered} homePlace={homePlace} selectedPlaceId={selectedPlaceId} onSelectPlace={choose} />
     {isMobile ? <><div className="absolute top-2 right-2 left-2 z-10 flex flex-col gap-1.5 rounded-xl border border-border bg-card p-2 shadow-elevated backdrop-blur"><Search filters={filters} /><Filters filters={filters} row /></div>{!selected && <MobileListSheet places={filtered} selectedPlaceId={selectedPlaceId} onSelect={choose} tagCatalog={data.tag_catalog} />}</> : <div className="absolute top-3 left-3 z-10 flex max-h-[calc(100%-1.5rem)] w-80 max-w-[calc(100%-1.5rem)] flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-elevated backdrop-blur"><Search filters={filters} /><Filters filters={filters} /><PlaceList places={filtered} selectedPlaceId={selectedPlaceId} onSelect={choose} tagCatalog={data.tag_catalog} /></div>}
-    {selected && !peek && <DetailSidebar place={selected} token={data.csrf_token} onBack={closeDetails} onSaved={onSaved} onPeek={isMobile ? () => setPeek(true) : undefined} tagCatalog={data.tag_catalog} permissions={data.permissions} mutate={mutate} navigateRoute={navigateRoute} />}
-    {selected && isMobile && peek && <div className="absolute inset-x-0 bottom-0 z-20 rounded-t-2xl bg-surface-solid shadow-sheet"><Button className="h-auto flex-col items-stretch px-4 pt-2 pb-3 text-left" variant="full-surface" type="button" aria-label="Details ausklappen" onClick={() => setPeek(false)} onTouchStart={event => { event.currentTarget.dataset.touchY = event.touches[0].clientY; }} onTouchEnd={event => { if (Number(event.currentTarget.dataset.touchY) - event.changedTouches[0].clientY > 24) setPeek(false); }}><span className="mx-auto block h-1 w-10 rounded-full bg-ring/40" /><span className="mt-2 flex justify-between gap-2"><span><strong className="block">{selected.name}</strong><TimeBadges place={selected} /></span>{selected.images[0] && <img className="h-12 w-16 rounded-lg object-cover" src={selected.images[0]} alt="" />}</span></Button></div>}
+    {selected && detailMounted && <DetailSidebar place={selected} token={data.csrf_token} onBack={closeDetails} onSaved={refreshSelectedPlace} onPeek={isMobile ? collapseDetails : undefined} motion={peek || closing ? 'exit' : 'enter'} onMotionEnd={finishDetailMotion} tagCatalog={data.tag_catalog} permissions={data.permissions} mutate={mutate} navigateRoute={navigateRoute} />}
+    {selected && isMobile && peek && !closing && !detailMounted && <div className="absolute inset-x-0 bottom-0 z-20 animate-in rounded-t-2xl bg-surface-solid shadow-sheet slide-in-from-bottom duration-300 motion-reduce:animate-none"><Button className="h-auto flex-col items-stretch px-4 pt-2 pb-3 text-left" variant="full-surface" type="button" aria-label="Details ausklappen" onClick={openDetails} onTouchStart={event => { event.currentTarget.dataset.touchY = event.touches[0].clientY; }} onTouchEnd={event => { if (Number(event.currentTarget.dataset.touchY) - event.changedTouches[0].clientY > 24) openDetails(); }}><span className="mx-auto block h-1 w-10 rounded-full bg-ring/40" /><span className="mt-2 flex justify-between gap-2"><span><strong className="block">{selected.name}</strong><TimeBadges place={selected} /></span>{selected.images[0] && <img className="h-12 w-16 rounded-lg object-cover" src={selected.images[0]} alt="" />}</span></Button></div>}
   </div>;
 }
 
@@ -530,9 +611,9 @@ const tagSettingsHeaderAction = (_data, { setPageState }) => <Button className="
 
 export const placeRoutes = [
   { pattern: /^\/auslagerorte\/tags$/, page: 'place-tag-settings', title: 'Auslagerort-Tags', domain: 'places', readContractKey: 'place-tag-settings', headerAction: tagSettingsHeaderAction, render: ({ data, mutate, pageState, setPageState }) => <PlaceTagSettingsPage data={data} mutate={mutate} createOpen={Boolean(pageState?.createTagOpen)} onCreateOpenChange={open => setPageState?.(current => ({ ...current, createTagOpen: open }))} /> },
-  { pattern: /^\/auslagerorte-list$/, page: 'places', title: 'Auslagerorte', domain: 'places', readContractKey: 'places-list', headerAction: placesHeaderAction(true), render: ({ data, refresh, mutate, navigateRoute, pageState }) => <PlacesPage data={data} mapTypeId={placesMapType(pageState)} onSaved={refresh} mutate={mutate} navigateRoute={navigateRoute} /> },
+  { pattern: /^\/auslagerorte-list$/, page: 'places', title: 'Auslagerorte', domain: 'places', readContractKey: 'places-list', headerAction: placesHeaderAction(true), render: ({ data, fetchImpl, mutate, navigateRoute, pageState }) => <PlacesPage data={data} fetchImpl={fetchImpl} mapTypeId={placesMapType(pageState)} mutate={mutate} navigateRoute={navigateRoute} /> },
   { pattern: /^\/auslagerorte\/create$/, page: 'place-create', title: 'Neuer Auslagerort', domain: 'places', readContractKey: 'place-create', render: ({ data }) => <PlaceFormPage data={data} /> },
   { pattern: /^\/auslagerorte\/(\d+)\/update$/, page: 'place-update', title: 'Auslagerort bearbeiten', domain: 'places', readContractKey: 'place-update', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, render: ({ route, data }) => <PlaceFormPage data={data} id={route.id} /> },
   { pattern: /^\/auslagerorte\/(\d+)\/upload-image$/, page: 'place-images', title: 'Bilder hochladen', domain: 'places', readContractKey: 'place-images', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, render: ({ route, data }) => <ImageUploadPage data={data} id={route.id} /> },
-  { pattern: /^\/auslagerorte\/(\d+)$/, page: 'place-detail', title: 'Auslagerort', domain: 'places', readContractKey: 'places-list', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, headerAction: placesHeaderAction(), render: ({ route, data, refresh, mutate, navigateRoute, pageState }) => <PlacesPage data={data} initialPlaceId={route.id} mapTypeId={placesMapType(pageState)} onSaved={refresh} mutate={mutate} navigateRoute={navigateRoute} /> },
+  { pattern: /^\/auslagerorte\/(\d+)$/, page: 'place-detail', title: 'Auslagerort', domain: 'places', readContractKey: 'places-list', params: match => ({ id: match[1] }), resolveTitle: selectedPlaceTitle, headerAction: placesHeaderAction(), render: ({ route, data, fetchImpl, mutate, navigateRoute, pageState }) => <PlacesPage data={data} fetchImpl={fetchImpl} initialPlaceId={route.id} mapTypeId={placesMapType(pageState)} mutate={mutate} navigateRoute={navigateRoute} /> },
 ];
