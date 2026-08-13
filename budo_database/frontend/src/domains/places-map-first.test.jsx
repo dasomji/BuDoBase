@@ -213,10 +213,14 @@ describe('map-first Auslagerorte', () => {
 
   it('submits a comment with photos from the sidebar through the existing endpoint', async () => {
     const onSaved = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue(response({ ok: true }));
+    const fetchMock = vi.fn(async url => {
+      if (url === '/api/form-submit/') return response({ ok: true });
+      if (url === '/api/route-data/place-detail/?id=7') return response({ places: [places[1]] });
+      throw new Error(`Unexpected request: ${url}`);
+    });
     vi.stubGlobal('fetch', fetchMock);
     const user = userEvent.setup();
-    renderPage({ initialPlaceId: '7', onSaved });
+    renderPage({ initialPlaceId: '7', fetchImpl: fetchMock, onSaved });
 
     const comment = screen.getByRole('textbox', { name: 'Kommentar' });
     await user.type(comment, 'Neuer Hinweis');
@@ -229,6 +233,7 @@ describe('map-first Auslagerorte', () => {
     expect(body.get('_target')).toBe('/auslagerorte/7/');
     expect(body.get('notiz')).toBe('Neuer Hinweis');
     expect(body.getAll('images')).toEqual([photo]);
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/route-data/place-detail/?id=7');
   });
 
   it('turns historic detail routes into the list contract with the selected Ort open', () => {
@@ -249,26 +254,50 @@ describe('map-first Auslagerorte', () => {
     const user = userEvent.setup();
     renderPage();
 
+    const mapShell = screen.getByRole('region', { name: 'Google Karte' }).parentElement;
+    expect(mapShell).toHaveClass('h-[calc(100dvh-var(--app-header-height,0px))]');
+    expect(document.querySelector('[data-slot="drawer-popup"]')).toBeInTheDocument();
+
     const listToggle = screen.getByRole('button', { name: 'Liste ausklappen' });
     expect(listToggle).toHaveTextContent('4 Auslagerorte');
+    expect(listToggle).not.toHaveAttribute('data-base-ui-swipe-ignore');
     await user.click(listToggle);
     expect(screen.getByRole('button', { name: 'Liste einklappen' })).toHaveAttribute('aria-expanded', 'true');
+    expect(document.querySelector('[data-slot="places-list-scroll"]')).toHaveClass('overscroll-y-contain');
     await user.click(screen.getByRole('button', { name: /^Waldwiese/ }));
 
     expect(screen.queryByRole('button', { name: /Liste (ein|aus)klappen/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Details einklappen' }));
+    const detail = screen.getByRole('complementary', { name: 'Waldwiese' });
+    const detailHandle = screen.getByRole('button', { name: 'Details einklappen' });
+    const carousel = within(detail).getByRole('button', { name: 'Galerie öffnen' }).parentElement;
+    expect(detail).toHaveClass('overscroll-y-none', 'max-[900px]:pt-2');
+    expect(detail).toHaveAttribute('data-motion', 'enter');
+    expect(detail).toHaveClass('max-[900px]:animate-in', 'max-[900px]:slide-in-from-bottom');
+    expect(carousel).toHaveClass('bg-surface-solid');
+    expect(carousel).not.toHaveClass('bg-muted');
+    expect(detailHandle).toHaveClass('touch-none');
+    await user.click(detailHandle);
+    expect(detail).toHaveAttribute('data-motion', 'exit');
+    expect(detail).toHaveClass('max-[900px]:animate-out', 'max-[900px]:slide-out-to-bottom');
+    expect(screen.queryByRole('button', { name: 'Details ausklappen' })).not.toBeInTheDocument();
+    await waitFor(() => expect(detail).not.toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Details ausklappen' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Details ausklappen' }));
+    expect(screen.getByRole('complementary', { name: 'Waldwiese' })).toHaveAttribute('data-motion', 'enter');
     const gallery = screen.getByRole('button', { name: 'Galerie öffnen' });
     fireEvent.touchStart(gallery, { touches: [{ clientY: 100 }] });
     fireEvent.touchEnd(gallery, { changedTouches: [{ clientY: 180 }] });
-    const peek = screen.getByRole('button', { name: 'Details ausklappen' });
+    const peek = await screen.findByRole('button', { name: 'Details ausklappen' });
     expect(peek).toHaveTextContent('Waldwiese');
     expect(peek).toHaveTextContent('14 min');
     expect(screen.queryByRole('button', { name: 'Liste ausklappen' })).not.toBeInTheDocument();
 
     fireEvent.touchStart(peek, { touches: [{ clientY: 180 }] });
     fireEvent.touchEnd(peek, { changedTouches: [{ clientY: 100 }] });
-    expect(screen.getByRole('complementary', { name: 'Waldwiese' })).toBeInTheDocument();
+    const reopenedDetail = screen.getByRole('complementary', { name: 'Waldwiese' });
+    expect(reopenedDetail).toBeInTheDocument();
+    await user.click(within(reopenedDetail).getByRole('button', { name: 'Zurück zur Liste' }));
+    expect(reopenedDetail).toHaveAttribute('data-motion', 'exit');
+    await waitFor(() => expect(reopenedDetail).not.toBeInTheDocument());
   });
 });

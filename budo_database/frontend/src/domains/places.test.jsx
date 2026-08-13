@@ -16,6 +16,9 @@ describe('Auslagerorte workflows', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    delete document.documentElement.requestFullscreen;
+    delete document.exitFullscreen;
+    delete document.fullscreenElement;
     window.history.pushState({}, '', '/');
   });
 
@@ -124,13 +127,19 @@ describe('Auslagerorte workflows', () => {
   it('opens the native image picker and uploads all selected images immediately', async () => {
     const user = userEvent.setup();
     const onSaved = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue(response({
-      ok: true,
-      redirect: '/auslagerorte/4/',
-    }));
-    vi.stubGlobal('fetch', fetchMock);
     const place = { id: 4, name: 'Ada Hütte', tags: [], coordinates: null, notes: [], images: [] };
-    render(<PlacesPage data={{ csrf_token: 'csrf-token', available_tags: [], places: [place] }} MapComponent={() => <div />} onSaved={onSaved} />);
+    const fetchMock = vi.fn(async url => {
+      if (url === '/api/form-submit/') return response({
+        ok: true,
+        redirect: '/auslagerorte/4/',
+      });
+      if (url === '/api/route-data/place-detail/?id=4') return response({
+        places: [{ ...place, images: ['/media/one.jpg', '/media/two.png'] }],
+      });
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<PlacesPage data={{ csrf_token: 'csrf-token', available_tags: [], places: [place] }} MapComponent={() => <div />} fetchImpl={fetchMock} onSaved={onSaved} />);
     await user.click(screen.getByRole('button', { name: /Ada Hütte/ }));
 
     const picker = screen.getByLabelText('Bilder auswählen');
@@ -148,8 +157,9 @@ describe('Auslagerorte workflows', () => {
     fireEvent.change(picker, { target: { files } });
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
-    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/form-submit/');
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/route-data/place-detail/?id=4');
     const body = fetchMock.mock.calls[0][1].body;
     expect(body.get('_target')).toBe('/auslagerorte/4/upload-image/');
     expect(body.getAll('images')).toEqual(files);
@@ -188,6 +198,7 @@ describe('Auslagerorte workflows', () => {
     expect(satelliteButton).toHaveClass('h-8', 'max-[900px]:rounded-r-full', 'max-[900px]:rounded-l-none');
     expect(roadmapButton).toHaveAttribute('aria-pressed', 'true');
     await user.click(satelliteButton);
+    expect(screen.queryByRole('button', { name: /Vollbild/ })).not.toBeInTheDocument();
 
     const update = setPageState.mock.calls[0][0];
     expect(update({ placesMapType: 'roadmap', untouched: true })).toEqual({
@@ -196,9 +207,8 @@ describe('Auslagerorte workflows', () => {
     });
   });
 
-  it('refreshes the folded list after a sidebar comment without reloading bootstrap', async () => {
+  it('updates only the saved place after a sidebar comment without entering route loading', async () => {
     window.history.pushState({}, '', '/auslagerorte/4');
-    let listReads = 0;
     const place = { id: 4, name: 'Ada Hütte', tags: [], coordinates: null, notes: [], images: [] };
     const fetchMock = vi.fn(async url => {
       if (url === '/api/bootstrap/') return response({
@@ -211,26 +221,31 @@ describe('Auslagerorte workflows', () => {
         search_index: { kids: [], focuses: [], places: [{ id: 4, name: 'Ada Hütte' }] },
       });
       if (url === '/api/route-data/places-list/?id=4') {
-        listReads += 1;
-        return response({ places: [{ ...place, notes: listReads === 1 ? [] : [{ id: 7, author: 'ada', date: '2026-07-17', text: 'Wasser abdrehen', photos: [] }] }], available_tags: [] });
+        return response({ places: [place], available_tags: [] });
       }
       if (url === '/api/form-submit/') return response({ ok: true });
+      if (url === '/api/route-data/place-detail/?id=4') return response({
+        places: [{ ...place, notes: [{ id: 7, author: 'ada', date: '2026-07-17', text: 'Wasser abdrehen', photos: [] }] }],
+      });
       throw new Error(`Unexpected request: ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<App fetchImpl={fetchMock} />);
     const note = await screen.findByRole('textbox', { name: 'Kommentar' });
+    const detail = screen.getByRole('complementary', { name: 'Ada Hütte' });
     fireEvent.change(note, { target: { value: 'Wasser abdrehen' } });
     fireEvent.click(screen.getByRole('button', { name: 'Kommentar senden' }));
 
     expect(await screen.findByText(/Wasser abdrehen/)).toBeInTheDocument();
+    expect(screen.queryByText('Seitendaten werden geladen…')).not.toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Ada Hütte' })).toBe(detail);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
     expect(fetchMock.mock.calls.map(call => call[0])).toEqual([
       '/api/bootstrap/',
       '/api/route-data/places-list/?id=4',
       '/api/form-submit/',
-      '/api/route-data/places-list/?id=4',
+      '/api/route-data/place-detail/?id=4',
     ]);
   });
 
@@ -317,6 +332,17 @@ describe('Auslagerorte workflows', () => {
 
   it('centers a single gallery image without previous or next controls', async () => {
     const user = userEvent.setup();
+    let fullscreenElement = null;
+    document.documentElement.requestFullscreen = vi.fn(async () => {
+      fullscreenElement = document.documentElement;
+    });
+    document.exitFullscreen = vi.fn(async () => {
+      fullscreenElement = null;
+    });
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => fullscreenElement,
+    });
     const place = {
       id: 4,
       name: 'Ada Hütte',
@@ -329,11 +355,14 @@ describe('Auslagerorte workflows', () => {
     await user.click(screen.getByRole('button', { name: /Ada Hütte/ }));
     await user.click(screen.getByRole('button', { name: 'Galerie öffnen' }));
 
+    expect(document.documentElement.requestFullscreen).toHaveBeenCalledWith({ navigationUI: 'hide' });
     const dialog = screen.getByRole('dialog', { name: 'Bilder von Ada Hütte' });
     expect(within(dialog).getByAltText('Ada Hütte 1')).toHaveClass('justify-self-center');
     expect(within(dialog).queryByRole('button', { name: 'Vorheriges Bild' })).not.toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: 'Nächstes Bild' })).not.toBeInTheDocument();
     expect(within(dialog).queryByText('1 / 1')).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Galerie schließen' }));
+    await waitFor(() => expect(document.exitFullscreen).toHaveBeenCalledOnce());
   });
 
   it('opens comment photos in the gallery and shows the associated comment', async () => {

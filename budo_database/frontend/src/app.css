@@ -255,7 +255,7 @@
 }
 
   #root {
-    min-height: 100vh;
+    min-height: 100dvh;
     background:
       url("../../budo_app/static/img/BudoMap20a.png") no-repeat fixed bottom center,
       radial-gradient(
@@ -765,7 +765,7 @@ gmp-advanced-marker:focus-visible .map-marker {
 .app-shell-content {
   display: flex;
   min-width: 0;
-  min-height: 100svh;
+  min-height: 100dvh;
   flex: 1;
   flex-direction: column;
 }
