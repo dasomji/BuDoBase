@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppSidebar, ApplicationShell } from './app-sidebar';
 import { Header, Messages } from './components';
-import { Toaster } from './components/ui/toast';
+import { Toaster, useErrorToast } from './components/ui/toast';
 import {
   loadBootstrap,
   loadRouteData,
@@ -27,11 +27,14 @@ const browserNavigate = path => window.location.assign(path);
 function AppContent({
   fetchImpl = fetch,
   navigate = browserNavigate,
+  reload = () => window.location.reload(),
 }) {
+  const showError = useErrorToast();
   const [route, setRoute] = useState(() => parseRoute(window.location.pathname));
   const [bootstrap, setBootstrap] = useState(null);
   const [bootstrapError, setBootstrapError] = useState(null);
   const [pageState, setPageState] = useState({});
+  const [switchRecoveryRequired, setSwitchRecoveryRequired] = useState(false);
   const [routeState, setRouteState] = useState({
     loading: false,
     data: null,
@@ -184,6 +187,51 @@ function AppContent({
     if (refreshAfter) await refreshRoute({ preserveData: true });
     return responsePayload;
   };
+  const switchTurnus = async turnusId => {
+    let serverContextChanged = false;
+    try {
+      const response = await fetchImpl('/api/turnus-selection/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': bootstrap.csrf_token,
+        },
+        body: JSON.stringify({ turnus_id: turnusId }),
+      });
+      if (!response.ok) throw new Error(`Turnus switch failed (${response.status})`);
+      serverContextChanged = true;
+
+      // The server context has changed. Remove every action and datum from the
+      // old scope until a complete replacement context has been loaded.
+      setSwitchRecoveryRequired(true);
+
+      // Fetch the new shell and route before publishing either. A partial
+      // refresh must not combine old scoped data with the newly selected shell.
+      const nextBootstrap = await loadBootstrap(fetchImpl);
+      const nextRoute = request ? await loadRouteData(route, fetchImpl) : null;
+      setBootstrapError(null);
+      setBootstrap(nextBootstrap);
+      if (nextRoute) {
+        setRouteState({
+          loading: false,
+          data: nextRoute.data,
+          error: null,
+          notFound: nextRoute.notFound,
+          authenticationRequired: nextRoute.authenticationRequired,
+        });
+      }
+      setSwitchRecoveryRequired(false);
+    } catch {
+      if (serverContextChanged) {
+        reload();
+        return;
+      }
+      showError('Der Turnus konnte nicht gewechselt werden. Bitte erneut versuchen.');
+    }
+  };
+
+  if (switchRecoveryRequired) return <div className="react-loading">Turnus wird gewechselt…</div>;
 
   if (bootstrapError) return <ErrorState title="Sitzung konnte nicht geladen werden" error={bootstrapError} />;
   if (!bootstrap) return <div className="react-loading">Sitzung wird geladen…</div>;
@@ -224,7 +272,9 @@ function AppContent({
           route.page === 'happy-cleaning-overview'
             ? overviewSidebarEvents
             : data.happy_cleaning_events
-        } permissions={data.permissions} />
+        } permissions={data.permissions}
+        turnusSelection={data.turnus_selection}
+        onTurnusChange={switchTurnus} />
       ) : null}
       header={<Header title={resolveRouteHeaderTitle(route, data, title)} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data, { pageState, setPageState, mutate }) : null} />}
     >

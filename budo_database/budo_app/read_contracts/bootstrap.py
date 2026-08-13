@@ -1,11 +1,13 @@
 from django.conf import settings
 from django.contrib import messages
+from django.db import transaction
 from django.middleware.csrf import get_token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from budo_app.audit_policy import can_export_audit, can_view_audit
+from budo_app.memberships import approved_memberships_for, selected_turnus_for
 from budo_app.models import (
     Auslagerorte,
     HappyCleaning,
@@ -77,6 +79,7 @@ def _search_index(turnus):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@transaction.atomic
 def bootstrap(request):
     """Return public shell state and the minimal active-Turnus search index."""
     payload = {
@@ -94,7 +97,18 @@ def bootstrap(request):
     except Profil.DoesNotExist:
         profile = None
 
-    turnus = profile.turnus if profile else None
+    memberships = approved_memberships_for(request.user).select_related("turnus")
+    # Membership-aware accounts use the approved selection. Accounts not yet
+    # migrated retain the legacy shell context until #193 migrates all reads.
+    turnus = selected_turnus_for(request.user) if (
+        memberships.exists() or (profile and profile.membership_selection_enabled)
+    ) else (
+        profile.turnus if profile else None
+    )
+    turnus_options = [
+        {"id": membership.turnus_id, "label": str(membership.turnus)}
+        for membership in memberships.order_by("turnus__turnus_beginn", "turnus_id")
+    ]
     payload.update(
         {
             "profile": (
@@ -117,6 +131,10 @@ def bootstrap(request):
                 if turnus
                 else None
             ),
+            "turnus_selection": {
+                "selected_id": turnus.id if turnus else None,
+                "options": turnus_options,
+            },
             "permissions": _permissions(request.user),
             "search_index": _search_index(turnus),
             "happy_cleaning_events": _happy_cleaning_events(turnus),

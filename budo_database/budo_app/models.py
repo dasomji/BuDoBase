@@ -91,6 +91,7 @@ class Profil(models.Model):
         blank=True,
         related_name="selected_by_profiles",
     )
+    membership_selection_enabled = models.BooleanField(default=False)
 
     # Once membership-backed authorization has been used for this profile,
     # an empty membership set must fail closed instead of falling back to the
@@ -1061,6 +1062,44 @@ class AuditEvent(models.Model):
                 name="audit_resource_idx",
             ),
         ]
+
+
+class SecurityAuditEventManager(models.Manager.from_queryset(ImmutableAuditEventQuerySet)):
+    def create(self, **fields):
+        event = self.model(**fields)
+        event._audit_insert = True
+        event.save(force_insert=True, using=self._db)
+        return event
+
+
+class SecurityAuditEvent(models.Model):
+    """Minimal audit for denied operations that have no authorized Turnus scope."""
+
+    actor_id = models.BigIntegerField(null=True, blank=True)
+    action = models.CharField(max_length=100)
+    reason = models.CharField(max_length=40)
+    request_id = models.CharField(max_length=255)
+    attempted_turnus_id = models.BigIntegerField(null=True, blank=True)
+    occurred_at = models.DateTimeField(auto_now_add=True)
+
+    objects = SecurityAuditEventManager()
+
+    def save(self, *args, **kwargs):
+        if not getattr(self, "_audit_insert", False) or self.pk is not None:
+            raise ValidationError("Audit events are immutable.")
+        try:
+            return super().save(*args, **kwargs)
+        finally:
+            self._audit_insert = False
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError(
+            "Audit events may only be deleted by Turnus retention."
+        )
+
+    class Meta:
+        ordering = ("-occurred_at", "-id")
+        indexes = [models.Index(fields=("action", "-occurred_at"), name="security_audit_action_idx")]
 
 
 class Schwerpunkte(models.Model):

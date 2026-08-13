@@ -105,3 +105,24 @@ class TurnusMembershipDomainTests(TestCase):
 
         membership.delete()
         self.assertIsNone(selected_turnus_for(self.user))
+
+    def test_legacy_profile_turnus_is_never_selection_authority(self):
+        profile = self.user.profil
+        profile.turnus = self.first
+        profile.selected_turnus = None
+        profile.save(update_fields=("turnus", "selected_turnus"))
+
+        self.assertIsNone(selected_turnus_for(self.user))
+        profile.refresh_from_db()
+        self.assertIsNone(profile.selected_turnus_id)
+
+    def test_revoked_fallback_is_revalidated_before_it_is_returned(self):
+        first_membership = create_membership(user=self.user, turnus=self.first)
+        second_membership = create_membership(user=self.user, turnus=self.second)
+        select_turnus(self.user, self.first)
+        first_membership.delete()
+        second_membership.delete()
+
+        self.assertIsNone(selected_turnus_for(self.user))
+        self.user.profil.refresh_from_db()
+        self.assertIsNone(self.user.profil.selected_turnus_id)

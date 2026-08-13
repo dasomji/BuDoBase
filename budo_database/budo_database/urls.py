@@ -21,11 +21,17 @@ from budo_app.audit_views import audit_event_detail, audit_page, export_audit_ev
 from budo_app.kid_edit_views import kid_edit
 from budo_app.read_contracts.bootstrap import bootstrap
 from budo_app.read_contracts.views import route_data
+from budo_app.turnus_selection_views import turnus_selection
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('audit/', audit_page, name='audit-page'),
     path('api/bootstrap/', bootstrap, name='bootstrap-api'),
+    path(
+        'api/turnus-selection/',
+        turnus_selection,
+        name='turnus-selection-api',
+    ),
     path(
         'api/route-data/<slug:contract_key>/',
         route_data,
