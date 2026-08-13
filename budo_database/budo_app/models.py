@@ -681,15 +681,25 @@ class TurnusJoinRequest(models.Model):
 class TurnusJoinRequestNotification(models.Model):
     """A durable, recipient-specific notification created with a join request."""
 
+    class State(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENDING = "sending", "Sending"
+        DELIVERED = "delivered", "Delivered"
+        FAILED = "failed", "Failed"
+
     join_request = models.ForeignKey(
         TurnusJoinRequest, on_delete=models.CASCADE, related_name="notifications"
     )
     recipient_user = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="join_request_notifications"
     )
-    recipient_email = models.EmailField()
+    recipient_email = models.EmailField(blank=True)
+    state = models.CharField(
+        max_length=10, choices=State.choices, default=State.PENDING
+    )
     attempts = models.PositiveIntegerField(default=0)
     last_error = models.TextField(blank=True, default="")
+    claimed_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -701,6 +711,9 @@ class TurnusJoinRequestNotification(models.Model):
             )
         ]
         ordering = ("id",)
+        indexes = [
+            models.Index(fields=("state", "claimed_at"), name="join_notify_claim_idx")
+        ]
 
 
 class HappyCleaning(models.Model):

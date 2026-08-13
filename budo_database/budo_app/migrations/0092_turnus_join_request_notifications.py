@@ -14,9 +14,11 @@ class Migration(migrations.Migration):
             name="TurnusJoinRequestNotification",
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("recipient_email", models.EmailField(max_length=254)),
+                ("recipient_email", models.EmailField(blank=True, max_length=254)),
+                ("state", models.CharField(choices=[("pending", "Pending"), ("sending", "Sending"), ("delivered", "Delivered"), ("failed", "Failed")], default="pending", max_length=10)),
                 ("attempts", models.PositiveIntegerField(default=0)),
                 ("last_error", models.TextField(blank=True, default="")),
+                ("claimed_at", models.DateTimeField(blank=True, null=True)),
                 ("delivered_at", models.DateTimeField(blank=True, null=True)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("join_request", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="notifications", to="budo_app.turnusjoinrequest")),
@@ -27,5 +29,9 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="turnusjoinrequestnotification",
             constraint=models.UniqueConstraint(fields=("join_request", "recipient_user"), name="unique_join_request_notification_recipient"),
+        ),
+        migrations.AddIndex(
+            model_name="turnusjoinrequestnotification",
+            index=models.Index(fields=["state", "claimed_at"], name="join_notify_claim_idx"),
         ),
     ]

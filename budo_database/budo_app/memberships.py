@@ -1,9 +1,16 @@
 """Public domain operations for approved Turnus memberships and selection."""
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from .models import Profil, Turnus, TurnusMembership
+from .models import Profil, Turnus, TurnusJoinRequest, TurnusMembership
+
+
+def lock_membership_scope(*, user_id, turnus_id):
+    """Lock the stable parents used by all membership/request write workflows."""
+    get_user_model().objects.select_for_update().get(pk=user_id)
+    Turnus.objects.select_for_update().get(pk=turnus_id)
 
 
 def approved_memberships_for(user):
@@ -28,6 +35,7 @@ def create_membership(
     team_label="",
 ):
     """Create one approved membership through the public domain seam."""
+    lock_membership_scope(user_id=user.pk, turnus_id=turnus.pk)
     membership = TurnusMembership(
         user=user,
         turnus=turnus,
@@ -36,6 +44,11 @@ def create_membership(
     )
     membership.full_clean()
     membership.save()
+    TurnusJoinRequest.objects.filter(
+        user=user,
+        turnus=turnus,
+        status=TurnusJoinRequest.Status.PENDING,
+    ).update(status=TurnusJoinRequest.Status.SUPERSEDED)
     return membership
 
 

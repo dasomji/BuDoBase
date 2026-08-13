@@ -1,13 +1,21 @@
-from datetime import date
+from datetime import date, timedelta
+from io import StringIO
+from threading import Event, Thread
+from time import sleep
+from unittest import skipUnless
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core import mail
-from django.db import IntegrityError
-from django.test import Client, TestCase
+from django.core.management import call_command
+from django.db import IntegrityError, close_old_connections, connection
+from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
-from unittest.mock import patch
+from django.utils import timezone
 
 from budo_app.join_requests import deliver_pending_join_request_notifications
+from budo_app.memberships import create_membership
+from budo_app.memberships import lock_membership_scope as real_lock_membership_scope
 from budo_app.models import (
     Turnus,
     TurnusJoinRequest,
@@ -102,7 +110,7 @@ class JoinRequestHttpTests(TestCase):
 
     def test_failed_recipient_is_durable_and_retry_does_not_resend_successes(self):
         with patch(
-            "budo_app.join_requests.send_mail",
+            "budo_app.join_requests.EmailMessage.send",
             side_effect=[RuntimeError("backend unavailable"), 1],
         ) as mocked_send:
             with self.captureOnCommitCallbacks(execute=True):
@@ -118,7 +126,7 @@ class JoinRequestHttpTests(TestCase):
             1,
         )
 
-        with patch("budo_app.join_requests.send_mail", return_value=1) as retry_send:
+        with patch("budo_app.join_requests.EmailMessage.send", return_value=1) as retry_send:
             deliver_pending_join_request_notifications()
             deliver_pending_join_request_notifications()
 
@@ -153,6 +161,85 @@ class JoinRequestHttpTests(TestCase):
                         reverse("turnus-join-request-api", args=[self.turnus.id])
                     )
 
+    def test_existing_pending_is_returned_without_attempting_an_insert(self):
+        existing = TurnusJoinRequest.objects.create(user=self.requester, turnus=self.turnus)
+        with patch(
+            "budo_app.join_requests.TurnusJoinRequest.objects.create",
+            side_effect=IntegrityError("unrelated constraint"),
+        ) as create:
+            response = self.client.post(reverse("turnus-join-request-api", args=[self.turnus.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["id"], existing.id)
+        create.assert_not_called()
+
+    def test_every_leitung_has_durable_state_even_with_blank_legacy_email(self):
+        invalid = User.objects.create_user("leitung-invalid", "", "safe-password")
+        TurnusMembership.objects.create(
+            user=invalid,
+            turnus=self.turnus,
+            functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse("turnus-join-request-api", args=[self.turnus.id]))
+
+        failed = TurnusJoinRequestNotification.objects.get(recipient_user=invalid)
+        self.assertEqual(failed.state, TurnusJoinRequestNotification.State.FAILED)
+        self.assertIn("valid email", failed.last_error)
+        self.assertEqual(TurnusJoinRequestNotification.objects.count(), 3)
+
+        stderr = StringIO()
+        call_command("deliver_join_request_notifications", stderr=stderr)
+        self.assertIn(f"#{failed.id}", stderr.getvalue())
+        self.assertIn("operator action", stderr.getvalue())
+
+    def test_membership_creation_supersedes_pending_request_under_shared_lock(self):
+        request = TurnusJoinRequest.objects.create(user=self.requester, turnus=self.turnus)
+        create_membership(user=self.requester, turnus=self.turnus)
+        request.refresh_from_db()
+        self.assertEqual(request.status, TurnusJoinRequest.Status.SUPERSEDED)
+        self.assertTrue(
+            TurnusMembership.objects.filter(user=self.requester, turnus=self.turnus).exists()
+        )
+
+    def test_delivery_uses_stable_idempotency_headers(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse("turnus-join-request-api", args=[self.turnus.id]))
+        notification = TurnusJoinRequestNotification.objects.first()
+        message = next(item for item in mail.outbox if item.to == [notification.recipient_email])
+        self.assertEqual(
+            message.extra_headers["X-Idempotency-Key"],
+            f"turnus-join-request-notification-{notification.id}",
+        )
+        self.assertIn(
+            f"turnus-join-request-notification-{notification.id}",
+            message.extra_headers["Message-ID"],
+        )
+
+    def test_stale_claim_is_recovered_but_live_claim_is_not_sent(self):
+        request = TurnusJoinRequest.objects.create(user=self.requester, turnus=self.turnus)
+        stale = TurnusJoinRequestNotification.objects.create(
+            join_request=request,
+            recipient_user=self.leitung,
+            recipient_email=self.leitung.email,
+            state=TurnusJoinRequestNotification.State.SENDING,
+            claimed_at=timezone.now() - timedelta(hours=1),
+        )
+        live_user = User.objects.get(username="leitung-2")
+        live = TurnusJoinRequestNotification.objects.create(
+            join_request=request,
+            recipient_user=live_user,
+            recipient_email=live_user.email,
+            state=TurnusJoinRequestNotification.State.SENDING,
+            claimed_at=timezone.now(),
+        )
+        deliver_pending_join_request_notifications()
+        stale.refresh_from_db()
+        live.refresh_from_db()
+        self.assertEqual(stale.state, TurnusJoinRequestNotification.State.DELIVERED)
+        self.assertEqual(stale.attempts, 1)
+        self.assertEqual(live.state, TurnusJoinRequestNotification.State.SENDING)
+        self.assertEqual(len(mail.outbox), 1)
+
     def test_approved_member_can_discover_other_turnuses_without_data_leak(self):
         TurnusMembership.objects.create(user=self.requester, turnus=self.turnus)
         profile = self.requester.profil
@@ -183,4 +270,54 @@ class JoinRequestHttpTests(TestCase):
                     "request_status": "approved",
                 },
             ],
+        )
+
+
+@skipUnless(connection.vendor == "postgresql", "requires PostgreSQL row locks")
+class MembershipRequestConcurrencyTests(TransactionTestCase):
+    reset_sequences = True
+
+    def test_membership_and_request_writers_serialize_on_shared_scope(self):
+        turnus = Turnus.objects.create(turnus_nr=8, turnus_beginn=date(2028, 7, 1))
+        requester = User.objects.create_user("race-requester", "race@example.com")
+        locked = Event()
+        release = Event()
+        outcomes = []
+
+        def pausing_lock(*, user_id, turnus_id):
+            real_lock_membership_scope(user_id=user_id, turnus_id=turnus_id)
+            locked.set()
+            release.wait(timeout=5)
+
+        def request_worker():
+            close_old_connections()
+            from budo_app.join_requests import create_join_request
+
+            with patch("budo_app.join_requests.lock_membership_scope", pausing_lock):
+                outcomes.append(create_join_request(user=requester, turnus=turnus))
+            close_old_connections()
+
+        def membership_worker():
+            close_old_connections()
+            create_membership(user=requester, turnus=turnus)
+            close_old_connections()
+
+        request_thread = Thread(target=request_worker)
+        request_thread.start()
+        self.assertTrue(locked.wait(timeout=5))
+        membership_thread = Thread(target=membership_worker)
+        membership_thread.start()
+        sleep(0.2)
+        release.set()
+        request_thread.join(timeout=5)
+        membership_thread.join(timeout=5)
+
+        self.assertFalse(request_thread.is_alive())
+        self.assertFalse(membership_thread.is_alive())
+        self.assertEqual(len(outcomes), 1)
+        join_request = outcomes[0][0]
+        join_request.refresh_from_db()
+        self.assertEqual(join_request.status, TurnusJoinRequest.Status.SUPERSEDED)
+        self.assertTrue(
+            TurnusMembership.objects.filter(user=requester, turnus=turnus).exists()
         )
