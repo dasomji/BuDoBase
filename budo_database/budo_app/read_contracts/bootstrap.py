@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib import messages
+from django.db import transaction
 from django.middleware.csrf import get_token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -78,6 +79,7 @@ def _search_index(turnus):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@transaction.atomic
 def bootstrap(request):
     """Return public shell state and the minimal active-Turnus search index."""
     payload = {
@@ -95,12 +97,15 @@ def bootstrap(request):
     except Profil.DoesNotExist:
         profile = None
 
-    turnus = selected_turnus_for(request.user)
+    memberships = approved_memberships_for(request.user).select_related("turnus")
+    # Membership-aware accounts use the approved selection. Accounts not yet
+    # migrated retain the legacy shell context until #193 migrates all reads.
+    turnus = selected_turnus_for(request.user) if memberships.exists() else (
+        profile.turnus if profile else None
+    )
     turnus_options = [
         {"id": membership.turnus_id, "label": str(membership.turnus)}
-        for membership in approved_memberships_for(request.user)
-        .select_related("turnus")
-        .order_by("turnus__turnus_beginn", "turnus_id")
+        for membership in memberships.order_by("turnus__turnus_beginn", "turnus_id")
     ]
     payload.update(
         {

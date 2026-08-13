@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
 
+from django.db import transaction
 from django.db.models import (
     Case,
     CharField,
@@ -24,6 +25,7 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
 
+from budo_app.memberships import selected_turnus_for
 from budo_app.models import (
     ErsteHilfeEintrag,
     ErsteHilfeFoto,
@@ -40,7 +42,6 @@ from budo_app.models import (
     TurnusMembership,
 )
 from budo_app.read_contracts.common import (
-    active_turnus_id,
     kid_full_name,
     serialize_first_aid_photos,
     serialize_photos,
@@ -329,6 +330,11 @@ def _membership_turnuses(user):
 def build_dashboard_contract(request):
     profile = (
         Profil.objects.filter(user_id=request.user.id)
+        .annotate(
+            has_approved_membership=Exists(
+                TurnusMembership.objects.filter(user_id=request.user.id)
+            )
+        )
         .select_related("user")
         .first()
     )
@@ -363,9 +369,25 @@ def build_dashboard_contract(request):
             "turnuses": _membership_turnuses(request.user),
         }
 
+    if profile.has_approved_membership or profile.selected_turnus_id is not None:
+        # Keep authorization and every protected read in one transaction. A
+        # concurrent membership removal therefore waits for this response's
+        # resource queries to finish.
+        with transaction.atomic():
+            return _build_dashboard_contract(request, profile)
+    return _build_dashboard_contract(request, profile)
+
+
+def _build_dashboard_contract(request, profile):
     # The dashboard is the representative vertical seam for selection. The
     # remaining scoped contracts migrate under #193.
-    turnus_id = active_turnus_id(request)
+    if profile.has_approved_membership or profile.selected_turnus_id is not None:
+        selected_turnus = selected_turnus_for(request.user)
+        turnus_id = selected_turnus.id if selected_turnus else None
+    else:
+        # Preserve pre-membership accounts until the comprehensive read
+        # migration in #193; membership-aware accounts never take this path.
+        turnus_id = profile.turnus_id
     activity_kind = request.query_params.get("activity")
     cursor = request.query_params.get("cursor")
     if activity_kind is not None:

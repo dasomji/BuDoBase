@@ -1,13 +1,16 @@
 from django.http import Http404
 from django.urls import reverse
 
-from budo_app.memberships import selected_turnus_for
+from budo_app.models import Profil
 
 
 def active_turnus_id(request):
-    """Return the validated approved selection for this request."""
-    turnus = selected_turnus_for(request.user)
-    return turnus.id if turnus else None
+    """Return the request user's selected Turnus without loading its profile."""
+    return (
+        Profil.objects.filter(user_id=request.user.id)
+        .values_list("turnus_id", flat=True)
+        .first()
+    )
 
 
 def require_active_turnus_id(request):

@@ -1,7 +1,10 @@
 from datetime import date
+from threading import Event, Thread
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.db import close_old_connections
+from django.test import Client, TestCase, TransactionTestCase, skipUnlessDBFeature
 from django.urls import reverse
 
 from budo_app.memberships import create_membership, select_turnus
@@ -156,3 +159,63 @@ class TurnusSwitchContractTests(TestCase):
             {current.id, forbidden.id, 999999},
         )
         self.assertNotIn(user.email, str([event.details for event in events]))
+
+
+@skipUnlessDBFeature("has_select_for_update")
+class TurnusSelectionConcurrencyTests(TransactionTestCase):
+    reset_sequences = True
+
+    def test_dashboard_reads_finish_before_concurrent_membership_removal(self):
+        turnus = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
+        user = User.objects.create_user(username="concurrent", password="secret")
+        membership = create_membership(user=user, turnus=turnus)
+        select_turnus(user, turnus)
+        Kinder.objects.create(
+            kid_index="race-1", kid_vorname="Still", kid_nachname="Authorized",
+            turnus=turnus,
+        )
+        reader_started = Event()
+        allow_reader_to_finish = Event()
+        deletion_finished = Event()
+        result = {}
+        from budo_app.read_contracts.domains.dashboard import _empty_summary
+
+        def pause_after_authorization(profile):
+            reader_started.set()
+            self.assertTrue(allow_reader_to_finish.wait(5))
+            return _empty_summary(profile)
+
+        def read_dashboard():
+            close_old_connections()
+            client = Client()
+            client.force_login(User.objects.get(pk=user.pk))
+            with patch(
+                "budo_app.read_contracts.domains.dashboard._empty_summary",
+                side_effect=pause_after_authorization,
+            ):
+                response = client.get(
+                    reverse("route-data-api", kwargs={"contract_key": "dashboard"})
+                )
+            result["status"] = response.status_code
+            result["kid_ids"] = [kid["id"] for kid in response.json()["kids"]]
+            close_old_connections()
+
+        def remove_membership():
+            close_old_connections()
+            membership.__class__.objects.filter(pk=membership.pk).delete()
+            deletion_finished.set()
+            close_old_connections()
+
+        reader = Thread(target=read_dashboard)
+        reader.start()
+        self.assertTrue(reader_started.wait(5))
+        remover = Thread(target=remove_membership)
+        remover.start()
+        self.assertFalse(deletion_finished.wait(0.2))
+        allow_reader_to_finish.set()
+        reader.join(5)
+        remover.join(5)
+
+        self.assertEqual(result["status"], 200)
+        self.assertEqual(result["kid_ids"], list(Kinder.objects.values_list("id", flat=True)))
+        self.assertTrue(deletion_finished.is_set())
