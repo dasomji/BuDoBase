@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date, datetime, timezone
 
 from django.contrib.auth.models import User
@@ -37,7 +38,7 @@ class DashboardContractTests(TestCase):
         )
         self.profile = self.user.profil
         self.profile.rufname = "Ada"
-        self.profile.turnus = self.turnus
+        approve_and_select_turnus(self.profile.user, self.turnus)
         self.profile.rolle = "b"
         self.profile.essen = "vt"
         self.profile.budo_family = "M"
@@ -123,10 +124,9 @@ class DashboardContractTests(TestCase):
         )
 
         other_user = User.objects.create_user(username="other-dashboard-user")
-        other_user.profil.turnus = self.other_turnus
+        approve_and_select_turnus(other_user, self.other_turnus)
         other_user.profil.rufname = "Other private teamer"
         other_user.profil.save()
-        create_membership(user=other_user, turnus=self.other_turnus)
         other_kid = Kinder.objects.create(
             kid_index="T3-1",
             kid_vorname="Other",

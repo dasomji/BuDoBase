@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date, timedelta
 
 from django.contrib.auth.models import User
@@ -30,9 +31,8 @@ class KidEditContractPerformanceTests(QueryBudgetAssertions, TestCase):
             username="kid-edit-performance-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
-        create_membership(user=self.user, turnus=self.turnus)
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.kid = Kinder.objects.create(

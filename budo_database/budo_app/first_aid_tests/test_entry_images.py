@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 from io import BytesIO
 
@@ -45,8 +46,8 @@ class EntryImageTests(TransactionTestCase):
         self.user = User.objects.create_user(username="entry-images")
         create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("turnus",))
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         self.kid = Kinder.objects.create(
             kid_index="image-kid",
             kid_vorname="Ada",

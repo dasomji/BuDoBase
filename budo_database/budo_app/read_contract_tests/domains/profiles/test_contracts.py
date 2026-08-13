@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import Group, Permission, User
@@ -313,9 +314,8 @@ class ProfileContractTests(TestCase):
         self.assertEqual(self.profile.turnus, self.turnus)
 
         normal_user = User.objects.create_user(username="normal-after-test-user")
-        normal_user.profil.turnus = self.turnus
+        approve_and_select_turnus(normal_user.profil.user, self.turnus)
         normal_user.profil.save()
-        create_membership(user=normal_user, turnus=self.turnus)
         select_turnus(normal_user, self.turnus)
         self.client.force_login(normal_user)
         normal_submission = self.client.post(
@@ -405,9 +405,8 @@ class ProfileContractPerformanceTests(QueryBudgetAssertions, TestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.user = User.objects.create_user(username="profile-performance")
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
-        create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)

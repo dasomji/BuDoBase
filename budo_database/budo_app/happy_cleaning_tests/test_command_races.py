@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import json
 from datetime import date
 from queue import Empty, Queue
@@ -38,8 +39,8 @@ class HappyCleaningManagementRaceTests(TransactionTestCase):
         self.users = []
         for index in range(2):
             user = User.objects.create_user(username=f"race-editor-{index}")
-            user.profil.turnus = self.turnus
-            user.profil.save(update_fields=["turnus"])
+            approve_and_select_turnus(user.profil.user, self.turnus)
+            user.profil.save()
             self.users.append(user)
 
     def concurrent_posts(self, url, payloads):

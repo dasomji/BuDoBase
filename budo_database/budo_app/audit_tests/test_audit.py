@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import json
 from datetime import date
 
@@ -133,9 +134,8 @@ class AuditHttpTests(TestCase):
         self.user = User.objects.create_user(username="reader", password="secret")
         self.user.is_staff = True
         self.user.save(update_fields=["is_staff"])
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
-        TurnusMembership.objects.create(user=self.user, turnus=self.turnus)
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         self.client.force_login(self.user)
 
         self.own = AuditEvent.objects._create_validated_event(

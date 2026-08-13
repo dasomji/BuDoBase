@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from contextlib import contextmanager
 from datetime import date
 from unittest.mock import patch
@@ -21,11 +22,10 @@ class ReportContractTests(TestCase):
             username="reports-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user, self.turnus)
         self.user.profil.rufname = "Zora"
         self.user.profil.rolle = "o"
         self.user.profil.save()
-        create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
@@ -97,19 +97,17 @@ class ReportContractTests(TestCase):
             anwesend=False,
         )
         teammate = User.objects.create_user(username="murder-teamer")
-        teammate.profil.turnus = self.turnus
+        approve_and_select_turnus(teammate, self.turnus)
         teammate.profil.rufname = "Aaron"
-        teammate.profil.rolle = "b"
         teammate.profil.telefonnummer = "+436641234567"
         teammate.profil.save()
-        create_membership(user=teammate, turnus=self.turnus)
-        teammate.profil.turnus = other_turnus = Turnus.objects.create(
+        other_turnus = Turnus.objects.create(
             turnus_nr=3,
             turnus_beginn=date(2026, 8, 1),
         )
-        teammate.profil.save(update_fields=("turnus",))
+        teammate.turnus_memberships.all().delete()
         other_user = User.objects.create_user(username="other-murder-teamer")
-        other_user.profil.turnus = other_turnus
+        approve_and_select_turnus(other_user, other_turnus)
         other_user.profil.rufname = "Private Other Teamer"
         other_user.profil.save()
 
@@ -410,7 +408,7 @@ class BirthdayActionContractTests(TestCase):
             username="birthday-action",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
         self.kid = Kinder.objects.create(
             kid_index="T2-1",

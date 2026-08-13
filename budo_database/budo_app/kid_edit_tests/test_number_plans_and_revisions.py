@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from dataclasses import replace
 from datetime import date
 from queue import Queue
@@ -60,9 +61,9 @@ class LockedChildNumberPlanTests(TransactionTestCase):
             happy_cleaning_number=11,
         )
         self.actor = User.objects.create_user(username="number-plan-actor")
-        self.actor.profil.turnus = self.turnus
+        approve_and_select_turnus(self.actor, self.turnus)
         self.actor.profil.rufname = "Planner Actor"
-        self.actor.profil.save(update_fields=("turnus", "rufname"))
+        self.actor.profil.save()
         self.published = []
         configure_assignment_publisher(self.published.append)
 
@@ -438,9 +439,9 @@ class EventRevisionLockOrderPostgreSQLTests(TransactionTestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.actor = User.objects.create_user(username="event-lock-order-actor")
-        self.actor.profil.turnus = self.turnus
+        approve_and_select_turnus(self.actor, self.turnus)
         self.actor.profil.rufname = "Lock Actor"
-        self.actor.profil.save(update_fields=("turnus", "rufname"))
+        self.actor.profil.save()
         self.lower_pk_event = HappyCleaning.objects.create(
             turnus=self.turnus,
             display_number=2,

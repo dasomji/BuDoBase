@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """RED contract for stable, metadata-only audit list reads (#164-05)."""
 
 import json
@@ -43,9 +44,8 @@ class AuditListContractTests(TestCase):
         self.user.user_permissions.add(
             Permission.objects.get(codename="view_auditevent"),
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
-        create_membership(user=self.user, turnus=self.turnus)
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.url = reverse(

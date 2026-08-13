@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """PostgreSQL-only independent-connection races for issue #40."""
 
 from datetime import date
@@ -79,9 +80,9 @@ class HappyCleaningPostgreSQLRaceTests(TransactionTestCase):
         self.users = []
         for index in range(1, 4):
             user = User.objects.create_user(username=f"race-actor-{index}")
-            user.profil.turnus = self.turnus
+            approve_and_select_turnus(user, self.turnus)
             user.profil.rufname = f"Actor {index}"
-            user.profil.save(update_fields=("turnus", "rufname"))
+            user.profil.save()
             self.users.append(user)
 
     def context(self, index, request_id):

@@ -102,7 +102,7 @@ class JoinRequestHttpTests(TestCase):
         )
         profile = self.requester.profil
         profile.selected_turnus = self.turnus
-        profile.save(update_fields=["selected_turnus"])
+        profile.save()
         TurnusJoinRequest.objects.create(
             user=self.requester,
             turnus=self.turnus,

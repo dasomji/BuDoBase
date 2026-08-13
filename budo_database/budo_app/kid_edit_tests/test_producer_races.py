@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """PostgreSQL race contracts for the atomic kid-edit producer (#166-02)."""
 
 from copy import deepcopy
@@ -51,9 +52,9 @@ class KidEditProducerPostgreSQLRaceTests(KidEditProducerFixture):
         if connection.vendor != "postgresql":
             self.skipTest("Kid-edit races require PostgreSQL row locks.")
         self.other_user = User.objects.create_user(username="kid-edit-racer-two")
-        self.other_user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.other_user, self.turnus)
         self.other_user.profil.rufname = "Other operator"
-        self.other_user.profil.save(update_fields=("turnus", "rufname"))
+        self.other_user.profil.save()
 
     def context(self, request_id):
         return CommandContext(

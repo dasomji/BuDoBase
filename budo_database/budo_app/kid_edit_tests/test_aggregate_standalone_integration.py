@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 from queue import Queue
 from threading import Barrier, Event, Thread
@@ -81,9 +82,9 @@ class AggregateStandalonePostgreSQLIntegrationTests(TransactionTestCase):
             schwerpunktzeit=self.period_2,
         )
         self.actor = User.objects.create_user(username="aggregate-race-actor")
-        self.actor.profil.turnus = self.turnus
+        approve_and_select_turnus(self.actor, self.turnus)
         self.actor.profil.rufname = "Race Actor"
-        self.actor.profil.save(update_fields=("turnus", "rufname"))
+        self.actor.profil.save()
         self.published = []
         configure_assignment_publisher(self.published.append)
 

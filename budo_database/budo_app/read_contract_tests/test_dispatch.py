@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import User
@@ -105,8 +106,8 @@ class RouteContractDispatchTests(TestCase):
             turnus_nr=2,
             turnus_beginn=date(2026, 7, 15),
         )
-        self.user.profil.turnus = legacy_turnus
-        self.user.profil.save(update_fields=("turnus",))
+        approve_and_select_turnus(self.user.profil.user, legacy_turnus)
+        self.user.profil.save()
         membership = create_membership(
             user=self.user,
             turnus=selected_turnus,
@@ -172,8 +173,8 @@ class RouteContractDispatchTests(TestCase):
     def test_stored_selection_without_membership_exposes_no_global_search(self):
         turnus = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
         self.user.profil.selected_turnus = turnus
-        self.user.profil.turnus = turnus
-        self.user.profil.save(update_fields=("selected_turnus", "turnus"))
+        approve_and_select_turnus(self.user.profil.user, turnus)
+        self.user.profil.save()
         Kinder.objects.create(
             kid_index="PRIVATE-1",
             kid_vorname="Private",

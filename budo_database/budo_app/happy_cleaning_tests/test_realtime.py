@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -36,8 +37,8 @@ class HappyCleaningSocketAuthorizationTests(TestCase):
             display_number=1,
         )
         self.user = User.objects.create_user(username="socket-operator")
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("turnus",))
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
 
     def test_only_the_users_active_turnus_and_a_live_immutable_event_are_allowed(self):
         self.assertTrue(may_access_happy_cleaning_event(self.user.id, self.event.id))

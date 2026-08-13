@@ -138,8 +138,8 @@ class HappyCleaningContractTests(TestCase):
             username="other-happy-cleaning-reader",
         ).profil
         self.other_profile.rufname = "Other carer"
-        self.other_profile.turnus = self.other_turnus
-        self.other_profile.save(update_fields=["rufname", "turnus"])
+        approve_and_select_turnus(self.other_profile.user, self.other_turnus)
+        self.other_profile.save()
         self.client.force_login(self.user)
 
     def url(self, key, **query):
@@ -180,8 +180,8 @@ class HappyCleaningContractTests(TestCase):
             username="historical-happy-cleaning-carer",
         ).profil
         historical_profile.rufname = "Historical carer"
-        historical_profile.turnus = older_turnus
-        historical_profile.save(update_fields=["rufname", "turnus"])
+        approve_and_select_turnus(historical_profile.user, older_turnus)
+        historical_profile.save()
         HappyCleaningStation.objects.create(
             happy_cleaning=older_event,
             name="Historische Küche",
@@ -609,8 +609,8 @@ class HappyCleaningContractTests(TestCase):
             username="historical-carer",
         ).profil
         historical_profile.rufname = "Private Carer"
-        historical_profile.turnus = historical_turnus
-        historical_profile.save(update_fields=["rufname", "turnus"])
+        approve_and_select_turnus(historical_profile.user, historical_turnus)
+        historical_profile.save()
         historical_child = Kinder.objects.create(
             kid_index="HIST-1",
             kid_vorname="Private",

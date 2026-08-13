@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import Permission, User
@@ -12,9 +13,8 @@ class PlaceTagManagementTests(TestCase):
     def setUp(self):
         turnus = Turnus.objects.create(turnus_nr=2, turnus_beginn=date(2026, 7, 1))
         self.user = User.objects.create_user(username="tag-manager", password="secret")
-        self.user.profil.turnus = turnus
+        approve_and_select_turnus(self.user.profil.user, turnus)
         self.user.profil.save()
-        create_membership(user=self.user, turnus=turnus)
         select_turnus(self.user, turnus)
         self.client.force_login(self.user)
         self.settings_url = reverse(

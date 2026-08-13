@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """RED contract for one-event audit detail reads (#164-06)."""
 
 from dataclasses import replace
@@ -37,9 +38,8 @@ class AuditDetailHttpTests(TestCase):
         self.user = User.objects.create(username="detail-reader", is_staff=True)
         self.permission = Permission.objects.get(codename="view_auditevent")
         self.user.user_permissions.add(self.permission)
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
-        TurnusMembership.objects.create(user=self.user, turnus=self.turnus)
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         self.client.force_login(self.user)
 
     def event(self, *, turnus=None, action="happy_cleaning.event.create",

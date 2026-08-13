@@ -274,7 +274,7 @@ class PageReadMembershipScopeTests(TransactionTestCase):
             turnus_beginn=date(2026, 8, 1),
         )
         self.user.profil.selected_turnus = unapproved_turnus
-        self.user.profil.save(update_fields=["selected_turnus"])
+        self.user.profil.save()
 
         for url, expected_status in zip(self.update_urls(), (200, 404)):
             with self.subTest(url=url):

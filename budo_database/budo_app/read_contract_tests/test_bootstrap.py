@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import User
@@ -32,9 +33,8 @@ class BootstrapContractTests(TestCase):
             email="bootstrap@example.test",
         )
         self.user.profil.rufname = "Bootstrap Teamer"
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
-        create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
 
         self.active_kid = Kinder.objects.create(

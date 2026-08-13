@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import re
 from datetime import date
 
@@ -80,9 +81,8 @@ class KidEditReadContractTests(TestCase):
             username="kid-edit-reader",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
-        create_membership(user=self.user, turnus=self.turnus)
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.kid = Kinder.objects.create(

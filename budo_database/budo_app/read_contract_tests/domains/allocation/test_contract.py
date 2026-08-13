@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import json
 from datetime import date
 from unittest.mock import patch
@@ -47,9 +48,8 @@ class AllocationContractTests(TestCase):
             username="allocation-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
-        create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
 
@@ -570,9 +570,8 @@ class AllocationContractPerformanceTests(QueryBudgetAssertions, TestCase):
             username="allocation-performance-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
-        create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)

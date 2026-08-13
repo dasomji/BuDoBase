@@ -3,10 +3,14 @@
 from budo_app.models import TurnusMembership
 
 
-def approve_and_select_turnus(user, turnus):
+def approve_and_select_turnus(user, turnus, *, team_label="", functional_role="teamer"):
     """Give a test user approved access and select that same Turnus."""
-    TurnusMembership.objects.get_or_create(user=user, turnus=turnus)
+    membership, _ = TurnusMembership.objects.update_or_create(
+        user=user,
+        turnus=turnus,
+        defaults={"team_label": team_label, "functional_role": functional_role},
+    )
     profile = user.profil
     profile.selected_turnus = turnus
-    profile.save(update_fields=("selected_turnus",))
+    profile.save()
     return profile

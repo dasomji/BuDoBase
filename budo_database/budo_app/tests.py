@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from django.test import TestCase, Client, SimpleTestCase, override_settings
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -343,7 +344,7 @@ class MutationSecurityTest(TestCase):
             turnus_nr=2,
             turnus_beginn=date(2024, 8, 1)
         )
-        self.user.profil.turnus = self.active_turnus
+        approve_and_select_turnus(self.user.profil.user, self.active_turnus)
         self.user.profil.save()
         self.active_kid = make_kid(self.active_turnus, "T1-1")
         self.other_kid = make_kid(self.other_turnus, "T2-1")
@@ -677,11 +678,11 @@ class DownloadUpdatedExcelTest(TestCase):
 
     def test_export_does_not_mark_an_on_time_arrival_as_late(self):
         self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
-        self.turnus.save(update_fields=("turnus_beginn",))
+        self.turnus.save()
         kid = make_kid(self.turnus)
         kid.check_in_date = date(2024, 7, 7)  # default Sunday arrival
         kid.turnus_dauer = 2
-        kid.save(update_fields=("check_in_date", "turnus_dauer"))
+        kid.save()
 
         with TemporaryDirectory() as directory:
             path = os.path.join(directory, "aufenthaltsdoku.xlsx")
@@ -728,11 +729,11 @@ class DownloadUpdatedExcelTest(TestCase):
 
     def test_early_departure_uses_latest_note_when_departure_note_is_missing(self):
         self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
-        self.turnus.save(update_fields=("turnus_beginn",))
+        self.turnus.save()
         kid = make_kid(self.turnus)
         kid.turnus_dauer = 1
         kid.early_abreise_date = date(2024, 7, 11)  # one day early
-        kid.save(update_fields=("turnus_dauer", "early_abreise_date"))
+        kid.save()
         Notizen.objects.create(
             kinder=kid,
             notiz="Frühere allgemeine Notiz",
@@ -769,7 +770,7 @@ class DownloadUpdatedExcelTest(TestCase):
 
     def test_explicit_departure_note_takes_precedence_over_latest_note(self):
         self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
-        self.turnus.save(update_fields=("turnus_beginn",))
+        self.turnus.save()
         kid = make_kid(self.turnus)
         kid.turnus_dauer = 1
         kid.early_abreise_date = date(2024, 7, 11)  # one day early
@@ -801,7 +802,7 @@ class DownloadUpdatedExcelTest(TestCase):
         kid = make_kid(self.turnus)
         kid.zug_abreise = False
         kid.turnus_dauer = 1
-        kid.save(update_fields=("zug_abreise", "turnus_dauer"))
+        kid.save()
         self.turnus.uploadedFile = SimpleUploadedFile(
             "original.xlsx",
             b"original workbook",
@@ -822,15 +823,15 @@ class DownloadUpdatedExcelTest(TestCase):
 
     def test_export_only_marks_departure_before_the_kids_planned_friday(self):
         self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
-        self.turnus.save(update_fields=("turnus_beginn",))
+        self.turnus.save()
         one_week = make_kid(self.turnus, kid_index="one-week")
         one_week.turnus_dauer = 1
         one_week.early_abreise_date = date(2024, 7, 12)  # planned Friday
-        one_week.save(update_fields=("turnus_dauer", "early_abreise_date"))
+        one_week.save()
         two_weeks = make_kid(self.turnus, kid_index="two-weeks")
         two_weeks.turnus_dauer = 2
         two_weeks.early_abreise_date = date(2024, 7, 18)  # one day early
-        two_weeks.save(update_fields=("turnus_dauer", "early_abreise_date"))
+        two_weeks.save()
 
         with TemporaryDirectory() as directory:
             path = os.path.join(directory, "aufenthaltsdoku.xlsx")

@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import User
@@ -26,9 +27,9 @@ class LockAssumingChildNumberMutationTests(TransactionTestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.actor = User.objects.create_user(username="kid-edit-helper-actor")
-        self.actor.profil.turnus = self.turnus
+        approve_and_select_turnus(self.actor, self.turnus)
         self.actor.profil.rufname = "Helper Actor"
-        self.actor.profil.save(update_fields=("turnus", "rufname"))
+        self.actor.profil.save()
         self.event = HappyCleaning.objects.create(
             turnus=self.turnus,
             display_number=1,

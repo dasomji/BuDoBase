@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """Browser-shell contract for the protected Audit-Log route (#168)."""
 
 from datetime import date
@@ -30,8 +31,8 @@ class AuditPageRouteTests(TestCase):
         )
         user.user_permissions.add(*permissions)
         if active_turnus:
-            user.profil.turnus = self.turnus
-            user.profil.save(update_fields=["turnus"])
+            approve_and_select_turnus(user.profil.user, self.turnus)
+            user.profil.save()
         return user
 
     def assert_no_shell(self, response):

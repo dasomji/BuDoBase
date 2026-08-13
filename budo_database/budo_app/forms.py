@@ -155,7 +155,7 @@ class SchwerpunktForm(forms.ModelForm):
             self.fields['schwerpunktzeit'].queryset = Schwerpunktzeit.objects.none()
             return
         self.fields['betreuende'].queryset = Profil.objects.filter(
-            turnus=turnus,
+            user__turnus_memberships__turnus=turnus,
         ).order_by('rufname', 'id')
         self.fields['schwerpunktzeit'].queryset = (
             Schwerpunktzeit.objects.filter(turnus=turnus)

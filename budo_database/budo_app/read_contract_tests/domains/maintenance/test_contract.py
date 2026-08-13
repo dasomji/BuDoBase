@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import os
 from datetime import date
 from io import BytesIO
@@ -41,9 +42,8 @@ class MaintenanceContractTests(TestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.user = User.objects.create_user(username="maintenance-user")
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
-        create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
         Kinder.objects.create(
             kid_index="PRIVATE-1",
@@ -201,9 +201,8 @@ class MaintenanceMultipartWorkflowTests(TestCase):
             turnus_nr=2,
             turnus_beginn=date(2026, 7, 1),
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
-        create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
         self.client = Client(enforce_csrf_checks=True)
         self.client.force_login(self.user)
@@ -460,9 +459,8 @@ class MaintenanceContractPerformanceTests(QueryBudgetAssertions, TestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.user = User.objects.create_user(username="maintenance-performance")
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
-        create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)

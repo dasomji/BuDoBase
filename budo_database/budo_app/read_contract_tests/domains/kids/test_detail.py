@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import json
 from datetime import date
 
@@ -79,9 +80,8 @@ class KidDetailContractTests(TestCase):
             username="kid-detail-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
-        create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.special_family = SpezialFamilien.objects.create(
@@ -468,9 +468,8 @@ class KidDetailMutationContractTests(TestCase):
             username="kid-mutation-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
-        create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T2-1",

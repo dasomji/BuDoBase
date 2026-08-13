@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """RED contract for sensitive full-payload audit export v2 (#164-07)."""
 
 import json
@@ -46,9 +47,8 @@ class AuditExportV2HttpTests(TestCase):
         self.user.user_permissions.add(
             self.view_permission, self.export_permission,
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
-        create_membership(user=self.user, turnus=self.turnus)
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.url = reverse("audit-export-api")
@@ -140,7 +140,7 @@ class AuditExportV2HttpTests(TestCase):
     def test_empty_turnus_uses_zero_snapshot_and_excludes_its_issuance(self):
         TurnusMembership.objects.create(user=self.user, turnus=self.other_turnus)
         self.user.profil.selected_turnus = self.other_turnus
-        self.user.profil.save(update_fields=["selected_turnus"])
+        self.user.profil.save()
         response = self.client.get(self.url, HTTP_X_REQUEST_ID="empty-export")
 
         self.assertEqual(response.status_code, 200)

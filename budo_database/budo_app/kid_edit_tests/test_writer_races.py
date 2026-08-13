@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import json
 import sys
 from contextlib import ExitStack, contextmanager
@@ -49,9 +50,9 @@ class VersionedWriterPostgreSQLRaceTests(TransactionTestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.user = User.objects.create_user(username="writer-race-actor")
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user, self.turnus)
         self.user.profil.rufname = "Synthetic Actor"
-        self.user.profil.save(update_fields=("turnus", "rufname"))
+        self.user.profil.save()
         self.period_w1 = Schwerpunktzeit.objects.get(
             turnus=self.turnus,
             woche="w1",

@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import json
 from datetime import date
 from unittest.mock import patch
@@ -38,8 +39,8 @@ class HappyCleaningEventCommandTests(TransactionTestCase):
             password="secret",
         )
         self.user.profil.rufname = "Mira"
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["rufname", "turnus"])
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         self.client.force_login(self.user)
 
     def post_json(self, url, payload, **extra):
@@ -210,12 +211,12 @@ class HappyCleaningStationCommandTests(TransactionTestCase):
         )
         self.user = User.objects.create_user(username="station-editor")
         self.user.profil.rufname = "Mira"
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["rufname", "turnus"])
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         self.other_user = User.objects.create_user(username="other-editor")
         self.other_user.profil.rufname = "Other"
-        self.other_user.profil.turnus = self.other_turnus
-        self.other_user.profil.save(update_fields=["rufname", "turnus"])
+        approve_and_select_turnus(self.other_user.profil.user, self.other_turnus)
+        self.other_user.profil.save()
         self.event = HappyCleaning.objects.create(
             turnus=self.turnus,
             display_number=1,

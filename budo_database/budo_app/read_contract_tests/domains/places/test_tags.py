@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 from unittest.mock import patch
 
@@ -22,9 +23,8 @@ class PlaceTagContractTests(TestCase):
             username="place-tag-user",
             password="secret",
         )
-        self.user.profil.turnus = turnus
+        approve_and_select_turnus(self.user.profil.user, turnus)
         self.user.profil.save()
-        create_membership(user=self.user, turnus=turnus)
         select_turnus(self.user, turnus)
         self.client.force_login(self.user)
 

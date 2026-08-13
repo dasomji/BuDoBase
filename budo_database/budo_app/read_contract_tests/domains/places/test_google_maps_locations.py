@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 from io import StringIO
 from unittest.mock import patch
@@ -105,9 +106,8 @@ class GoogleMapsPlaceWriteContractTests(TestCase):
             username="google-maps-place-writer",
             password="secret",
         )
-        user.profil.turnus = turnus
+        approve_and_select_turnus(user.profil.user, turnus)
         user.profil.save()
-        create_membership(user=user, turnus=turnus)
         select_turnus(user, turnus)
         self.client.force_login(user)
 

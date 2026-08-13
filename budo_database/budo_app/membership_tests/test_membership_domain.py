@@ -100,7 +100,7 @@ class TurnusMembershipDomainTests(TestCase):
 
         membership = create_membership(user=self.user, turnus=self.first)
         profile.full_clean()
-        profile.save(update_fields=("selected_turnus",))
+        profile.save()
         self.assertEqual(selected_turnus_for(self.user), self.first)
 
         membership.delete()
@@ -109,7 +109,7 @@ class TurnusMembershipDomainTests(TestCase):
     def test_empty_selection_is_never_authority(self):
         profile = self.user.profil
         profile.selected_turnus = None
-        profile.save(update_fields=("selected_turnus",))
+        profile.save()
 
         self.assertIsNone(selected_turnus_for(self.user))
         profile.refresh_from_db()

@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """RED contract for centralized audit authorization only (#164-04)."""
 
 from dataclasses import dataclass
@@ -121,9 +122,8 @@ class AuditAuthorizationHttpTests(TestCase):
         user.save(update_fields=["is_staff", "is_superuser"])
         user.user_permissions.add(*permissions)
         if active_turnus:
-            user.profil.turnus = self.turnus
-            user.profil.save(update_fields=["turnus"])
-            TurnusMembership.objects.create(user=user, turnus=self.turnus)
+            approve_and_select_turnus(user.profil.user, self.turnus)
+            user.profil.save()
         return user
 
     def denied_users(self):
