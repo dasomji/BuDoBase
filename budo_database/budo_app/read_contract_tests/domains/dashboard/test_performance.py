@@ -66,7 +66,7 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
             20,
         )
         # Includes the bounded personal Happy-Cleaning station projection.
-        self.assertQueryCountAtMost(realistic, 14)
+        self.assertQueryCountAtMost(realistic, 15)
         self.assertQueryGrowthAtMost(small, realistic, 1)
         self.assertLess(
             realistic.response_bytes,
@@ -121,7 +121,7 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
         after = measure_http_get(self.client, self.contract_url())
 
         # Includes the bounded personal Happy-Cleaning station projection.
-        self.assertQueryCountAtMost(after, 14)
+        self.assertQueryCountAtMost(after, 15)
         self.assertQueryGrowthAtMost(before, after, 0)
         self.assertEqual(len(after.response.json()["activity"]["notes"]["items"]), 20)
         self.assertEqual(

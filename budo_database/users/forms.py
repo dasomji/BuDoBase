@@ -9,6 +9,11 @@ class LoginForm(forms.Form):
 
 
 class RegisterForm(UserCreationForm):
+    email = forms.EmailField(required=True)
+
+    def clean_email(self):
+        return self.cleaned_data["email"].strip().lower()
+
     class Meta:
         model = User
         fields = ['username', 'email', 'password1', 'password2']

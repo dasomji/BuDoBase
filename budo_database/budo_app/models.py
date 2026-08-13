@@ -678,6 +678,31 @@ class TurnusJoinRequest(models.Model):
         return f"{self.user} – {self.turnus} ({self.get_status_display()})"
 
 
+class TurnusJoinRequestNotification(models.Model):
+    """A durable, recipient-specific notification created with a join request."""
+
+    join_request = models.ForeignKey(
+        TurnusJoinRequest, on_delete=models.CASCADE, related_name="notifications"
+    )
+    recipient_user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="join_request_notifications"
+    )
+    recipient_email = models.EmailField()
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("join_request", "recipient_user"),
+                name="unique_join_request_notification_recipient",
+            )
+        ]
+        ordering = ("id",)
+
+
 class HappyCleaning(models.Model):
     """One numbered Happy Cleaning event inside a Turnus."""
 

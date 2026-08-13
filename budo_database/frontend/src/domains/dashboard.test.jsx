@@ -164,6 +164,21 @@ describe('dashboard page', () => {
     expect(cashCard).toHaveTextContent('Kassenstand: 18.00 €');
   });
 
+  it('lets an approved member request another Turnus alongside scoped data', () => {
+    const mutate = vi.fn();
+    const data = dashboardData();
+    data.membership_turnuses = [
+      { id: 1, label: '2. Turnus 2027', request_status: 'approved' },
+      { id: 2, label: '3. Turnus 2027', request_status: null },
+    ];
+
+    render(<DashboardPage data={data} mutate={mutate} />);
+
+    expect(screen.getByRole('heading', { name: 'Kinder: 1' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft anfragen' }));
+    expect(mutate).toHaveBeenCalledWith('/api/turnusse/2/join-requests/', {});
+  });
+
   it('renders the moved informational cards on Gut zu wissen', () => {
     render(<GoodToKnowPage data={dashboardData()} />);
 

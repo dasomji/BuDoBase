@@ -25,3 +25,30 @@ class PublicRegistrationTests(TestCase):
         )
         user = User.objects.get(username="new-teamer")
         self.assertFalse(TurnusMembership.objects.filter(user=user).exists())
+
+    def test_email_is_required_and_normalized_server_side(self):
+        missing = self.client.post(
+            reverse("register"),
+            {
+                "username": "missing-email",
+                "password1": "A-safe-password-189!",
+                "password2": "A-safe-password-189!",
+            },
+        )
+        self.assertEqual(missing.status_code, 200)
+        self.assertFalse(User.objects.filter(username="missing-email").exists())
+
+        response = self.client.post(
+            reverse("register"),
+            {
+                "username": "normalized-email",
+                "email": "  New.Teamer@EXAMPLE.COM  ",
+                "password1": "A-safe-password-189!",
+                "password2": "A-safe-password-189!",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            User.objects.get(username="normalized-email").email,
+            "new.teamer@example.com",
+        )

@@ -7,6 +7,7 @@ from typing import Callable
 
 from django.db.models import (
     Case,
+    CharField,
     Count,
     Exists,
     F,
@@ -16,6 +17,7 @@ from django.db.models import (
     Prefetch,
     Q,
     Sum,
+    Subquery,
     Value,
     When,
 )
@@ -35,6 +37,7 @@ from budo_app.models import (
     Schwerpunkte,
     Turnus,
     TurnusJoinRequest,
+    TurnusMembership,
 )
 from budo_app.read_contracts.common import (
     kid_full_name,
@@ -293,6 +296,35 @@ def _empty_summary(profile):
     }
 
 
+def _membership_turnuses(user):
+    return [
+        {
+            "id": turnus.id,
+            "label": str(turnus),
+            "number": turnus.turnus_nr,
+            "start": turnus.turnus_beginn.isoformat(),
+            "request_status": (
+                TurnusJoinRequest.Status.APPROVED
+                if turnus.dashboard_is_approved
+                else turnus.dashboard_request_status
+            ),
+        }
+        for turnus in Turnus.objects.annotate(
+            dashboard_is_approved=Exists(
+                TurnusMembership.objects.filter(user=user, turnus_id=OuterRef("pk"))
+            ),
+            dashboard_request_status=Subquery(
+                TurnusJoinRequest.objects.filter(
+                    user=user, turnus_id=OuterRef("pk")
+                ).values("status")[:1],
+                output_field=CharField(),
+            ),
+        )
+        .only("id", "turnus_nr", "turnus_beginn")
+        .order_by("-turnus_beginn", "turnus_nr", "id")
+    ]
+
+
 def build_dashboard_contract(request):
     profile = (
         Profil.objects.filter(user_id=request.user.id)
@@ -319,9 +351,6 @@ def build_dashboard_contract(request):
     # dashboard deliberately exposes only public Turnus identity and its own
     # request history.
     if profile.turnus_id is None and not request.user.turnus_memberships.exists():
-        latest_requests = {}
-        for join_request in TurnusJoinRequest.objects.filter(user=request.user):
-            latest_requests.setdefault(join_request.turnus_id, join_request.status)
         return {
             **_empty_summary(profile),
             "activity": {
@@ -330,18 +359,7 @@ def build_dashboard_contract(request):
                 "transactions": _activity_page("transactions", None),
             },
             "membership_awaiting": True,
-            "turnuses": [
-                {
-                    "id": turnus.id,
-                    "label": str(turnus),
-                    "number": turnus.turnus_nr,
-                    "start": turnus.turnus_beginn.isoformat(),
-                    "request_status": latest_requests.get(turnus.id),
-                }
-                for turnus in Turnus.objects.only(
-                    "id", "turnus_nr", "turnus_beginn"
-                ).order_by("-turnus_beginn", "turnus_nr", "id")
-            ],
+            "turnuses": _membership_turnuses(request.user),
         }
 
     turnus_id = profile.turnus_id
@@ -591,6 +609,7 @@ def build_dashboard_contract(request):
 
     return {
         **summary,
+        "membership_turnuses": _membership_turnuses(request.user),
         "activity": {
             "first_aid": _activity_page("first_aid", turnus_id),
             "notes": _activity_page("notes", turnus_id),

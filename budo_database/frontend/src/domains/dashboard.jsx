@@ -231,6 +231,7 @@ export function DashboardPage({ data, fetchImpl = fetch, mutate, refresh, onFirs
     : [];
   return (
       <ResponsiveCardGrid independentColumns>
+      <MembershipRequestCard turnuses={data.membership_turnuses || []} mutate={mutate} />
       <Card title={`Kinder: ${totals.checked_in}`} id="db-kinderübersicht">
         <p><span className="label">Eingecheckt</span>: {totals.checked_in}/{totals.kids}</p>
         <p><span className="label">Geschlechter</span>: {kids.filter(kid => kid.sex === 'männlich').length} ♂ // {kids.filter(kid => kid.sex === 'weiblich').length} ♀ // {kids.filter(kid => !['männlich', 'weiblich'].includes(kid.sex)).length} ⚧</p>
@@ -279,30 +280,35 @@ export function DashboardPage({ data, fetchImpl = fetch, mutate, refresh, onFirs
   );
 }
 
+const requestLabels = {
+  pending: 'Anfrage ausstehend (noch kein Zugriff)',
+  approved: 'Mitgliedschaft bestätigt',
+  rejected: 'Anfrage abgelehnt',
+  cancelled: 'Anfrage storniert',
+  superseded: 'Anfrage ersetzt',
+};
+
+function MembershipRequestCard({ turnuses, mutate, awaiting = false }) {
+  return <Card title={awaiting ? 'Turnus-Mitgliedschaft ausstehend' : 'Weitere Turnus-Mitgliedschaft'}>
+    {awaiting && <p>Dein Konto ist erstellt. Du erhältst erst nach der ausdrücklichen Freigabe durch eine Leitung Zugriff auf Turnus-Daten.</p>}
+    {turnuses.length ? <ul className="grid gap-3">{turnuses.map(turnus => (
+      <li key={turnus.id}>
+        <strong>{turnus.label}</strong>{' '}
+        {turnus.request_status && <span>– {requestLabels[turnus.request_status]}</span>}{' '}
+        {turnus.request_status !== 'pending' && turnus.request_status !== 'approved'
+          && <Button
+              type="button"
+              onClick={() => mutate(`/api/turnusse/${turnus.id}/join-requests/`, {})}
+            >Mitgliedschaft anfragen</Button>}
+      </li>
+    ))}</ul> : <p>Derzeit sind keine Turnusse verfügbar.</p>}
+  </Card>;
+}
+
 function AwaitingMembershipDashboard({ data, mutate }) {
-  const requestLabels = {
-    pending: 'Anfrage ausstehend (noch kein Zugriff)',
-    approved: 'Anfrage angenommen',
-    rejected: 'Anfrage abgelehnt',
-    cancelled: 'Anfrage storniert',
-    superseded: 'Anfrage ersetzt',
-  };
   return (
     <ResponsiveCardGrid>
-      <Card title="Turnus-Mitgliedschaft ausstehend">
-        <p>Dein Konto ist erstellt. Du erhältst erst nach der ausdrücklichen Freigabe durch eine Leitung Zugriff auf Turnus-Daten.</p>
-        {data.turnuses.length ? <ul className="grid gap-3">{data.turnuses.map(turnus => (
-          <li key={turnus.id}>
-            <strong>{turnus.label}</strong>{' '}
-            {turnus.request_status && <span>– {requestLabels[turnus.request_status]}</span>}{' '}
-            {turnus.request_status !== 'pending' && turnus.request_status !== 'approved'
-              && <Button
-                  type="button"
-                  onClick={() => mutate(`/api/turnusse/${turnus.id}/join-requests/`, {})}
-                >Mitgliedschaft anfragen</Button>}
-          </li>
-        ))}</ul> : <p>Derzeit sind keine Turnusse verfügbar.</p>}
-      </Card>
+      <MembershipRequestCard turnuses={data.turnuses} mutate={mutate} awaiting />
     </ResponsiveCardGrid>
   );
 }
