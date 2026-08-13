@@ -5,6 +5,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toaster } from '../components/ui/toast';
 import { AdminTeamOverviewPage } from './memberships';
 
+const viewport = vi.hoisted(() => ({ mobile: false }));
+vi.mock('../hooks/use-mobile', () => ({ useIsMobile: () => viewport.mobile }));
+
 const data = { years: [{ year: 2026, turnuses: [{
   id: 4,
   label: 'T2-2026',
@@ -16,16 +19,11 @@ const data = { years: [{ year: 2026, turnuses: [{
   pending_requests: [{ id: 21, name: 'Dana Anfrage' }],
 }] }], people: [{ id: 30, name: 'Chris Frei', relationships: [], available: true }] };
 
-function setMobile(matches) {
-  window.matchMedia = vi.fn().mockReturnValue({
-    matches,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  });
-}
-
 describe('admin team overview', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    viewport.mobile = false;
+  });
 
   it('renders the year, Turnus, functional roles, and membership-specific labels', () => {
     render(<Toaster><AdminTeamOverviewPage data={data} mutate={vi.fn()} /></Toaster>);
@@ -67,11 +65,40 @@ describe('admin team overview', () => {
     expect(screen.getByRole('button', { name: 'T3-2026 auswählen' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('renders a real mobile single-column layout with a horizontal year-grouped selector', () => {
-    setMobile(true);
-    render(<Toaster><AdminTeamOverviewPage data={data} mutate={vi.fn()} /></Toaster>);
-    expect(document.querySelector('[aria-label="Turnus auswählen"]')).toHaveClass('overflow-x-auto');
-    expect(document.querySelector('[data-slot="team-master-detail"]')).toHaveAttribute('data-layout', 'mobile-single-column');
+  it('lets desktop users choose an ordered Turnus and see only its detail', async () => {
+    const user = userEvent.setup();
+    const multiple = { years: [{ year: 2026, turnuses: [
+      data.years[0].turnuses[0],
+      { id: 5, label: 'T3-2026', members: [{ id: 13, name: 'Chris Demo', functional_role: 'teamer', role_label: 'Teamer', team_label: '' }] },
+    ] }, { year: 2025, turnuses: [
+      { id: 3, label: 'T1-2025', members: [{ id: 10, name: 'Zora Alt', functional_role: 'teamer', role_label: 'Teamer', team_label: '' }] },
+    ] }] };
+    render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
+
+    expect(screen.getAllByRole('button', { name: / auswählen$/ }).map(button => button.getAttribute('aria-label')))
+      .toEqual(['T2-2026 auswählen', 'T3-2026 auswählen', 'T1-2025 auswählen']);
+    await user.click(screen.getByRole('button', { name: 'T3-2026 auswählen' }));
+    expect(screen.getByText('Chris Demo')).toBeInTheDocument();
+    expect(screen.queryByText('Alex Muster')).not.toBeInTheDocument();
+  });
+
+  it('keeps mobile navigation usable while year and detail cards expand and collapse', async () => {
+    viewport.mobile = true;
+    const user = userEvent.setup();
+    const multiple = { years: [{ year: 2026, turnuses: [
+      data.years[0].turnuses[0],
+      { id: 5, label: 'T3-2026', members: [{ id: 13, name: 'Chris Demo', functional_role: 'teamer', role_label: 'Teamer', team_label: '' }] },
+    ] }] };
+    render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
+
+    expect(screen.getByRole('button', { name: '2026 schließen' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '2026 schließen' }));
+    expect(screen.getByRole('button', { name: '2026 öffnen' })).toHaveAttribute('aria-expanded', 'false');
+    await user.click(screen.getByRole('button', { name: '2026 öffnen' }));
+    await user.click(screen.getByRole('button', { name: 'T3-2026 auswählen' }));
+    await user.click(screen.getByRole('button', { name: 'T3-2026 öffnen' }));
+    expect(screen.getByText('Chris Demo')).toBeInTheDocument();
+    expect(screen.queryByText('Alex Muster')).not.toBeInTheDocument();
   });
 
   it('finds registered users without memberships and communicates availability', async () => {

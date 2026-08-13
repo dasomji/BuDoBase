@@ -4,6 +4,10 @@ from budo_app.models import Turnus, TurnusJoinRequest
 from budo_app.product_admin_policy import require_product_admin
 
 
+def _display_name(user):
+    return user.get_full_name().strip() or user.username
+
+
 def admin_team_overview(request):
     require_product_admin(request.user, "Admin team overview access denied.")
     turnuses = Turnus.objects.prefetch_related(
@@ -17,13 +21,12 @@ def admin_team_overview(request):
         members = []
         for membership in sorted(
             turnus.memberships.all(),
-            key=lambda item: (item.functional_role != "leitung", item.user.get_full_name().casefold(), item.user.username.casefold()),
+            key=lambda item: (item.functional_role != "leitung", _display_name(item.user).casefold()),
         ):
-            name = membership.user.get_full_name().strip() or membership.user.username
             members.append({
                 "id": membership.id,
                 "user_id": membership.user_id,
-                "name": name,
+                "name": _display_name(membership.user),
                 "functional_role": membership.functional_role,
                 "role_label": membership.get_functional_role_display(),
                 "team_label": membership.team_label,
@@ -33,8 +36,7 @@ def admin_team_overview(request):
         for join_request in turnus.join_requests.all():
             if join_request.status != TurnusJoinRequest.Status.PENDING:
                 continue
-            name = join_request.user.get_full_name().strip() or join_request.user.username
-            pending_requests.append({"id": join_request.id, "user_id": join_request.user_id, "name": name})
+            pending_requests.append({"id": join_request.id, "user_id": join_request.user_id, "name": _display_name(join_request.user)})
         pending_requests.sort(key=lambda item: item["name"].casefold())
         years.setdefault(year, []).append({
             "id": turnus.id,
@@ -47,11 +49,10 @@ def admin_team_overview(request):
         })
     people = []
     for user in User.objects.filter(is_active=True).prefetch_related("turnus_memberships__turnus"):
-        name = user.get_full_name().strip() or user.username
         relationships = [str(item.turnus) for item in user.turnus_memberships.all()]
         people.append({
             "id": user.id,
-            "name": name,
+            "name": _display_name(user),
             "relationships": sorted(relationships, key=str.casefold),
             "available": not relationships,
         })

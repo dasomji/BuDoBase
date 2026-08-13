@@ -1,10 +1,12 @@
 from datetime import date
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
 
 from budo_app.models import AuditEvent, Turnus, TurnusJoinRequest, TurnusMembership
+from budo_app.memberships import update_membership
 
 
 class AdminTeamManagementTests(TestCase):
@@ -47,7 +49,8 @@ class AdminTeamManagementTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<div id="root"></div>', html=True)
 
-    def test_only_superuser_can_change_leitung_and_change_is_audited(self):
+    @patch("budo_app.admin_team_views.update_membership", wraps=update_membership)
+    def test_only_superuser_can_change_leitung_through_domain_seam_and_change_is_audited(self, update):
         url = reverse("admin-membership-role-api", args=(self.membership.pk,))
         staff = User.objects.create_user("staff", is_staff=True)
         self.client.force_login(staff)
@@ -60,6 +63,8 @@ class AdminTeamManagementTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.membership.refresh_from_db()
         self.assertEqual(self.membership.functional_role, "leitung")
+        update.assert_called_once()
+        self.assertEqual(update.call_args.kwargs["functional_role"], "leitung")
         self.assertTrue(AuditEvent.objects.filter(action="membership.role.change", turnus=self.turnus).exists())
 
     def test_role_mutation_requires_csrf(self):

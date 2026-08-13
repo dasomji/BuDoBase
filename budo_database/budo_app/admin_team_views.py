@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .audit import AuditEventData, actor_label_for_user, client_ip_from_request, record_audit_event
+from .memberships import update_membership
 from .models import TurnusMembership
 from .product_admin_policy import require_product_admin
 from .react_views import render_react_page
@@ -41,12 +42,10 @@ def set_membership_leadership(request, membership_id):
                 "functional_role": role,
                 "changed": False,
             })
-        membership.functional_role = role
         try:
-            membership.full_clean()
+            membership = update_membership(membership, functional_role=role)
         except DjangoValidationError as error:
             raise ValidationError(error.message_dict) from error
-        membership.save(update_fields=("functional_role",))
         record_audit_event(AuditEventData(
             turnus=membership.turnus,
             actor_id=request.user.pk,
