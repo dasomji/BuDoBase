@@ -5,6 +5,7 @@ import { Printer } from 'lucide-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppSidebar, ApplicationShell } from './app-sidebar';
+import * as SharedComponents from './components';
 import {
   Card,
   ConfirmationDialog,
@@ -55,6 +56,24 @@ describe('reusable components', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     }));
+  });
+
+  it('exposes translucent cards through the shared expandable-card interaction', () => {
+    const { TranslucentCard } = SharedComponents;
+
+    render(
+      <TranslucentCard title="Turnus 2026">
+        <p>12 Teammitglieder</p>
+      </TranslucentCard>,
+    );
+
+    const toggle = screen.getByRole('button', { name: 'Turnus 2026 schließen' });
+    expect(screen.getByText('12 Teammitglieder')).toBeVisible();
+
+    fireEvent.keyDown(toggle, { key: 'Enter' });
+
+    expect(toggle).toHaveAccessibleName('Turnus 2026 öffnen');
+    expect(document.getElementById(toggle.getAttribute('aria-controls'))).toHaveAttribute('inert');
   });
 
   it('cancels confirmation dialogs from Escape and the backdrop with cancel focused initially', () => {
