@@ -350,7 +350,10 @@ def build_dashboard_contract(request):
     # A newly registered account has no authority-bearing membership.  Its
     # dashboard deliberately exposes only public Turnus identity and its own
     # request history.
-    if profile.turnus_id is None and not request.user.turnus_memberships.exists():
+    if (
+        not request.user.turnus_memberships.exists()
+        and (profile.turnus_id is None or profile.selected_turnus_id is not None)
+    ):
         return {
             **_empty_summary(profile),
             "activity": {

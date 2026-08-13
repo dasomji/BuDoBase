@@ -94,6 +94,50 @@ class JoinRequestHttpTests(TestCase):
                 "request_status": "pending",
             }])
 
+    def test_migrated_user_awaits_membership_after_last_membership_is_deleted(self):
+        membership = TurnusMembership.objects.create(
+            user=self.requester,
+            turnus=self.turnus,
+        )
+        profile = self.requester.profil
+        profile.turnus = self.turnus
+        profile.selected_turnus = self.turnus
+        profile.save(update_fields=["turnus", "selected_turnus"])
+        TurnusJoinRequest.objects.create(
+            user=self.requester,
+            turnus=self.turnus,
+            status=TurnusJoinRequest.Status.REJECTED,
+        )
+
+        membership.delete()
+        payload = self.client.get(
+            reverse("route-data-api", args=["dashboard"])
+        ).json()
+
+        self.assertTrue(payload["membership_awaiting"])
+        self.assertEqual(payload["kids"], [])
+        self.assertEqual(payload["team"], [])
+        self.assertEqual(payload["focuses"], [])
+        self.assertEqual(payload["happy_cleanings"], [])
+        self.assertEqual(payload["turnuses"], [{
+            "id": self.turnus.id,
+            "label": str(self.turnus),
+            "number": 2,
+            "start": "2027-07-10",
+            "request_status": "rejected",
+        }])
+
+    def test_untouched_legacy_profile_still_uses_expand_phase_dashboard(self):
+        profile = self.requester.profil
+        profile.turnus = self.turnus
+        profile.save(update_fields=["turnus"])
+
+        payload = self.client.get(
+            reverse("route-data-api", args=["dashboard"])
+        ).json()
+
+        self.assertNotIn("membership_awaiting", payload)
+
     def test_anonymous_and_csrf_requests_are_rejected(self):
         self.client.logout()
         response = self.client.post(
