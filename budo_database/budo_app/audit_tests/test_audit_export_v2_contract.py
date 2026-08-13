@@ -4,6 +4,7 @@ import json
 import tempfile
 from dataclasses import replace
 from datetime import date
+from types import GeneratorType
 from unittest import mock
 
 from django.contrib.auth.models import Permission, User
@@ -161,13 +162,38 @@ class AuditExportV2HttpTests(TestCase):
         )
         self.event(details={"station_name": "x" * 256})
         snapshot = tempfile.SpooledTemporaryFile(max_size=8, mode="w+b")
+        real_materialize = audit_exports._materialize_records
+        real_serialize = audit_exports.serialize_audit_event
+        baseline_atomic_depth = len(connection.atomic_blocks)
+        observed = {}
+
+        def materialize(header, queryset):
+            records = real_materialize(header, queryset)
+            self.assertIsInstance(records, GeneratorType)
+            self.assertEqual(observed.get("serialized", 0), 0)
+            observed["records"] = records
+            return records
+
+        def serialize(event):
+            self.assertGreater(
+                len(connection.atomic_blocks), baseline_atomic_depth,
+                "rows must be serialized before the export atomic block exits",
+            )
+            observed["serialized"] = observed.get("serialized", 0) + 1
+            return real_serialize(event)
 
         with mock.patch.object(
             audit_exports, "create_export_snapshot", return_value=snapshot,
+        ), mock.patch.object(
+            audit_exports, "_materialize_records", side_effect=materialize,
+        ), mock.patch.object(
+            audit_exports, "serialize_audit_event", side_effect=serialize,
         ):
             response = self.client.get(self.url)
 
         self.assertTrue(snapshot._rolled)
+        self.assertEqual(observed["serialized"], 1)
+        self.assertEqual(list(observed["records"]), [])
         membership.delete()
         lines = self.lines(response)
         self.assertEqual(lines[1]["details"]["station_name"], "x" * 256)
