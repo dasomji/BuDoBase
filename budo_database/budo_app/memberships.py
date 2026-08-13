@@ -235,14 +235,14 @@ def authorized_turnus_scope(user):
 def membership_scoped_read(view_func):
     """Hold approved membership authority through a synchronous page render.
 
-    Page CBVs can render their read context after an invalid POST, so POST must
-    use the same scope as GET/HEAD.  This decorator does not replace command
-    authorization; it only keeps the selected membership authoritative while
-    the resulting page response is built and rendered.
+    Page CBVs can render their read context after an invalid POST or PUT, so
+    both methods must use the same scope as GET/HEAD.  This decorator does not
+    replace command authorization; it only keeps the selected membership
+    authoritative while the resulting page response is built and rendered.
     """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
-        if request.method not in {"GET", "HEAD", "POST"}:
+        if request.method not in {"GET", "HEAD", "POST", "PUT"}:
             return view_func(request, *args, **kwargs)
         with authorized_turnus_scope(request.user) as turnus:
             request.active_turnus = turnus

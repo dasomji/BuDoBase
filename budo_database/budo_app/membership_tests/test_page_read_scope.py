@@ -21,7 +21,13 @@ from budo_app.memberships import (
     membership_scoped_read,
     select_turnus,
 )
-from budo_app.models import HappyCleaning, Kinder, Turnus
+from budo_app.models import (
+    Auslagerorte,
+    HappyCleaning,
+    Kinder,
+    Schwerpunkte,
+    Turnus,
+)
 
 
 @skipUnlessDBFeature("has_select_for_update")
@@ -36,6 +42,18 @@ class PageReadMembershipScopeTests(TransactionTestCase):
         self.user = User.objects.create_user(username="page-reader")
         self.membership = create_membership(user=self.user, turnus=self.turnus)
         select_turnus(self.user, self.turnus)
+        self.client.force_login(self.user)
+        self.place = Auslagerorte.objects.create(name="Scoped place")
+        self.focus = Schwerpunkte.objects.create(
+            swp_name="Scoped focus",
+            schwerpunktzeit=self.turnus.schwerpunktzeit_set.get(woche="w1"),
+        )
+
+    def update_urls(self):
+        return (
+            reverse("auslagerorte-update", args=(self.place.pk,)),
+            reverse("schwerpunkt-update", args=(self.focus.pk,)),
+        )
 
     def assert_read_finishes_before_membership_removal(self, *, url, render_target):
         reader_started = Event()
@@ -223,6 +241,85 @@ class PageReadMembershipScopeTests(TransactionTestCase):
         self.assertEqual(response.context_data["form_errors"], ["required"])
         self.assertEqual(list(response.context_data["kids"]), [])
         self.assertNotIn(b"Private", response.content)
+
+    def test_update_puts_have_active_turnus_for_valid_membership(self):
+        kid = Kinder.objects.create(
+            kid_index="private-valid-put",
+            kid_vorname="Private",
+            kid_nachname="Valid Put",
+            turnus=self.turnus,
+        )
+
+        for url in self.update_urls():
+            with self.subTest(url=url):
+                response = self.client.put(
+                    url,
+                    data="",
+                    content_type="application/x-www-form-urlencoded",
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.is_rendered)
+                self.assertEqual(list(response.context_data["kids"]), [kid])
+
+    def test_update_puts_hide_data_for_invalid_selected_turnus(self):
+        Kinder.objects.create(
+            kid_index="private-invalid-put",
+            kid_vorname="Private",
+            kid_nachname="Invalid Put",
+            turnus=self.turnus,
+        )
+        unapproved_turnus = Turnus.objects.create(
+            turnus_nr=2,
+            turnus_beginn=date(2026, 8, 1),
+        )
+        self.user.profil.selected_turnus = unapproved_turnus
+        self.user.profil.save(update_fields=["selected_turnus"])
+
+        for url, expected_status in zip(self.update_urls(), (200, 404)):
+            with self.subTest(url=url):
+                response = self.client.put(
+                    url,
+                    data="",
+                    content_type="application/x-www-form-urlencoded",
+                )
+
+                self.assertEqual(response.status_code, expected_status)
+                if expected_status == 200:
+                    self.assertTrue(response.is_rendered)
+                    self.assertEqual(list(response.context_data["kids"]), [])
+                self.assertNotIn(b"Private", response.content)
+
+    def test_update_puts_hide_data_after_membership_revocation(self):
+        Kinder.objects.create(
+            kid_index="private-revoked-put",
+            kid_vorname="Private",
+            kid_nachname="Revoked Put",
+            turnus=self.turnus,
+        )
+        self.membership.delete()
+
+        for url, expected_status in zip(self.update_urls(), (200, 404)):
+            with self.subTest(url=url):
+                response = self.client.put(
+                    url,
+                    data="",
+                    content_type="application/x-www-form-urlencoded",
+                )
+
+                self.assertEqual(response.status_code, expected_status)
+                if expected_status == 200:
+                    self.assertTrue(response.is_rendered)
+                    self.assertEqual(list(response.context_data["kids"]), [])
+                self.assertNotIn(b"Private", response.content)
+
+    def test_update_pages_keep_patch_and_delete_disallowed(self):
+        for url in self.update_urls():
+            for method in (self.client.patch, self.client.delete):
+                with self.subTest(url=url, method=method.__name__):
+                    response = method(url)
+
+                    self.assertEqual(response.status_code, 405)
 
     def test_streaming_response_is_not_eagerly_consumed(self):
         consumed = []
