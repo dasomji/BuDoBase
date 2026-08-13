@@ -20,14 +20,6 @@ def stream_snapshot(snapshot):
 
 
 def close_snapshot_with_response(response, snapshot):
-    """Ensure abandoned/unconsumed responses release their backing snapshot."""
-    original_close = response.close
-
-    def close():
-        try:
-            original_close()
-        finally:
-            snapshot.close()
-
-    response.close = close
+    """Register snapshot cleanup with Django's normal response lifecycle."""
+    response._resource_closers.append(snapshot.close)
     return response

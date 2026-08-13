@@ -137,6 +137,7 @@ def download_updated_excel(request):
 
     temporary_directory.cleanup()
     response = FileResponse(snapshot, as_attachment=True, filename=filename)
-    # FileResponse already streams fixed-size chunks; wrapping its close makes
-    # cleanup explicit even when a server abandons the iterator.
+    # FileResponse registers the snapshot for response-close cleanup. Stream it
+    # through the shared generator as well so normal exhaustion closes it.
+    response.streaming_content = stream_snapshot(snapshot)
     return close_snapshot_with_response(response, snapshot)

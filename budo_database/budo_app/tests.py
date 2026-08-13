@@ -629,7 +629,6 @@ class DownloadUpdatedExcelTest(TestCase):
         ):
             response = self.client.get(reverse("download_updated_excel"))
             content = b"".join(response.streaming_content)
-            response.close()
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(content, b"generated workbook")
@@ -654,7 +653,27 @@ class DownloadUpdatedExcelTest(TestCase):
 
         self.assertTrue(snapshot._rolled)
         self.assertEqual(b"".join(response.streaming_content), b"a" * 64)
-        response.close()
+        self.assertTrue(snapshot.closed)
+
+    def test_abandoned_download_closes_snapshot_with_response(self):
+        snapshot = SpooledTemporaryFile(max_size=8, mode="w+b")
+
+        def generate_file(path, turnus):
+            with open(path, "wb") as generated_file:
+                generated_file.write(b"a" * 64)
+
+        with patch(
+            "budo_app.excel_views.create_export_snapshot",
+            return_value=snapshot,
+        ), patch(
+            "budo_app.excel_views.update_excel_file",
+            side_effect=generate_file,
+        ):
+            response = self.client.get(reverse("download_updated_excel"))
+
+        self.assertFalse(snapshot.closed)
+        with patch("django.http.response.signals.request_finished.send"):
+            response.close()
         self.assertTrue(snapshot.closed)
 
     def test_export_does_not_mark_an_on_time_arrival_as_late(self):

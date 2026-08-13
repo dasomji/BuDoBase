@@ -159,7 +159,22 @@ class AuditExportV2HttpTests(TestCase):
         membership.delete()
         lines = self.lines(response)
         self.assertEqual(lines[1]["details"]["station_name"], "x" * 256)
-        response.close()
+        self.assertTrue(snapshot.closed)
+
+    def test_abandoned_snapshot_closes_with_response(self):
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
+        self.event(details={"station_name": "x" * 256})
+        snapshot = tempfile.SpooledTemporaryFile(max_size=8, mode="w+b")
+
+        with mock.patch.object(
+            audit_exports, "create_export_snapshot", return_value=snapshot,
+        ):
+            response = self.client.get(self.url)
+
+        self.assertFalse(snapshot.closed)
+        with mock.patch("django.http.response.signals.request_finished.send"):
+            response.close()
         self.assertTrue(snapshot.closed)
 
     def test_insertion_exceptions_return_sanitized_503_without_a_stream(self):
@@ -206,6 +221,17 @@ class AuditExportSchemaTests(TestCase):
             request_id="export-schema", client_ip=None, user_agent="tests",
             details={"result_count": 0, "filter_count": 0},
         )
+
+    def test_snapshot_closes_when_stream_iterator_is_abandoned(self):
+        snapshot = tempfile.SpooledTemporaryFile(max_size=8, mode="w+b")
+        snapshot.write(b"partial")
+        snapshot.seek(0)
+        stream = audit_exports.stream_snapshot(snapshot)
+
+        self.assertEqual(next(stream), b"partial")
+        stream.close()
+
+        self.assertTrue(snapshot.closed)
 
     def test_schema_envelope_and_ranges_are_exact(self):
         try:
