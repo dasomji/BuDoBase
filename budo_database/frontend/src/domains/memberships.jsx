@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Pencil, Search } from 'lucide-react';
 
 import { Column, Columns, TranslucentCard } from '../components';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useErrorToast, useSuccessToast } from '../components/ui/toast';
+import { useIsMobile } from '../hooks/use-mobile';
 
 function Member({ member, mutate, onChanged }) {
   const [busy, setBusy] = useState(false);
@@ -32,8 +33,8 @@ function Member({ member, mutate, onChanged }) {
           {member.role_label}{member.team_label ? ` · ${member.team_label}` : ''}
         </p>
       </div>
-      <Button aria-label={`${member.name} ${isLead ? 'als Leitung entfernen' : 'als Leitung einsetzen'}`} type="button" size="sm" variant={isLead ? 'outline' : 'secondary'} disabled={busy} onClick={changeRole}>
-        {busy ? 'Wird gespeichert…' : isLead ? 'Leitung entfernen' : 'Als Leitung einsetzen'}
+      <Button aria-label={`${member.name} bearbeiten: ${isLead ? 'Leitung entfernen' : 'als Leitung einsetzen'}`} title={`${member.name} bearbeiten`} type="button" size="icon-sm" variant="ghost" disabled={busy} onClick={changeRole}>
+        <Pencil aria-hidden="true" />
       </Button>
     </li>
   );
@@ -42,6 +43,7 @@ function Member({ member, mutate, onChanged }) {
 export function AdminTeamOverviewPage({ data, mutate }) {
   const [query, setQuery] = useState('');
   const [years, setYears] = useState(data.years || []);
+  const isMobile = useIsMobile();
   const [selectedTurnusId, setSelectedTurnusId] = useState(() => data.years?.[0]?.turnuses?.[0]?.id ?? null);
   const normalized = query.trim().toLocaleLowerCase('de');
   const filtered = useMemo(() => years.map(year => ({
@@ -51,6 +53,9 @@ export function AdminTeamOverviewPage({ data, mutate }) {
       || turnus.members.some(member => `${member.name} ${member.team_label} ${member.role_label}`.toLocaleLowerCase('de').includes(normalized))),
   })).filter(year => year.turnuses.length), [years, normalized]);
   const visibleTurnuses = useMemo(() => filtered.flatMap(year => year.turnuses), [filtered]);
+  const matchedPeople = useMemo(() => normalized ? (data.people || []).filter(person =>
+    `${person.name} ${person.relationships.join(' ')}`.toLocaleLowerCase('de').includes(normalized)
+  ) : [], [data.people, normalized]);
   const selectedTurnus = visibleTurnuses.find(turnus => turnus.id === selectedTurnusId) || null;
   useEffect(() => {
     if (!selectedTurnus && visibleTurnuses.length) setSelectedTurnusId(visibleTurnuses[0].id);
@@ -75,15 +80,14 @@ export function AdminTeamOverviewPage({ data, mutate }) {
           <Search className="pointer-events-none absolute left-3 top-2.5 size-5 text-muted-foreground" aria-hidden="true" />
           <Input className="pl-10" value={query} onChange={event => setQuery(event.target.value)} placeholder="Turnusse und Personen suchen" />
         </label>
-        <div className="grid items-start gap-4 min-[901px]:grid-cols-[minmax(14rem,1fr)_minmax(0,3fr)]" data-slot="team-master-detail">
-          <nav className="flex min-w-0 gap-4 overflow-x-visible max-[900px]:overflow-x-auto min-[901px]:flex-col" aria-label="Turnus auswählen">
+        <div className={isMobile ? 'grid items-start gap-4' : 'grid grid-cols-[minmax(14rem,1fr)_minmax(0,3fr)] items-start gap-4'} data-layout={isMobile ? 'mobile-single-column' : 'desktop-master-detail'} data-slot="team-master-detail">
+          <nav className={isMobile ? 'flex min-w-0 gap-4 overflow-x-auto pb-2' : 'flex min-w-0 flex-col gap-4'} aria-label="Turnus auswählen">
             {filtered.map(year => (
-              <section className="min-w-max min-[901px]:min-w-0" key={year.year}>
-                <h2 className="mb-2 text-lg font-semibold">{year.year}</h2>
-                <div className="flex gap-2 min-[901px]:flex-col">
+              <TranslucentCard className={isMobile ? 'min-w-max' : 'min-w-0'} expanded key={year.year} onExpandedChange={() => {}} title={`${year.year}`}>
+                <div className={isMobile ? 'flex gap-2' : 'flex flex-col gap-2'}>
                   {year.turnuses.map(turnus => (
                     <Button
-                      className="justify-start whitespace-nowrap"
+                      className="h-auto justify-start whitespace-nowrap text-left"
                       key={turnus.id}
                       type="button"
                       variant={turnus.id === selectedTurnusId ? 'secondary' : 'outline'}
@@ -91,25 +95,38 @@ export function AdminTeamOverviewPage({ data, mutate }) {
                       aria-pressed={turnus.id === selectedTurnusId}
                       onClick={() => setSelectedTurnusId(turnus.id)}
                     >
-                      {turnus.label}
+                      <span className="grid gap-0.5">
+                        <strong>{turnus.label}</strong>
+                        <small>{turnus.members.length} Mitglieder · {turnus.members.filter(member => member.functional_role === 'leitung').length} Leitung</small>
+                      </span>
                     </Button>
                   ))}
                 </div>
-              </section>
+              </TranslucentCard>
             ))}
           </nav>
           {selectedTurnus && (
             <TranslucentCard title={selectedTurnus.label} expanded onExpandedChange={() => {}}>
-              {Number.isInteger(selectedTurnus.request_summary?.pending) && (
-                <p className="mb-2 text-sm text-muted-foreground">{selectedTurnus.request_summary.pending} offene Anfragen</p>
-              )}
+              <section className="mb-4 border-b border-border pb-4" aria-labelledby="pending-requests-heading">
+                <h3 className="font-semibold" id="pending-requests-heading">Offene Anfragen ({selectedTurnus.request_summary?.pending ?? 0})</h3>
+                {selectedTurnus.pending_requests?.length
+                  ? <ul className="mt-2">{selectedTurnus.pending_requests.map(request => <li key={request.id}>{request.name}</li>)}</ul>
+                  : <p className="mt-1 text-sm text-muted-foreground">Keine offenen Anfragen.</p>}
+              </section>
+              <h3 className="font-semibold">Team ({selectedTurnus.members.length})</h3>
               {selectedTurnus.members.length
                 ? <ul>{selectedTurnus.members.map(member => <Member key={member.id} member={member} mutate={mutate} onChanged={changed} />)}</ul>
                 : <p>Noch keine Teammitglieder.</p>}
             </TranslucentCard>
           )}
         </div>
-        {!filtered.length && <p>Keine Turnusse oder Personen gefunden.</p>}
+        {normalized && matchedPeople.length > 0 && (
+          <section className="mt-5" aria-labelledby="person-search-heading">
+            <h2 className="text-lg font-semibold" id="person-search-heading">Registrierte Personen</h2>
+            <ul>{matchedPeople.map(person => <li className="py-2" key={person.id}><strong>{person.name}</strong><span className="block text-sm text-muted-foreground">{person.relationships.length ? person.relationships.join(' · ') : 'Keine Teamzugehörigkeiten · verfügbar'}</span></li>)}</ul>
+          </section>
+        )}
+        {!filtered.length && !matchedPeople.length && <p>Keine Turnusse oder Personen gefunden.</p>}
       </Column>
     </Columns>
   );
