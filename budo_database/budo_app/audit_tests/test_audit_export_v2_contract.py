@@ -8,8 +8,9 @@ from unittest import mock
 
 from django.contrib.auth.models import Permission, User
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError
+from django.db import DatabaseError, connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from budo_app import audit_exports
@@ -17,7 +18,7 @@ from budo_app.audit import AuditEventData, record_audit_event
 from budo_app.audit_queries import FILTER_NAMES, serialize_audit_event
 from budo_app.audit_tests.test_kid_edit_audit_schema import valid_details
 from budo_app.memberships import create_membership, select_turnus
-from budo_app.models import AuditEvent, Turnus
+from budo_app.models import AuditEvent, Turnus, TurnusMembership
 
 
 PRIVACY_HEADERS = {
@@ -46,6 +47,7 @@ class AuditExportV2HttpTests(TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save(update_fields=["turnus"])
+        TurnusMembership.objects.create(user=self.user, turnus=self.turnus)
         self.client.force_login(self.user)
         self.url = reverse("audit-export-api")
 
@@ -106,7 +108,14 @@ class AuditExportV2HttpTests(TestCase):
                 "result_count": 1, "filter_count": 0,
             })
             appended = self.event(request_id="after-issuance")
-            lines = self.lines(response)
+            with CaptureQueriesContext(connection) as consumption_queries:
+                lines = self.lines(response)
+            self.assertEqual(
+                consumption_queries.captured_queries,
+                [],
+                "protected export rows must be materialized before the "
+                "membership-lock transaction ends",
+            )
         named.assert_not_called()
         temporary.assert_not_called()
         mkstemp.assert_not_called()
@@ -127,8 +136,9 @@ class AuditExportV2HttpTests(TestCase):
         self.assert_privacy_headers(response, attachment=True)
 
     def test_empty_turnus_uses_zero_snapshot_and_excludes_its_issuance(self):
-        self.user.profil.turnus = self.other_turnus
-        self.user.profil.save(update_fields=["turnus"])
+        TurnusMembership.objects.create(user=self.user, turnus=self.other_turnus)
+        self.user.profil.selected_turnus = self.other_turnus
+        self.user.profil.save(update_fields=["selected_turnus"])
         response = self.client.get(self.url, HTTP_X_REQUEST_ID="empty-export")
 
         self.assertEqual(response.status_code, 200)

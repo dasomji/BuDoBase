@@ -505,7 +505,8 @@ class MaintenanceContractPerformanceTests(QueryBudgetAssertions, TestCase):
         for key in realistic:
             with self.subTest(contract=key):
                 self.assertEqual(realistic[key].status_code, 200)
-                self.assertQueryCountAtMost(realistic[key], 3)
+                # Includes BEGIN/COMMIT for the membership-lock lifetime.
+                self.assertQueryCountAtMost(realistic[key], 5)
                 self.assertQueryGrowthAtMost(small[key], realistic[key], 0)
                 self.assertLess(
                     realistic[key].response_bytes,

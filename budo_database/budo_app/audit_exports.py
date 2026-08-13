@@ -60,10 +60,15 @@ def _safe_filename_label(label):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", label).strip("-") or "turnus"
 
 
-def _stream_records(header, queryset):
-    yield _json_line(header)
-    for event in queryset.iterator(chunk_size=500):
-        yield _json_line(serialize_audit_event(event))
+def _materialize_records(header, queryset):
+    """Serialize protected rows while the caller's membership lock is held."""
+    return tuple(
+        [_json_line(header)]
+        + [
+            _json_line(serialize_audit_event(event))
+            for event in queryset.iterator(chunk_size=500)
+        ]
+    )
 
 
 @transaction.atomic

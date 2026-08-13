@@ -143,6 +143,7 @@ class DashboardFirstAidPhotoContractTests(QueryBudgetAssertions, TestCase):
             100,
         )
         self.assertTrue(first_aid["has_more"])
-        self.assertQueryCountAtMost(after, 14)
+        # Includes the membership-scope transaction boundary.
+        self.assertQueryCountAtMost(after, 15)
         self.assertQueryGrowthAtMost(before, after, 0)
         self.assertLess(after.response_bytes - before.response_bytes, 3_000)

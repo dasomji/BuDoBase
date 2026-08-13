@@ -14,7 +14,7 @@ from budo_app.audit import (
     record_audit_event,
     record_rejected_attempt,
 )
-from budo_app.models import AuditEvent, Turnus
+from budo_app.models import AuditEvent, Turnus, TurnusMembership
 
 
 class AuditServiceTests(TransactionTestCase):
@@ -135,6 +135,7 @@ class AuditHttpTests(TestCase):
         self.user.save(update_fields=["is_staff"])
         self.user.profil.turnus = self.turnus
         self.user.profil.save(update_fields=["turnus"])
+        TurnusMembership.objects.create(user=self.user, turnus=self.turnus)
         self.client.force_login(self.user)
 
         self.own = AuditEvent.objects._create_validated_event(

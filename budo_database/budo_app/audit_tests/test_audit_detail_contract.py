@@ -15,7 +15,7 @@ from budo_app import audit_views
 from budo_app.audit import AuditEventData, record_audit_event
 from budo_app.audit_queries import serialize_audit_event
 from budo_app.audit_tests.test_kid_edit_audit_schema import valid_details
-from budo_app.models import AuditEvent, Turnus
+from budo_app.models import AuditEvent, Turnus, TurnusMembership
 
 
 PRIVACY_HEADERS = {
@@ -39,6 +39,7 @@ class AuditDetailHttpTests(TestCase):
         self.user.user_permissions.add(self.permission)
         self.user.profil.turnus = self.turnus
         self.user.profil.save(update_fields=["turnus"])
+        TurnusMembership.objects.create(user=self.user, turnus=self.turnus)
         self.client.force_login(self.user)
 
     def event(self, *, turnus=None, action="happy_cleaning.event.create",
