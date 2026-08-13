@@ -1,7 +1,11 @@
+from datetime import date
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
+from budo_app.models import Kinder, Turnus
 from budo_app.read_contracts.registry import ROUTE_CONTRACTS
 
 
@@ -91,3 +95,50 @@ class RouteContractDispatchTests(TestCase):
                 "detail": "Unknown route contract.",
             },
         )
+
+    def test_scoped_contracts_require_the_approved_selected_membership(self):
+        legacy_turnus = Turnus.objects.create(
+            turnus_nr=1,
+            turnus_beginn=date(2026, 7, 1),
+        )
+        selected_turnus = Turnus.objects.create(
+            turnus_nr=2,
+            turnus_beginn=date(2026, 7, 15),
+        )
+        self.user.profil.turnus = legacy_turnus
+        self.user.profil.save(update_fields=("turnus",))
+        membership = create_membership(
+            user=self.user,
+            turnus=selected_turnus,
+        )
+        select_turnus(self.user, selected_turnus)
+        Kinder.objects.create(
+            kid_index="LEGACY-1",
+            kid_vorname="Legacy",
+            kid_nachname="Turnus",
+            turnus=legacy_turnus,
+        )
+        Kinder.objects.create(
+            kid_index="SELECTED-1",
+            kid_vorname="Selected",
+            kid_nachname="Member",
+            turnus=selected_turnus,
+        )
+        self.client.force_login(self.user)
+
+        selected_response = self.client.get(
+            self.contract_url("kids-directory")
+        )
+
+        self.assertEqual(selected_response.status_code, 200)
+        self.assertEqual(
+            [kid["full_name"] for kid in selected_response.json()["kids"]],
+            ["Selected Member"],
+        )
+
+        membership.delete()
+
+        revoked_response = self.client.get(
+            self.contract_url("kids-directory")
+        )
+        self.assertEqual(revoked_response.status_code, 404)
