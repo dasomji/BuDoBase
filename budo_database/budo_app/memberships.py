@@ -50,7 +50,6 @@ def create_membership(
         turnus=turnus,
         status=TurnusJoinRequest.Status.PENDING,
     ).update(status=TurnusJoinRequest.Status.SUPERSEDED)
-    Profil.objects.filter(user=user).update(membership_selection_enabled=True)
     return membership
 
 

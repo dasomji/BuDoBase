@@ -1,22 +1,10 @@
 from django.db import migrations, models
 
 
-def mark_existing_selection(apps, schema_editor):
-    Profil = apps.get_model("budo_app", "Profil")
-    Profil.objects.filter(selected_turnus__isnull=False).update(
-        membership_selection_enabled=True
-    )
-
-
 class Migration(migrations.Migration):
-    dependencies = [("budo_app", "0092_turnus_join_request_notifications")]
+    dependencies = [("budo_app", "0093_profil_membership_selection_enabled")]
 
     operations = [
-        migrations.AddField(
-            model_name="profil",
-            name="membership_selection_enabled",
-            field=models.BooleanField(default=False),
-        ),
         migrations.CreateModel(
             name="SecurityAuditEvent",
             fields=[
@@ -34,5 +22,4 @@ class Migration(migrations.Migration):
             model_name="securityauditevent",
             index=models.Index(fields=["action", "-occurred_at"], name="security_audit_action_idx"),
         ),
-        migrations.RunPython(mark_existing_selection, migrations.RunPython.noop),
     ]
