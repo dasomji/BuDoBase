@@ -59,13 +59,14 @@ export function AdminTeamOverviewPage({ data, mutate }) {
       || turnus.label.toLocaleLowerCase('de').includes(normalized)
       || turnus.members.some(member => `${member.name} ${member.team_label} ${member.role_label}`.toLocaleLowerCase('de').includes(normalized))),
   })).filter(year => year.turnuses.length), [years, normalized]);
-  const visibleTurnuses = useMemo(() => filtered.flatMap(year => year.turnuses), [filtered]);
   const allTurnuses = useMemo(() => years.flatMap(year => year.turnuses), [years]);
   const matchedPeople = useMemo(() => normalized ? people.filter(person =>
     `${person.name} ${person.relationships.join(' ')}`.toLocaleLowerCase('de').includes(normalized)
   ) : [], [people, normalized]);
-  const selectedTurnus = visibleTurnuses.find(turnus => turnus.id === selectedTurnusId) || null;
   const selectedContext = allTurnuses.find(turnus => turnus.id === selectedTurnusId) || null;
+  // Search narrows the master list, but must never hide the detail that person
+  // actions target. Otherwise an add button can mutate an invisible Turnus.
+  const selectedTurnus = selectedContext;
   useEffect(() => {
     if (!selectedContext && allTurnuses.length) setSelectedTurnusId(allTurnuses[0].id);
     if (!allTurnuses.length && selectedTurnusId !== null) setSelectedTurnusId(null);
@@ -185,7 +186,7 @@ export function AdminTeamOverviewPage({ data, mutate }) {
               const availableForSelected = selectedContext != null && !(person.turnus_ids || []).includes(selectedTurnusId);
               return <li className="flex items-center justify-between gap-3 py-2" key={person.id}>
                 <span><strong>{person.name}</strong><span className="block text-sm text-muted-foreground">{person.relationships.length ? person.relationships.join(' · ') : 'Keine Teamzugehörigkeiten · verfügbar'}</span></span>
-                {availableForSelected && <Button aria-label={`${person.name} als Leitung zu ${selectedContext.label} hinzufügen`} title={`${person.name} als Leitung hinzufügen`} type="button" size="icon-sm" variant="ghost" onClick={() => addLeitung(person)}><Plus aria-hidden="true" /></Button>}
+                {availableForSelected && <Button aria-label={`${person.name} als Leitung zu ${selectedContext.label} hinzufügen`} type="button" variant="outline" onClick={() => addLeitung(person)}><Plus aria-hidden="true" />{person.name} als Leitung zu {selectedContext.label} hinzufügen</Button>}
               </li>;
             })}</ul>
           </section>

@@ -140,4 +140,25 @@ describe('admin team overview', () => {
     expect(await screen.findByText('Leitung')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' })).not.toBeInTheDocument();
   });
+
+  it('keeps the selected assignment target visible when search matches a person and another Turnus', async () => {
+    const user = userEvent.setup();
+    const mutate = vi.fn().mockResolvedValue({ membership_id: 32, role_label: 'Leitung', team_label: '' });
+    const multiple = {
+      years: [{ year: 2026, turnuses: [
+        data.years[0].turnuses[0],
+        { id: 5, label: 'T3-2026', members: [{ id: 13, name: 'Chris Frei', functional_role: 'teamer', role_label: 'Teamer', team_label: '' }] },
+      ] }],
+      people: [{ id: 30, name: 'Chris Frei', relationships: ['T3-2026'], turnus_ids: [5] }],
+    };
+    render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={mutate} /></Toaster>);
+
+    await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Chris');
+
+    expect(screen.getByRole('heading', { name: 'T2-2026' })).toBeInTheDocument();
+    const add = screen.getByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' });
+    expect(add).toHaveTextContent('Chris Frei als Leitung zu T2-2026 hinzufügen');
+    await user.click(add);
+    expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 });
+  });
 });

@@ -146,6 +146,23 @@ class AdminTeamManagementTests(TestCase):
         missing_turnus = reverse("admin-leitung-membership-create-api", args=(self.turnus.pk + 1000,))
         self.assertEqual(self.client.post(missing_turnus, {"user_id": available.pk}).status_code, 404)
 
+    def test_create_leitung_rejects_invalid_bigint_user_ids_without_mutation_or_audit(self):
+        self.client.force_login(self.admin)
+        url = reverse("admin-leitung-membership-create-api", args=(self.turnus.pk,))
+
+        for user_id in (True, False, 1.0, -1, 0, 9_223_372_036_854_775_808, None, [], {}):
+            with self.subTest(user_id=user_id):
+                response = self.client.post(
+                    url,
+                    {"user_id": user_id},
+                    content_type="application/json",
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(response.json(), {"user_id": "Eine gültige Person ist erforderlich."})
+
+        self.assertEqual(TurnusMembership.objects.count(), 1)
+        self.assertFalse(AuditEvent.objects.filter(action="membership.create").exists())
+
     def test_audit_failure_rolls_back_both_create_and_update_mutations(self):
         available = User.objects.create_user("chris")
         self.client.force_login(self.admin)

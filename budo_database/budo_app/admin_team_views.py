@@ -13,6 +13,7 @@ from .memberships import create_membership, update_membership
 from .models import Turnus, TurnusMembership
 from .product_admin_policy import require_product_admin
 from .react_views import render_react_page
+from .turnus_selection_views import _positive_bigint
 
 
 @require_GET
@@ -68,10 +69,8 @@ def set_membership_leadership(request, membership_id):
 @permission_classes([IsAuthenticated])
 def create_leitung_membership(request, turnus_id):
     require_product_admin(request.user, "Admin team management access denied.")
-    user_id = request.data.get("user_id")
-    try:
-        user_id = int(user_id)
-    except (TypeError, ValueError):
+    user_id = _positive_bigint(request.data.get("user_id"))
+    if user_id is None:
         raise ValidationError({"user_id": "Eine gültige Person ist erforderlich."})
     with transaction.atomic():
         turnus = get_object_or_404(Turnus, pk=turnus_id)
