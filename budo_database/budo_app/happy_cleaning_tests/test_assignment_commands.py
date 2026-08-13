@@ -611,4 +611,6 @@ class HappyCleaningAssignmentCommandTests(TransactionTestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertLessEqual(len(queries), 24)
+        # The command boundary deliberately pays for the canonical
+        # User/Turnus/Profile/Membership authorization lock set.
+        self.assertLessEqual(len(queries), 29)

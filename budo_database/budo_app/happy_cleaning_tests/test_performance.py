@@ -252,7 +252,9 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
         )
         self.assertEqual(preview.status_code, 200)
         self.assertEqual(preview.response.json()["result"], "conflicts")
-        self.assertQueryCountAtMost(preview, 18)
+        # Includes the User/Turnus/Profile/Membership lifetime authorization
+        # lock acquired before the preview is built.
+        self.assertQueryCountAtMost(preview, 19)
         self.assertLess(preview.response_bytes, 8_000)
 
         commit_target = HappyCleaning.objects.create(

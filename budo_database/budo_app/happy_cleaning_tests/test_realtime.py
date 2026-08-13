@@ -137,6 +137,20 @@ class HappyCleaningConsumerProtocolTests(SimpleTestCase):
         consumer.close.assert_awaited_once_with(code=4404)
         consumer.send_json.assert_not_awaited()
 
+    def test_committed_membership_revocation_closes_matching_socket(self):
+        consumer = self._consumer()
+
+        async_to_sync(consumer.membership_revoked)({"user_id": 1})
+
+        consumer.close.assert_awaited_once_with(code=4404)
+
+    def test_other_users_revocation_does_not_close_socket(self):
+        consumer = self._consumer()
+
+        async_to_sync(consumer.membership_revoked)({"user_id": 2})
+
+        consumer.close.assert_not_awaited()
+
     def test_asgi_stack_applies_origin_validation_before_session_authentication(self):
         websocket = application.application_mapping["websocket"]
         self.assertIsInstance(websocket, OriginValidator)

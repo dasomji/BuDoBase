@@ -1,5 +1,6 @@
 import logging
 import os
+from io import BytesIO
 from tempfile import TemporaryDirectory
 
 from django.contrib import messages
@@ -118,19 +119,13 @@ def download_updated_excel(request):
         file_path = os.path.join(temporary_directory.name, filename)
         try:
             update_excel_file(file_path, active_turnus)
-            response = FileResponse(open(file_path, "rb"), as_attachment=True,
+            with open(file_path, "rb") as generated_file:
+                snapshot = generated_file.read()
+            response = FileResponse(BytesIO(snapshot), as_attachment=True,
                                     filename=filename)
         except Exception:
             temporary_directory.cleanup()
             raise
 
-    close_response = response.close
-
-    def close_and_clean_up():
-        try:
-            close_response()
-        finally:
-            temporary_directory.cleanup()
-
-    response.close = close_and_clean_up
+    temporary_directory.cleanup()
     return response

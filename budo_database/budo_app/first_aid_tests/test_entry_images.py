@@ -85,6 +85,8 @@ class EntryImageTests(TransactionTestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "image/webp")
+        self.assertFalse(response.streaming)
+        self.assertTrue(response.content)
 
     def test_admin_style_entry_delete_cascades_to_stored_images(self):
         note = create_note(

@@ -488,6 +488,29 @@ class TurnusEntryAdmin(admin.ModelAdmin):
     readonly_fields = ("date_added", "added_by")
     ordering = ("-date_added", "-id")
 
+    def _authorized_admin_operation(self, request, operation, *args, **kwargs):
+        from .memberships import authorized_turnus_scope
+        with authorized_turnus_scope(request.user) as turnus:
+            if turnus is None:
+                from django.core.exceptions import PermissionDenied
+                raise PermissionDenied
+            return operation(request, *args, **kwargs)
+
+    def changeform_view(self, request, *args, **kwargs):
+        return self._authorized_admin_operation(
+            request, super().changeform_view, *args, **kwargs,
+        )
+
+    def delete_view(self, request, *args, **kwargs):
+        return self._authorized_admin_operation(
+            request, super().delete_view, *args, **kwargs,
+        )
+
+    def changelist_view(self, request, *args, **kwargs):
+        return self._authorized_admin_operation(
+            request, super().changelist_view, *args, **kwargs,
+        )
+
     def has_module_permission(self, request):
         from .memberships import scoped_turnus_for
         return request.user.is_staff and scoped_turnus_for(request.user) is not None

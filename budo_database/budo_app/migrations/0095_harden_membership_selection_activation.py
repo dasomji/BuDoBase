@@ -34,9 +34,14 @@ def install_monotonic_activation(apps, schema_editor):
 
 def remove_monotonic_activation(apps, schema_editor):
     vendor = schema_editor.connection.vendor
-    schema_editor.execute("DROP TRIGGER IF EXISTS budo_profile_activation_monotonic")
     if vendor == "postgresql":
+        table = apps.get_model("budo_app", "Profil")._meta.db_table
+        schema_editor.execute(
+            f"DROP TRIGGER IF EXISTS budo_profile_activation_monotonic ON {table}"
+        )
         schema_editor.execute("DROP FUNCTION IF EXISTS budo_profile_activation_monotonic()")
+    elif vendor == "sqlite":
+        schema_editor.execute("DROP TRIGGER IF EXISTS budo_profile_activation_monotonic")
 
 
 class Migration(migrations.Migration):

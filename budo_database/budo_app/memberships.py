@@ -13,6 +13,7 @@ def lock_membership_scope(*, user_id, turnus_id):
     """Lock the stable parents used by all membership/request write workflows."""
     get_user_model().objects.select_for_update().get(pk=user_id)
     Turnus.objects.select_for_update().get(pk=turnus_id)
+    Profil.objects.select_for_update().filter(user_id=user_id).first()
 
 
 def approved_memberships_for(user):
@@ -80,6 +81,7 @@ def update_membership(membership, *, functional_role=None, team_label=None):
 @transaction.atomic
 def select_turnus(user, turnus):
     """Select an approved Turnus, without treating selection as authority."""
+    lock_membership_scope(user_id=user.pk, turnus_id=turnus.pk)
     profile = Profil.objects.select_for_update().get(user=user)
     membership = (
         approved_memberships_for(user)
@@ -156,15 +158,27 @@ def authorized_turnus_scope(user):
         if not getattr(user, "is_authenticated", False):
             yield None
             return
-        profile = (
-            Profil.objects.select_for_update()
-            .select_related("turnus")
-            .filter(user_id=user.pk)
-            .first()
-        )
-        if profile is None:
+        profile_snapshot = Profil.objects.filter(user_id=user.pk).values(
+            "selected_turnus_id", "turnus_id", "membership_selection_enabled",
+        ).first()
+        if profile_snapshot is None:
             yield None
             return
+        # Canonical order shared with membership writers.
+        get_user_model().objects.select_for_update().get(pk=user.pk)
+        # The pre-lock read only establishes existence. Re-read after the User
+        # lock because a selector may have committed while we waited for it.
+        profile_snapshot = Profil.objects.filter(user_id=user.pk).values(
+            "selected_turnus_id", "turnus_id", "membership_selection_enabled",
+        ).get()
+        turnus_id = (
+            profile_snapshot["selected_turnus_id"]
+            if profile_snapshot["membership_selection_enabled"]
+            else profile_snapshot["turnus_id"]
+        )
+        if turnus_id is not None:
+            Turnus.objects.select_for_update().filter(pk=turnus_id).first()
+        profile = Profil.objects.select_for_update().get(user_id=user.pk)
         if not profile.membership_selection_enabled:
             yield profile.turnus
             return

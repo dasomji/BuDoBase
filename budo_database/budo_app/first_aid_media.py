@@ -1,5 +1,5 @@
 from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, Http404
+from django.http import HttpResponse, Http404
 from django.shortcuts import get_object_or_404
 
 from .memberships import authorized_turnus_scope
@@ -21,16 +21,13 @@ def attachment_media(request, kind, photo_id):
             eintrag__kinder__turnus_id=active_turnus.id,
         )
         try:
-            stored_file = photo.datei.open("rb")
+            with photo.datei.open("rb") as stored_file:
+                content = stored_file.read()
         except (FileNotFoundError, OSError, KeyError) as error:
             raise Http404 from error
 
-    response = FileResponse(
-        stored_file,
-        as_attachment=False,
-        filename=f"{kind}-foto-{photo.id}.webp",
-        content_type="image/webp",
-    )
+    response = HttpResponse(content, content_type="image/webp")
+    response["Content-Disposition"] = f'inline; filename="{kind}-foto-{photo.id}.webp"'
     response["Cache-Control"] = "private, no-store"
     response["X-Content-Type-Options"] = "nosniff"
     return response

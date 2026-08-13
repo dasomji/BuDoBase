@@ -65,7 +65,7 @@ class CommandContext:
     user_agent: str
 
 
-def command_context(request, payload):
+def command_context(request, payload, *, authorized_turnus=None):
     if not isinstance(payload, Mapping):
         raise CommandError(
             "validation_error",
@@ -82,7 +82,7 @@ def command_context(request, payload):
             "validation_error",
             errors={"request_id": ["Must be at most 255 characters."]},
         )
-    turnus = scoped_turnus_for(request.user)
+    turnus = authorized_turnus or scoped_turnus_for(request.user)
     if turnus is None:
         raise CommandError("not_found", status=404)
     return CommandContext(
@@ -95,15 +95,19 @@ def command_context(request, payload):
     )
 
 
-@transaction.atomic
 def run_authorized_command(request, payload, operation):
     """Authorize and execute while the selected membership row stays locked."""
-    context = command_context(request, payload)
-    try:
-        return context, operation(context)
-    except CommandError as error:
-        error.command_context = context
-        raise
+    from budo_app.memberships import authorized_turnus_scope
+
+    with authorized_turnus_scope(request.user) as turnus:
+        if turnus is None:
+            raise CommandError("not_found", status=404)
+        context = command_context(request, payload, authorized_turnus=turnus)
+        try:
+            return context, operation(context)
+        except CommandError as error:
+            error.command_context = context
+            raise
 
 
 def required_positive_integer(payload, name):
