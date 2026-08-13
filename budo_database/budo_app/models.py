@@ -81,6 +81,17 @@ class Profil(models.Model):
         "Turnus", on_delete=models.SET_NULL, null=True, blank=True, related_name="teamer"
     )
 
+    # Selection is working context, not an authorization grant.  The legacy
+    # ``turnus`` field remains during the expand phase so existing consumers
+    # keep their current behaviour while they migrate to memberships.
+    selected_turnus = models.ForeignKey(
+        "Turnus",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="selected_by_profiles",
+    )
+
     budo_family = models.CharField(
         max_length=2,
         choices=BUDO_FAMILIES,
@@ -94,6 +105,19 @@ class Profil(models.Model):
 
     def __str__(self):
         return self.rufname
+
+    def clean(self):
+        super().clean()
+        if (
+            self.selected_turnus_id is not None
+            and self.user_id is not None
+            and not TurnusMembership.objects.filter(
+                user_id=self.user_id, turnus_id=self.selected_turnus_id
+            ).exists()
+        ):
+            raise ValidationError(
+                {"selected_turnus": "Der ausgewählte Turnus erfordert eine Mitgliedschaft."}
+            )
 
     def get_food(self):
         if self.essen == "ft":
@@ -585,6 +609,39 @@ class Turnus(models.Model):
             models.Index(fields=['turnus_beginn'], name='turnus_beginn_idx'),
             models.Index(fields=['turnus_nr'], name='turnus_nr_idx'),
         ]
+
+
+class TurnusMembership(models.Model):
+    class FunctionalRole(models.TextChoices):
+        LEITUNG = "leitung", "Leitung"
+        TEAMER = "teamer", "Teamer"
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="turnus_memberships"
+    )
+    turnus = models.ForeignKey(
+        Turnus, on_delete=models.CASCADE, related_name="memberships"
+    )
+    functional_role = models.CharField(
+        max_length=10,
+        choices=FunctionalRole.choices,
+        default=FunctionalRole.TEAMER,
+    )
+    team_label = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "turnus"), name="unique_user_turnus_membership"
+            )
+        ]
+
+    @property
+    def is_leitung(self):
+        return self.functional_role == self.FunctionalRole.LEITUNG
+
+    def __str__(self):
+        return f"{self.user} – {self.turnus} ({self.get_functional_role_display()})"
 
 
 class HappyCleaning(models.Model):
