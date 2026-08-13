@@ -100,7 +100,29 @@ class HappyCleaningConsumerProtocolTests(SimpleTestCase):
         anonymous.close.assert_awaited_once_with(code=4401)
         wrong_turnus.close.assert_awaited_once_with(code=4404)
         anonymous.channel_layer.group_add.assert_not_awaited()
-        wrong_turnus.channel_layer.group_add.assert_not_awaited()
+        wrong_turnus.channel_layer.group_add.assert_awaited_once()
+        wrong_turnus.channel_layer.group_discard.assert_awaited_once_with(
+            "happy_cleaning.event.7", "test-channel",
+        )
+        wrong_turnus.accept.assert_not_awaited()
+
+    def test_revocation_between_provisional_add_and_authorization_never_accepts(self):
+        consumer = self._consumer()
+
+        async def revoke_before_authorization(*args):
+            # Models the committed deletion becoming visible after group_add.
+            self.assertEqual(consumer.channel_layer.group_add.await_count, 1)
+            return False
+
+        consumer._may_access_event.side_effect = revoke_before_authorization
+
+        async_to_sync(consumer.connect)()
+
+        consumer.accept.assert_not_awaited()
+        consumer.close.assert_awaited_once_with(code=4404)
+        consumer.channel_layer.group_discard.assert_awaited_once_with(
+            "happy_cleaning.event.7", "test-channel",
+        )
 
     def test_only_allow_listed_envelope_fields_are_sent(self):
         consumer = self._consumer()

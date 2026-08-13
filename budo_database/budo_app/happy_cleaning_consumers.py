@@ -66,12 +66,18 @@ class HappyCleaningInvalidationConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4401)
             return
         event_id = self.scope["url_route"]["kwargs"]["event_id"]
-        if not await self._may_access_event(user.id, event_id):
-            await self.close(code=4404)
-            return
         self.event_id = event_id
         self.group_name = happy_cleaning_group_name(event_id)
+        # Subscribe provisionally before authorization. This ordering closes
+        # the check-then-subscribe gap: a concurrent revocation is either
+        # observed by the authorization query or queued behind this add.
         await self.channel_layer.group_add(self.group_name, self.channel_name)
+        if not await self._may_access_event(user.id, event_id):
+            await self.channel_layer.group_discard(
+                self.group_name, self.channel_name,
+            )
+            await self.close(code=4404)
+            return
         await self.accept()
 
     async def disconnect(self, close_code):

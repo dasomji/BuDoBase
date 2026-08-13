@@ -16,6 +16,7 @@ from budo_app import audit_exports
 from budo_app.audit import AuditEventData, record_audit_event
 from budo_app.audit_queries import FILTER_NAMES, serialize_audit_event
 from budo_app.audit_tests.test_kid_edit_audit_schema import valid_details
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import AuditEvent, Turnus
 
 
@@ -142,6 +143,24 @@ class AuditExportV2HttpTests(TestCase):
         }])
         issuance = AuditEvent.objects.get(request_id="empty-export")
         self.assertEqual(issuance.details["result_count"], 0)
+
+    def test_large_snapshot_rolls_to_disk_and_survives_membership_removal(self):
+        membership = create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
+        self.event(details={"station_name": "x" * 256})
+        snapshot = tempfile.SpooledTemporaryFile(max_size=8, mode="w+b")
+
+        with mock.patch.object(
+            audit_exports, "create_export_snapshot", return_value=snapshot,
+        ):
+            response = self.client.get(self.url)
+
+        self.assertTrue(snapshot._rolled)
+        membership.delete()
+        lines = self.lines(response)
+        self.assertEqual(lines[1]["details"]["station_name"], "x" * 256)
+        response.close()
+        self.assertTrue(snapshot.closed)
 
     def test_insertion_exceptions_return_sanitized_503_without_a_stream(self):
         self.event(details={"station_name": "MUST-NOT-LEAK"})

@@ -21,6 +21,7 @@ from budo_app.audit_exports import (
     AuditExportTurnusNotFound,
     export_audit_events as build_audit_export,
 )
+from budo_app.export_snapshots import close_snapshot_with_response
 from budo_app.audit_queries import (
     AuditFilters,
     selected_audit_turnus,
@@ -119,4 +120,4 @@ def export_audit_events(request):
     )
     response["Content-Disposition"] = f'attachment; filename="{result.filename}"'
     response["X-Content-Type-Options"] = "nosniff"
-    return response
+    return close_snapshot_with_response(response, result.snapshot)

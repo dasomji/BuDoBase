@@ -14,6 +14,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from io import BytesIO
 from tempfile import TemporaryDirectory
+from tempfile import SpooledTemporaryFile
 import os
 import json
 import pandas as pd
@@ -634,6 +635,27 @@ class DownloadUpdatedExcelTest(TestCase):
         self.assertEqual(content, b"generated workbook")
         self.assertIsNotNone(generated_path)
         self.assertFalse(os.path.exists(os.path.dirname(generated_path)))
+
+    def test_large_download_rolls_snapshot_to_disk_and_closes_it_with_response(self):
+        snapshot = SpooledTemporaryFile(max_size=8, mode="w+b")
+
+        def generate_file(path, turnus):
+            with open(path, "wb") as generated_file:
+                generated_file.write(b"a" * 64)
+
+        with patch(
+            "budo_app.excel_views.create_export_snapshot",
+            return_value=snapshot,
+        ), patch(
+            "budo_app.excel_views.update_excel_file",
+            side_effect=generate_file,
+        ):
+            response = self.client.get(reverse("download_updated_excel"))
+
+        self.assertTrue(snapshot._rolled)
+        self.assertEqual(b"".join(response.streaming_content), b"a" * 64)
+        response.close()
+        self.assertTrue(snapshot.closed)
 
     def test_export_does_not_mark_an_on_time_arrival_as_late(self):
         self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday

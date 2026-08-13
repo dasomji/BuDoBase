@@ -30,6 +30,11 @@ def install_monotonic_activation(apps, schema_editor):
                 SELECT RAISE(ABORT, 'membership selection activation is irreversible');
             END;
         """)
+    else:
+        raise RuntimeError(
+            "Membership activation hardening supports only PostgreSQL and SQLite; "
+            f"refusing to omit the security invariant for database vendor {vendor!r}."
+        )
 
 
 def remove_monotonic_activation(apps, schema_editor):
@@ -42,6 +47,11 @@ def remove_monotonic_activation(apps, schema_editor):
         schema_editor.execute("DROP FUNCTION IF EXISTS budo_profile_activation_monotonic()")
     elif vendor == "sqlite":
         schema_editor.execute("DROP TRIGGER IF EXISTS budo_profile_activation_monotonic")
+    else:
+        raise RuntimeError(
+            "Membership activation hardening supports only PostgreSQL and SQLite; "
+            f"cannot reverse safely for database vendor {vendor!r}."
+        )
 
 
 class Migration(migrations.Migration):

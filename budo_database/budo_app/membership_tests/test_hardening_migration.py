@@ -22,12 +22,14 @@ class MembershipHardeningMigrationSqlTests(SimpleTestCase):
             "DROP TRIGGER IF EXISTS budo_profile_activation_monotonic ON budo_app_profil",
         )
 
-    def test_unknown_vendor_does_not_install_or_remove_vendor_sql(self):
+    def test_unknown_vendor_fails_loudly_instead_of_omitting_invariant(self):
         apps = Mock()
         editor = Mock()
         editor.connection.vendor = "mysql"
 
-        migration.install_monotonic_activation(apps, editor)
-        migration.remove_monotonic_activation(apps, editor)
+        with self.assertRaisesRegex(RuntimeError, "supports only PostgreSQL and SQLite"):
+            migration.install_monotonic_activation(apps, editor)
+        with self.assertRaisesRegex(RuntimeError, "cannot reverse safely"):
+            migration.remove_monotonic_activation(apps, editor)
 
         editor.execute.assert_not_called()

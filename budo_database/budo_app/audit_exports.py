@@ -1,13 +1,14 @@
 import json
 import re
 from dataclasses import dataclass
-from typing import Iterable
+from typing import BinaryIO
 
 from django.contrib.auth.models import AbstractBaseUser
 from rest_framework.exceptions import APIException
 from django.db import transaction
 
 from budo_app.audit import AuditEventData, actor_label_for_user, record_audit_event
+from budo_app.export_snapshots import create_export_snapshot, stream_snapshot
 from budo_app.audit_queries import (
     AuditFilters,
     filtered_audit_events,
@@ -38,8 +39,12 @@ class AuditExportCommand:
 
 @dataclass(frozen=True)
 class AuditExportResult:
-    lines: Iterable[str]
+    snapshot: BinaryIO
     filename: str
+
+    @property
+    def lines(self):
+        return stream_snapshot(self.snapshot)
 
 
 def _json_line(value):
@@ -115,10 +120,17 @@ def export_audit_events(command):
         "turnus": {"id": turnus.id, "label": str(turnus)},
         "snapshot_id": snapshot_id,
     }
-    # Materialize while the membership authorization lock is still held.  The
-    # HTTP response may stream later, but it only streams this safe snapshot.
-    lines = tuple(_stream_records(header, queryset))
+    # Materialize into a bounded-memory immutable file while the membership
+    # authorization lock is held. The response later reads no database rows.
+    snapshot = create_export_snapshot()
+    try:
+        for line in _stream_records(header, queryset):
+            snapshot.write(line.encode("utf-8"))
+        snapshot.seek(0)
+    except Exception:
+        snapshot.close()
+        raise
     return AuditExportResult(
-        lines=lines,
+        snapshot=snapshot,
         filename=f"audit-{_safe_filename_label(str(turnus))}.log",
     )

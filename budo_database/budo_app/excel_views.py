@@ -1,6 +1,6 @@
 import logging
 import os
-from io import BytesIO
+import shutil
 from tempfile import TemporaryDirectory
 
 from django.contrib import messages
@@ -12,6 +12,11 @@ from django.shortcuts import get_object_or_404, redirect
 from . import models
 from .excelProcessor import process_excel
 from .forms import UploadForm
+from .export_snapshots import (
+    close_snapshot_with_response,
+    create_export_snapshot,
+    stream_snapshot,
+)
 from .memberships import authorized_turnus_scope
 from .react_views import render_react_page
 from .storage_lifecycle import delete_storage_object_on_commit
@@ -111,6 +116,7 @@ def upload_excel(request, turnus_id):
 
 @login_required
 def download_updated_excel(request):
+    snapshot = None
     with authorized_turnus_scope(request.user) as active_turnus:
         if not active_turnus:
             return HttpResponse("No active turnus found.", status=404)
@@ -119,13 +125,18 @@ def download_updated_excel(request):
         file_path = os.path.join(temporary_directory.name, filename)
         try:
             update_excel_file(file_path, active_turnus)
+            snapshot = create_export_snapshot()
             with open(file_path, "rb") as generated_file:
-                snapshot = generated_file.read()
-            response = FileResponse(BytesIO(snapshot), as_attachment=True,
-                                    filename=filename)
+                shutil.copyfileobj(generated_file, snapshot)
+            snapshot.seek(0)
         except Exception:
+            if snapshot is not None:
+                snapshot.close()
             temporary_directory.cleanup()
             raise
 
     temporary_directory.cleanup()
-    return response
+    response = FileResponse(snapshot, as_attachment=True, filename=filename)
+    # FileResponse already streams fixed-size chunks; wrapping its close makes
+    # cleanup explicit even when a server abandons the iterator.
+    return close_snapshot_with_response(response, snapshot)
