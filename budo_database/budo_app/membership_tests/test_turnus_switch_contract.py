@@ -219,6 +219,32 @@ class TurnusSwitchContractTests(TestCase):
         self.assertTrue(all(len(event.request_id) <= 255 for event in events))
         self.assertTrue(all("\n" not in event.request_id for event in events))
 
+    def test_top_level_non_object_json_is_rejected_and_privacy_safe_audited(self):
+        turnus = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
+        user = User.objects.create_user(
+            username="non-object-json",
+            email="private@example.test",
+        )
+        create_membership(user=user, turnus=turnus)
+        select_turnus(user, turnus)
+        self.client.force_login(user)
+
+        for body in ('[1]', '"scalar"', 'null'):
+            response = self.client.post(
+                reverse("turnus-selection-api"),
+                data=body,
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.json(), {"code": "invalid_turnus_selection"})
+
+        self.assertFalse(AuditEvent.objects.filter(action="turnus.selection.switch").exists())
+        events = SecurityAuditEvent.objects.filter(action="turnus.selection.switch")
+        self.assertEqual(events.count(), 3)
+        self.assertEqual({event.actor_id for event in events}, {None})
+        self.assertEqual({event.reason for event in events}, {"invalid"})
+        self.assertNotIn(user.email, str(list(events.values())))
+
 
 @skipUnlessDBFeature("has_select_for_update")
 class TurnusSelectionConcurrencyTests(TransactionTestCase):

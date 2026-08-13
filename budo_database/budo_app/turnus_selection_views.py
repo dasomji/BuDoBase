@@ -1,5 +1,6 @@
 """HTTP command for changing the user's approved Turnus context."""
 
+from collections.abc import Mapping
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
@@ -50,6 +51,9 @@ def _positive_bigint(value):
 def turnus_selection(request):
     request_id = _request_id(request)
     previous = selected_turnus_for(request.user)
+    if not isinstance(request.data, Mapping):
+        _record_unscoped_rejection(request_id, "invalid")
+        return Response({"code": "invalid_turnus_selection"}, status=400)
     value = request.data.get("turnus_id")
     turnus_id = _positive_bigint(value)
     if turnus_id is None:
