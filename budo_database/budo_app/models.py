@@ -1189,21 +1189,29 @@ class Auslagerorte(models.Model):
             return self.koordinaten.split(",")[1].strip()
 
     def save(self, *args, **kwargs):
-        """Keep stored travel times aligned with directly persisted coordinates."""
+        """Keep stored travel times aligned with the preferred destination."""
         is_new = self.pk is None
         update_fields = kwargs.get("update_fields")
-        coordinate_is_written = (
+        main_coordinates_are_written = (
             update_fields is None or "koordinaten" in update_fields
         )
+        parking_coordinates_are_written = (
+            update_fields is None or "koordinaten_parkspot" in update_fields
+        )
+        destination_is_written = (
+            main_coordinates_are_written or parking_coordinates_are_written
+        )
         name_is_written = update_fields is None or "name" in update_fields
-        previous_coordinates = None
+        previous_main_coordinates = None
+        previous_parking_coordinates = None
         previous_name = None
-        if self.pk and (coordinate_is_written or name_is_written):
+        if self.pk and (destination_is_written or name_is_written):
             previous = type(self).objects.filter(pk=self.pk).values(
-                "koordinaten", "name"
+                "koordinaten", "koordinaten_parkspot", "name"
             ).first()
             if previous:
-                previous_coordinates = previous["koordinaten"]
+                previous_main_coordinates = previous["koordinaten"]
+                previous_parking_coordinates = previous["koordinaten_parkspot"]
                 previous_name = previous["name"]
 
         from .location_services import (
@@ -1212,26 +1220,36 @@ class Auslagerorte(models.Model):
             is_budo_place,
             _stored_coordinates,
             refresh_all_auslagerorte_travel_times,
+            travel_time_destination,
             update_auslagerorte_travel_times,
         )
 
-        current_coordinates = _stored_coordinates(self.koordinaten)
-        coordinates_changed = (
+        current_destination = travel_time_destination(self)
+        previous_destination = (
+            _stored_coordinates(previous_parking_coordinates)
+            or _stored_coordinates(previous_main_coordinates)
+        )
+        destination_changed = (
             self.pk is not None
-            and coordinate_is_written
-            and not coordinates_equal(previous_coordinates, self.koordinaten)
+            and destination_is_written
+            and previous_destination != current_destination
+        )
+        main_coordinates_changed = (
+            self.pk is not None
+            and main_coordinates_are_written
+            and not coordinates_equal(previous_main_coordinates, self.koordinaten)
         )
         new_place_needs_times = (
             self.pk is None
-            and current_coordinates is not None
+            and current_destination is not None
             and (self.driving_minutes is None or self.walking_minutes is None)
         )
-        tracked_coordinates = getattr(self, "_travel_times_coordinates", object())
-        already_current = tracked_coordinates == current_coordinates
-        if (coordinates_changed or new_place_needs_times) and not already_current:
+        tracked_destination = getattr(self, "_travel_times_coordinates", object())
+        already_current = tracked_destination == current_destination
+        if (destination_changed or new_place_needs_times) and not already_current:
             update_auslagerorte_travel_times(self)
 
-        if update_fields is not None and (coordinates_changed or new_place_needs_times):
+        if update_fields is not None and (destination_changed or new_place_needs_times):
             kwargs["update_fields"] = set(update_fields) | {
                 "driving_minutes",
                 "walking_minutes",
@@ -1239,7 +1257,7 @@ class Auslagerorte(models.Model):
         origin_identity_changed = self.pk is not None and name_is_written and (
             is_budo_name(previous_name) != is_budo_place(self)
         )
-        origin_coordinates_changed = coordinates_changed and is_budo_place(self)
+        origin_coordinates_changed = main_coordinates_changed and is_budo_place(self)
         super().save(*args, **kwargs)
         if (
             (is_new and is_budo_place(self))

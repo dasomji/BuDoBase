@@ -215,6 +215,9 @@ function withDynamicNavEntries(events, permissions) {
       if (permissions?.view_auditevent) {
         settings.push({ label: 'Audit-Log', href: '/audit/' });
       }
+      if (permissions?.admin_settings) {
+        settings.push({ label: 'Einstellungen', href: '/settings/' });
+      }
       return {
         ...item,
         children: [

@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from .views import SchwerpunkteUpdate, MealUpdate, SchwerpunkteDetail, SchwerpunkteCreate, AuslagerorteCreate, AuslagerorteImageUpload, AuslagerorteDetail, AuslagerorteUpdate
 from .tag_views import create_tag, delete_tag, tag_settings_page, update_tag
 from .place_views import delete_place, delete_place_image
+from .settings_views import admin_settings_page, recalculate_travel_times
 from .first_aid_media import attachment_media
 from .happy_cleaning_page_views import (
     assignment_page,
@@ -30,6 +31,12 @@ def legacy_slashless_page(route, view, *, name):
 
 
 urlpatterns = [
+    path('settings/', admin_settings_page, name='admin-settings-page'),
+    path(
+        'api/settings/recalculate-travel-times/',
+        recalculate_travel_times,
+        name='recalculate-travel-times-api',
+    ),
     path('api/places/<int:place_id>/delete/', delete_place, name='place-delete-api'),
     path(
         'api/places/<int:place_id>/images/<int:image_id>/delete/',

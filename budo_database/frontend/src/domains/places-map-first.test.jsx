@@ -122,24 +122,26 @@ describe('map-first Auslagerorte', () => {
     }));
   });
 
-  it('keeps the map, result list, AND tag search, walking filter, and URL in one screen', async () => {
+  it('keeps the map, result list, OR tag search, walking filter, and URL in one screen', async () => {
     window.history.replaceState({}, '', '/auslagerorte-list/');
     const user = userEvent.setup();
     renderPage();
 
     expect(screen.getByRole('region', { name: 'Google Karte' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Badeplatz' }).querySelector('svg')).toBeInTheDocument();
     expect(mapProps.homePlace).toMatchObject({ id: 1, name: 'BuDo' });
     expect(mapProps.places.map(place => place.name)).toEqual(['BuDo', 'Waldwiese', 'Badesee', 'Scheune ohne Koordinaten']);
     expect(screen.getByText('Scheune ohne Koordinaten').closest('button')).toHaveTextContent('kein Pin');
     const badeMetadata = screen.getByRole('group', { name: 'Reisezeiten und Tags für Badesee' });
     expect(badeMetadata).toHaveTextContent('20 min');
-    expect(badeMetadata).toHaveTextContent('75 min');
+    expect(badeMetadata).toHaveTextContent('1 h 15 min');
     expect(badeMetadata).toHaveTextContent('Badeplatz');
+    expect(within(badeMetadata).getByText('Badeplatz')).toHaveClass('bg-background');
 
     await user.click(screen.getByRole('button', { name: 'Wanderung' }));
-    await user.click(screen.getByRole('button', { name: 'Lagerfeuer' }));
-    expect(mapProps.places.map(place => place.name)).toEqual(['Waldwiese']);
-    expect(new URLSearchParams(window.location.search).getAll('tag')).toEqual(['Wanderung', 'Lagerfeuer']);
+    await user.click(screen.getByRole('button', { name: 'Badeplatz' }));
+    expect(mapProps.places.map(place => place.name)).toEqual(['Waldwiese', 'Badesee']);
+    expect(new URLSearchParams(window.location.search).getAll('tag')).toEqual(['Wanderung', 'Badeplatz']);
 
     await user.click(screen.getByRole('button', { name: 'Tagfilter zurücksetzen' }));
     expect(screen.queryByRole('button', { name: 'Höchstens 60 Minuten zu Fuß' })).not.toBeInTheDocument();

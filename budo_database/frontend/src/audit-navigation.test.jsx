@@ -74,6 +74,17 @@ describe('Audit-Log navigation capability', () => {
     expect(screen.getByRole('button', { name: 'Orgi' })).toHaveAttribute('data-active');
   });
 
+  it('shows app settings only to staff-authorized users', () => {
+    const view = renderSidebar({ admin_settings: false }, '/settings/');
+    expect(screen.queryByRole('link', { name: 'Einstellungen' })).not.toBeInTheDocument();
+    view.unmount();
+
+    renderSidebar({ admin_settings: true }, '/settings/');
+    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute('href', '/settings/');
+    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute('data-active');
+    expect(screen.getByRole('button', { name: 'Orgi' })).toHaveAttribute('data-active');
+  });
+
   it('does not treat export permission alone as view authorization', () => {
     renderSidebar({ view_auditevent: false, export_auditevent: true });
 

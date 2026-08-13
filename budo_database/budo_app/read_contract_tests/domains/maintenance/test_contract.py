@@ -1,7 +1,7 @@
 import os
 from datetime import date
 from io import BytesIO
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 from django.contrib.auth.models import User
@@ -9,7 +9,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from budo_app.models import Kinder, SpezialFamilien, Turnus
+from budo_app import location_services
+from budo_app.models import Auslagerorte, Kinder, SpezialFamilien, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
     RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
@@ -131,6 +132,65 @@ class MaintenanceContractTests(TestCase):
 
 
 @override_settings(STORAGES=TEST_STORAGES)
+class AdminSettingsTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(username="settings-staff", is_staff=True)
+        self.nonstaff = User.objects.create_user(username="settings-nonstaff")
+
+    def test_staff_can_open_settings_shell_and_read_its_focused_contract(self):
+        self.client.force_login(self.staff)
+
+        page = self.client.get(reverse("admin-settings-page"))
+        contract = self.client.get(
+            reverse("route-data-api", kwargs={"contract_key": "admin-settings"}),
+        )
+
+        self.assertEqual(page.status_code, 200)
+        self.assertEqual(contract.status_code, 200)
+        self.assertEqual(contract.json(), {})
+
+    def test_nonstaff_cannot_open_read_or_run_admin_settings(self):
+        self.client.force_login(self.nonstaff)
+
+        responses = [
+            self.client.get(reverse("admin-settings-page")),
+            self.client.get(
+                reverse("route-data-api", kwargs={"contract_key": "admin-settings"}),
+            ),
+            self.client.post(reverse("recalculate-travel-times-api")),
+        ]
+
+        self.assertEqual([response.status_code for response in responses], [403, 403, 403])
+
+    def test_staff_recalculates_every_place_and_receives_the_count(self):
+        self.client.force_login(self.staff)
+        Auslagerorte.objects.create(name="BuDo", koordinaten="48.0,15.0")
+        place = Auslagerorte.objects.create(
+            name="Waldlichtung",
+            koordinaten="48.2,15.2",
+            koordinaten_parkspot="48.3,15.3",
+            driving_minutes=2,
+            walking_minutes=3,
+        )
+        gateway = Mock()
+        gateway.route_duration_minutes.side_effect = lambda _origin, _destination, mode: {
+            "DRIVE": 18,
+            "WALK": 64,
+        }[mode]
+
+        with patch.object(location_services, "google_maps_gateway", gateway):
+            response = self.client.post(reverse("recalculate-travel-times-api"))
+
+        place.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"updated": 2})
+        self.assertEqual((place.driving_minutes, place.walking_minutes), (18, 64))
+        self.assertEqual(
+            gateway.route_duration_minutes.call_args_list[0].args[1],
+            (48.3, 15.3),
+        )
+
+
 class MaintenanceMultipartWorkflowTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="maintenance-uploader")

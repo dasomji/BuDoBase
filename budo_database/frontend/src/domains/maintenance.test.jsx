@@ -1,16 +1,17 @@
 import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Toaster } from '../components/ui/toast';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute } from '../routes';
-import { SimpleUploadPage, TurnusUploadPage } from './maintenance';
+import { AdminSettingsPage, SimpleUploadPage, TurnusUploadPage } from './maintenance';
 
 const render = ui => testingLibraryRender(ui, {
   wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
 });
 
-describe('maintenance upload pages', () => {
+describe('maintenance and settings pages', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
@@ -31,6 +32,11 @@ describe('maintenance upload pages', () => {
       contractKey: 'special-upload',
       params: {},
       url: '/api/route-data/special-upload/',
+    });
+    expect(routeDataRequest(parseRoute('/settings/'))).toEqual({
+      contractKey: 'admin-settings',
+      params: {},
+      url: '/api/route-data/admin-settings/',
     });
   });
 
@@ -65,6 +71,17 @@ describe('maintenance upload pages', () => {
     expect(screen.getByLabelText('Beginn des Turnus (muss ein Samstag sein)')).toHaveValue('2026-07-01');
     expect(screen.getByLabelText('Excel-File').form).toHaveAttribute('action', '/upload_excel/27/');
     expect(screen.getByRole('button', { name: 'Hochladen' })).toHaveValue('Hochladen');
+  });
+
+  it('recalculates all travel times from the staff settings page', async () => {
+    const user = userEvent.setup();
+    const mutate = vi.fn().mockResolvedValue({ updated: 12 });
+    render(<AdminSettingsPage mutate={mutate} />);
+
+    await user.click(screen.getByRole('button', { name: 'Alle Reisezeiten neu berechnen' }));
+
+    expect(mutate).toHaveBeenCalledWith('/api/settings/recalculate-travel-times/', {});
+    expect(await screen.findByText('Reisezeiten für 12 Auslagerorte neu berechnet.')).toBeInTheDocument();
   });
 
   it('submits exact workbook multipart data once and shows progress', async () => {

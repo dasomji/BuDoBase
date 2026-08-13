@@ -104,6 +104,49 @@ class TravelTimeStorageTests(TestCase):
         self.assertIsNone(place.driving_minutes)
         self.assertIsNone(place.walking_minutes)
 
+    def test_direct_parkspot_save_recomputes_routes_to_the_parkspot(self):
+        Auslagerorte.objects.create(name="BuDo", koordinaten="48.0,15.0")
+        place = Auslagerorte.objects.create(
+            name="Waldlichtung",
+            koordinaten="48.1,15.1",
+            driving_minutes=8,
+            walking_minutes=25,
+        )
+        gateway = RouteDurationGatewayStub({"DRIVE": 12, "WALK": 47})
+
+        place.koordinaten_parkspot = "48.3,15.3"
+        with patch.object(location_services, "google_maps_gateway", gateway):
+            place.save(update_fields=["koordinaten_parkspot"])
+
+        place.refresh_from_db()
+        self.assertEqual((place.driving_minutes, place.walking_minutes), (12, 47))
+        self.assertEqual(
+            gateway.route_requests,
+            [
+                ((48.0, 15.0), (48.3, 15.3), "DRIVE"),
+                ((48.0, 15.0), (48.3, 15.3), "WALK"),
+            ],
+        )
+
+    def test_clearing_parkspot_recomputes_routes_to_main_coordinates(self):
+        Auslagerorte.objects.create(name="BuDo", koordinaten="48.0,15.0")
+        place = Auslagerorte.objects.create(
+            name="Waldlichtung",
+            koordinaten="48.1,15.1",
+            koordinaten_parkspot="48.3,15.3",
+            driving_minutes=8,
+            walking_minutes=25,
+        )
+        gateway = RouteDurationGatewayStub({"DRIVE": 13, "WALK": 49})
+
+        place.koordinaten_parkspot = None
+        with patch.object(location_services, "google_maps_gateway", gateway):
+            place.save(update_fields=["koordinaten_parkspot"])
+
+        place.refresh_from_db()
+        self.assertEqual((place.driving_minutes, place.walking_minutes), (13, 49))
+        self.assertEqual(gateway.route_requests[0][1], (48.1, 15.1))
+
     def test_admin_save_uses_the_coordinate_travel_time_invariant(self):
         Auslagerorte.objects.create(name="BuDo", koordinaten="48.0,15.0")
         place = Auslagerorte.objects.create(
@@ -210,7 +253,7 @@ class TravelTimeWriteContractTests(TestCase):
         payload.update(values)
         return self.client.post(reverse("form-submit-api"), payload)
 
-    def test_link_pipeline_stores_both_routes_when_main_coordinates_are_set(self):
+    def test_link_pipeline_stores_both_routes_to_the_parkspot_when_available(self):
         gateway = RouteDurationGatewayStub({"DRIVE": 12, "WALK": 47})
 
         with patch.object(location_services, "google_maps_gateway", gateway):
@@ -228,12 +271,12 @@ class TravelTimeWriteContractTests(TestCase):
         self.assertEqual(
             gateway.route_requests,
             [
-                ((48.0, 15.0), (48.2, 15.2), "DRIVE"),
-                ((48.0, 15.0), (48.2, 15.2), "WALK"),
+                ((48.0, 15.0), (48.3, 15.3), "DRIVE"),
+                ((48.0, 15.0), (48.3, 15.3), "WALK"),
             ],
         )
 
-    def test_unchanged_main_coordinates_and_parkspot_changes_skip_routes(self):
+    def test_parkspot_change_recomputes_routes_even_when_main_coordinates_are_unchanged(self):
         place = Auslagerorte.objects.create(
             name="Waldlichtung",
             maps_link="https://www.google.com/maps/@48.2,15.2,17z",
@@ -241,12 +284,9 @@ class TravelTimeWriteContractTests(TestCase):
             driving_minutes=12,
             walking_minutes=47,
         )
+        gateway = RouteDurationGatewayStub({"DRIVE": 9, "WALK": 31})
 
-        with patch.object(
-            location_services,
-            "google_maps_gateway",
-            RejectingRouteDurationGatewayStub(),
-        ):
+        with patch.object(location_services, "google_maps_gateway", gateway):
             response = self.submit(
                 f"/auslagerorte/{place.id}/update",
                 maps_link="https://www.google.com/maps/?q=48.2,15.2",
@@ -256,8 +296,8 @@ class TravelTimeWriteContractTests(TestCase):
 
         place.refresh_from_db()
         self.assertEqual(response.status_code, 200, response.json())
-        self.assertEqual(place.driving_minutes, 12)
-        self.assertEqual(place.walking_minutes, 47)
+        self.assertEqual((place.driving_minutes, place.walking_minutes), (9, 31))
+        self.assertEqual(gateway.route_requests[0][1], (48.3, 15.3))
 
     def test_clearing_main_coordinates_clears_both_travel_times(self):
         place = Auslagerorte.objects.create(

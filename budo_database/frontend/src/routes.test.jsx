@@ -19,6 +19,7 @@ describe('route inventory', () => {
     ['/team', 'team', 'profiles', 'team'],
     ['/upload', 'turnus-upload', 'maintenance', 'turnus-list'],
     ['/upload_excel/9', 'turnus-upload', 'maintenance', 'turnus-upload'],
+    ['/settings/', 'admin-settings', 'maintenance', 'admin-settings'],
     ['/all_kids', 'kids', 'kids', 'kids-directory'],
     ['/zugabreise', 'train-departure', 'attendance', 'train-departure'],
     ['/zuganreise', 'train-arrival', 'attendance', 'train-arrival'],
