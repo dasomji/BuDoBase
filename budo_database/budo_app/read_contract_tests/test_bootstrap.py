@@ -123,7 +123,7 @@ class BootstrapContractTests(TestCase):
                 "change_kids", "change_profiles", "change_focuses",
                 "change_places", "delete_places", "delete_place_images",
                 "change_tags", "delete_tags", "view_auditevent", "export_auditevent",
-                "admin_settings",
+                "admin_settings", "manage_teams",
             },
         )
         self.assertFalse(payload["permissions"]["admin_settings"])

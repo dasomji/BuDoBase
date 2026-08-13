@@ -40,6 +40,33 @@ function Member({ member, mutate, onChanged }) {
   );
 }
 
+function PendingRequest({ request, mutate, onDecided }) {
+  const [busy, setBusy] = useState(false);
+  const showError = useErrorToast();
+  const showSuccess = useSuccessToast();
+  const decide = async decision => {
+    setBusy(true);
+    try {
+      await mutate(`/api/join-requests/${request.id}/decision/`, { decision });
+      onDecided(request.id);
+      showSuccess(decision === 'approve'
+        ? `${request.name} wurde als Teamer aufgenommen.`
+        : `Die Anfrage von ${request.name} wurde abgelehnt.`);
+    } catch (error) {
+      showError(error.payload?.detail || 'Die Beitrittsanfrage konnte nicht bearbeitet werden.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return <li className="flex flex-wrap items-center justify-between gap-2 border-t border-border py-3 first:border-t-0">
+    <span className="min-w-0"><strong>{request.name}</strong>{request.email && <span className="block break-all text-sm text-muted-foreground">{request.email}</span>}</span>
+    <span className="flex flex-wrap gap-2">
+      <Button type="button" disabled={busy} onClick={() => decide('approve')}>{request.name} annehmen</Button>
+      <Button type="button" variant="outline" disabled={busy} onClick={() => decide('reject')}>{request.name} ablehnen</Button>
+    </span>
+  </li>;
+}
+
 export function AdminTeamOverviewPage({ data, mutate }) {
   const showError = useErrorToast();
   const showSuccess = useSuccessToast();
@@ -47,6 +74,7 @@ export function AdminTeamOverviewPage({ data, mutate }) {
   const [years, setYears] = useState(data.years || []);
   const [people, setPeople] = useState(data.people || []);
   const isMobile = useIsMobile();
+  const canManageLeitung = data.can_manage_leitung !== false;
   const [expandedYears, setExpandedYears] = useState(() => new Set(
     isMobile ? data.years?.slice(0, 1).map(year => year.year) : data.years?.map(year => year.year),
   ));
@@ -90,6 +118,14 @@ export function AdminTeamOverviewPage({ data, mutate }) {
         functional_role: functionalRole,
         role_label: functionalRole === 'leitung' ? 'Leitung' : 'Teamer',
       } : member),
+    })),
+  })));
+  const requestDecided = requestId => setYears(current => current.map(year => ({
+    ...year,
+    turnuses: year.turnuses.map(turnus => ({
+      ...turnus,
+      pending_requests: (turnus.pending_requests || []).filter(request => request.id !== requestId),
+      request_summary: { pending: Math.max(0, (turnus.request_summary?.pending || 0) - (turnus.pending_requests || []).some(request => request.id === requestId)) },
     })),
   })));
   const addLeitung = async person => {
@@ -168,13 +204,18 @@ export function AdminTeamOverviewPage({ data, mutate }) {
             <TranslucentCard title={selectedTurnus.label}>
               <section className="mb-4 border-b border-border pb-4" aria-labelledby="pending-requests-heading">
                 <h3 className="font-semibold" id="pending-requests-heading">Offene Anfragen ({selectedTurnus.request_summary?.pending ?? 0})</h3>
+                <p className="my-3 rounded-md border border-warning bg-warning/10 p-3 font-semibold" role="alert">
+                  {data.identity_verification_warning}
+                </p>
                 {selectedTurnus.pending_requests?.length
-                  ? <ul className="mt-2">{selectedTurnus.pending_requests.map(request => <li key={request.id}>{request.name}</li>)}</ul>
+                  ? <ul className="mt-2">{selectedTurnus.pending_requests.map(request => <PendingRequest key={request.id} request={request} mutate={mutate} onDecided={requestDecided} />)}</ul>
                   : <p className="mt-1 text-sm text-muted-foreground">Keine offenen Anfragen.</p>}
               </section>
               <h3 className="font-semibold">Team ({selectedTurnus.members.length})</h3>
               {selectedTurnus.members.length
-                ? <ul>{selectedTurnus.members.map(member => <Member key={member.id} member={member} mutate={mutate} onChanged={changed} />)}</ul>
+                ? <ul>{selectedTurnus.members.map(member => canManageLeitung
+                  ? <Member key={member.id} member={member} mutate={mutate} onChanged={changed} />
+                  : <li className="border-t border-border py-3 first:border-t-0" key={member.id}><p className="font-medium">{member.name}</p><p className="text-sm text-muted-foreground">{member.role_label}{member.team_label ? ` · ${member.team_label}` : ''}</p></li>)}</ul>
                 : <p>Noch keine Teammitglieder.</p>}
             </TranslucentCard>
           )}
@@ -203,5 +244,12 @@ export const membershipRoutes = [{
   title: 'Teams verwalten',
   domain: 'memberships',
   readContractKey: 'admin-team-overview',
+  render: ({ data, mutate }) => <AdminTeamOverviewPage data={data} mutate={mutate} />,
+}, {
+  pattern: /^\/teams$/,
+  page: 'team-management',
+  title: 'Team verwalten',
+  domain: 'memberships',
+  readContractKey: 'team-management',
   render: ({ data, mutate }) => <AdminTeamOverviewPage data={data} mutate={mutate} />,
 }];

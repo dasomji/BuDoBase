@@ -1,12 +1,27 @@
 from datetime import date
+from threading import Barrier, Thread
+from unittest import skipUnless
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.db import close_old_connections, connection
+from django.test import Client, TestCase, TransactionTestCase
+from django.urls import reverse
 
-from budo_app.models import Turnus, TurnusJoinRequest, TurnusMembership
+from budo_app.join_requests import JoinRequestAlreadyResolved, decide_join_request
+from budo_app.models import AuditEvent, Turnus, TurnusJoinRequest, TurnusMembership
 
 
 class JoinRequestDecisionHttpTests(TestCase):
+    def setUp(self):
+        self.turnus = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2027, 7, 1))
+        self.other_turnus = Turnus.objects.create(turnus_nr=2, turnus_beginn=date(2027, 7, 10))
+        self.leitung = User.objects.create_user("lead")
+        TurnusMembership.objects.create(
+            user=self.leitung, turnus=self.turnus,
+            functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+        )
+
     def test_leitung_can_approve_request_for_own_turnus_as_one_teamer_membership(self):
         turnus = Turnus.objects.create(
             turnus_nr=2,
@@ -42,4 +57,136 @@ class JoinRequestDecisionHttpTests(TestCase):
         self.assertEqual(
             memberships.get().functional_role,
             TurnusMembership.FunctionalRole.TEAMER,
+        )
+        self.assertTrue(AuditEvent.objects.filter(
+            action="join_request.approve",
+            resource_id=str(join_request.id),
+        ).exists())
+
+    def test_decision_requires_csrf(self):
+        requester = User.objects.create_user("csrf-requester")
+        join_request = TurnusJoinRequest.objects.create(user=requester, turnus=self.turnus)
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.leitung)
+
+        response = client.post(
+            reverse("join-request-decision-api", args=(join_request.id,)),
+            {"decision": "approve"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        join_request.refresh_from_db()
+        self.assertEqual(join_request.status, TurnusJoinRequest.Status.PENDING)
+
+    def test_leitung_list_contains_only_pending_requests_for_led_turnusse(self):
+        own_user = User.objects.create_user("own", email="own@example.test")
+        other_user = User.objects.create_user("other")
+        resolved_user = User.objects.create_user("resolved")
+        own = TurnusJoinRequest.objects.create(user=own_user, turnus=self.turnus)
+        TurnusJoinRequest.objects.create(user=other_user, turnus=self.other_turnus)
+        TurnusJoinRequest.objects.create(
+            user=resolved_user, turnus=self.turnus,
+            status=TurnusJoinRequest.Status.REJECTED,
+        )
+        self.client.force_login(self.leitung)
+
+        response = self.client.get(reverse("route-data-api", args=("team-management",)))
+
+        self.assertEqual(response.status_code, 200)
+        turnuses = [item for year in response.json()["years"] for item in year["turnuses"]]
+        self.assertEqual([item["id"] for item in turnuses], [self.turnus.id])
+        self.assertEqual(turnuses[0]["pending_requests"], [{
+            "id": own.id, "user_id": own_user.id, "name": "own", "email": "own@example.test",
+        }])
+
+    def test_admin_can_reject_across_turnusse_without_granting_access_and_it_is_audited(self):
+        admin = User.objects.create_superuser("admin", "admin@example.test", "pw")
+        requester = User.objects.create_user("requester")
+        join_request = TurnusJoinRequest.objects.create(user=requester, turnus=self.other_turnus)
+        self.client.force_login(admin)
+
+        response = self.client.post(
+            reverse("join-request-decision-api", args=(join_request.id,)),
+            {"decision": "reject"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "rejected")
+        self.assertFalse(TurnusMembership.objects.filter(user=requester, turnus=self.other_turnus).exists())
+        self.assertTrue(AuditEvent.objects.filter(action="join_request.reject", resource_id=str(join_request.id)).exists())
+
+    def test_cross_turnus_decision_is_privacy_preserving_and_repeated_approval_is_safe(self):
+        requester = User.objects.create_user("target")
+        foreign = TurnusJoinRequest.objects.create(user=requester, turnus=self.other_turnus)
+        self.client.force_login(self.leitung)
+        url = reverse("join-request-decision-api", args=(foreign.id,))
+        self.assertEqual(self.client.post(url, {"decision": "approve"}).status_code, 404)
+        self.assertEqual(self.client.post(
+            reverse("join-request-decision-api", args=(foreign.id + 9999,)),
+            {"decision": "approve"},
+        ).status_code, 404)
+        self.assertFalse(TurnusMembership.objects.filter(user=requester).exists())
+
+        own = TurnusJoinRequest.objects.create(user=requester, turnus=self.turnus)
+        own_url = reverse("join-request-decision-api", args=(own.id,))
+        self.assertEqual(self.client.post(own_url, {"decision": "approve"}).status_code, 200)
+        self.assertEqual(self.client.post(own_url, {"decision": "approve"}).status_code, 400)
+        self.assertEqual(TurnusMembership.objects.filter(user=requester, turnus=self.turnus).count(), 1)
+
+    def test_audit_failure_rolls_back_request_and_membership(self):
+        requester = User.objects.create_user("rollback")
+        join_request = TurnusJoinRequest.objects.create(user=requester, turnus=self.turnus)
+        self.client.force_login(self.leitung)
+        with patch("budo_app.join_requests.record_audit_event", side_effect=RuntimeError("audit down")):
+            with self.assertRaises(RuntimeError):
+                self.client.post(
+                    reverse("join-request-decision-api", args=(join_request.id,)),
+                    {"decision": "approve"},
+                )
+        join_request.refresh_from_db()
+        self.assertEqual(join_request.status, TurnusJoinRequest.Status.PENDING)
+        self.assertFalse(TurnusMembership.objects.filter(user=requester, turnus=self.turnus).exists())
+
+
+@skipUnless(connection.vendor == "postgresql", "requires PostgreSQL row locks")
+class JoinRequestDecisionConcurrencyTests(TransactionTestCase):
+    def test_concurrent_approvals_create_exactly_one_membership(self):
+        turnus = Turnus.objects.create(turnus_nr=3, turnus_beginn=date(2028, 7, 1))
+        requester = User.objects.create_user("race-requester")
+        leitung = User.objects.create_user("race-leitung")
+        TurnusMembership.objects.create(
+            user=leitung,
+            turnus=turnus,
+            functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+        )
+        join_request = TurnusJoinRequest.objects.create(user=requester, turnus=turnus)
+        start = Barrier(2)
+        outcomes = []
+
+        def approve():
+            close_old_connections()
+            start.wait(timeout=5)
+            try:
+                decide_join_request(
+                    join_request_id=join_request.id,
+                    actor=User.objects.get(pk=leitung.id),
+                    decision="approve",
+                )
+                outcomes.append("approved")
+            except JoinRequestAlreadyResolved:
+                outcomes.append("resolved")
+            finally:
+                close_old_connections()
+
+        workers = [Thread(target=approve), Thread(target=approve)]
+        for worker in workers:
+            worker.start()
+        for worker in workers:
+            worker.join(timeout=10)
+
+        self.assertTrue(all(not worker.is_alive() for worker in workers))
+        self.assertCountEqual(outcomes, ["approved", "resolved"])
+        self.assertEqual(
+            TurnusMembership.objects.filter(user=requester, turnus=turnus).count(),
+            1,
         )

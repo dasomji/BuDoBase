@@ -14,6 +14,7 @@ from budo_app.models import (
     Kinder,
     Profil,
     Schwerpunkte,
+    TurnusMembership,
 )
 from budo_app.read_contracts.common import kid_full_name
 
@@ -38,6 +39,10 @@ def _permissions(user):
         "view_auditevent": can_view_audit(user),
         "export_auditevent": can_export_audit(user),
         "admin_settings": user.is_staff,
+        "manage_teams": user.is_superuser or TurnusMembership.objects.filter(
+            user=user,
+            functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+        ).exists(),
     }
 
 

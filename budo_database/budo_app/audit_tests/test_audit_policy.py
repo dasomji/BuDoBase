@@ -200,7 +200,7 @@ class AuditAuthorizationHttpTests(TestCase):
                 "change_kids", "change_profiles", "change_focuses",
                 "change_places", "delete_places", "delete_place_images",
                 "change_tags", "delete_tags", "view_auditevent", "export_auditevent",
-                "admin_settings",
+                "admin_settings", "manage_teams",
             })
             self.assertIs(permission_payload["admin_settings"], staff)
             self.assertIs(permission_payload["view_auditevent"], expected_view)

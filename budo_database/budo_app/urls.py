@@ -14,6 +14,7 @@ from .happy_cleaning_page_views import (
 )
 from .kid_edit_views import kid_edit_page
 from .join_request_views import request_turnus_membership
+from .join_request_decision_views import decide_turnus_join_request
 from .admin_team_views import create_leitung_membership, set_membership_leadership
 
 
@@ -33,6 +34,11 @@ def legacy_slashless_page(route, view, *, name):
 
 
 urlpatterns = [
+    path(
+        'api/join-requests/<int:join_request_id>/decision/',
+        decide_turnus_join_request,
+        name='join-request-decision-api',
+    ),
     path(
         'api/turnusse/<int:turnus_id>/join-requests/',
         request_turnus_membership,

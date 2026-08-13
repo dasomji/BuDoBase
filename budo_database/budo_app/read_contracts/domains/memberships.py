@@ -1,16 +1,29 @@
 from django.contrib.auth.models import User
 
 from budo_app.models import Turnus, TurnusJoinRequest
+from budo_app.join_requests import IDENTITY_VERIFICATION_WARNING
 from budo_app.product_admin_policy import require_product_admin
+from django.core.exceptions import PermissionDenied
 
 
 def _display_name(user):
     return user.get_full_name().strip() or user.username
 
 
-def admin_team_overview(request):
-    require_product_admin(request.user, "Admin team overview access denied.")
-    turnuses = Turnus.objects.prefetch_related(
+def _team_overview(request, *, admin_only):
+    if admin_only:
+        require_product_admin(request.user, "Admin team overview access denied.")
+        turnuses = Turnus.objects.all()
+    elif request.user.is_superuser:
+        turnuses = Turnus.objects.all()
+    else:
+        led_turnus_ids = request.user.turnus_memberships.filter(
+            functional_role="leitung"
+        ).values_list("turnus_id", flat=True)
+        turnuses = Turnus.objects.filter(pk__in=led_turnus_ids)
+        if not turnuses.exists():
+            raise PermissionDenied("Team management access denied.")
+    turnuses = turnuses.prefetch_related(
         "memberships__user__profil",
         "join_requests__user__profil",
     ).order_by(
@@ -36,7 +49,12 @@ def admin_team_overview(request):
         for join_request in turnus.join_requests.all():
             if join_request.status != TurnusJoinRequest.Status.PENDING:
                 continue
-            pending_requests.append({"id": join_request.id, "user_id": join_request.user_id, "name": _display_name(join_request.user)})
+            pending_requests.append({
+                "id": join_request.id,
+                "user_id": join_request.user_id,
+                "name": _display_name(join_request.user),
+                "email": join_request.user.email,
+            })
         pending_requests.sort(key=lambda item: item["name"].casefold())
         years.setdefault(year, []).append({
             "id": turnus.id,
@@ -48,7 +66,8 @@ def admin_team_overview(request):
             "pending_requests": pending_requests,
         })
     people = []
-    for user in User.objects.filter(is_active=True).prefetch_related("turnus_memberships__turnus"):
+    people_source = User.objects.none() if not request.user.is_superuser else User.objects.filter(is_active=True)
+    for user in people_source.prefetch_related("turnus_memberships__turnus"):
         relationships = [str(item.turnus) for item in user.turnus_memberships.all()]
         people.append({
             "id": user.id,
@@ -61,7 +80,20 @@ def admin_team_overview(request):
     return {
         "years": [{"year": int(year), "turnuses": items} for year, items in years.items()],
         "people": people,
+        "can_manage_leitung": request.user.is_superuser,
+        "identity_verification_warning": IDENTITY_VERIFICATION_WARNING,
     }
 
 
-CONTRACTS = {"admin-team-overview": admin_team_overview}
+def admin_team_overview(request):
+    return _team_overview(request, admin_only=True)
+
+
+def team_management(request):
+    return _team_overview(request, admin_only=False)
+
+
+CONTRACTS = {
+    "admin-team-overview": admin_team_overview,
+    "team-management": team_management,
+}

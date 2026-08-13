@@ -19,7 +19,8 @@ from django.db import IntegrityError, transaction
 from django.db.models import F, Q
 from django.utils import timezone
 
-from .memberships import lock_membership_scope
+from .audit import AuditEventData, actor_label_for_user, client_ip_from_request, record_audit_event
+from .memberships import create_membership, lock_membership_scope
 from .models import TurnusJoinRequest, TurnusJoinRequestNotification, TurnusMembership
 
 
@@ -36,6 +37,86 @@ IDENTITY_VERIFICATION_WARNING = (
 
 class AlreadyTurnusMember(Exception):
     pass
+
+
+class JoinRequestAlreadyResolved(Exception):
+    pass
+
+
+class JoinRequestDecisionForbidden(Exception):
+    pass
+
+
+def can_decide_join_requests(user, turnus):
+    if not getattr(user, "is_authenticated", False):
+        return False
+    return user.is_superuser or TurnusMembership.objects.filter(
+        user=user,
+        turnus=turnus,
+        functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+    ).exists()
+
+
+def decide_join_request(*, join_request_id, actor, decision, http_request=None):
+    """Resolve one pending request and its access/audit effects atomically."""
+    if decision not in {"approve", "reject"}:
+        raise ValueError("Unknown join-request decision.")
+
+    with transaction.atomic():
+        candidate = TurnusJoinRequest.objects.filter(pk=join_request_id).first()
+        if candidate is None or not can_decide_join_requests(actor, candidate.turnus):
+            # Do not reveal whether a cross-Turnus request exists.
+            raise JoinRequestDecisionForbidden
+        lock_membership_scope(
+            user_id=candidate.user_id,
+            turnus_id=candidate.turnus_id,
+        )
+        join_request = TurnusJoinRequest.objects.select_for_update().select_related(
+            "turnus", "user"
+        ).get(pk=join_request_id)
+        if join_request.status != TurnusJoinRequest.Status.PENDING:
+            raise JoinRequestAlreadyResolved
+
+        membership = None
+        if decision == "approve":
+            membership = TurnusMembership.objects.filter(
+                user_id=join_request.user_id,
+                turnus_id=join_request.turnus_id,
+            ).first()
+            if membership is None:
+                membership = create_membership(
+                    user=join_request.user,
+                    turnus=join_request.turnus,
+                    functional_role=TurnusMembership.FunctionalRole.TEAMER,
+                )
+            join_request.status = TurnusJoinRequest.Status.APPROVED
+        else:
+            join_request.status = TurnusJoinRequest.Status.REJECTED
+        join_request.save(update_fields=("status", "updated_at"))
+
+        request_id = (
+            http_request.headers.get("X-Request-ID")
+            if http_request is not None
+            else None
+        ) or f"join-request-{decision}-{join_request.pk}"
+        record_audit_event(AuditEventData(
+            turnus=join_request.turnus,
+            actor_id=actor.pk,
+            actor_label=actor_label_for_user(actor),
+            action=f"join_request.{decision}",
+            outcome="success",
+            resource_type="turnus_join_request",
+            resource_id=str(join_request.pk),
+            resource_label=f"Beitrittsanfrage {join_request.pk}",
+            request_id=request_id,
+            client_ip=client_ip_from_request(http_request) if http_request is not None else "",
+            user_agent=http_request.META.get("HTTP_USER_AGENT", "") if http_request is not None else "",
+            details={
+                "requester_id": join_request.user_id,
+                "membership_id": membership.pk if membership is not None else None,
+            },
+        ))
+        return join_request, membership
 
 
 def _is_pending_constraint(error):

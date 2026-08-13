@@ -218,6 +218,9 @@ function withDynamicNavEntries(events, permissions) {
       if (permissions?.admin_settings) {
         settings.push({ label: 'Einstellungen', href: '/settings/' });
       }
+      if (permissions?.manage_teams) {
+        settings.push({ label: 'Team verwalten', href: '/teams/' });
+      }
       return {
         ...item,
         children: [

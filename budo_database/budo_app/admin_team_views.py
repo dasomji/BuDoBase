@@ -17,6 +17,19 @@ from .turnus_selection_views import _positive_bigint
 
 
 @require_GET
+def team_management_page(request):
+    if not request.user.is_authenticated:
+        from django.contrib.auth.views import redirect_to_login
+        return redirect_to_login(request.get_full_path())
+    if not request.user.is_superuser and not request.user.turnus_memberships.filter(
+        functional_role=TurnusMembership.FunctionalRole.LEITUNG
+    ).exists():
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("Team management access denied.")
+    return render_react_page(request)
+
+
+@require_GET
 def admin_teams_page(request):
     if not request.user.is_authenticated:
         from django.contrib.auth.views import redirect_to_login

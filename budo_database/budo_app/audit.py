@@ -89,6 +89,14 @@ ACTION_DETAIL_FIELDS = {
         "functional_role": (str,),
         "member_id": (int,),
     },
+    "join_request.approve": {
+        "requester_id": (int,),
+        "membership_id": (int,),
+    },
+    "join_request.reject": {
+        "requester_id": (int,),
+        "membership_id": (type(None),),
+    },
     "happy_cleaning.event.create": COMMON_DETAIL_FIELDS,
     "happy_cleaning.event.update": COMMON_DETAIL_FIELDS,
     "happy_cleaning.event.delete": COMMON_DETAIL_FIELDS,

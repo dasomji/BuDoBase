@@ -317,6 +317,7 @@ class ReactPageRouteSmokeTests(TestCase):
         "place-tag-delete-api",
         "recalculate-travel-times-api",
         "turnus-join-request-api",
+        "join-request-decision-api",
         "logout",
         "toggle_zug_abreise",
         "admin-leitung-membership-create-api",
