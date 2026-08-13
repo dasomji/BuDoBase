@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import Kinder, Schwerpunkte, SpezialFamilien, Turnus
 
 
@@ -45,6 +46,8 @@ class KidsDirectoryContractTests(TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         family = SpezialFamilien.objects.create(
             name="Biberhaus",

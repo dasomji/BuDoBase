@@ -7,6 +7,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from budo_app import schwerpunkte_views
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     Kinder,
     Schwerpunkte,
@@ -48,6 +49,8 @@ class AllocationContractTests(TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
 
         self.week_1 = Schwerpunktzeit.objects.get(turnus=self.turnus, woche="w1")
@@ -273,9 +276,8 @@ class AllocationContractTests(TestCase):
 
         response = self.client.get(self.contract_url(2))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"kids": [], "focuses": []})
-        self.assertNotContains(response, orphaned_kid.kid_vorname)
+        self.assertEqual(response.status_code, 404)
+        self.assertNotContains(response, orphaned_kid.kid_vorname, status_code=404)
 
     def test_existing_json_mutations_are_visible_in_the_selected_week_contract(self):
         climbing = Schwerpunkte.objects.create(
@@ -570,6 +572,8 @@ class AllocationContractPerformanceTests(QueryBudgetAssertions, TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
         self.contract_url = (

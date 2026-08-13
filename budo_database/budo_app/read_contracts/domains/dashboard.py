@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
 
-from django.db import transaction
 from django.db.models import (
     Case,
     CharField,
@@ -25,7 +24,7 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
 
-from budo_app.memberships import selected_turnus_for
+from budo_app.memberships import selected_profile_for_read, selected_turnus_for_read
 from budo_app.models import (
     ErsteHilfeEintrag,
     ErsteHilfeFoto,
@@ -248,12 +247,12 @@ def _good_to_know_kid_payload(kid):
 
 
 def build_good_to_know_contract(request):
-    profile = Profil.objects.filter(user_id=request.user.id).only("turnus_id").first()
-    if profile is None or profile.turnus_id is None:
+    selected_turnus = selected_turnus_for_read(request.user)
+    if selected_turnus is None:
         return {"totals": {"kids": 0}, "kids": []}
 
     kids = list(
-        Kinder.objects.filter(turnus_id=profile.turnus_id)
+        Kinder.objects.filter(turnus_id=selected_turnus.id)
         .select_related("turnus")
         .only(
             "id",
@@ -328,16 +327,12 @@ def _membership_turnuses(user):
 
 
 def build_dashboard_contract(request):
-    profile = (
-        Profil.objects.filter(user_id=request.user.id)
-        .annotate(
-            has_approved_membership=Exists(
-                TurnusMembership.objects.filter(user_id=request.user.id)
-            )
-        )
-        .select_related("user")
-        .first()
-    )
+    profile = selected_profile_for_read(request.user)
+    has_approved_selection = profile is not None
+    if profile is None:
+        profile = Profil.objects.select_related("user").filter(
+            user_id=request.user.id,
+        ).first()
     if profile is None:
         return {
             "profile": None,
@@ -354,13 +349,9 @@ def build_dashboard_contract(request):
             },
         }
 
-    # A newly registered account has no authority-bearing membership.  Its
-    # dashboard deliberately exposes only public Turnus identity and its own
-    # request history.
-    if (
-        profile.membership_selection_enabled
-        and not request.user.turnus_memberships.exists()
-    ):
+    # An account without approved authority sees only public Turnus identity
+    # and its own request history, regardless of any stored legacy selection.
+    if not has_approved_selection:
         return {
             **_empty_summary(profile),
             "activity": {
@@ -372,25 +363,11 @@ def build_dashboard_contract(request):
             "turnuses": _membership_turnuses(request.user),
         }
 
-    if profile.has_approved_membership or profile.membership_selection_enabled:
-        # Keep authorization and every protected read in one transaction. A
-        # concurrent membership removal therefore waits for this response's
-        # resource queries to finish.
-        with transaction.atomic():
-            return _build_dashboard_contract(request, profile)
     return _build_dashboard_contract(request, profile)
 
 
 def _build_dashboard_contract(request, profile):
-    # The dashboard is the representative vertical seam for selection. The
-    # remaining scoped contracts migrate under #193.
-    if profile.has_approved_membership or profile.membership_selection_enabled:
-        selected_turnus = selected_turnus_for(request.user)
-        turnus_id = selected_turnus.id if selected_turnus else None
-    else:
-        # Preserve pre-membership accounts until the comprehensive read
-        # migration in #193; membership-aware accounts never take this path.
-        turnus_id = profile.turnus_id
+    turnus_id = profile.selected_turnus_id
     activity_kind = request.query_params.get("activity")
     cursor = request.query_params.get("cursor")
     if activity_kind is not None:
@@ -440,7 +417,9 @@ def _build_dashboard_contract(request, profile):
         ]
         focus_ids = [focus.id for focus in personal_focuses]
         team = list(
-            Profil.objects.filter(turnus_id=turnus_id)
+            Profil.objects.filter(
+                user__turnus_memberships__turnus_id=turnus_id,
+            )
             .annotate(
                 dashboard_money_total=Coalesce(
                     Sum("betreuerinnen_geld__amount"),

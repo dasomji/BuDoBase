@@ -6,6 +6,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     ErsteHilfeEintrag,
     Geld,
@@ -80,6 +81,8 @@ class KidDetailContractTests(TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.special_family = SpezialFamilien.objects.create(
             name="Biberhaus",
@@ -467,6 +470,8 @@ class KidDetailMutationContractTests(TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
             kid_vorname="Ada",

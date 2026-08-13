@@ -9,6 +9,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from budo_app import google_maps_gateway, location_services
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import Auslagerorte, Turnus
 
 
@@ -231,6 +232,8 @@ class TravelTimeWriteContractTests(TestCase):
         )
         user.profil.turnus = turnus
         user.profil.save()
+        create_membership(user=user, turnus=turnus)
+        select_turnus(user, turnus)
         self.client.force_login(user)
         self.budo = Auslagerorte.objects.create(
             name="BuDo",
@@ -392,6 +395,8 @@ class TravelTimeReadContractTests(TestCase):
         user = User.objects.create_user(username="travel-time-reader")
         user.profil.turnus = turnus
         user.profil.save()
+        create_membership(user=user, turnus=turnus)
+        select_turnus(user, turnus)
         self.client.force_login(user)
         self.place = Auslagerorte.objects.create(
             name="Waldlichtung",

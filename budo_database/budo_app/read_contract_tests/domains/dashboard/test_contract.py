@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     BetreuerinnenGeld,
     ErsteHilfeEintrag,
@@ -43,6 +44,8 @@ class DashboardContractTests(TestCase):
         self.profile.allergien = "Haselnüsse"
         self.profile.coffee = "Schwarz"
         self.profile.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
             kid_vorname="Grace",
@@ -123,6 +126,7 @@ class DashboardContractTests(TestCase):
         other_user.profil.turnus = self.other_turnus
         other_user.profil.rufname = "Other private teamer"
         other_user.profil.save()
+        create_membership(user=other_user, turnus=self.other_turnus)
         other_kid = Kinder.objects.create(
             kid_index="T3-1",
             kid_vorname="Other",

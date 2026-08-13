@@ -5,6 +5,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from budo_app.first_aid_tests.fixtures import bulk_create_first_aid_entries_for_test
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import ErsteHilfeEintrag, Geld, Kinder, Notizen, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
@@ -34,6 +35,8 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
         self.user = User.objects.create_user(username="dashboard-performance")
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
 
@@ -44,7 +47,7 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
         )
 
     def test_initial_query_growth_is_bounded_and_payload_beats_legacy(self):
-        self.assertFalse(self.user.profil.membership_selection_enabled)
+        self.assertTrue(self.user.profil.membership_selection_enabled)
         self.fixtures.grow_to(kids=3, focuses=2, team=2, places=1)
         small = measure_http_get(self.client, self.contract_url())
 

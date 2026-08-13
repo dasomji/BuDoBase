@@ -7,6 +7,7 @@ from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import Kinder, Notizen, SpezialFamilien, Turnus
 
 
@@ -24,6 +25,8 @@ class ReportContractTests(TestCase):
         self.user.profil.rufname = "Zora"
         self.user.profil.rolle = "o"
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
             kid_vorname="Ada",
@@ -99,6 +102,7 @@ class ReportContractTests(TestCase):
         teammate.profil.rolle = "b"
         teammate.profil.telefonnummer = "+436641234567"
         teammate.profil.save()
+        create_membership(user=teammate, turnus=self.turnus)
         other_turnus = Turnus.objects.create(
             turnus_nr=3,
             turnus_beginn=date(2026, 8, 1),
@@ -107,6 +111,7 @@ class ReportContractTests(TestCase):
         other_user.profil.turnus = other_turnus
         other_user.profil.rufname = "Private Other Teamer"
         other_user.profil.save()
+        create_membership(user=other_user, turnus=other_turnus)
 
         response = self.client.get(self.contract_url("murder-game"))
 
@@ -407,6 +412,8 @@ class BirthdayActionContractTests(TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
             kid_vorname="Ada",

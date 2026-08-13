@@ -1,16 +1,18 @@
 from django.http import Http404
 from django.urls import reverse
 
-from budo_app.models import Profil
+from budo_app.memberships import selected_turnus_for_read
 
 
 def active_turnus_id(request):
-    """Return the request user's selected Turnus without loading its profile."""
-    return (
-        Profil.objects.filter(user_id=request.user.id)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
+    """Return the selected Turnus only while its membership is approved.
+
+    Callers must run inside a transaction. ``selected_turnus_for_read`` locks the
+    selection and authority rows, so a concurrent membership removal cannot
+    race the protected query which follows this check.
+    """
+    turnus = selected_turnus_for_read(request.user)
+    return turnus.id if turnus is not None else None
 
 
 def require_active_turnus_id(request):

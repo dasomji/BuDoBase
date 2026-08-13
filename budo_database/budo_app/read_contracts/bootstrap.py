@@ -103,13 +103,7 @@ def bootstrap(request):
         profile = None
 
     memberships = approved_memberships_for(request.user).select_related("turnus")
-    # Membership-aware accounts use the approved selection. Accounts not yet
-    # migrated retain the legacy shell context until #193 migrates all reads.
-    turnus = selected_turnus_for(request.user) if (
-        memberships.exists() or (profile and profile.membership_selection_enabled)
-    ) else (
-        profile.turnus if profile else None
-    )
+    turnus = selected_turnus_for(request.user)
     turnus_options = [
         {"id": membership.turnus_id, "label": str(membership.turnus)}
         for membership in memberships.order_by("turnus__turnus_beginn", "turnus_id")

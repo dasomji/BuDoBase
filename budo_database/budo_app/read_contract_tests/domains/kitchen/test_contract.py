@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     Auslagerorte,
     Kinder,
@@ -49,6 +50,8 @@ class KitchenContractTests(TestCase):
         self.user.profil.essen = "vt"
         self.user.profil.allergien = "Haselnüsse"
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
 
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
@@ -265,6 +268,7 @@ class KitchenContractTests(TestCase):
         vegan_profile.essen = "vn"
         vegan_profile.allergien = "Soja"
         vegan_profile.save()
+        create_membership(user=vegan_user, turnus=self.turnus)
         self.focus.swp_kinder.add(flexitarian_kid)
         self.focus.betreuende.add(self.user.profil, vegan_profile)
 
@@ -331,6 +335,7 @@ class KitchenContractTests(TestCase):
         second_user.profil.turnus = self.turnus
         second_user.profil.rufname = "Aaron"
         second_user.profil.save()
+        create_membership(user=second_user, turnus=self.turnus)
         week_2 = self.turnus.schwerpunktzeit_set.get(woche="w2")
         Schwerpunkte.objects.create(
             swp_name="Alpha",
@@ -366,6 +371,8 @@ class KitchenContractPerformanceTests(QueryBudgetAssertions, TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
 

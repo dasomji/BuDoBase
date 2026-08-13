@@ -10,6 +10,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from budo_app import location_services
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import Auslagerorte, Kinder, SpezialFamilien, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
@@ -42,6 +43,8 @@ class MaintenanceContractTests(TestCase):
         self.user = User.objects.create_user(username="maintenance-user")
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         Kinder.objects.create(
             kid_index="PRIVATE-1",
             kid_vorname="Privates",
@@ -200,6 +203,8 @@ class MaintenanceMultipartWorkflowTests(TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client = Client(enforce_csrf_checks=True)
         self.client.force_login(self.user)
         self.csrf_token = self.client.get(
@@ -457,6 +462,8 @@ class MaintenanceContractPerformanceTests(QueryBudgetAssertions, TestCase):
         self.user = User.objects.create_user(username="maintenance-performance")
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
 

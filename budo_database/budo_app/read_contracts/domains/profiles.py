@@ -79,7 +79,9 @@ def profile(request):
         if not request.user.has_perm("budo_app.change_profil"):
             raise PermissionDenied
         selected_profile = get_object_or_404(
-            _profile_queryset(turnus_id),
+            _profile_queryset(turnus_id).filter(
+                user__turnus_memberships__turnus_id=turnus_id,
+            ),
             id=required_query_integer(request),
         )
     can_change_turnus = _can_change_turnus(request.user)
@@ -99,7 +101,8 @@ def team(request):
         return {"team": []}
     profiles = (
         _profile_queryset(turnus_id)
-        .filter(turnus_id=turnus_id)
+        .filter(user__turnus_memberships__turnus_id=turnus_id)
+        .distinct()
         .order_by("rufname", "id")
     )
     return {

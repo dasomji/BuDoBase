@@ -37,7 +37,14 @@ def _measure_http_request(
         response=response,
         status_code=response.status_code,
         response_bytes=len(response.content),
-        query_count=len(queries),
+        # Transaction boundaries protect membership-scoped reads but are not
+        # data-access queries and must not consume the established projection
+        # budgets.
+        query_count=sum(
+            query["sql"].lstrip().upper().split(maxsplit=1)[0]
+            not in {"BEGIN", "COMMIT", "SAVEPOINT", "RELEASE", "ROLLBACK"}
+            for query in queries
+        ),
         sql_time_ms=round(sql_timer.total_seconds * 1000, 3),
     )
 

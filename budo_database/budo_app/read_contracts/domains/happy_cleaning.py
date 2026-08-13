@@ -174,7 +174,9 @@ def overview(request):
         "responsible_profiles": (
             [
                 {"id": profile.id, "name": profile.rufname}
-                for profile in Profil.objects.filter(turnus_id=active_turnus_id)
+                for profile in Profil.objects.filter(
+                    user__turnus_memberships__turnus_id=active_turnus_id,
+                )
                 .only("id", "rufname")
                 .order_by("rufname", "id")
             ]
@@ -583,7 +585,9 @@ def station_detail(request):
         ]
         projection["responsible_profiles"] = [
             {"id": profile.id, "name": profile.rufname}
-            for profile in Profil.objects.filter(turnus_id=event.turnus_id)
+            for profile in Profil.objects.filter(
+                user__turnus_memberships__turnus_id=event.turnus_id,
+            )
             .only("id", "rufname")
             .order_by("rufname", "id")
         ]

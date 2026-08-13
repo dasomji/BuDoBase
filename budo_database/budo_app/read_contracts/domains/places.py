@@ -8,10 +8,10 @@ from budo_app.models import (
     Auslagerorte,
     AuslagerorteImage,
     AuslagerorteNotizen,
-    Profil,
     Tag,
 )
 from budo_app.read_contracts.common import (
+    active_turnus_id,
     required_query_integer,
     serialize_note,
 )
@@ -19,10 +19,7 @@ from budo_app.tag_icons import TAG_ICON_CHOICES
 
 
 def _has_active_turnus(request):
-    return Profil.objects.filter(
-        user_id=request.user.id,
-        turnus_id__isnull=False,
-    ).exists()
+    return active_turnus_id(request) is not None
 
 
 def _require_active_turnus(request):

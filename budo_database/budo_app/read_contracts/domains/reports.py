@@ -63,7 +63,7 @@ def murder_game(request):
         .order_by("kid_vorname", "kid_nachname", "id")
     )
     team = (
-        Profil.objects.filter(turnus_id=turnus_id)
+        Profil.objects.filter(user__turnus_memberships__turnus_id=turnus_id)
         .only("id", "rufname", "rolle")
         .order_by("rufname", "id")
     )

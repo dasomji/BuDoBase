@@ -109,7 +109,7 @@ def build_kitchen_contract(request):
         .order_by("kid_vorname", "kid_nachname", "id")
     )
     team = (
-        Profil.objects.filter(turnus_id=turnus_id)
+        Profil.objects.filter(user__turnus_memberships__turnus_id=turnus_id)
         .only("id", "rufname", "essen", "allergien")
         .order_by("rufname", "id")
     )
@@ -138,7 +138,9 @@ def build_kitchen_contract(request):
             Prefetch(
                 "betreuende",
                 queryset=(
-                    Profil.objects.filter(turnus_id=turnus_id)
+                    Profil.objects.filter(
+                        user__turnus_memberships__turnus_id=turnus_id,
+                    )
                     .only("id", "rufname", "essen", "allergien")
                     .order_by("rufname", "id")
                 ),

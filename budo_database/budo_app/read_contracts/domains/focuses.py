@@ -25,7 +25,7 @@ def focus_dashboard(request):
         return {"focuses": []}
 
     carers = (
-        Profil.objects.filter(turnus_id=turnus_id)
+        Profil.objects.filter(user__turnus_memberships__turnus_id=turnus_id)
         .only("id", "rufname")
         .order_by("rufname", "id")
     )
@@ -71,7 +71,7 @@ def focus_dashboard(request):
 
 def _focus_queryset(turnus_id, *, with_kids=False, with_meals=False):
     carers = (
-        Profil.objects.filter(turnus_id=turnus_id)
+        Profil.objects.filter(user__turnus_memberships__turnus_id=turnus_id)
         .only("id", "rufname")
         .order_by("rufname", "id")
     )
@@ -160,7 +160,7 @@ def _form_options(turnus_id):
             Auslagerorte.objects.values("id", "name").order_by("name", "id"),
         ),
         "team": list(
-            Profil.objects.filter(turnus_id=turnus_id)
+            Profil.objects.filter(user__turnus_memberships__turnus_id=turnus_id)
             .values("id", "rufname")
             .order_by("rufname", "id"),
         ),
