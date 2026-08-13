@@ -186,22 +186,36 @@ function AppContent({
     return responsePayload;
   };
   const switchTurnus = async turnusId => {
-    const response = await fetchImpl('/api/turnus-selection/', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': bootstrap.csrf_token,
-      },
-      body: JSON.stringify({ turnus_id: turnusId }),
-    });
-    if (!response.ok) {
+    try {
+      const response = await fetchImpl('/api/turnus-selection/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': bootstrap.csrf_token,
+        },
+        body: JSON.stringify({ turnus_id: turnusId }),
+      });
+      if (!response.ok) throw new Error(`Turnus switch failed (${response.status})`);
+
+      // Fetch the new shell and route before publishing either. A partial
+      // refresh must not combine old scoped data with the newly selected shell.
+      const nextBootstrap = await loadBootstrap(fetchImpl);
+      const nextRoute = request ? await loadRouteData(route, fetchImpl) : null;
+      setBootstrapError(null);
+      setBootstrap(nextBootstrap);
+      if (nextRoute) {
+        setRouteState({
+          loading: false,
+          data: nextRoute.data,
+          error: null,
+          notFound: nextRoute.notFound,
+          authenticationRequired: nextRoute.authenticationRequired,
+        });
+      }
+    } catch {
       showError('Der Turnus konnte nicht gewechselt werden. Bitte erneut versuchen.');
-      await refreshBootstrap();
-      return;
     }
-    await refreshBootstrap();
-    await refreshRoute();
   };
 
   if (bootstrapError) return <ErrorState title="Sitzung konnte nicht geladen werden" error={bootstrapError} />;

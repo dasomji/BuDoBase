@@ -126,6 +126,31 @@ describe('application loading', () => {
     expect(screen.getByRole('combobox', { name: 'Aktiver Turnus' })).toHaveValue('2');
   });
 
+  it('recovers with the old shell when switch refreshes fail on the network', async () => {
+    window.history.pushState({}, '', '/all_kids');
+    const bootstrap = {
+      authenticated: true, csrf_token: 'token', messages: [], permissions: {},
+      profile: { id: 1 }, turnus: { id: 2, label: 'T2' },
+      turnus_selection: { selected_id: 2, options: [{ id: 2, label: 'T2' }, { id: 4, label: 'T4' }] },
+      search_index: { kids: [], focuses: [], places: [] },
+    };
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response(bootstrap))
+      .mockResolvedValueOnce(response({ kids: [] }))
+      .mockResolvedValueOnce(response({ selected_id: 4 }))
+      .mockRejectedValueOnce(new TypeError('network down'));
+
+    render(<App fetchImpl={fetchImpl} />);
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Aktiver Turnus' }), { target: { value: '4' } });
+
+    expect(await screen.findByText(
+      'Der Turnus konnte nicht gewechselt werden. Bitte erneut versuchen.',
+      { selector: '.app-toast-description' },
+    )).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Sitzung konnte nicht geladen werden' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Aktiver Turnus' })).toHaveValue('2');
+  });
+
   it('redirects an unauthenticated protected route without loading route data', async () => {
     window.history.pushState({}, '', '/all_kids');
     const fetchImpl = vi.fn().mockResolvedValue(response({

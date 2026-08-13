@@ -15,7 +15,7 @@ from budo_app.audit import (
     record_audit_event,
 )
 from budo_app.memberships import select_turnus, selected_turnus_for
-from budo_app.models import Turnus
+from budo_app.models import SecurityAuditEvent, Turnus
 
 
 @api_view(["POST"])
@@ -28,12 +28,16 @@ def turnus_selection(request):
         if previous is not None:
             # Do not copy an attacker-controlled value into the audit payload.
             _record_rejected_switch(request, previous, previous.id, request_id)
+        else:
+            _record_unscoped_rejection(request, request_id, "invalid")
         return Response({"code": "invalid_turnus_selection"}, status=400)
 
     turnus = Turnus.objects.filter(pk=int(value)).first()
     if turnus is None:
         if previous is not None:
             _record_rejected_switch(request, previous, int(value), request_id)
+        else:
+            _record_unscoped_rejection(request, request_id, "not_found", int(value))
         return Response({"code": "forbidden_turnus_selection"}, status=403)
 
     try:
@@ -57,28 +61,47 @@ def turnus_selection(request):
                 },
             ))
     except ValidationError:
-        if previous is not None:
-            _record_rejected_switch(request, previous, turnus.id, request_id)
+        _record_rejected_switch(
+            request,
+            previous or turnus,
+            turnus.id,
+            request_id,
+            previous_turnus_id=previous.id if previous else None,
+        )
         return Response({"code": "forbidden_turnus_selection"}, status=403)
     return Response({"selected_id": turnus.id})
 
 
-def _record_rejected_switch(request, previous, requested_id, request_id):
-    """Audit denial in the actor's current scope, never the probed Turnus."""
+def _record_rejected_switch(
+    request, audit_turnus, requested_id, request_id, previous_turnus_id=None
+):
+    """Audit denial in the current scope, or a known attempted Turnus if unscoped."""
+    if previous_turnus_id is None and selected_turnus_for(request.user) is not None:
+        previous_turnus_id = audit_turnus.id
     record_audit_event(AuditEventData(
-        turnus=previous,
+        turnus=audit_turnus,
         actor_id=request.user.id,
         actor_label=actor_label_for_user(request.user),
         action="turnus.selection.switch",
         outcome="forbidden",
         resource_type="turnus_selection",
-        resource_id=str(previous.id),
+        resource_id=str(audit_turnus.id),
         resource_label="Rejected Turnus selection",
         request_id=request_id,
         client_ip=client_ip_from_request(request),
         user_agent=request.META.get("HTTP_USER_AGENT", ""),
         details={
-            "previous_turnus_id": previous.id,
+            "previous_turnus_id": previous_turnus_id,
             "selected_turnus_id": requested_id,
         },
     ))
+
+
+def _record_unscoped_rejection(request, request_id, reason, attempted_turnus_id=None):
+    SecurityAuditEvent.objects.create(
+        actor_id=request.user.id,
+        action="turnus.selection.switch",
+        reason=reason,
+        request_id=request_id,
+        attempted_turnus_id=attempted_turnus_id,
+    )

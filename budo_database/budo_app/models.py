@@ -91,6 +91,7 @@ class Profil(models.Model):
         blank=True,
         related_name="selected_by_profiles",
     )
+    membership_selection_enabled = models.BooleanField(default=False)
 
     budo_family = models.CharField(
         max_length=2,
@@ -1056,6 +1057,21 @@ class AuditEvent(models.Model):
                 name="audit_resource_idx",
             ),
         ]
+
+
+class SecurityAuditEvent(models.Model):
+    """Minimal audit for denied operations that have no authorized Turnus scope."""
+
+    actor_id = models.BigIntegerField(null=True, blank=True)
+    action = models.CharField(max_length=100)
+    reason = models.CharField(max_length=40)
+    request_id = models.CharField(max_length=255)
+    attempted_turnus_id = models.BigIntegerField(null=True, blank=True)
+    occurred_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-occurred_at", "-id")
+        indexes = [models.Index(fields=("action", "-occurred_at"), name="security_audit_action_idx")]
 
 
 class Schwerpunkte(models.Model):

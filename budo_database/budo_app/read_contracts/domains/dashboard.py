@@ -369,7 +369,7 @@ def build_dashboard_contract(request):
             "turnuses": _membership_turnuses(request.user),
         }
 
-    if profile.has_approved_membership or profile.selected_turnus_id is not None:
+    if profile.has_approved_membership or profile.membership_selection_enabled:
         # Keep authorization and every protected read in one transaction. A
         # concurrent membership removal therefore waits for this response's
         # resource queries to finish.
@@ -381,7 +381,7 @@ def build_dashboard_contract(request):
 def _build_dashboard_contract(request, profile):
     # The dashboard is the representative vertical seam for selection. The
     # remaining scoped contracts migrate under #193.
-    if profile.has_approved_membership or profile.selected_turnus_id is not None:
+    if profile.has_approved_membership or profile.membership_selection_enabled:
         selected_turnus = selected_turnus_for(request.user)
         turnus_id = selected_turnus.id if selected_turnus else None
     else:

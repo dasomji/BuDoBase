@@ -8,7 +8,7 @@ from django.test import Client, TestCase, TransactionTestCase, skipUnlessDBFeatu
 from django.urls import reverse
 
 from budo_app.memberships import create_membership, select_turnus
-from budo_app.models import AuditEvent, Kinder, Profil, Turnus
+from budo_app.models import AuditEvent, Kinder, Profil, SecurityAuditEvent, Turnus
 
 
 class TurnusSwitchContractTests(TestCase):
@@ -109,6 +109,26 @@ class TurnusSwitchContractTests(TestCase):
         self.assertEqual(selection["options"], [{"id": second.id, "label": str(second)}])
         self.assertEqual(Profil.objects.get(user=user).selected_turnus_id, second.id)
 
+    def test_last_revoked_membership_never_restores_legacy_turnus_on_later_requests(self):
+        legacy = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
+        user = User.objects.create_user(username="membershipless")
+        membership = create_membership(user=user, turnus=legacy)
+        profile = Profil.objects.get(user=user)
+        profile.turnus = legacy
+        profile.save(update_fields=("turnus",))
+        select_turnus(user, legacy)
+        membership.delete()
+        self.client.force_login(user)
+
+        for _ in range(2):
+            bootstrap = self.client.get(reverse("bootstrap-api")).json()
+            dashboard = self.client.get(
+                reverse("route-data-api", kwargs={"contract_key": "dashboard"})
+            ).json()
+            self.assertIsNone(bootstrap["turnus"])
+            self.assertEqual(bootstrap["turnus_selection"], {"selected_id": None, "options": []})
+            self.assertEqual(dashboard["kids"], [])
+
     def test_successful_switch_is_audited_without_personal_details(self):
         first = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
         second = Turnus.objects.create(turnus_nr=2, turnus_beginn=date(2026, 7, 15))
@@ -159,6 +179,28 @@ class TurnusSwitchContractTests(TestCase):
             {current.id, forbidden.id, 999999},
         )
         self.assertNotIn(user.email, str([event.details for event in events]))
+
+    def test_membershipless_rejected_switches_have_privacy_safe_security_audit(self):
+        existing = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
+        user = User.objects.create_user(username="unscoped", email="private@example.test")
+        self.client.force_login(user)
+
+        for requested_id in (existing.id, 999999, "not-an-id"):
+            response = self.client.post(
+                reverse("turnus-selection-api"),
+                {"turnus_id": requested_id},
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 400 if isinstance(requested_id, str) else 403)
+
+        self.assertEqual(
+            AuditEvent.objects.filter(action="turnus.selection.switch", turnus=existing).count(),
+            1,
+        )
+        security_events = SecurityAuditEvent.objects.filter(action="turnus.selection.switch")
+        self.assertEqual(security_events.count(), 2)
+        self.assertEqual({event.reason for event in security_events}, {"invalid", "not_found"})
+        self.assertNotIn(user.email, str(list(security_events.values())))
 
 
 @skipUnlessDBFeature("has_select_for_update")

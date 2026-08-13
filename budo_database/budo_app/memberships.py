@@ -49,6 +49,7 @@ def create_membership(
         turnus=turnus,
         status=TurnusJoinRequest.Status.PENDING,
     ).update(status=TurnusJoinRequest.Status.SUPERSEDED)
+    Profil.objects.filter(user=user).update(membership_selection_enabled=True)
     return membership
 
 
@@ -87,7 +88,8 @@ def select_turnus(user, turnus):
     if membership is None:
         raise ValidationError("Der ausgewählte Turnus erfordert eine Mitgliedschaft.")
     profile.selected_turnus = turnus
-    profile.save(update_fields=("selected_turnus",))
+    profile.membership_selection_enabled = True
+    profile.save(update_fields=("selected_turnus", "membership_selection_enabled"))
     return turnus
 
 
