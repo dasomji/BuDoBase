@@ -5,7 +5,6 @@ from rest_framework.response import Response
 from budo_app.happy_cleaning_commands import (
     CommandError,
     audit_rejection,
-    command_context,
     copy_single_station,
     copy_stations,
     create_station,
@@ -16,6 +15,7 @@ from budo_app.happy_cleaning_commands import (
     required_id_list,
     required_positive_integer,
     required_text,
+    run_authorized_command,
     station_fields,
     update_station,
 )
@@ -44,9 +44,11 @@ def _run_command(
 ):
     context = None
     try:
-        context = command_context(request, request.data)
-        payload, replayed = operation(context)
+        context, (payload, replayed) = run_authorized_command(
+            request, request.data, operation,
+        )
     except CommandError as error:
+        context = getattr(error, "command_context", context)
         if context is not None:
             audit_rejection(
                 context,
@@ -64,8 +66,9 @@ def _run_command(
 @permission_classes([IsAuthenticated])
 def event_create(request):
     try:
-        context = command_context(request, request.data)
-        payload, replayed = create_event(context)
+        context, (payload, replayed) = run_authorized_command(
+            request, request.data, create_event,
+        )
     except CommandError as error:
         return _error_response(error)
     return Response(payload, status=200 if replayed else 201)
@@ -76,17 +79,16 @@ def event_create(request):
 def event_delete(request, event_id):
     context = None
     try:
-        context = command_context(request, request.data)
         expected_revision = required_positive_integer(
             request.data,
             "expected_revision",
         )
-        payload, replayed = delete_event(
-            context,
-            event_id,
-            expected_revision,
+        context, (payload, replayed) = run_authorized_command(
+            request, request.data,
+            lambda authorized: delete_event(authorized, event_id, expected_revision),
         )
     except CommandError as error:
+        context = getattr(error, "command_context", context)
         if context is not None:
             audit_rejection(
                 context,

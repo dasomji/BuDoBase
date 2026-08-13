@@ -4,8 +4,8 @@ from rest_framework.response import Response
 
 from budo_app.happy_cleaning_commands import (
     CommandError,
-    command_context,
     required_positive_integer,
+    run_authorized_command,
 )
 from budo_app.happy_cleaning_todo_commands import (
     check_todo,
@@ -26,9 +26,11 @@ def _error_response(error):
 def _run(request, *, action, resource_type, resource_id, operation, created=False):
     context = None
     try:
-        context = command_context(request, request.data)
-        payload, replayed = operation(context)
+        context, (payload, replayed) = run_authorized_command(
+            request, request.data, operation,
+        )
     except CommandError as error:
+        context = getattr(error, "command_context", context)
         if context is not None and error.audit_outcome in {"forbidden", "stale"}:
             payload, replayed = rejection_response(
                 context,

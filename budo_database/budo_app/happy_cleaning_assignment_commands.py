@@ -368,7 +368,7 @@ def _raise_number_command_error(
 
 
 def set_child_number(context, child_id, number, expected_version):
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _lock_actor(context)
         replay = replay_completed_command(context, NUMBER_COMMAND_ACTION)
         if replay is not None:
@@ -735,7 +735,7 @@ def _assignment_for_update(event_id, child_id):
 
 def assign_child(context, event_id, child_id, station_id):
     action = "happy_cleaning.assignment.assign"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _lock_actor(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -835,7 +835,7 @@ def assign_child(context, event_id, child_id, station_id):
 
 def assign_excused_child(context, event_id, child_id):
     action = "happy_cleaning.assignment.excuse"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _lock_actor(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -915,7 +915,7 @@ def _current_assignment_before_station_locks(event, child_id):
 
 def move_child(context, event_id, child_id, station_id, expected_version):
     action = "happy_cleaning.assignment.move"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _lock_actor(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -1048,7 +1048,7 @@ def move_child(context, event_id, child_id, station_id, expected_version):
 
 def move_child_to_excused(context, event_id, child_id, expected_version):
     action = "happy_cleaning.assignment.move_to_excused"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _lock_actor(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -1143,7 +1143,7 @@ def move_child_to_excused(context, event_id, child_id, expected_version):
 
 def remove_child(context, event_id, child_id, expected_version):
     action = "happy_cleaning.assignment.remove"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _lock_actor(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -1232,7 +1232,7 @@ def remove_child(context, event_id, child_id, expected_version):
 
 
 def assign_missing_numbers(context, event_id, requested_assignments):
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _lock_actor(context)
         replay = replay_completed_command(context, BATCH_NUMBER_ACTION)
         if replay is not None:
@@ -1369,7 +1369,7 @@ def assign_missing_numbers(context, event_id, requested_assignments):
 
 def rejection_response(context, action, error):
     """Consume a rejected request ID once and return a replayable projection."""
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _lock_actor(context)
         replay = replay_completed_command(context, action)
         if replay is not None:

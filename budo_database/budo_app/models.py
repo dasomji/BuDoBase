@@ -91,7 +91,7 @@ class Profil(models.Model):
         blank=True,
         related_name="selected_by_profiles",
     )
-    membership_selection_enabled = models.BooleanField(default=False)
+    membership_selection_enabled = models.BooleanField(default=False, editable=False)
 
     budo_family = models.CharField(
         max_length=2,
@@ -119,6 +119,24 @@ class Profil(models.Model):
             raise ValidationError(
                 {"selected_turnus": "Der ausgewählte Turnus erfordert eine Mitgliedschaft."}
             )
+        if self.pk and not self.membership_selection_enabled:
+            was_enabled = type(self).objects.filter(
+                pk=self.pk, membership_selection_enabled=True,
+            ).exists()
+            if was_enabled:
+                self.membership_selection_enabled = True
+
+    def save(self, *args, **kwargs):
+        if self.pk and not self.membership_selection_enabled and type(self).objects.filter(
+            pk=self.pk, membership_selection_enabled=True,
+        ).exists():
+            self.membership_selection_enabled = True
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = tuple(set(update_fields) | {
+                    "membership_selection_enabled",
+                })
+        return super().save(*args, **kwargs)
 
     def get_food(self):
         if self.essen == "ft":

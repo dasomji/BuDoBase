@@ -4,6 +4,7 @@ from copy import deepcopy
 import json
 
 from django.contrib import messages
+from django.db import transaction
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET
 from rest_framework.authentication import SessionAuthentication
@@ -75,6 +76,7 @@ def _recover_field_command(request, error, turnus, kid_id):
 @api_view(["POST"])
 @authentication_classes([_RawBodySessionAuthentication])
 @permission_classes([IsAuthenticated])
+@transaction.atomic
 def kid_edit(request, kid_id):
     decoded = decode_kid_edit_request(request.body, request.content_type)
     turnus = scoped_turnus_for(request.user)

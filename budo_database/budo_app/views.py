@@ -121,6 +121,7 @@ def kindergesamtzahl(request):
 
 
 @login_required
+@transaction.atomic
 def upload_spezialfamilien(request):
     if request.method == "POST":
         form = CSVUploadForm(request.POST, request.FILES)

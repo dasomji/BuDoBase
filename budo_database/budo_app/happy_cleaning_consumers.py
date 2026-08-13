@@ -3,7 +3,7 @@
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-from budo_app.memberships import scoped_turnus_for
+from budo_app.memberships import authorized_turnus_scope
 from budo_app.models import HappyCleaning
 
 
@@ -26,13 +26,14 @@ def may_access_happy_cleaning_event(user_id, event_id):
     from django.contrib.auth import get_user_model
 
     user = get_user_model().objects.filter(pk=user_id).first()
-    turnus = scoped_turnus_for(user) if user is not None else None
-    if turnus is None:
+    if user is None:
         return False
-    return HappyCleaning.objects.filter(
-        pk=event_id,
-        turnus_id=turnus.pk,
-    ).exists()
+    with authorized_turnus_scope(user) as turnus:
+        if turnus is None:
+            return False
+        return HappyCleaning.objects.filter(
+            pk=event_id, turnus_id=turnus.pk,
+        ).exists()
 
 
 class HappyCleaningInvalidationConsumer(AsyncJsonWebsocketConsumer):

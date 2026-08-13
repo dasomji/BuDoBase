@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect
 from . import models
 from .excelProcessor import process_excel
 from .forms import UploadForm
-from .memberships import scoped_turnus_for
+from .memberships import authorized_turnus_scope
 from .react_views import render_react_page
 from .storage_lifecycle import delete_storage_object_on_commit
 from .updateExcel import update_excel_file
@@ -110,27 +110,19 @@ def upload_excel(request, turnus_id):
 
 @login_required
 def download_updated_excel(request):
-    active_turnus = scoped_turnus_for(request.user)
-
-    if not active_turnus:
-        return HttpResponse("No active turnus found.", status=404)
-
-    filename = (
-        f"Aufenthaltsdoku_{active_turnus}_ID{active_turnus.id}.xlsx"
-    )
-    temporary_directory = TemporaryDirectory()
-    file_path = os.path.join(temporary_directory.name, filename)
-
-    try:
-        update_excel_file(file_path, active_turnus)
-        response = FileResponse(
-            open(file_path, "rb"),
-            as_attachment=True,
-            filename=filename,
-        )
-    except Exception:
-        temporary_directory.cleanup()
-        raise
+    with authorized_turnus_scope(request.user) as active_turnus:
+        if not active_turnus:
+            return HttpResponse("No active turnus found.", status=404)
+        filename = f"Aufenthaltsdoku_{active_turnus}_ID{active_turnus.id}.xlsx"
+        temporary_directory = TemporaryDirectory()
+        file_path = os.path.join(temporary_directory.name, filename)
+        try:
+            update_excel_file(file_path, active_turnus)
+            response = FileResponse(open(file_path, "rb"), as_attachment=True,
+                                    filename=filename)
+        except Exception:
+            temporary_directory.cleanup()
+            raise
 
     close_response = response.close
 

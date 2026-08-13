@@ -95,6 +95,17 @@ def command_context(request, payload):
     )
 
 
+@transaction.atomic
+def run_authorized_command(request, payload, operation):
+    """Authorize and execute while the selected membership row stays locked."""
+    context = command_context(request, payload)
+    try:
+        return context, operation(context)
+    except CommandError as error:
+        error.command_context = context
+        raise
+
+
 def required_positive_integer(payload, name):
     value = payload.get(name)
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
@@ -430,7 +441,7 @@ def _normalize_stations(event, ordered_ids):
 
 def create_event(context):
     action = "happy_cleaning.event.create"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -461,7 +472,7 @@ def create_event(context):
 
 def delete_event(context, event_id, expected_revision):
     action = "happy_cleaning.event.delete"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -528,7 +539,7 @@ def delete_event(context, event_id, expected_revision):
 
 def create_station(context, event_id, expected_revision, fields, document):
     action = "happy_cleaning.station.create"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -651,7 +662,7 @@ def update_station(
     overbooking_confirmation=None,
 ):
     action = "happy_cleaning.station.update"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -744,7 +755,7 @@ def update_station(
 
 def delete_station(context, event_id, station_id, expected_version):
     action = "happy_cleaning.station.delete"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -789,7 +800,7 @@ def delete_station(context, event_id, station_id, expected_version):
 
 def reorder_stations(context, event_id, expected_revision, station_ids):
     action = "happy_cleaning.station.reorder"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -952,7 +963,7 @@ def _copy_stations(
     source_station_id=None,
 ):
     action = "happy_cleaning.station.copy"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:

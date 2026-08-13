@@ -5,6 +5,7 @@ from typing import Iterable
 
 from django.contrib.auth.models import AbstractBaseUser
 from rest_framework.exceptions import APIException
+from django.db import transaction
 
 from budo_app.audit import AuditEventData, actor_label_for_user, record_audit_event
 from budo_app.audit_queries import (
@@ -60,6 +61,7 @@ def _stream_records(header, queryset):
         yield _json_line(serialize_audit_event(event))
 
 
+@transaction.atomic
 def export_audit_events(command):
     turnus = selected_audit_turnus(command.user, command.filters.turnus)
     if turnus is None:
@@ -113,7 +115,10 @@ def export_audit_events(command):
         "turnus": {"id": turnus.id, "label": str(turnus)},
         "snapshot_id": snapshot_id,
     }
+    # Materialize while the membership authorization lock is still held.  The
+    # HTTP response may stream later, but it only streams this safe snapshot.
+    lines = tuple(_stream_records(header, queryset))
     return AuditExportResult(
-        lines=_stream_records(header, queryset),
+        lines=lines,
         filename=f"audit-{_safe_filename_label(str(turnus))}.log",
     )

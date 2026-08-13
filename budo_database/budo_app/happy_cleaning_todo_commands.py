@@ -29,7 +29,7 @@ def rejection_response(
     resource_id,
 ):
     """Consume a selected rejected request ID and make it replayable."""
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         Profil.objects.select_for_update().get(user_id=context.actor_id)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -87,7 +87,7 @@ def _set_checked(
         if checked
         else "happy_cleaning.todo.reopen"
     )
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         Turnus.objects.select_for_update().get(pk=context.turnus.id)
         replay = replay_completed_command(context, action)
         if replay is not None:

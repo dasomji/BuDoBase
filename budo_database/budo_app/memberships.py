@@ -1,5 +1,7 @@
 """Public domain operations for approved Turnus memberships and selection."""
 
+from contextlib import contextmanager
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -139,3 +141,37 @@ def scoped_turnus_for(user):
     if profile.membership_selection_enabled:
         return selected_turnus_for(user)
     return profile.turnus
+
+
+@contextmanager
+def authorized_turnus_scope(user):
+    """Hold the authority rows locked for the complete protected operation.
+
+    Membership removal uses the same profile/user parent locking discipline as
+    membership writes.  Consequently a removal can neither slip between an
+    authorization check and its command nor invalidate a file snapshot while
+    it is being opened.
+    """
+    with transaction.atomic():
+        if not getattr(user, "is_authenticated", False):
+            yield None
+            return
+        profile = (
+            Profil.objects.select_for_update()
+            .select_related("turnus")
+            .filter(user_id=user.pk)
+            .first()
+        )
+        if profile is None:
+            yield None
+            return
+        if not profile.membership_selection_enabled:
+            yield profile.turnus
+            return
+        membership = (
+            TurnusMembership.objects.select_for_update()
+            .select_related("turnus")
+            .filter(user_id=user.pk, turnus_id=profile.selected_turnus_id)
+            .first()
+        )
+        yield membership.turnus if membership is not None else None
