@@ -319,6 +319,7 @@ class ReactPageRouteSmokeTests(TestCase):
         "turnus-join-request-api",
         "logout",
         "toggle_zug_abreise",
+        "admin-leitung-membership-create-api",
         "admin-membership-role-api",
         "update_birthdays_from_sv",
         "update_freunde",
