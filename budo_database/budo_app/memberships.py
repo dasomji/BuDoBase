@@ -233,13 +233,21 @@ def authorized_turnus_scope(user):
 
 
 def membership_scoped_read(view_func):
-    """Hold approved membership authority for a complete synchronous GET view."""
+    """Hold approved membership authority through a synchronous page render."""
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
-        if request.method != "GET":
+        if request.method not in {"GET", "HEAD"}:
             return view_func(request, *args, **kwargs)
         with authorized_turnus_scope(request.user) as turnus:
             request.active_turnus = turnus
-            return view_func(request, *args, **kwargs)
+            response = view_func(request, *args, **kwargs)
+            # Class-based template views defer context/queryset consumption
+            # until middleware renders their TemplateResponse.  Render it
+            # while the membership lock is still held.  Streaming responses
+            # deliberately have no render contract and remain lazy.
+            render = getattr(response, "render", None)
+            if callable(render) and not getattr(response, "is_rendered", True):
+                render()
+            return response
 
     return wrapper
