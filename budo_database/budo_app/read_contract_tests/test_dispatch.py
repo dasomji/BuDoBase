@@ -13,6 +13,7 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "team",
     "turnus-list",
     "turnus-upload",
+    "admin-settings",
     "kids-directory",
     "train-departure",
     "train-arrival",

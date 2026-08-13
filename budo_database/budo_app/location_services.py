@@ -141,9 +141,17 @@ def _budo_origin():
     return _stored_coordinates(candidates[0].koordinaten) if candidates else None
 
 
+def travel_time_destination(auslagerort):
+    """Return the parkspot when available, otherwise the place coordinates."""
+    return (
+        _stored_coordinates(auslagerort.koordinaten_parkspot)
+        or _stored_coordinates(auslagerort.koordinaten)
+    )
+
+
 def update_auslagerorte_travel_times(auslagerort):
     """Update route estimates from BuDo, leaving failures as missing data."""
-    destination = _stored_coordinates(auslagerort.koordinaten)
+    destination = travel_time_destination(auslagerort)
     auslagerort.driving_minutes = None
     auslagerort.walking_minutes = None
     if destination is None:
@@ -248,11 +256,11 @@ def update_auslagerorte_coordinates(auslagerort):
     """
     main_changed = getattr(auslagerort, "_maps_link_changed", True)
     parking_changed = getattr(auslagerort, "_maps_link_parkspot_changed", True)
+    previous_destination = travel_time_destination(auslagerort)
     warnings = []
     auslagerort._location_warnings = warnings
 
     if main_changed:
-        previous_coordinates = auslagerort.koordinaten
         auslagerort.koordinaten = None
         if auslagerort.maps_link:
             coordinates = _coordinates_for_link(auslagerort.maps_link)
@@ -265,9 +273,6 @@ def update_auslagerorte_coordinates(auslagerort):
                 if getattr(auslagerort, "_enrich_address", True):
                     enrich_empty_address_fields(auslagerort, coordinates)
 
-        if not coordinates_equal(previous_coordinates, auslagerort.koordinaten):
-            update_auslagerorte_travel_times(auslagerort)
-
     if parking_changed:
         auslagerort.koordinaten_parkspot = None
         if auslagerort.maps_link_parkspot:
@@ -279,6 +284,9 @@ def update_auslagerorte_coordinates(auslagerort):
                 )
             else:
                 auslagerort.koordinaten_parkspot = _coordinate_string(coordinates)
+
+    if previous_destination != travel_time_destination(auslagerort):
+        update_auslagerorte_travel_times(auslagerort)
 
     auslagerort._location_warnings = warnings
     return auslagerort

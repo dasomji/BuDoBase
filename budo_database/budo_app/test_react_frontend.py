@@ -315,6 +315,7 @@ class ReactPageRouteSmokeTests(TestCase):
         "place-tag-create-api",
         "place-tag-update-api",
         "place-tag-delete-api",
+        "recalculate-travel-times-api",
         "logout",
         "toggle_zug_abreise",
         "update_birthdays_from_sv",
@@ -392,6 +393,7 @@ class ReactPageRouteSmokeTests(TestCase):
             "swp-dashboard": reverse("swp-dashboard"),
             "auslagerorte-list": reverse("auslagerorte-list"),
             "place-tag-settings": reverse("place-tag-settings"),
+            "admin-settings-page": reverse("admin-settings-page"),
             "auslagerorte-create": reverse("auslagerorte-create"),
             "auslagerorte-detail": reverse(
                 "auslagerorte-detail",

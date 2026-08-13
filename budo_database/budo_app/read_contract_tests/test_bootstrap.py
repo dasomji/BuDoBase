@@ -123,8 +123,10 @@ class BootstrapContractTests(TestCase):
                 "change_kids", "change_profiles", "change_focuses",
                 "change_places", "delete_places", "delete_place_images",
                 "change_tags", "delete_tags", "view_auditevent", "export_auditevent",
+                "admin_settings",
             },
         )
+        self.assertFalse(payload["permissions"]["admin_settings"])
         for unrelated in ("team", "focus_times", "totals", "activity", "turnuses"):
             self.assertNotIn(unrelated, payload)
 

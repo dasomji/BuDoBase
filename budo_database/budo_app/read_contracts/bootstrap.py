@@ -35,6 +35,7 @@ def _permissions(user):
         "delete_tags": user.has_perm("budo_app.delete_tag"),
         "view_auditevent": can_view_audit(user),
         "export_auditevent": can_export_audit(user),
+        "admin_settings": user.is_staff,
     }
 
 

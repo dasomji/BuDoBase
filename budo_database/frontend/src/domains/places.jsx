@@ -14,7 +14,11 @@ import { useIsMobile } from '../hooks/use-mobile';
 import { formatGermanDate, NotFoundPage } from './shared';
 
 const tagChipClass = 'inline-flex min-h-8 items-center rounded-full border border-input px-3 py-1 text-sm font-medium wrap-anywhere';
-const formatTravelMinutes = minutes => minutes == null ? '---' : `${minutes} min`;
+const formatTravelMinutes = minutes => {
+  if (minutes == null) return '---';
+  if (minutes <= 60) return `${minutes} min`;
+  return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+};
 const GALLERY_SWIPE_THRESHOLD = 48;
 const galleryButtonClass = 'border-overlay-foreground/50 bg-modal-overlay text-overlay-foreground hover:bg-overlay-foreground hover:text-foreground';
 
@@ -40,7 +44,7 @@ function Filters({ filters, row = false }) {
     ? 'Gehzeit filtern'
     : `Gehzeitfilter: höchstens ${filters.maximumWalkingMinutes} Minuten`;
   const chips = <>
-    {filters.availableTags.map(tag => <Button className="h-auto min-h-8 shrink-0 rounded-full px-3 py-1" size="sm" variant={filters.tags.includes(tag) ? 'secondary' : 'outline'} type="button" aria-pressed={filters.tags.includes(tag)} onClick={() => filters.toggleTag(tag)} key={tag}>{tag}</Button>)}
+    {filters.availableTags.map(tag => <Button className="h-auto min-h-8 shrink-0 rounded-full px-3 py-1" size="sm" variant={filters.tags.includes(tag) ? 'secondary' : 'outline'} type="button" aria-pressed={filters.tags.includes(tag)} onClick={() => filters.toggleTag(tag)} key={tag}><TagIcon className="size-3.5" name={tagIconForName(filters.tagCatalog, tag)} aria-hidden="true" />{tag}</Button>)}
     <Button
       size="icon-sm"
       variant={filters.maximumWalkingMinutes == null ? 'outline' : 'secondary'}
@@ -66,7 +70,7 @@ function Search({ filters }) {
 }
 
 function PlaceTags({ tags, catalog, className = '' }) {
-  return <span className={`flex flex-wrap gap-1 ${className}`}>{tags.map(tag => <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs" key={tag}><TagIcon className="size-3.5" name={tagIconForName(catalog, tag)} aria-hidden="true" />{tag}</span>)}</span>;
+  return <span className={`flex flex-wrap gap-1 ${className}`}>{tags.map(tag => <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-1 text-xs" key={tag}><TagIcon className="size-3.5" name={tagIconForName(catalog, tag)} aria-hidden="true" />{tag}</span>)}</span>;
 }
 
 function PlaceList({ places, selectedPlaceId, onSelect, tagCatalog }) {
@@ -372,10 +376,11 @@ export function PlacesPage({ data, MapComponent = GoogleMap, initialPlaceId = nu
     maximumWalkingMinutes,
     setMaximumWalkingMinutes,
     availableTags: data.available_tags || [],
+    tagCatalog: data.tag_catalog,
   };
   const filtered = useMemo(() => (data.places || []).filter(place => (
     place.name.toLocaleLowerCase('de').includes(query.toLocaleLowerCase('de'))
-      && tags.every(tag => place.tags.includes(tag))
+      && (tags.length === 0 || tags.some(tag => place.tags.includes(tag)))
       && (
         maximumWalkingMinutes == null
         || (

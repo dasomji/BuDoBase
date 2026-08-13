@@ -1,3 +1,4 @@
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 
 from budo_app.models import Turnus
@@ -34,8 +35,15 @@ def special_upload(request):
     return {}
 
 
+def admin_settings(request):
+    if not request.user.is_staff:
+        raise PermissionDenied("Admin settings access denied.")
+    return {}
+
+
 CONTRACTS = {
     "special-upload": special_upload,
+    "admin-settings": admin_settings,
     "turnus-list": turnus_list,
     "turnus-upload": turnus_upload,
 }
