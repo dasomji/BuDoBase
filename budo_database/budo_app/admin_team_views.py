@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view, permission_classes
@@ -84,7 +85,10 @@ def create_leitung_membership(request, turnus_id):
     if user_id is None:
         raise ValidationError({"user_id": "Eine gültige Person ist erforderlich."})
     with transaction.atomic():
-        lock_membership_scopes(user_ids=(request.user.pk, user_id), turnus_id=turnus_id)
+        try:
+            lock_membership_scopes(user_ids=(request.user.pk, user_id), turnus_id=turnus_id)
+        except Turnus.DoesNotExist as error:
+            raise Http404 from error
         require_locked_product_admin(request.user, "Admin team management access denied.")
         turnus = get_object_or_404(Turnus, pk=turnus_id)
         user = get_object_or_404(get_user_model(), pk=user_id, is_active=True)

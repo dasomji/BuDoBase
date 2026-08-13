@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import ValidationError
@@ -27,7 +28,10 @@ def _managed_turnus_or_404(user, turnus_id):
         memberships__user_id=user.pk,
         memberships__functional_role=TurnusMembership.FunctionalRole.LEITUNG,
     )
-    return get_object_or_404(queryset, pk=turnus_id)
+    turnus = queryset.filter(pk=turnus_id).first()
+    if turnus is None:
+        raise Http404
+    return turnus
 
 
 def _managed_membership_or_404(user, membership_id):
@@ -65,11 +69,13 @@ def create_teamer_membership(request, turnus_id):
     if user_id is None:
         raise ValidationError({"user_id": "Eine gültige Person ist erforderlich."})
     with transaction.atomic():
-        lock_membership_scopes(user_ids=(request.user.pk, user_id), turnus_id=turnus_id)
+        try:
+            lock_membership_scopes(user_ids=(request.user.pk, user_id), turnus_id=turnus_id)
+        except Turnus.DoesNotExist as error:
+            raise Http404 from error
         request.user.is_superuser = is_locked_product_admin(request.user)
         turnus = _managed_turnus_or_404(request.user, turnus_id)
         if not _can_manage_turnus(request.user, turnus.pk):
-            from django.http import Http404
             raise Http404
         user = get_object_or_404(get_user_model(), pk=user_id, is_active=True)
         if TurnusMembership.objects.filter(user=user, turnus=turnus).exists():
@@ -106,7 +112,6 @@ def update_team_membership_label(request, membership_id):
         request.user.is_superuser = is_locked_product_admin(request.user)
         membership = _managed_membership_or_404(request.user, membership_id)
         if not _can_manage_turnus(request.user, membership.turnus_id):
-            from django.http import Http404
             raise Http404
         previous = membership.team_label
         if previous != label:
@@ -129,7 +134,6 @@ def remove_team_membership(request, membership_id):
         request.user.is_superuser = is_locked_product_admin(request.user)
         membership = _managed_membership_or_404(request.user, membership_id)
         if not _can_manage_turnus(request.user, membership.turnus_id):
-            from django.http import Http404
             raise Http404
         snapshot = membership
         details = {"functional_role": membership.functional_role, "member_id": membership.user_id}

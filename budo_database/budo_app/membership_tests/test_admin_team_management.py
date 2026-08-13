@@ -145,6 +145,8 @@ class AdminTeamManagementTests(TestCase):
         self.assertEqual(self.client.post(url, {"user_id": available.pk + 1000}).status_code, 404)
         missing_turnus = reverse("admin-leitung-membership-create-api", args=(self.turnus.pk + 1000,))
         self.assertEqual(self.client.post(missing_turnus, {"user_id": available.pk}).status_code, 404)
+        self.assertFalse(TurnusMembership.objects.filter(user=available).exists())
+        self.assertFalse(AuditEvent.objects.filter(action="membership.create").exists())
 
     def test_create_leitung_rejects_invalid_bigint_user_ids_without_mutation_or_audit(self):
         self.client.force_login(self.admin)

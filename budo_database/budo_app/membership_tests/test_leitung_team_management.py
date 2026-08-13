@@ -90,11 +90,18 @@ class LeitungTeamManagementHttpTests(TestCase):
             self.assertEqual(self.client.post(
                 reverse("membership-remove-api", args=(membership_id,)), {},
             ).status_code, 404)
-        response = self.client.post(
-            reverse("teamer-membership-create-api", args=(self.foreign.id,)),
-            {"user_id": User.objects.create_user("target").id, "functional_role": "leitung"},
-        )
-        self.assertEqual(response.status_code, 404)
+        target = User.objects.create_user("target")
+        responses = [
+            self.client.post(
+                reverse("teamer-membership-create-api", args=(turnus_id,)),
+                {"user_id": target.id, "functional_role": "leitung"},
+            )
+            for turnus_id in (self.foreign.id, self.foreign.id + 9999)
+        ]
+        self.assertEqual([response.status_code for response in responses], [404, 404])
+        self.assertEqual(responses[0].content, responses[1].content)
+        self.assertFalse(TurnusMembership.objects.filter(user=target).exists())
+        self.assertFalse(AuditEvent.objects.filter(action="membership.create").exists())
 
     def test_label_is_membership_specific_non_authority_and_audited(self):
         other = TurnusMembership.objects.create(user=self.member, turnus=self.foreign, team_label="Küche")
