@@ -44,6 +44,7 @@ def create_membership(
     )
     membership.full_clean()
     membership.save()
+    Profil.objects.filter(user=user).update(membership_selection_enabled=True)
     TurnusJoinRequest.objects.filter(
         user=user,
         turnus=turnus,

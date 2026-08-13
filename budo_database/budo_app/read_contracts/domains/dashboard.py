@@ -352,7 +352,7 @@ def build_dashboard_contract(request):
     # request history.
     if (
         not request.user.turnus_memberships.exists()
-        and (profile.turnus_id is None or profile.selected_turnus_id is not None)
+        and (profile.turnus_id is None or profile.membership_selection_enabled)
     ):
         return {
             **_empty_summary(profile),

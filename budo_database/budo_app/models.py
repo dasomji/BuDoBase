@@ -92,6 +92,11 @@ class Profil(models.Model):
         related_name="selected_by_profiles",
     )
 
+    # Once membership-backed authorization has been used for this profile,
+    # an empty membership set must fail closed instead of falling back to the
+    # legacy ``turnus`` assignment.
+    membership_selection_enabled = models.BooleanField(default=False)
+
     budo_family = models.CharField(
         max_length=2,
         choices=BUDO_FAMILIES,

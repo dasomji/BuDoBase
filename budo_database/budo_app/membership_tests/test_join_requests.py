@@ -95,7 +95,7 @@ class JoinRequestHttpTests(TestCase):
             }])
 
     def test_migrated_user_awaits_membership_after_last_membership_is_deleted(self):
-        membership = TurnusMembership.objects.create(
+        membership = create_membership(
             user=self.requester,
             turnus=self.turnus,
         )
@@ -126,6 +126,27 @@ class JoinRequestHttpTests(TestCase):
             "start": "2027-07-10",
             "request_status": "rejected",
         }])
+
+    def test_membership_created_without_selection_awaits_after_deletion(self):
+        profile = self.requester.profil
+        profile.turnus = self.turnus
+        profile.save(update_fields=["turnus"])
+        membership = create_membership(user=self.requester, turnus=self.turnus)
+
+        profile.refresh_from_db()
+        self.assertTrue(profile.membership_selection_enabled)
+        self.assertIsNone(profile.selected_turnus_id)
+
+        membership.delete()
+        payload = self.client.get(
+            reverse("route-data-api", args=["dashboard"])
+        ).json()
+
+        self.assertTrue(payload["membership_awaiting"])
+        self.assertEqual(payload["kids"], [])
+        self.assertEqual(payload["team"], [])
+        self.assertEqual(payload["focuses"], [])
+        self.assertEqual(payload["happy_cleanings"], [])
 
     def test_untouched_legacy_profile_still_uses_expand_phase_dashboard(self):
         profile = self.requester.profil
