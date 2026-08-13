@@ -2,7 +2,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 
-from budo_app.models import Profil, Schwerpunkte, Turnus
+from budo_app.models import Profil, Schwerpunkte, Turnus, TurnusMembership
 from budo_app.read_contracts.common import (
     active_turnus_id,
     required_query_integer,
@@ -28,7 +28,12 @@ def _profile_queryset(turnus_id):
     )
 
 
-def _profile_fields(profile):
+def _profile_fields(profile, turnus_id=None):
+    membership = None
+    if turnus_id is not None:
+        membership = TurnusMembership.objects.filter(
+            user_id=profile.user_id, turnus_id=turnus_id,
+        ).first()
     return {
         "id": profile.id,
         "email": profile.user.email,
@@ -36,16 +41,19 @@ def _profile_fields(profile):
         "phone": str(profile.telefonnummer),
         "allergies": profile.allergien,
         "coffee": profile.coffee,
-        "role": profile.rolle,
-        "role_display": profile.get_rolle(),
+        "role": membership.functional_role if membership else "",
+        "role_display": (
+            membership.team_label or membership.get_functional_role_display()
+            if membership else ""
+        ),
         "food": profile.essen,
         "food_display": profile.get_food(),
         "budo_family": profile.budo_family,
     }
 
 
-def _profile(profile, *, can_change_turnus):
-    payload = _profile_fields(profile)
+def _profile(profile, *, can_change_turnus, turnus_id=None):
+    payload = _profile_fields(profile, turnus_id)
     if can_change_turnus is not None:
         payload["can_change_turnus"] = can_change_turnus
     return payload
@@ -89,6 +97,7 @@ def profile(request):
         "profile": _profile(
             selected_profile,
             can_change_turnus=can_change_turnus,
+            turnus_id=turnus_id,
         ),
         "focuses": _focuses(selected_profile),
         "turnuses": _turnuses(can_change_turnus),
@@ -107,7 +116,7 @@ def team(request):
     )
     return {
         "team": [
-            {**_profile_fields(item), "focuses": _focuses(item)}
+            {**_profile_fields(item, turnus_id), "focuses": _focuses(item)}
             for item in profiles
         ],
     }

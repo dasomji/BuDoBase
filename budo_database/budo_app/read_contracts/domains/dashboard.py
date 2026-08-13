@@ -196,14 +196,14 @@ def _activity_page(kind, turnus_id, cursor=None):
     }
 
 
-def _profile_payload(profile, focus_ids):
+def _profile_payload(profile, focus_ids, role_display=""):
     return {
         "id": profile.id,
         "email": profile.user.email,
         "phone": str(profile.telefonnummer),
         "allergies": profile.allergien,
         "coffee": profile.coffee,
-        "role_display": profile.get_rolle(),
+        "role_display": role_display,
         "food_display": profile.get_food(),
         "budo_family": profile.budo_family,
         "focus_ids": focus_ids,
@@ -580,7 +580,16 @@ def _build_dashboard_contract(request, profile):
                     station_row["dashboard_kid_id"]
                 )
         summary = {
-            "profile": _profile_payload(profile, focus_ids),
+            "profile": _profile_payload(
+                profile,
+                focus_ids,
+                next((
+                    membership.team_label
+                    or membership.get_functional_role_display()
+                    for membership in profile.user.turnus_memberships.all()
+                    if membership.turnus_id == turnus_id
+                ), ""),
+            ),
             "team": [
                 {
                     "id": member.id,

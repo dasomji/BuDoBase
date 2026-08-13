@@ -40,13 +40,6 @@ class Profil(models.Model):
         ("XL", "X-largie"),
     ]
 
-    ROLLEN = (
-        ("b", "Betreuer:in"),
-        ("k", "Küche"),
-        ("o", "Organisator"),
-        ("f", "Freiwillige:r")
-    )
-
     ESSEN = (
         ("ft", "Flexitarisch"),
         ("vt", "Vegetarisch"),
@@ -61,14 +54,6 @@ class Profil(models.Model):
     allergien = models.CharField(max_length=500, blank=True, default="")
     coffee = models.CharField(max_length=500, blank=True,
                               default="", help_text="Wie magst du deinen Kaffee?")
-    rolle = models.CharField(
-        max_length=1,
-        choices=ROLLEN,
-        blank=True,
-        default="b",
-        help_text="Was ist deine Rolle im Team?"
-    )
-
     essen = models.CharField(
         max_length=2,
         choices=ESSEN,
@@ -77,13 +62,7 @@ class Profil(models.Model):
         help_text="Was möchtest du essen?"
     )
 
-    turnus = models.ForeignKey(
-        "Turnus", on_delete=models.SET_NULL, null=True, blank=True, related_name="teamer"
-    )
-
-    # Selection is working context, not an authorization grant.  The legacy
-    # ``turnus`` field remains during the expand phase so existing consumers
-    # keep their current behaviour while they migrate to memberships.
+    # Selection is working context, not an authorization grant.
     selected_turnus = models.ForeignKey(
         "Turnus",
         on_delete=models.SET_NULL,
@@ -91,7 +70,6 @@ class Profil(models.Model):
         blank=True,
         related_name="selected_by_profiles",
     )
-    membership_selection_enabled = models.BooleanField(default=False, editable=False)
 
     budo_family = models.CharField(
         max_length=2,
@@ -119,24 +97,6 @@ class Profil(models.Model):
             raise ValidationError(
                 {"selected_turnus": "Der ausgewählte Turnus erfordert eine Mitgliedschaft."}
             )
-        if self.pk and not self.membership_selection_enabled:
-            was_enabled = type(self).objects.filter(
-                pk=self.pk, membership_selection_enabled=True,
-            ).exists()
-            if was_enabled:
-                self.membership_selection_enabled = True
-
-    def save(self, *args, **kwargs):
-        if self.pk and not self.membership_selection_enabled and type(self).objects.filter(
-            pk=self.pk, membership_selection_enabled=True,
-        ).exists():
-            self.membership_selection_enabled = True
-            update_fields = kwargs.get("update_fields")
-            if update_fields is not None:
-                kwargs["update_fields"] = tuple(set(update_fields) | {
-                    "membership_selection_enabled",
-                })
-        return super().save(*args, **kwargs)
 
     def get_food(self):
         if self.essen == "ft":
@@ -145,9 +105,6 @@ class Profil(models.Model):
             return "🧀 Vegetarisch"
         if self.essen == "vn":
             return "🌱 Vegan"
-
-    def get_rolle(self):
-        return dict(self.ROLLEN).get(self.rolle)
 
     def get_geld_sum(self):
         return sum(t.amount for t in self.betreuerinnen_geld.all())
@@ -844,8 +801,10 @@ class HappyCleaningStation(models.Model):
         if (
             self.responsible_profile_id
             and self.happy_cleaning_id
-            and self.responsible_profile.turnus_id
-            != self.happy_cleaning.turnus_id
+            and not TurnusMembership.objects.filter(
+                user_id=self.responsible_profile.user_id,
+                turnus_id=self.happy_cleaning.turnus_id,
+            ).exists()
         ):
             raise ValidationError({
                 "responsible_profile": (

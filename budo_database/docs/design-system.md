@@ -4,6 +4,10 @@ This guide is the contract for new and migrated React UI. It documents the
 shared APIs shipped in `frontend/src` and the decisions recorded in
 [the design-system ADR](adr/2026-07-26-frontend-design-system.md).
 
+Turnus selection controls display only approved memberships supplied by the
+server. They change working context and never act as an authorization boundary;
+all page data and mutations remain membership-scoped server-side.
+
 The legacy global stylesheet has been removed. Prefer Tailwind utilities and
 the shared components described here; server-rendered compatibility markup is
 not precedent for new work.

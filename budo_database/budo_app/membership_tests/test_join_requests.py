@@ -80,8 +80,6 @@ class JoinRequestHttpTests(TestCase):
         self.assertEqual(len(mail.outbox), 2)
 
     def test_awaiting_dashboard_contains_only_safe_request_state(self):
-        self.requester.profil.membership_selection_enabled = True
-        self.requester.profil.save(update_fields=["membership_selection_enabled"])
         TurnusJoinRequest.objects.create(user=self.requester, turnus=self.turnus)
         response = self.client.get(reverse("route-data-api", args=["dashboard"]))
         self.assertEqual(response.status_code, 200)
@@ -103,9 +101,8 @@ class JoinRequestHttpTests(TestCase):
             turnus=self.turnus,
         )
         profile = self.requester.profil
-        profile.turnus = self.turnus
         profile.selected_turnus = self.turnus
-        profile.save(update_fields=["turnus", "selected_turnus"])
+        profile.save(update_fields=["selected_turnus"])
         TurnusJoinRequest.objects.create(
             user=self.requester,
             turnus=self.turnus,
@@ -132,12 +129,9 @@ class JoinRequestHttpTests(TestCase):
 
     def test_membership_created_without_selection_awaits_after_deletion(self):
         profile = self.requester.profil
-        profile.turnus = self.turnus
-        profile.save(update_fields=["turnus"])
         membership = create_membership(user=self.requester, turnus=self.turnus)
 
         profile.refresh_from_db()
-        self.assertTrue(profile.membership_selection_enabled)
         self.assertIsNone(profile.selected_turnus_id)
 
         membership.delete()
@@ -151,11 +145,7 @@ class JoinRequestHttpTests(TestCase):
         self.assertEqual(payload["focuses"], [])
         self.assertEqual(payload["happy_cleanings"], [])
 
-    def test_legacy_profile_without_membership_awaits_approved_access(self):
-        profile = self.requester.profil
-        profile.turnus = self.turnus
-        profile.save(update_fields=["turnus"])
-
+    def test_profile_without_membership_awaits_approved_access(self):
         payload = self.client.get(
             reverse("route-data-api", args=["dashboard"])
         ).json()

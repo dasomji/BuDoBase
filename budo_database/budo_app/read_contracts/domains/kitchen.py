@@ -109,8 +109,7 @@ def build_kitchen_contract(request):
         .order_by("kid_vorname", "kid_nachname", "id")
     )
     authorized_team = Profil.objects.filter(
-        Q(user__turnus_memberships__turnus_id=turnus_id)
-        | Q(membership_selection_enabled=False, turnus_id=turnus_id)
+        user__turnus_memberships__turnus_id=turnus_id,
     ).distinct()
     team = (
         authorized_team

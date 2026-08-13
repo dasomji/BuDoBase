@@ -244,7 +244,9 @@ def swp_dashboard(request):
 def kitchen(request):
     profil = Profil.objects.get(user=request.user)
     active_turnus = request.active_turnus
-    team = Profil.objects.filter(turnus=active_turnus)
+    team = Profil.objects.filter(
+        user__turnus_memberships__turnus=active_turnus,
+    )
     kids = Kinder.objects.filter(turnus=active_turnus)
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)

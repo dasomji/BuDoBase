@@ -134,8 +134,7 @@ class LeitungTeamManagementHttpTests(TestCase):
         TurnusMembership.objects.create(user=self.member, turnus=fallback)
         profile = self.member.profil
         profile.selected_turnus = self.own
-        profile.membership_selection_enabled = True
-        profile.save(update_fields=("selected_turnus", "membership_selection_enabled"))
+        profile.save(update_fields=("selected_turnus",))
         response = self.client.post(reverse("membership-remove-api", args=(self.membership.id,)), {})
         self.assertEqual(response.status_code, 200)
         profile.refresh_from_db()

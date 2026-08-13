@@ -41,12 +41,11 @@ class ActiveTurnusFixtureFactory:
         self._grow_kids(kids)
 
     def _grow_team(self, target):
-        current = self.turnus.teamer.count()
+        current = self.turnus.memberships.count()
         for index in range(current, target):
             user = User.objects.create_user(username=f"baseline-team-{index}")
             profile = user.profil
             profile.rufname = f"Teamer {index}"
-            profile.turnus = self.turnus
             profile.allergien = "Nüsse" if index % 3 == 0 else ""
             profile.save()
             create_membership(user=user, turnus=self.turnus)

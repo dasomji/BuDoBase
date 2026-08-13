@@ -33,7 +33,7 @@ def get_cached_user_profile(user):
     if cached_profile is None:
         try:
             profile = Profil.objects.select_related(
-                'user', 'turnus').get(user=user)
+                'user', 'selected_turnus').get(user=user)
             # Cache for 5 minutes
             cache.set(cache_key, profile, 300)
             return profile

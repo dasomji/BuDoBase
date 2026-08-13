@@ -57,3 +57,18 @@ An informational label on a person's Turnus profile, such as Betreuer:in, Küche
 ### Turnus
 
 A camp session/period that scopes children, team membership, planning, operational records, and most camp-specific access. A person may have access to multiple Turnusse. BuDoBase access is modeled around users and Turnusse, not around multiple customer organisations.
+
+### Approved Turnus membership
+
+The only grant of access to a Turnus. It connects one account to one Turnus,
+stores the functional role (`Leitung` or `Teamer`), and carries an independent
+descriptive team label. A profile, join request, visible Turnus, or selected
+Turnus never grants access.
+
+### Selected Turnus
+
+The account's current working context. Selection is stored on the profile but
+is valid only while the account has the matching approved membership. Every
+Turnus-scoped boundary revalidates that membership; removal immediately clears
+or repairs selection. Profiles contain personal information only and have no
+legacy Turnus or role authority fields.

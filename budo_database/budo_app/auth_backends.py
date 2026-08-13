@@ -9,7 +9,7 @@ class ProfileAwareModelBackend(ModelBackend):
         user_model = get_user_model()
         try:
             user = user_model._default_manager.select_related(
-                "profil", "profil__turnus", "profil__selected_turnus",
+                "profil", "profil__selected_turnus",
             ).get(pk=user_id)
         except user_model.DoesNotExist:
             return None

@@ -36,7 +36,9 @@ def build_dashboard_context(profile, active_turnus):
         "geburtstage": len(geburtstagskinder),
         "eingecheckte_kids": kids.filter(anwesend=True).count(),
         "anzahl_kids": kids.count(),
-        "team": Profil.objects.filter(turnus=active_turnus).annotate(
+        "team": Profil.objects.filter(
+            user__turnus_memberships__turnus=active_turnus,
+        ).annotate(
             total_betreuerinnen_geld=Sum('betreuerinnen_geld__amount')
         ).select_related('user'),
         "medikamente": medikamente,

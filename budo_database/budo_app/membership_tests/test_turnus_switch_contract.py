@@ -150,13 +150,11 @@ class TurnusSwitchContractTests(TestCase):
         self.assertEqual(selection["options"], [{"id": second.id, "label": str(second)}])
         self.assertEqual(Profil.objects.get(user=user).selected_turnus_id, second.id)
 
-    def test_last_revoked_membership_never_restores_legacy_turnus_on_later_requests(self):
+    def test_last_revoked_membership_remains_unselected_on_later_requests(self):
         legacy = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
         user = User.objects.create_user(username="membershipless")
         membership = create_membership(user=user, turnus=legacy)
         profile = Profil.objects.get(user=user)
-        profile.turnus = legacy
-        profile.save(update_fields=("turnus",))
         select_turnus(user, legacy)
         membership.delete()
         self.client.force_login(user)

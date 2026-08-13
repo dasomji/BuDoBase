@@ -253,7 +253,7 @@ class TurnusAdmin(admin.ModelAdmin):
 
 class ProfilAdmin(admin.ModelAdmin):
     list_display = (
-        "__str__", 'rolle', 'get_food', 'budo_family', 'allergien', 'turnus',
+        "__str__", 'get_food', 'budo_family', 'allergien',
     )
 
 

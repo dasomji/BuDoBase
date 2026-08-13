@@ -1,6 +1,6 @@
 from django.db.models import Count, Q
 
-from budo_app.models import Kinder, Profil
+from budo_app.models import Kinder, TurnusMembership
 from budo_app.read_contracts.common import active_turnus_id, kid_full_name
 from budo_app.utils import parse_sv_birthday
 
@@ -62,15 +62,9 @@ def murder_game(request):
         .values("id", "kid_vorname", "kid_nachname")
         .order_by("kid_vorname", "kid_nachname", "id")
     )
-    team = (
-        Profil.objects.filter(
-            Q(user__turnus_memberships__turnus_id=turnus_id)
-            | Q(membership_selection_enabled=False, turnus_id=turnus_id)
-        )
-        .only("id", "rufname", "rolle")
-        .distinct()
-        .order_by("rufname", "id")
-    )
+    team = TurnusMembership.objects.filter(turnus_id=turnus_id).select_related(
+        "user__profil"
+    ).order_by("user__profil__rufname", "id")
     return {
         "kids": [
             {
@@ -83,9 +77,9 @@ def murder_game(request):
         ],
         "team": [
             {
-                "id": member.id,
-                "rufname": member.rufname,
-                "role_display": member.get_rolle(),
+                "id": member.user.profil.id,
+                "rufname": member.user.profil.rufname,
+                "role_display": member.team_label or member.get_functional_role_display(),
             }
             for member in team
         ],

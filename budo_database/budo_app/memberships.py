@@ -12,12 +12,10 @@ from .models import Profil, Turnus, TurnusJoinRequest, TurnusMembership
 
 
 def _synchronize_cached_profile(user, profile):
-    """Keep Django's reverse one-to-one cache from restoring stale authority."""
+    """Keep Django's reverse one-to-one cache aligned with stored selection."""
     cached = user._state.fields_cache.get("profil")
     if cached is not None:
-        cached.turnus_id = profile.turnus_id
         cached.selected_turnus_id = profile.selected_turnus_id
-        cached.membership_selection_enabled = profile.membership_selection_enabled
 
 
 def lock_membership_scopes(*, user_ids, turnus_id):
@@ -111,10 +109,6 @@ def create_membership(
     )
     membership.full_clean()
     membership.save()
-    profile = Profil.objects.get(user=user)
-    profile.membership_selection_enabled = True
-    profile.save(update_fields=("membership_selection_enabled",))
-    _synchronize_cached_profile(user, profile)
     TurnusJoinRequest.objects.filter(
         user=user,
         turnus=turnus,
@@ -185,8 +179,7 @@ def select_turnus(user, turnus):
     if membership is None:
         raise ValidationError("Der ausgewählte Turnus erfordert eine Mitgliedschaft.")
     profile.selected_turnus = turnus
-    profile.membership_selection_enabled = True
-    profile.save(update_fields=("selected_turnus", "membership_selection_enabled"))
+    profile.save(update_fields=("selected_turnus",))
     _synchronize_cached_profile(user, profile)
     return turnus
 
@@ -224,20 +217,8 @@ def selected_turnus_for(user):
 
 
 def scoped_turnus_for(user):
-    """Resolve authority for a Turnus-scoped boundary during migration.
-
-    Membership-enabled accounts always use the validated approved selection.
-    The legacy branch exists only for profiles not activated by the expand
-    migration and is removed with the profile authority field in #196.
-    """
-    if not getattr(user, "is_authenticated", False):
-        return None
-    profile = Profil.objects.select_related("turnus").filter(user=user).first()
-    if profile is None:
-        return None
-    if profile.membership_selection_enabled:
-        return selected_turnus_for(user)
-    return profile.turnus
+    """Resolve authority exclusively through an approved selected membership."""
+    return selected_turnus_for(user)
 
 
 @contextmanager
@@ -254,14 +235,9 @@ def authorized_turnus_scope(user):
         return
     profile = user._state.fields_cache.get("profil")
     if profile is None:
-        profile = Profil.objects.select_related("turnus").filter(user_id=user.pk).first()
+        profile = Profil.objects.filter(user_id=user.pk).first()
     if profile is None:
         yield None
-        return
-    # Authentication eagerly loads this legacy-only authority. Avoid opening a
-    # transaction for accounts that have not entered membership selection yet.
-    if not profile.membership_selection_enabled:
-        yield profile.turnus
         return
     # The membership is the authority row and the deletion conflict point. Its
     # joined Turnus supplies the complete request scope without separately

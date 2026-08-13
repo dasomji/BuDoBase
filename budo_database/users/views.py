@@ -102,21 +102,14 @@ def profile_detail(request):
 
 class ProfilUpdate(ReactPageTemplateMixin, UpdateView):
     model = Profil
-    fields = ['rufname', 'allergien', 'coffee', 'rolle',
-              'essen', 'telefonnummer', 'budo_family', 'turnus']
+    fields = ['rufname', 'allergien', 'coffee', 'essen',
+              'telefonnummer', 'budo_family']
     success_url = reverse_lazy('dashboard')
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect_to_login(request.get_full_path())
         return super().dispatch(request, *args, **kwargs)
-
-    def get_form_class(self):
-        form_class = super().get_form_class()
-        if self.request.user.groups.filter(name='Test-users').exists():
-            if 'turnus' in form_class.base_fields:
-                form_class.base_fields.pop('turnus')
-        return form_class
 
     def get_object(self, queryset=None):
         return self.request.user.profil

@@ -143,8 +143,8 @@ class UploadForm(forms.ModelForm):
 class ProfilForm(forms.ModelForm):
     class Meta:
         model = Profil
-        fields = ['allergien', 'rolle', 'essen', 'telefonnummer']
-        labels = {'allergien': "Allergien", 'rolle': "Rolle", 'essen': "Essen"}
+        fields = ['allergien', 'essen', 'telefonnummer']
+        labels = {'allergien': "Allergien", 'essen': "Essen"}
 
 
 class SchwerpunktForm(forms.ModelForm):

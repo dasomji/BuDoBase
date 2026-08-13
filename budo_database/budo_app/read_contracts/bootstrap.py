@@ -96,7 +96,7 @@ def bootstrap(request):
         return Response(payload)
 
     try:
-        profile = Profil.objects.select_related("user", "turnus").get(
+        profile = Profil.objects.select_related("user").get(
             user=request.user,
         )
     except Profil.DoesNotExist:

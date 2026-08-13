@@ -489,7 +489,9 @@ def serienbrief(request):
 def murdergame(request):
     active_turnus = request.active_turnus
     kids = models.Kinder.objects.filter(turnus=active_turnus, anwesend=True)
-    team = models.Profil.objects.filter(turnus=active_turnus)
+    team = models.Profil.objects.filter(
+        user__turnus_memberships__turnus=active_turnus,
+    )
     context = {
         "kids": kids,
         "team": team,

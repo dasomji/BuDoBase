@@ -2,7 +2,6 @@ from datetime import date
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError
 from django.test import TestCase
 
 from budo_app.memberships import (
@@ -11,7 +10,7 @@ from budo_app.memberships import (
     select_turnus,
     update_membership,
 )
-from budo_app.models import Turnus, TurnusMembership
+from budo_app.models import Profil, Turnus, TurnusMembership
 
 
 class TurnusMembershipDomainTests(TestCase):
@@ -107,11 +106,10 @@ class TurnusMembershipDomainTests(TestCase):
         membership.delete()
         self.assertIsNone(selected_turnus_for(self.user))
 
-    def test_legacy_profile_turnus_is_never_selection_authority(self):
+    def test_empty_selection_is_never_authority(self):
         profile = self.user.profil
-        profile.turnus = self.first
         profile.selected_turnus = None
-        profile.save(update_fields=("turnus", "selected_turnus"))
+        profile.save(update_fields=("selected_turnus",))
 
         self.assertIsNone(selected_turnus_for(self.user))
         profile.refresh_from_db()
@@ -128,16 +126,8 @@ class TurnusMembershipDomainTests(TestCase):
         self.user.profil.refresh_from_db()
         self.assertIsNone(self.user.profil.selected_turnus_id)
 
-    def test_activated_profile_cannot_be_reset_to_the_legacy_authority_path(self):
-        create_membership(user=self.user, turnus=self.first)
-        profile = self.user.profil
-        profile.refresh_from_db()
-        profile.membership_selection_enabled = False
-        profile.save()
-        profile.refresh_from_db()
-        self.assertTrue(profile.membership_selection_enabled)
-
-        with self.assertRaises(DatabaseError):
-            type(profile).objects.filter(pk=profile.pk).update(
-                membership_selection_enabled=False,
-            )
+    def test_profile_has_no_legacy_activation_flag(self):
+        self.assertNotIn(
+            "membership_selection_enabled",
+            {field.name for field in Profil._meta.get_fields()},
+        )
