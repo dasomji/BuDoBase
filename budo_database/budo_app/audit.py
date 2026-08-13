@@ -80,6 +80,11 @@ ACTION_DETAIL_FIELDS = {
         "previous_turnus_id": (int, type(None)),
         "selected_turnus_id": (int,),
     },
+    "membership.role.change": {
+        "previous_role": (str,),
+        "new_role": (str,),
+        "member_id": (int,),
+    },
     "happy_cleaning.event.create": COMMON_DETAIL_FIELDS,
     "happy_cleaning.event.update": COMMON_DETAIL_FIELDS,
     "happy_cleaning.event.delete": COMMON_DETAIL_FIELDS,
