@@ -79,6 +79,8 @@ class JoinRequestHttpTests(TestCase):
         self.assertEqual(len(mail.outbox), 2)
 
     def test_awaiting_dashboard_contains_only_safe_request_state(self):
+        self.requester.profil.membership_selection_enabled = True
+        self.requester.profil.save(update_fields=["membership_selection_enabled"])
         TurnusJoinRequest.objects.create(user=self.requester, turnus=self.turnus)
         response = self.client.get(reverse("route-data-api", args=["dashboard"]))
         self.assertEqual(response.status_code, 200)

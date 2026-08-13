@@ -351,8 +351,8 @@ def build_dashboard_contract(request):
     # dashboard deliberately exposes only public Turnus identity and its own
     # request history.
     if (
-        not request.user.turnus_memberships.exists()
-        and (profile.turnus_id is None or profile.membership_selection_enabled)
+        profile.membership_selection_enabled
+        and not request.user.turnus_memberships.exists()
     ):
         return {
             **_empty_summary(profile),
