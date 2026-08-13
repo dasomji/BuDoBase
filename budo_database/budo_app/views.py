@@ -8,7 +8,7 @@ from .memberships import scoped_turnus_for
 from .react_views import render_react_page
 from .forms import CSVUploadForm, BirthdayNotizForm
 from .kid_edit_writes import versioned_child_write
-from .memberships import selected_turnus_for_read
+from .memberships import membership_scoped_read
 from django.views.decorators.http import require_GET, require_POST
 from django.db import transaction
 from .utils import (
@@ -107,9 +107,9 @@ def happy_cleaning(request):
 
 
 @login_required
+@membership_scoped_read
 def kindergesamtzahl(request):
-    current_user = request.user
-    active_turnus = selected_turnus_for_read(current_user)
+    active_turnus = request.active_turnus
     checked_in_count = Kinder.objects.filter(
         turnus=active_turnus, anwesend=True).count()
     total_kids = Kinder.objects.filter(turnus=active_turnus).count()

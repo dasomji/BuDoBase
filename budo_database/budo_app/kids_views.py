@@ -22,7 +22,7 @@ from .forms import (
     NotizForm,
 )
 from .kid_edit_writes import versioned_child_write
-from .memberships import selected_turnus_for_read
+from .memberships import membership_scoped_read
 from .models import Auslagerorte, Kinder, Schwerpunkte
 from .react_views import render_react_page
 from .utils import (
@@ -87,9 +87,10 @@ def budo_families(request):
 
 
 @login_required
+@membership_scoped_read
 def spezial_familien(request):
     spezial_familien = {}
-    active_turnus = selected_turnus_for_read(request.user)
+    active_turnus = request.active_turnus
     kids = models.Kinder.objects.filter(
         turnus=active_turnus).order_by('kid_vorname')
     schwerpunkte = Schwerpunkte.objects.filter(
@@ -115,8 +116,9 @@ def spezial_familien(request):
 
 
 @login_required
+@membership_scoped_read
 def zugabreise(request):
-    active_turnus = selected_turnus_for_read(request.user)
+    active_turnus = request.active_turnus
     kids = models.Kinder.objects.filter(
         turnus=active_turnus).order_by('-zug_abreise', 'kid_vorname')
     schwerpunkte = Schwerpunkte.objects.filter(
@@ -134,8 +136,9 @@ def zugabreise(request):
 
 
 @login_required
+@membership_scoped_read
 def zuganreise(request):
-    active_turnus = selected_turnus_for_read(request.user)
+    active_turnus = request.active_turnus
     kids = models.Kinder.objects.filter(
         turnus=active_turnus, zug_anreise=True).order_by('kid_vorname')
     kids_with_top_jugendticket_count = kids.filter(
@@ -469,8 +472,9 @@ def check_out(request, id):
 
 
 @login_required
+@membership_scoped_read
 def serienbrief(request):
-    active_turnus = selected_turnus_for_read(request.user)
+    active_turnus = request.active_turnus
     kids = models.Kinder.objects.filter(
         turnus=active_turnus).order_by('kid_vorname')
     context = {
@@ -481,8 +485,9 @@ def serienbrief(request):
 
 
 @login_required
+@membership_scoped_read
 def murdergame(request):
-    active_turnus = selected_turnus_for_read(request.user)
+    active_turnus = request.active_turnus
     kids = models.Kinder.objects.filter(turnus=active_turnus, anwesend=True)
     team = models.Profil.objects.filter(turnus=active_turnus)
     context = {

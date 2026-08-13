@@ -3,7 +3,6 @@ from django.contrib import admin
 from django.core.exceptions import FieldDoesNotExist
 from django.core.files.base import ContentFile
 from django.db import transaction
-from django.db.models import F
 from django.template.defaultfilters import filesizeformat
 from django.utils.html import format_html
 
@@ -28,7 +27,6 @@ from .models import (
     SpezialFamilien,
     Tag,
     Turnus,
-    TurnusMembership,
 )
 
 

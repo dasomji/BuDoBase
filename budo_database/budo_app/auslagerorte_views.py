@@ -7,13 +7,14 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.utils.decorators import method_decorator
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, FormView, UpdateView
 
 from . import models
 from .forms import AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm
 from .location_services import BUDO_PLACE_NAME, update_auslagerorte_coordinates
-from .memberships import selected_turnus_for_read
+from .memberships import membership_scoped_read
 from .models import (
     Auslagerorte,
     AuslagerorteImage,
@@ -24,6 +25,7 @@ from .react_views import ReactPageTemplateMixin, render_react_page
 logger = logging.getLogger(__name__)
 
 
+@method_decorator(membership_scoped_read, name="get")
 class AuslagerorteUpdate(
     ReactPageTemplateMixin,
     LoginRequiredMixin,
@@ -33,7 +35,7 @@ class AuslagerorteUpdate(
     form_class = AuslagerForm
 
     def get_context_data(self, **kwargs):
-        active_turnus = selected_turnus_for_read(self.request.user)
+        active_turnus = self.request.active_turnus
         schwerpunkte = Schwerpunkte.objects.filter(
             schwerpunktzeit__turnus=active_turnus)
         auslagerorte = Auslagerorte.objects.all()
@@ -60,6 +62,7 @@ class AuslagerorteUpdate(
         return reverse_lazy('auslagerorte-detail', kwargs={'pk': self.object.pk})
 
 
+@method_decorator(membership_scoped_read, name="get")
 class AuslagerorteDetail(
     ReactPageTemplateMixin,
     LoginRequiredMixin,
@@ -70,7 +73,7 @@ class AuslagerorteDetail(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        active_turnus = selected_turnus_for_read(self.request.user)
+        active_turnus = self.request.active_turnus
         schwerpunkte = Schwerpunkte.objects.filter(
             schwerpunktzeit__turnus=active_turnus)
         auslagerorte = Auslagerorte.objects.all()
@@ -232,8 +235,9 @@ class AuslagerorteImageUpload(
 
 
 @login_required
+@membership_scoped_read
 def auslagerorte_list(request):
-    active_turnus = selected_turnus_for_read(request.user)
+    active_turnus = request.active_turnus
     kids = models.Kinder.objects.all().values()
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)

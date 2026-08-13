@@ -1,6 +1,7 @@
 """Public domain operations for approved Turnus memberships and selection."""
 
 from contextlib import contextmanager
+from functools import wraps
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -229,3 +230,16 @@ def authorized_turnus_scope(user):
             .first()
         )
         yield membership.turnus if membership is not None else None
+
+
+def membership_scoped_read(view_func):
+    """Hold approved membership authority for a complete synchronous GET view."""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if request.method != "GET":
+            return view_func(request, *args, **kwargs)
+        with authorized_turnus_scope(request.user) as turnus:
+            request.active_turnus = turnus
+            return view_func(request, *args, **kwargs)
+
+    return wrapper
