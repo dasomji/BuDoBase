@@ -214,6 +214,20 @@ describe('design-system contrast contracts', () => {
     );
   });
 
+  it('keeps translucent cards readable with a visible keyboard focus indicator', () => {
+    const translucentCardRule = cssBlock(appCss, '.card.translucent-card');
+    const cardSurface = composite(token('card'), page);
+
+    expectContrast(token('card-foreground'), cardSurface, 4.5);
+    expectContrast(token('ring'), cardSurface, 3);
+    expect(translucentCardRule).toMatch(/background-color:\s*var\(--color-card\)/);
+    expect(translucentCardRule).toMatch(/color:\s*var\(--color-card-foreground\)/);
+    expect(translucentCardRule).toMatch(/border:\s*1px solid color-mix\([^;]*var\(--color-border\)[^;]*\)/);
+    expect(appCss).toMatch(
+      /\.info-header-container\.card-toggle:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--color-ring\)/s,
+    );
+  });
+
   it('keeps one shared Button focus treatment visible on every supported surface', () => {
     const ring = token('ring');
     const solidSurface = token('surface-solid');

@@ -5,7 +5,6 @@ import { Printer } from 'lucide-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppSidebar, ApplicationShell } from './app-sidebar';
-import * as SharedComponents from './components';
 import {
   Card,
   ConfirmationDialog,
@@ -22,6 +21,7 @@ import {
   TableHeader,
   TableRow,
   TableScroll,
+  TranslucentCard,
 } from './components';
 import { Button } from './components/ui/button';
 import { Input, NativeSelect, Textarea } from './components/ui/input';
@@ -58,22 +58,88 @@ describe('reusable components', () => {
     }));
   });
 
-  it('exposes translucent cards through the shared expandable-card interaction', () => {
-    const { TranslucentCard } = SharedComponents;
-
+  it.each([
+    ['the existing card', Card],
+    ['the translucent card', TranslucentCard],
+  ])('preserves the accessible expandable-card baseline for %s', (_name, CardComponent) => {
     render(
-      <TranslucentCard title="Turnus 2026">
+      <CardComponent title="Turnus 2026" id="turnus-card" as="article" headingLevel={3}>
         <p>12 Teammitglieder</p>
+      </CardComponent>,
+    );
+
+    const heading = screen.getByRole('heading', { level: 3, name: 'Turnus 2026' });
+    const card = heading.closest('article');
+    const toggle = screen.getByRole('button', { name: 'Turnus 2026 schließen' });
+    const content = document.getElementById(toggle.getAttribute('aria-controls'));
+
+    expect(card).toHaveAttribute('id', 'turnus-card');
+    expect(card).toContainElement(toggle);
+    expect(content).toContainElement(screen.getByText('12 Teammitglieder'));
+    expect(toggle).toHaveAttribute('tabindex', '0');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(content).toHaveAttribute('aria-hidden', 'false');
+    expect(content).not.toHaveAttribute('inert');
+  });
+
+  it.each(['Enter', ' '])('toggles a translucent card with the %s key', key => {
+    render(<TranslucentCard title="Turnus 2026"><p>Team</p></TranslucentCard>);
+    const toggle = screen.getByRole('button', { name: 'Turnus 2026 schließen' });
+    const content = document.getElementById(toggle.getAttribute('aria-controls'));
+
+    fireEvent.keyDown(toggle, { key });
+
+    expect(toggle).toHaveAccessibleName('Turnus 2026 öffnen');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(content).toHaveAttribute('aria-hidden', 'true');
+    expect(content).toHaveAttribute('inert');
+  });
+
+  it('keeps translucent-card header and footer actions independent from its toggle', () => {
+    const onHeaderAction = vi.fn();
+    const onFooterAction = vi.fn();
+    render(
+      <TranslucentCard
+        title="Turnus 2026"
+        headerAction={<button type="button" onClick={onHeaderAction}>Team bearbeiten</button>}
+        actions={<button type="button" onClick={onFooterAction}>Team öffnen</button>}
+      >
+        <p>Team</p>
       </TranslucentCard>,
     );
 
-    const toggle = screen.getByRole('button', { name: 'Turnus 2026 schließen' });
-    expect(screen.getByText('12 Teammitglieder')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Team bearbeiten' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Team öffnen' }));
 
-    fireEvent.keyDown(toggle, { key: 'Enter' });
+    expect(onHeaderAction).toHaveBeenCalledOnce();
+    expect(onFooterAction).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Turnus 2026 schließen' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Team öffnen' }).closest('footer')).toHaveAttribute('data-slot', 'card-actions');
+  });
 
-    expect(toggle).toHaveAccessibleName('Turnus 2026 öffnen');
-    expect(document.getElementById(toggle.getAttribute('aria-controls'))).toHaveAttribute('inert');
+  it('starts a translucent card closed on mobile and follows breakpoint changes', () => {
+    let mobile = true;
+    const listeners = new Set();
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: mobile,
+      media: query,
+      addEventListener: (_event, listener) => listeners.add(listener),
+      removeEventListener: (_event, listener) => listeners.delete(listener),
+    }));
+
+    render(<TranslucentCard title="Turnus 2026"><p>Team</p></TranslucentCard>);
+    const content = screen.getByText('Team').closest('[aria-hidden]');
+    expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 900px)');
+    expect(screen.getByRole('button', { name: 'Turnus 2026 öffnen' })).toHaveAttribute('aria-expanded', 'false');
+    expect(content).toHaveAttribute('inert');
+
+    act(() => {
+      mobile = false;
+      listeners.forEach(listener => listener({ matches: mobile }));
+    });
+
+    expect(screen.getByRole('button', { name: 'Turnus 2026 schließen' })).toHaveAttribute('aria-expanded', 'true');
+    expect(content).not.toHaveAttribute('inert');
   });
 
   it('cancels confirmation dialogs from Escape and the backdrop with cancel focused initially', () => {
