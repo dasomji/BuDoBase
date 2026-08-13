@@ -5,6 +5,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     ErsteHilfeEintrag,
     Geld,
@@ -48,6 +49,8 @@ class KidsContractPerformanceTests(QueryBudgetAssertions, TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
 

@@ -4,6 +4,7 @@ from django.contrib.auth.models import Group, Permission, User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import BetreuerinnenGeld, Kinder, Schwerpunkte, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
@@ -48,6 +49,8 @@ class ProfileContractTests(TestCase):
         self.profile.budo_family = "M"
         self.profile.turnus = self.turnus
         self.profile.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.focus = Schwerpunkte.objects.create(
             swp_name="Wald",
             schwerpunktzeit=self.turnus.schwerpunktzeit_set.get(woche="w1"),
@@ -86,6 +89,7 @@ class ProfileContractTests(TestCase):
         selected.budo_family = "L"
         selected.turnus = self.turnus
         selected.save()
+        create_membership(user=selected_user, turnus=self.turnus)
         return selected
 
     def grant_profile_change(self):
@@ -151,6 +155,7 @@ class ProfileContractTests(TestCase):
         other.rufname = "Other Turnus Private"
         other.turnus = self.other_turnus
         other.save()
+        create_membership(user=other.user, turnus=self.other_turnus)
 
         response = self.client.get(self.contract_url("team"))
 
@@ -197,8 +202,7 @@ class ProfileContractTests(TestCase):
         self.assertNotIn("money_items", payload["team"][0])
 
     def test_team_without_an_active_turnus_is_empty(self):
-        self.profile.turnus = None
-        self.profile.save()
+        self.user.turnus_memberships.all().delete()
 
         response = self.client.get(self.contract_url("team"))
 
@@ -311,6 +315,8 @@ class ProfileContractTests(TestCase):
         normal_user = User.objects.create_user(username="normal-after-test-user")
         normal_user.profil.turnus = self.turnus
         normal_user.profil.save()
+        create_membership(user=normal_user, turnus=self.turnus)
+        select_turnus(normal_user, self.turnus)
         self.client.force_login(normal_user)
         normal_submission = self.client.post(
             reverse("form-submit-api"),
@@ -384,7 +390,7 @@ class ProfileContractTests(TestCase):
         self.assertEqual(self.profile.turnus, self.other_turnus)
         bootstrap = self.client.get(reverse("bootstrap-api")).json()
         self.assertEqual(bootstrap["profile"]["rufname"], "Ada Neu")
-        self.assertEqual(bootstrap["turnus"]["id"], self.other_turnus.id)
+        self.assertEqual(bootstrap["turnus"]["id"], self.turnus.id)
         self.assertEqual(bootstrap["messages"], [{
             "text": "Profil upgedatet!",
             "tags": "success",
@@ -401,6 +407,8 @@ class ProfileContractPerformanceTests(QueryBudgetAssertions, TestCase):
         self.user = User.objects.create_user(username="profile-performance")
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
 

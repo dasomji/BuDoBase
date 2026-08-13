@@ -22,6 +22,7 @@ from budo_app.models import (
     Turnus,
 )
 from budo_app.read_contracts.views import route_data
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 
 
 urlpatterns = [
@@ -45,9 +46,9 @@ class CanonicalTaskOperationTests(TransactionTestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.user = User.objects.create_user(username="todo-operator")
-        self.user.profil.rufname = "Mira"
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("rufname", "turnus"))
+        profile = approve_and_select_turnus(self.user, self.turnus)
+        profile.rufname = "Mira"
+        profile.save(update_fields=("rufname",))
         self.event = HappyCleaning.objects.create(
             turnus=self.turnus,
             display_number=1,

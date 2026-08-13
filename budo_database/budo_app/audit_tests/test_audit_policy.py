@@ -8,7 +8,7 @@ from django.contrib.auth.models import AnonymousUser, Permission, User
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from budo_app.models import AuditEvent, Turnus
+from budo_app.models import AuditEvent, Turnus, TurnusMembership
 
 try:
     from budo_app.audit_policy import (
@@ -123,6 +123,7 @@ class AuditAuthorizationHttpTests(TestCase):
         if active_turnus:
             user.profil.turnus = self.turnus
             user.profil.save(update_fields=["turnus"])
+            TurnusMembership.objects.create(user=user, turnus=self.turnus)
         return user
 
     def denied_users(self):

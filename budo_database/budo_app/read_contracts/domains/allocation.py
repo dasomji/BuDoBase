@@ -2,7 +2,7 @@ from django.db.models import Prefetch
 from rest_framework.exceptions import ParseError
 
 from budo_app.models import Kinder, Schwerpunkte, SchwerpunktWahl
-from budo_app.read_contracts.common import kid_full_name
+from budo_app.read_contracts.common import kid_full_name, require_active_turnus_id
 
 
 BUDO_FAMILY_SIZES = ("S", "M", "L", "XL")
@@ -46,10 +46,7 @@ def build_allocation_contract(request):
         raise ParseError("Allocation week must be 1 or 2.")
 
     week = f"w{week_number}"
-    profile = getattr(request.user, "profil", None)
-    turnus_id = profile.turnus_id if profile else None
-    if turnus_id is None:
-        return {"kids": [], "focuses": []}
+    turnus_id = require_active_turnus_id(request)
 
     focuses = list(
         Schwerpunkte.objects.filter(

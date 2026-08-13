@@ -4,6 +4,7 @@ from django.contrib.auth.models import Permission, User
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import Auslagerorte, Tag, Turnus
 
 
@@ -13,6 +14,8 @@ class PlaceTagManagementTests(TestCase):
         self.user = User.objects.create_user(username="tag-manager", password="secret")
         self.user.profil.turnus = turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=turnus)
+        select_turnus(self.user, turnus)
         self.client.force_login(self.user)
         self.settings_url = reverse(
             "route-data-api", kwargs={"contract_key": "place-tag-settings"}

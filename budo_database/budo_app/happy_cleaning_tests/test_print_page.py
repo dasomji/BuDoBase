@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from budo_app.models import HappyCleaning, Turnus
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 
 
 class HappyCleaningPrintPageTests(TestCase):
@@ -18,8 +19,7 @@ class HappyCleaningPrintPageTests(TestCase):
             turnus_beginn=date(2026, 8, 1),
         )
         self.user = User.objects.create_user(username="print-page")
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("turnus",))
+        approve_and_select_turnus(self.user, self.turnus)
         self.event = HappyCleaning.objects.create(
             turnus=self.turnus,
             display_number=1,
@@ -56,8 +56,7 @@ class HappyCleaningPrintPageTests(TestCase):
         self.assertIn("/login/", response["Location"])
 
     def test_print_page_requires_an_active_turnus(self):
-        self.user.profil.turnus = None
-        self.user.profil.save(update_fields=("turnus",))
+        self.user.turnus_memberships.all().delete()
         self.client.force_login(self.user)
 
         response = self.client.get(reverse("happy-cleaning-print-page"))

@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     AuditEvent,
     HappyCleaning,
@@ -27,6 +28,8 @@ class KidEditAbsenceContractTests(TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save(update_fields=["turnus"])
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.kid = Kinder.objects.create(
             kid_index="ABSENCE-163-07",

@@ -6,6 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
 from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
+from budo_app.memberships import create_membership
 from budo_app.models import (
     Auslagerorte,
     AuslagerorteImage,
@@ -48,6 +49,7 @@ class ActiveTurnusFixtureFactory:
             profile.turnus = self.turnus
             profile.allergien = "Nüsse" if index % 3 == 0 else ""
             profile.save()
+            create_membership(user=user, turnus=self.turnus)
             BetreuerinnenGeld.objects.create(
                 who=profile,
                 amount=10 + index,

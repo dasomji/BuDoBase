@@ -22,7 +22,8 @@ from .forms import (
     NotizForm,
 )
 from .kid_edit_writes import versioned_child_write
-from .models import Auslagerorte, Kinder, Profil, Schwerpunkte
+from .memberships import selected_turnus_for_read
+from .models import Auslagerorte, Kinder, Schwerpunkte
 from .react_views import render_react_page
 from .utils import (
     cache_user_profile,
@@ -88,8 +89,7 @@ def budo_families(request):
 @login_required
 def spezial_familien(request):
     spezial_familien = {}
-    profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
+    active_turnus = selected_turnus_for_read(request.user)
     kids = models.Kinder.objects.filter(
         turnus=active_turnus).order_by('kid_vorname')
     schwerpunkte = Schwerpunkte.objects.filter(
@@ -116,8 +116,7 @@ def spezial_familien(request):
 
 @login_required
 def zugabreise(request):
-    profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
+    active_turnus = selected_turnus_for_read(request.user)
     kids = models.Kinder.objects.filter(
         turnus=active_turnus).order_by('-zug_abreise', 'kid_vorname')
     schwerpunkte = Schwerpunkte.objects.filter(
@@ -136,8 +135,7 @@ def zugabreise(request):
 
 @login_required
 def zuganreise(request):
-    profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
+    active_turnus = selected_turnus_for_read(request.user)
     kids = models.Kinder.objects.filter(
         turnus=active_turnus, zug_anreise=True).order_by('kid_vorname')
     kids_with_top_jugendticket_count = kids.filter(
@@ -472,8 +470,7 @@ def check_out(request, id):
 
 @login_required
 def serienbrief(request):
-    profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
+    active_turnus = selected_turnus_for_read(request.user)
     kids = models.Kinder.objects.filter(
         turnus=active_turnus).order_by('kid_vorname')
     context = {
@@ -485,8 +482,7 @@ def serienbrief(request):
 
 @login_required
 def murdergame(request):
-    profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
+    active_turnus = selected_turnus_for_read(request.user)
     kids = models.Kinder.objects.filter(turnus=active_turnus, anwesend=True)
     team = models.Profil.objects.filter(turnus=active_turnus)
     context = {

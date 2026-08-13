@@ -6,6 +6,7 @@ from django.urls import reverse
 
 from budo_app.first_aid_tests.fixtures import MemoryPhotoStorage, use_photo_storage
 from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import ErsteHilfeEintrag, Kinder, Turnus
 from budo_app.read_contract_tests.first_aid_fixtures import add_first_aid_photo
 from budo_app.read_contracts.measurement import (
@@ -26,6 +27,8 @@ class DashboardFirstAidPhotoContractTests(QueryBudgetAssertions, TestCase):
         self.user = User.objects.create_user(username="dashboard-photo-contract")
         self.user.profil.turnus = self.turnus
         self.user.profil.save(update_fields=("turnus",))
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T2-dashboard-photo",
             kid_vorname="Grace",
@@ -140,6 +143,7 @@ class DashboardFirstAidPhotoContractTests(QueryBudgetAssertions, TestCase):
             100,
         )
         self.assertTrue(first_aid["has_more"])
-        self.assertQueryCountAtMost(after, 14)
+        # Includes the membership-scope transaction boundary.
+        self.assertQueryCountAtMost(after, 15)
         self.assertQueryGrowthAtMost(before, after, 0)
         self.assertLess(after.response_bytes - before.response_bytes, 3_000)

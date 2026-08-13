@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from budo_app.models import Kinder, Notizen, Turnus
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 
 from .test_entry_images import image_upload
 
@@ -23,8 +24,7 @@ class NoteSubmissionTests(TestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.user = User.objects.create_user(username="note-submission")
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("turnus",))
+        approve_and_select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="note-kid",
             kid_vorname="Grace",

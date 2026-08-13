@@ -18,6 +18,7 @@ from . import models
 from .forms import MealChoiceForm, SchwerpunktForm
 from .kid_edit_writes import versioned_child_write
 from .location_services import BUDO_PLACE_NAME
+from .memberships import selected_turnus_for_read
 from .models import (
     Auslagerorte,
     Kinder,
@@ -57,8 +58,7 @@ class SchwerpunkteUpdate(
         return kwargs
 
     def get_context_data(self, **kwargs):
-        profil = Profil.objects.get(user=self.request.user)
-        active_turnus = profil.turnus
+        active_turnus = selected_turnus_for_read(self.request.user)
         schwerpunkte = Schwerpunkte.objects.filter(
             schwerpunktzeit__turnus=active_turnus)
         auslagerorte = Auslagerorte.objects.all()
@@ -92,8 +92,7 @@ class SchwerpunkteDetail(
         )
 
     def get_context_data(self, **kwargs):
-        profil = Profil.objects.get(user=self.request.user)
-        active_turnus = profil.turnus
+        active_turnus = selected_turnus_for_read(self.request.user)
         schwerpunkte = Schwerpunkte.objects.filter(
             schwerpunktzeit__turnus=active_turnus)
         auslagerorte = Auslagerorte.objects.all()
@@ -240,7 +239,7 @@ def swp_dashboard(request):
 @login_required
 def kitchen(request):
     profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
+    active_turnus = selected_turnus_for_read(request.user)
     team = Profil.objects.filter(turnus=active_turnus)
     kids = Kinder.objects.filter(turnus=active_turnus)
     schwerpunkte = Schwerpunkte.objects.filter(
@@ -302,8 +301,7 @@ def kitchen(request):
 @login_required
 @never_cache
 def swp_einteilung(request, week):
-    profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
+    active_turnus = selected_turnus_for_read(request.user)
     schwerpunktzeit = Schwerpunktzeit.objects.get(
         turnus=active_turnus, woche=f"w{week}")
 

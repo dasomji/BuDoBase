@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.core.exceptions import FieldDoesNotExist
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.db.models import F
 from django.template.defaultfilters import filesizeformat
 from django.utils.html import format_html
 
@@ -27,6 +28,7 @@ from .models import (
     SpezialFamilien,
     Tag,
     Turnus,
+    TurnusMembership,
 )
 
 
@@ -546,6 +548,8 @@ class TurnusEntryAdmin(admin.ModelAdmin):
             return True
         from .memberships import scoped_turnus_for
         if obj is None:
+            return True
+        if request.user.is_superuser:
             return True
         turnus = scoped_turnus_for(request.user)
         return turnus is not None and obj.kinder.turnus_id == turnus.pk

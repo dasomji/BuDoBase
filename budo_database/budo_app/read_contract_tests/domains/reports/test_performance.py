@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import Kinder, SpezialFamilien, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
@@ -42,6 +43,8 @@ class ReportContractPerformanceTests(QueryBudgetAssertions, TestCase):
         self.user = User.objects.create_user(username="reports-performance")
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
         self.special_family = SpezialFamilien.objects.create(
@@ -82,7 +85,8 @@ class ReportContractPerformanceTests(QueryBudgetAssertions, TestCase):
             with self.subTest(contract=key):
                 self.assertEqual(small[key].status_code, 200)
                 self.assertEqual(realistic[key].status_code, 200)
-                self.assertQueryCountAtMost(realistic[key], 6)
+                # Includes BEGIN/COMMIT for the membership-lock lifetime.
+                self.assertQueryCountAtMost(realistic[key], 8)
                 self.assertQueryGrowthAtMost(small[key], realistic[key], 1)
                 self.assertLess(
                     realistic[key].response_bytes,

@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import F
 
 from .models import Profil, Turnus, TurnusJoinRequest, TurnusMembership
 
@@ -36,6 +37,41 @@ def has_approved_membership(user, turnus):
     """Say whether ``user`` has approved access to exactly ``turnus``."""
     turnus_id = getattr(turnus, "pk", turnus)
     return approved_memberships_for(user).filter(turnus_id=turnus_id).exists()
+
+
+def selected_profile_for_read(user):
+    """Return a profile only when its selection is membership-backed."""
+    if not getattr(user, "is_authenticated", False):
+        return None
+    profile = (
+        Profil.objects
+        .select_related("selected_turnus", "user")
+        .filter(
+            user_id=user.id,
+            selected_turnus__memberships__user_id=user.id,
+        )
+        .first()
+    )
+    return profile
+
+
+def selected_turnus_for_read(user):
+    """Return the membership-backed selection in one read query."""
+    profile = selected_profile_for_read(user)
+    return profile.selected_turnus if profile is not None else None
+
+
+def lock_selected_membership_for_read(user):
+    """Lock and return the membership that authorizes the stored selection."""
+    if not getattr(user, "is_authenticated", False):
+        return None
+    return (
+        approved_memberships_for(user)
+        .select_for_update(of=("self",))
+        .select_related("turnus", "user__profil")
+        .filter(turnus_id=F("user__profil__selected_turnus_id"))
+        .first()
+    )
 
 
 @transaction.atomic

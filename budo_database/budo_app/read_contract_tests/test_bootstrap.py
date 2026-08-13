@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
+
 from budo_app.models import (
     Auslagerorte,
     HappyCleaning,
@@ -32,6 +34,8 @@ class BootstrapContractTests(TestCase):
         self.user.profil.rufname = "Bootstrap Teamer"
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
 
         self.active_kid = Kinder.objects.create(
             kid_index="T2-1",

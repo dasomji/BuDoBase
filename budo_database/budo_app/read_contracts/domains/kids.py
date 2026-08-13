@@ -17,6 +17,7 @@ from budo_app.models import (
 from budo_app.read_contracts.common import (
     active_turnus_id,
     kid_full_name,
+    require_active_turnus_id,
     required_query_integer,
     serialize_datetime,
     serialize_first_aid_entry,
@@ -191,9 +192,7 @@ def _detail_kid(kid):
 
 
 def kids_directory(request):
-    turnus_id = active_turnus_id(request)
-    if turnus_id is None:
-        return {"kids": []}
+    turnus_id = require_active_turnus_id(request)
 
     focuses = _focus_queryset(turnus_id)
     kids = (

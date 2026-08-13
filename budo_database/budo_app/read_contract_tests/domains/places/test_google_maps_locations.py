@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from budo_app import location_services
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import Auslagerorte, Turnus
 
 
@@ -106,6 +107,8 @@ class GoogleMapsPlaceWriteContractTests(TestCase):
         )
         user.profil.turnus = turnus
         user.profil.save()
+        create_membership(user=user, turnus=turnus)
+        select_turnus(user, turnus)
         self.client.force_login(user)
 
     def submit(self, target, **values):

@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import Auslagerorte, Kinder, Schwerpunkte, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
@@ -40,16 +41,20 @@ class FocusContractTests(TestCase):
         self.user.profil.rufname = "Ada Teamer"
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.carer = User.objects.create_user(username="focus-carer").profil
         self.carer.rufname = "Grace"
         self.carer.turnus = self.turnus
         self.carer.save()
+        create_membership(user=self.carer.user, turnus=self.turnus)
         self.other_carer = User.objects.create_user(
             username="other-focus-carer",
         ).profil
         self.other_carer.rufname = "Other"
         self.other_carer.turnus = self.other_turnus
         self.other_carer.save()
+        create_membership(user=self.other_carer.user, turnus=self.other_turnus)
         self.place = Auslagerorte.objects.create(
             name="Waldplatz",
             koordinaten="48.5, 15.0",
@@ -516,6 +521,8 @@ class FocusContractPerformanceTests(QueryBudgetAssertions, TestCase):
         self.user = User.objects.create_user(username="focus-performance")
         self.user.profil.turnus = self.turnus
         self.user.profil.save()
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
 
