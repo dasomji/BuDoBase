@@ -208,10 +208,16 @@ class AuslagerForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.is_bound and self.instance.pk:
-            self.initial["tags"] = list(
+            tag_names = list(
                 self.instance.tags.order_by("name", "id")
                 .values_list("name", flat=True)
             )
+            if self.instance.primary_tag_id:
+                primary_name = self.instance.primary_tag.name
+                tag_names = [primary_name, *[
+                    name for name in tag_names if name.casefold() != primary_name.casefold()
+                ]]
+            self.initial["tags"] = tag_names
 
     def save(self, commit=True):
         place = super().save(commit=commit)
@@ -229,12 +235,16 @@ class AuslagerForm(forms.ModelForm):
                     tag = Tag.objects.get(name__iexact=name)
                 resolved.append(tag)
             place.tags.set(resolved)
+            primary_tag = resolved[0] if resolved else None
+            if place.primary_tag_id != getattr(primary_tag, "id", None):
+                place.primary_tag = primary_tag
+                place.save(update_fields=["primary_tag"])
         return place
 
     class Meta:
         model = Auslagerorte
         fields = ['name', 'strasse', 'ort', 'bundesland', 'postleitzahl', 'land',
-                  'maps_link', 'beschreibung', 'maps_link_parkspot', ]
+                  'maps_link', 'beschreibung', 'kontakt', 'maps_link_parkspot']
 
 
 class AuslagerNotizForm(forms.ModelForm):

@@ -67,6 +67,10 @@ class PlaceTagContractTests(TestCase):
         )
         self.assertEqual(places["Hallenbad"]["tags"], ["Badeplatz"])
         self.assertEqual(
+            Auslagerorte.objects.get(name="Badesee").primary_tag.name,
+            "Badeplatz",
+        )
+        self.assertEqual(
             response.json()["available_tags"],
             ["Badeplatz", "Schlechtwetter tauglich"],
         )
@@ -127,6 +131,7 @@ class PlaceTagContractTests(TestCase):
             place = form.save()
 
         self.assertEqual(list(place.tags.all()), [existing])
+        self.assertEqual(place.primary_tag, existing)
 
 
 class TagAdminValidationTests(TestCase):

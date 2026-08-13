@@ -90,6 +90,17 @@ class MapFirstPlacesContractTests(TestCase):
             "parking_link": "https://maps.example.test/parkplatz",
             "parking_coordinates": "48.51000, 15.01000",
             "images": [image.image.url],
+            "gallery_images": [{
+                "id": image.id,
+                "url": image.image.url,
+                "alt": "Bild von Waldwiese",
+                "comment_text": None,
+            }, {
+                "id": note_image.id,
+                "url": note_image.image.url,
+                "alt": "Kommentarbild zu Waldwiese",
+                "comment_text": "Das Gatter bitte schließen.",
+            }],
             "notes": [{
                 "id": note.id,
                 "text": "Das Gatter bitte schließen.",
@@ -103,4 +114,5 @@ class MapFirstPlacesContractTests(TestCase):
                 }],
             }],
             "tags": ["Wanderung"],
+            "marker_icon": "map-pin",
         }])

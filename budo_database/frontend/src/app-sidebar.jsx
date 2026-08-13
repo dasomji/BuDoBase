@@ -207,12 +207,19 @@ function withDynamicNavEntries(events, permissions) {
         children: [item.children[0], ...eventItems, item.children[1]],
       };
     }
-    if (item.label === 'Orgi' && permissions?.view_auditevent) {
+    if (item.label === 'Orgi') {
+      const settings = [];
+      if (permissions?.change_tags) {
+        settings.push({ label: 'Auslagerort-Tags', href: '/auslagerorte/tags/' });
+      }
+      if (permissions?.view_auditevent) {
+        settings.push({ label: 'Audit-Log', href: '/audit/' });
+      }
       return {
         ...item,
         children: [
           ...item.children.slice(0, -1),
-          { label: 'Audit-Log', href: '/audit/' },
+          ...settings,
           item.children.at(-1),
         ],
       };

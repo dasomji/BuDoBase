@@ -32,6 +32,7 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "place-update",
     "place-images",
     "place-detail",
+    "place-tag-settings",
     "kitchen",
     "allocation",
     "kid-count",

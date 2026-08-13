@@ -2,7 +2,7 @@ import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mapsMock = vi.hoisted(() => {
-  const state = { mapOptions: null, mapConstructions: 0, fitBoundsCalls: 0, mapTypeIds: [], markerOptions: [], markerKinds: [], advancedEventTypes: [], removedMarkers: 0 };
+  const state = { mapOptions: null, mapConstructions: 0, fitBoundsCalls: 0, panToCalls: [], mapTypeIds: [], markerOptions: [], markerKinds: [], advancedEventTypes: [], removedMarkers: 0 };
   class Map {
     constructor(_element, options) {
       state.mapOptions = options;
@@ -10,6 +10,8 @@ const mapsMock = vi.hoisted(() => {
     }
 
     fitBounds() { state.fitBoundsCalls += 1; }
+
+    panTo(point) { state.panToCalls.push(point); }
 
     setMapTypeId(mapTypeId) { state.mapTypeIds.push(mapTypeId); }
   }
@@ -74,6 +76,7 @@ describe('GoogleMap loader seam', () => {
     mapsMock.state.mapOptions = null;
     mapsMock.state.mapConstructions = 0;
     mapsMock.state.fitBoundsCalls = 0;
+    mapsMock.state.panToCalls = [];
     mapsMock.state.mapTypeIds = [];
     mapsMock.state.markerOptions = [];
     mapsMock.state.markerKinds = [];
@@ -87,7 +90,7 @@ describe('GoogleMap loader seam', () => {
       apiKey="browser-key"
       mapId="map-id"
       mapTypeId="roadmap"
-      places={[{ id: 1, name: 'Hütte', coordinates: '47.1,15.2' }]}
+      places={[{ id: 1, name: 'Hütte', coordinates: '47.1,15.2', marker_icon: 'trees' }]}
       selectedPlaceId={1}
     />);
 
@@ -100,6 +103,9 @@ describe('GoogleMap loader seam', () => {
     expect(mapsMock.state.markerOptions).toHaveLength(1);
     expect(mapsMock.state.markerKinds).toEqual(['advanced']);
     expect(mapsMock.state.markerOptions[0].content).toHaveTextContent('Hütte');
+    expect(mapsMock.state.markerOptions[0].content).toHaveClass('map-marker', 'map-marker--selected');
+    expect(mapsMock.state.markerOptions[0].content.querySelector('.map-marker-label')).toHaveTextContent('Hütte');
+    expect(mapsMock.state.markerOptions[0].content.querySelector('.lucide-trees')).not.toBeNull();
     expect(mapsMock.state.markerOptions[0].gmpClickable).toBe(false);
   });
 
@@ -112,8 +118,31 @@ describe('GoogleMap loader seam', () => {
     />);
 
     await waitFor(() => expect(mapsMock.state.markerOptions).toHaveLength(1));
+    expect(mapsMock.state.markerOptions[0].content).toHaveClass('map-marker--compact');
     expect(mapsMock.state.markerOptions[0].gmpClickable).toBe(true);
     expect(mapsMock.state.advancedEventTypes).toEqual(['gmp-click']);
+  });
+
+  it('uses the shared marker shape for place and home roles without a parkspot marker', async () => {
+    render(<GoogleMap
+      apiKey="browser-key"
+      mapId="map-id"
+      places={[
+        { id: 1, name: 'Hütte', coordinates: '47.1,15.2', marker_icon: 'trees' },
+        { id: 2, name: 'BuDo', coordinates: '47.2,15.3' },
+      ]}
+      homePlace={{ id: 2, name: 'BuDo', coordinates: '47.2,15.3' }}
+      onSelectPlace={vi.fn()}
+    />);
+
+    await waitFor(() => expect(mapsMock.state.markerOptions).toHaveLength(2));
+    const classes = mapsMock.state.markerOptions.map(option => option.content.className);
+    expect(classes).toEqual(expect.arrayContaining([
+      expect.stringContaining('map-marker--place'),
+      expect.stringContaining('map-marker--home'),
+    ]));
+    expect(classes.some(className => className.includes('map-marker--parking'))).toBe(false);
+    expect(mapsMock.state.markerOptions.find(option => option.title === 'BuDo').content.querySelector('.lucide-house')).not.toBeNull();
   });
 
   it('switches map type without constructing another billable map', async () => {
@@ -138,14 +167,21 @@ describe('GoogleMap loader seam', () => {
     );
 
     await waitFor(() => expect(mapsMock.state.markerOptions).toHaveLength(2));
+    expect(mapsMock.state.markerOptions[0].label).toBeUndefined();
+    expect(mapsMock.state.markerOptions[0].icon.url).toMatch(/^data:image\/svg\+xml/);
     expect(mapsMock.state.mapConstructions).toBe(1);
     expect(mapsMock.state.fitBoundsCalls).toBe(1);
+    expect(mapsMock.state.panToCalls).toEqual([{ lat: 47.1, lng: 15.2 }]);
 
     rerender(<GoogleMap apiKey="browser-key" places={places} selectedPlaceId={2} />);
 
     await waitFor(() => expect(mapsMock.state.markerOptions).toHaveLength(4));
     expect(mapsMock.state.mapConstructions).toBe(1);
     expect(mapsMock.state.fitBoundsCalls).toBe(1);
+    expect(mapsMock.state.panToCalls).toEqual([
+      { lat: 47.1, lng: 15.2 },
+      { lat: 47.2, lng: 15.3 },
+    ]);
     expect(mapsMock.state.removedMarkers).toBe(2);
 
     unmount();
