@@ -126,7 +126,7 @@ describe('application loading', () => {
     expect(screen.getByRole('combobox', { name: 'Aktiver Turnus' })).toHaveValue('2');
   });
 
-  it('recovers with the old shell when switch refreshes fail on the network', async () => {
+  it('blocks stale scoped UI and reloads when switch refreshes fail on the network', async () => {
     window.history.pushState({}, '', '/all_kids');
     const bootstrap = {
       authenticated: true, csrf_token: 'token', messages: [], permissions: {},
@@ -140,15 +140,13 @@ describe('application loading', () => {
       .mockResolvedValueOnce(response({ selected_id: 4 }))
       .mockRejectedValueOnce(new TypeError('network down'));
 
-    render(<App fetchImpl={fetchImpl} />);
+    const reload = vi.fn();
+    render(<App fetchImpl={fetchImpl} reload={reload} />);
     fireEvent.change(await screen.findByRole('combobox', { name: 'Aktiver Turnus' }), { target: { value: '4' } });
 
-    expect(await screen.findByText(
-      'Der Turnus konnte nicht gewechselt werden. Bitte erneut versuchen.',
-      { selector: '.app-toast-description' },
-    )).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Sitzung konnte nicht geladen werden' })).not.toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Aktiver Turnus' })).toHaveValue('2');
+    expect(await screen.findByText('Turnus wird gewechselt…')).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Aktiver Turnus' })).not.toBeInTheDocument();
+    await waitFor(() => expect(reload).toHaveBeenCalledOnce());
   });
 
   it('redirects an unauthenticated protected route without loading route data', async () => {

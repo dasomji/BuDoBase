@@ -27,12 +27,14 @@ const browserNavigate = path => window.location.assign(path);
 function AppContent({
   fetchImpl = fetch,
   navigate = browserNavigate,
+  reload = () => window.location.reload(),
 }) {
   const showError = useErrorToast();
   const [route, setRoute] = useState(() => parseRoute(window.location.pathname));
   const [bootstrap, setBootstrap] = useState(null);
   const [bootstrapError, setBootstrapError] = useState(null);
   const [pageState, setPageState] = useState({});
+  const [switchRecoveryRequired, setSwitchRecoveryRequired] = useState(false);
   const [routeState, setRouteState] = useState({
     loading: false,
     data: null,
@@ -186,6 +188,7 @@ function AppContent({
     return responsePayload;
   };
   const switchTurnus = async turnusId => {
+    let serverContextChanged = false;
     try {
       const response = await fetchImpl('/api/turnus-selection/', {
         method: 'POST',
@@ -197,6 +200,11 @@ function AppContent({
         body: JSON.stringify({ turnus_id: turnusId }),
       });
       if (!response.ok) throw new Error(`Turnus switch failed (${response.status})`);
+      serverContextChanged = true;
+
+      // The server context has changed. Remove every action and datum from the
+      // old scope until a complete replacement context has been loaded.
+      setSwitchRecoveryRequired(true);
 
       // Fetch the new shell and route before publishing either. A partial
       // refresh must not combine old scoped data with the newly selected shell.
@@ -213,10 +221,17 @@ function AppContent({
           authenticationRequired: nextRoute.authenticationRequired,
         });
       }
+      setSwitchRecoveryRequired(false);
     } catch {
+      if (serverContextChanged) {
+        reload();
+        return;
+      }
       showError('Der Turnus konnte nicht gewechselt werden. Bitte erneut versuchen.');
     }
   };
+
+  if (switchRecoveryRequired) return <div className="react-loading">Turnus wird gewechselt…</div>;
 
   if (bootstrapError) return <ErrorState title="Sitzung konnte nicht geladen werden" error={bootstrapError} />;
   if (!bootstrap) return <div className="react-loading">Sitzung wird geladen…</div>;

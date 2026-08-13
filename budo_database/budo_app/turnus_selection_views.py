@@ -18,26 +18,47 @@ from budo_app.memberships import select_turnus, selected_turnus_for
 from budo_app.models import SecurityAuditEvent, Turnus
 
 
+POSTGRES_BIGINT_MAX = 9_223_372_036_854_775_807
+MAX_REQUEST_ID_LENGTH = 255
+
+
+def _request_id(request):
+    raw = request.headers.get("X-Request-ID", "")
+    if not isinstance(raw, str):
+        return str(uuid4())
+    sanitized = "".join(
+        character for character in raw.strip()
+        if character.isascii() and (character.isalnum() or character in "-._:")
+    )[:MAX_REQUEST_ID_LENGTH]
+    return sanitized or str(uuid4())
+
+
+def _positive_bigint(value):
+    if isinstance(value, bool):
+        return None
+    text = str(value)
+    if not text.isascii() or not text.isdigit() or len(text) > 19:
+        return None
+    parsed = int(text)
+    if parsed < 1 or parsed > POSTGRES_BIGINT_MAX:
+        return None
+    return parsed
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def turnus_selection(request):
-    request_id = request.headers.get("X-Request-ID") or str(uuid4())
+    request_id = _request_id(request)
     previous = selected_turnus_for(request.user)
     value = request.data.get("turnus_id")
-    if isinstance(value, bool) or not str(value).isdigit():
-        if previous is not None:
-            # Do not copy an attacker-controlled value into the audit payload.
-            _record_rejected_switch(request, previous, previous.id, request_id)
-        else:
-            _record_unscoped_rejection(request, request_id, "invalid")
+    turnus_id = _positive_bigint(value)
+    if turnus_id is None:
+        _record_unscoped_rejection(request_id, "invalid")
         return Response({"code": "invalid_turnus_selection"}, status=400)
 
-    turnus = Turnus.objects.filter(pk=int(value)).first()
+    turnus = Turnus.objects.filter(pk=turnus_id).first()
     if turnus is None:
-        if previous is not None:
-            _record_rejected_switch(request, previous, int(value), request_id)
-        else:
-            _record_unscoped_rejection(request, request_id, "not_found", int(value))
+        _record_unscoped_rejection(request_id, "not_found", turnus_id)
         return Response({"code": "forbidden_turnus_selection"}, status=403)
 
     try:
@@ -61,45 +82,14 @@ def turnus_selection(request):
                 },
             ))
     except ValidationError:
-        _record_rejected_switch(
-            request,
-            previous or turnus,
-            turnus.id,
-            request_id,
-            previous_turnus_id=previous.id if previous else None,
-        )
+        _record_unscoped_rejection(request_id, "forbidden", turnus.id)
         return Response({"code": "forbidden_turnus_selection"}, status=403)
     return Response({"selected_id": turnus.id})
 
 
-def _record_rejected_switch(
-    request, audit_turnus, requested_id, request_id, previous_turnus_id=None
-):
-    """Audit denial in the current scope, or a known attempted Turnus if unscoped."""
-    if previous_turnus_id is None and selected_turnus_for(request.user) is not None:
-        previous_turnus_id = audit_turnus.id
-    record_audit_event(AuditEventData(
-        turnus=audit_turnus,
-        actor_id=request.user.id,
-        actor_label=actor_label_for_user(request.user),
-        action="turnus.selection.switch",
-        outcome="forbidden",
-        resource_type="turnus_selection",
-        resource_id=str(audit_turnus.id),
-        resource_label="Rejected Turnus selection",
-        request_id=request_id,
-        client_ip=client_ip_from_request(request),
-        user_agent=request.META.get("HTTP_USER_AGENT", ""),
-        details={
-            "previous_turnus_id": previous_turnus_id,
-            "selected_turnus_id": requested_id,
-        },
-    ))
-
-
-def _record_unscoped_rejection(request, request_id, reason, attempted_turnus_id=None):
+def _record_unscoped_rejection(request_id, reason, attempted_turnus_id=None):
     SecurityAuditEvent.objects.create(
-        actor_id=request.user.id,
+        actor_id=None,
         action="turnus.selection.switch",
         reason=reason,
         request_id=request_id,
