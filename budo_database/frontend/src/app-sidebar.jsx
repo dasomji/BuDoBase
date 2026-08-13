@@ -236,6 +236,7 @@ export function AppSidebar({
   permissions,
   turnusSelection,
   onTurnusChange,
+  turnusSwitching = false,
 }) {
   const items = withDynamicNavEntries(happyCleaningEvents, permissions);
   const options = turnusSelection?.options || [];
@@ -265,6 +266,8 @@ export function AppSidebar({
               id="turnus-switcher"
               className="w-full rounded-md border bg-background px-2 py-2 text-sm"
               value={turnusSelection.selected_id ?? ''}
+              disabled={turnusSwitching}
+              aria-busy={turnusSwitching}
               onChange={event => onTurnusChange?.(Number(event.target.value))}
             >
               {options.map(option => (

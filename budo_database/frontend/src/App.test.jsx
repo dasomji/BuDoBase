@@ -149,6 +149,38 @@ describe('application loading', () => {
     await waitFor(() => expect(reload).toHaveBeenCalledOnce());
   });
 
+  it('serializes rapid Turnus changes while the first selection is pending', async () => {
+    window.history.pushState({}, '', '/all_kids');
+    const bootstrap = {
+      authenticated: true, csrf_token: 'token', messages: [], permissions: {},
+      profile: { id: 1 }, turnus: { id: 2, label: 'T2' },
+      turnus_selection: {
+        selected_id: 2,
+        options: [{ id: 2, label: 'T2' }, { id: 4, label: 'T4' }, { id: 6, label: 'T6' }],
+      },
+      search_index: { kids: [], focuses: [], places: [] },
+    };
+    let resolveSelection;
+    const selection = new Promise(resolve => { resolveSelection = resolve; });
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response(bootstrap))
+      .mockResolvedValueOnce(response({ kids: [] }))
+      .mockReturnValueOnce(selection);
+
+    render(<App fetchImpl={fetchImpl} />);
+    const switcher = await screen.findByRole('combobox', { name: 'Aktiver Turnus' });
+    fireEvent.change(switcher, { target: { value: '4' } });
+
+    expect(switcher).toBeDisabled();
+    expect(switcher).toHaveAttribute('aria-busy', 'true');
+    fireEvent.change(switcher, { target: { value: '6' } });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl.mock.calls[2][1].body).toBe(JSON.stringify({ turnus_id: 4 }));
+
+    resolveSelection(response({}, { ok: false, status: 403 }));
+    await waitFor(() => expect(switcher).not.toBeDisabled());
+  });
+
   it('redirects an unauthenticated protected route without loading route data', async () => {
     window.history.pushState({}, '', '/all_kids');
     const fetchImpl = vi.fn().mockResolvedValue(response({

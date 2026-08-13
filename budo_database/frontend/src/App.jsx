@@ -34,6 +34,7 @@ function AppContent({
   const [bootstrap, setBootstrap] = useState(null);
   const [bootstrapError, setBootstrapError] = useState(null);
   const [pageState, setPageState] = useState({});
+  const [turnusSwitching, setTurnusSwitching] = useState(false);
   const [switchRecoveryRequired, setSwitchRecoveryRequired] = useState(false);
   const [routeState, setRouteState] = useState({
     loading: false,
@@ -43,6 +44,7 @@ function AppContent({
     authenticationRequired: false,
   });
   const routeRequestSequence = useRef(0);
+  const turnusSwitchInFlight = useRef(false);
   const request = useMemo(() => routeDataRequest(route), [route]);
   const navigateRoute = useCallback((path, { replace = false } = {}) => {
     routeRequestSequence.current += 1;
@@ -188,6 +190,9 @@ function AppContent({
     return responsePayload;
   };
   const switchTurnus = async turnusId => {
+    if (turnusSwitchInFlight.current) return;
+    turnusSwitchInFlight.current = true;
+    setTurnusSwitching(true);
     let serverContextChanged = false;
     try {
       const response = await fetchImpl('/api/turnus-selection/', {
@@ -206,10 +211,18 @@ function AppContent({
       // old scope until a complete replacement context has been loaded.
       setSwitchRecoveryRequired(true);
 
+      // Any route request that began under the previous server context is now
+      // stale and must never be allowed to publish into the replacement shell.
+      const replacementSequence = ++routeRequestSequence.current;
+
       // Fetch the new shell and route before publishing either. A partial
       // refresh must not combine old scoped data with the newly selected shell.
       const nextBootstrap = await loadBootstrap(fetchImpl);
       const nextRoute = request ? await loadRouteData(route, fetchImpl) : null;
+      if (replacementSequence !== routeRequestSequence.current) {
+        reload();
+        return;
+      }
       setBootstrapError(null);
       setBootstrap(nextBootstrap);
       if (nextRoute) {
@@ -228,6 +241,9 @@ function AppContent({
         return;
       }
       showError('Der Turnus konnte nicht gewechselt werden. Bitte erneut versuchen.');
+    } finally {
+      turnusSwitchInFlight.current = false;
+      setTurnusSwitching(false);
     }
   };
 
@@ -274,6 +290,7 @@ function AppContent({
             : data.happy_cleaning_events
         } permissions={data.permissions}
         turnusSelection={data.turnus_selection}
+        turnusSwitching={turnusSwitching}
         onTurnusChange={switchTurnus} />
       ) : null}
       header={<Header title={resolveRouteHeaderTitle(route, data, title)} authenticated={data.authenticated} searchData={data} action={data.authenticated ? routeHeaderAction(route, data, { pageState, setPageState, mutate }) : null} />}
