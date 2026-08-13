@@ -41,6 +41,23 @@ class ReactShellTests(TestCase):
         ]
         self.assertEqual(rendered_templates.count("react_app.html"), 1)
 
+    def test_frontend_chunks_do_not_reimport_the_executable_entry_bundle(self):
+        project_root = Path(__file__).resolve().parent.parent
+        asset_directory = project_root / "budo_app/static/frontend/assets"
+        offending_chunks = [
+            path.name
+            for path in asset_directory.glob("*.js")
+            if 'from"../app.js"' in path.read_text()
+            or "from'../app.js'" in path.read_text()
+        ]
+
+        self.assertEqual(
+            offending_chunks,
+            [],
+            "Production-hashed app.js must not be reimported through its "
+            "unhashed URL; that executes a second React root.",
+        )
+
     def test_design_system_bundle_has_no_legacy_stylesheet_or_cascade_layer(self):
         project_root = Path(__file__).resolve().parent.parent
         source = (project_root / "frontend/src/app.css").read_text()
