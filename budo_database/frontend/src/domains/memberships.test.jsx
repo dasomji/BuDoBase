@@ -211,6 +211,31 @@ describe('admin team overview', () => {
     expect(screen.queryByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' })).not.toBeInTheDocument();
   });
 
+  it('lets Leitung add, relabel, and remove Teamers through accessible actions', async () => {
+    const user = userEvent.setup();
+    const mutate = vi.fn()
+      .mockResolvedValueOnce({ membership_id: 31, role_label: 'Teamer', team_label: '' })
+      .mockResolvedValueOnce({ membership_id: 11, team_label: 'Material' })
+      .mockResolvedValueOnce({ membership_id: 11, removed: true });
+    const leitungData = { ...data, can_manage_leitung: false, can_manage_memberships: true, people: [{ ...data.people[0], turnus_ids: [] }] };
+    render(<Toaster><AdminTeamOverviewPage data={leitungData} mutate={mutate} /></Toaster>);
+    expect(screen.queryByRole('button', { name: 'Bea Beispiel bearbeiten' })).not.toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Chris');
+    await user.click(screen.getByRole('button', { name: 'Chris Frei als Teamer zu T2-2026 hinzufügen' }));
+    expect(mutate).toHaveBeenCalledWith('/api/turnusse/4/memberships/', { user_id: 30 });
+    await user.clear(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }));
+    await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
+    const label = screen.getByRole('textbox', { name: 'Bezeichnung für Alex Muster' });
+    await user.clear(label);
+    await user.type(label, 'Material');
+    await user.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(mutate).toHaveBeenCalledWith('/api/memberships/11/label/', { team_label: 'Material' });
+    await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
+    await user.click(screen.getByRole('button', { name: 'Alex Muster entfernen' }));
+    expect(mutate).toHaveBeenCalledWith('/api/memberships/11/remove/', {});
+    expect(screen.queryByText('Alex Muster')).not.toBeInTheDocument();
+  });
+
   it('keeps the selected assignment target visible when search matches a person and another Turnus', async () => {
     const user = userEvent.setup();
     const mutate = vi.fn().mockResolvedValue({ membership_id: 32, role_label: 'Leitung', team_label: '' });

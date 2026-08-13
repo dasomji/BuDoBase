@@ -128,6 +128,32 @@ def update_membership(membership, *, functional_role=None, team_label=None):
 
 
 @transaction.atomic
+def remove_membership(membership):
+    """Remove approved access and repair a now-invalid selection atomically."""
+    lock_membership_scope(
+        user_id=membership.user_id,
+        turnus_id=membership.turnus_id,
+    )
+    membership = TurnusMembership.objects.select_for_update().get(pk=membership.pk)
+    user = membership.user
+    removed_turnus_id = membership.turnus_id
+    membership.delete()
+
+    profile = Profil.objects.select_for_update().get(user_id=user.pk)
+    if profile.selected_turnus_id == removed_turnus_id:
+        fallback = (
+            TurnusMembership.objects.select_for_update()
+            .filter(user_id=user.pk)
+            .order_by("turnus__turnus_beginn", "turnus_id")
+            .first()
+        )
+        profile.selected_turnus_id = fallback.turnus_id if fallback else None
+        profile.save(update_fields=("selected_turnus",))
+        _synchronize_cached_profile(user, profile)
+    return removed_turnus_id
+
+
+@transaction.atomic
 def select_turnus(user, turnus):
     """Select an approved Turnus, without treating selection as authority."""
     lock_membership_scope(user_id=user.pk, turnus_id=turnus.pk)

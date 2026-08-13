@@ -16,6 +16,7 @@ from .kid_edit_views import kid_edit_page
 from .join_request_views import request_turnus_membership
 from .join_request_decision_views import decide_turnus_join_request
 from .admin_team_views import create_leitung_membership, set_membership_leadership
+from .team_membership_views import create_teamer_membership, remove_team_membership, update_team_membership_label
 
 
 def legacy_slashless_page(route, view, *, name):
@@ -46,6 +47,9 @@ urlpatterns = [
     ),
     path('api/admin/memberships/<int:membership_id>/role/', set_membership_leadership, name='admin-membership-role-api'),
     path('api/admin/turnusse/<int:turnus_id>/leitung/', create_leitung_membership, name='admin-leitung-membership-create-api'),
+    path('api/turnusse/<int:turnus_id>/memberships/', create_teamer_membership, name='teamer-membership-create-api'),
+    path('api/memberships/<int:membership_id>/label/', update_team_membership_label, name='membership-label-api'),
+    path('api/memberships/<int:membership_id>/remove/', remove_team_membership, name='membership-remove-api'),
     path('settings/', admin_settings_page, name='admin-settings-page'),
     path(
         'api/settings/recalculate-travel-times/',

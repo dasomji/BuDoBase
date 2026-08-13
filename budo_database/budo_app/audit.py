@@ -89,6 +89,15 @@ ACTION_DETAIL_FIELDS = {
         "functional_role": (str,),
         "member_id": (int,),
     },
+    "membership.remove": {
+        "functional_role": (str,),
+        "member_id": (int,),
+    },
+    "membership.label.change": {
+        "previous_label": (str,),
+        "new_label": (str,),
+        "member_id": (int,),
+    },
     "join_request.approve": {
         "requester_id": (int,),
         "membership_id": (int,),

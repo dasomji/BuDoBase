@@ -66,21 +66,31 @@ def _team_overview(request, *, admin_only):
             "pending_requests": pending_requests,
         })
     people = []
-    people_source = User.objects.none() if not request.user.is_superuser else User.objects.filter(is_active=True)
-    for user in people_source.prefetch_related("turnus_memberships__turnus"):
-        relationships = [str(item.turnus) for item in user.turnus_memberships.all()]
+    people_source = User.objects.filter(is_active=True).prefetch_related("turnus_memberships__turnus")
+    visible_turnus_ids = None if request.user.is_superuser else {
+        turnus.id for turnus in turnuses
+    }
+    for user in people_source:
+        visible_memberships = [
+            item for item in user.turnus_memberships.all()
+            if visible_turnus_ids is None or item.turnus_id in visible_turnus_ids
+        ]
+        relationships = [str(item.turnus) for item in visible_memberships]
         people.append({
             "id": user.id,
             "name": _display_name(user),
             "relationships": sorted(relationships, key=str.casefold),
             "available": not relationships,
-            "turnus_ids": [item.turnus_id for item in user.turnus_memberships.all()],
+            # Memberships outside the actor's management scope deliberately do
+            # not leak through labels, IDs, or availability state.
+            "turnus_ids": [item.turnus_id for item in visible_memberships],
         })
     people.sort(key=lambda item: item["name"].casefold())
     return {
         "years": [{"year": int(year), "turnuses": items} for year, items in years.items()],
         "people": people,
         "can_manage_leitung": request.user.is_superuser,
+        "can_manage_memberships": True,
         "identity_verification_warning": IDENTITY_VERIFICATION_WARNING,
     }
 
