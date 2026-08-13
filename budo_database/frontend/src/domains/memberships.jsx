@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Pencil, Search } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Pencil, Plus, Search } from 'lucide-react';
 
 import { Column, Columns, TranslucentCard } from '../components';
 import { Button } from '../components/ui/button';
@@ -41,13 +41,17 @@ function Member({ member, mutate, onChanged }) {
 }
 
 export function AdminTeamOverviewPage({ data, mutate }) {
+  const showError = useErrorToast();
+  const showSuccess = useSuccessToast();
   const [query, setQuery] = useState('');
   const [years, setYears] = useState(data.years || []);
+  const [people, setPeople] = useState(data.people || []);
   const isMobile = useIsMobile();
   const [expandedYears, setExpandedYears] = useState(() => new Set(
     isMobile ? data.years?.slice(0, 1).map(year => year.year) : data.years?.map(year => year.year),
   ));
   const [selectedTurnusId, setSelectedTurnusId] = useState(() => data.years?.[0]?.turnuses?.[0]?.id ?? null);
+  const previousMobile = useRef(isMobile);
   const normalized = query.trim().toLocaleLowerCase('de');
   const filtered = useMemo(() => years.map(year => ({
     ...year,
@@ -56,14 +60,26 @@ export function AdminTeamOverviewPage({ data, mutate }) {
       || turnus.members.some(member => `${member.name} ${member.team_label} ${member.role_label}`.toLocaleLowerCase('de').includes(normalized))),
   })).filter(year => year.turnuses.length), [years, normalized]);
   const visibleTurnuses = useMemo(() => filtered.flatMap(year => year.turnuses), [filtered]);
-  const matchedPeople = useMemo(() => normalized ? (data.people || []).filter(person =>
+  const allTurnuses = useMemo(() => years.flatMap(year => year.turnuses), [years]);
+  const matchedPeople = useMemo(() => normalized ? people.filter(person =>
     `${person.name} ${person.relationships.join(' ')}`.toLocaleLowerCase('de').includes(normalized)
-  ) : [], [data.people, normalized]);
+  ) : [], [people, normalized]);
   const selectedTurnus = visibleTurnuses.find(turnus => turnus.id === selectedTurnusId) || null;
+  const selectedContext = allTurnuses.find(turnus => turnus.id === selectedTurnusId) || null;
   useEffect(() => {
-    if (!selectedTurnus && visibleTurnuses.length) setSelectedTurnusId(visibleTurnuses[0].id);
-    if (!visibleTurnuses.length && selectedTurnusId !== null) setSelectedTurnusId(null);
-  }, [selectedTurnus, selectedTurnusId, visibleTurnuses]);
+    if (!selectedContext && allTurnuses.length) setSelectedTurnusId(allTurnuses[0].id);
+    if (!allTurnuses.length && selectedTurnusId !== null) setSelectedTurnusId(null);
+  }, [allTurnuses, selectedContext, selectedTurnusId]);
+  useEffect(() => {
+    if (previousMobile.current === isMobile) return;
+    previousMobile.current = isMobile;
+    if (!isMobile) {
+      setExpandedYears(new Set(years.map(year => year.year)));
+      return;
+    }
+    const selectedYear = years.find(year => year.turnuses.some(turnus => turnus.id === selectedTurnusId));
+    setExpandedYears(new Set([selectedYear?.year ?? years[0]?.year].filter(year => year != null)));
+  }, [isMobile, selectedTurnusId, years]);
   const changed = (membershipId, functionalRole) => setYears(current => current.map(year => ({
     ...year,
     turnuses: year.turnuses.map(turnus => ({
@@ -75,6 +91,34 @@ export function AdminTeamOverviewPage({ data, mutate }) {
       } : member),
     })),
   })));
+  const addLeitung = async person => {
+    try {
+      const result = await mutate(`/api/admin/turnusse/${selectedTurnusId}/leitung/`, { user_id: person.id });
+      setYears(current => current.map(year => ({
+        ...year,
+        turnuses: year.turnuses.map(turnus => turnus.id === selectedTurnusId ? {
+          ...turnus,
+          members: [...turnus.members, {
+            id: result.membership_id,
+            user_id: person.id,
+            name: person.name,
+            functional_role: 'leitung',
+            role_label: result.role_label || 'Leitung',
+            team_label: result.team_label || '',
+          }],
+        } : turnus),
+      })));
+      setPeople(current => current.map(item => item.id === person.id ? {
+        ...item,
+        relationships: [...item.relationships, selectedContext.label],
+        turnus_ids: [...(item.turnus_ids || []), selectedTurnusId],
+        available: false,
+      } : item));
+      showSuccess(`${person.name} ist jetzt Leitung.`);
+    } catch (error) {
+      showError(error.payload?.detail || 'Die Leitung konnte nicht hinzugefügt werden.');
+    }
+  };
   return (
     <Columns className="mx-auto grid w-full max-w-6xl px-4 py-5">
       <Column className="min-w-0" id="team-management">
@@ -137,7 +181,13 @@ export function AdminTeamOverviewPage({ data, mutate }) {
         {normalized && matchedPeople.length > 0 && (
           <section className="mt-5" aria-labelledby="person-search-heading">
             <h2 className="text-lg font-semibold" id="person-search-heading">Registrierte Personen</h2>
-            <ul>{matchedPeople.map(person => <li className="py-2" key={person.id}><strong>{person.name}</strong><span className="block text-sm text-muted-foreground">{person.relationships.length ? person.relationships.join(' · ') : 'Keine Teamzugehörigkeiten · verfügbar'}</span></li>)}</ul>
+            <ul>{matchedPeople.map(person => {
+              const availableForSelected = selectedContext != null && !(person.turnus_ids || []).includes(selectedTurnusId);
+              return <li className="flex items-center justify-between gap-3 py-2" key={person.id}>
+                <span><strong>{person.name}</strong><span className="block text-sm text-muted-foreground">{person.relationships.length ? person.relationships.join(' · ') : 'Keine Teamzugehörigkeiten · verfügbar'}</span></span>
+                {availableForSelected && <Button aria-label={`${person.name} als Leitung zu ${selectedContext.label} hinzufügen`} title={`${person.name} als Leitung hinzufügen`} type="button" size="icon-sm" variant="ghost" onClick={() => addLeitung(person)}><Plus aria-hidden="true" /></Button>}
+              </li>;
+            })}</ul>
           </section>
         )}
         {!filtered.length && !matchedPeople.length && <p>Keine Turnusse oder Personen gefunden.</p>}

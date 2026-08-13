@@ -14,7 +14,7 @@ from .happy_cleaning_page_views import (
 )
 from .kid_edit_views import kid_edit_page
 from .join_request_views import request_turnus_membership
-from .admin_team_views import set_membership_leadership
+from .admin_team_views import create_leitung_membership, set_membership_leadership
 
 
 def legacy_slashless_page(route, view, *, name):
@@ -39,6 +39,7 @@ urlpatterns = [
         name='turnus-join-request-api',
     ),
     path('api/admin/memberships/<int:membership_id>/role/', set_membership_leadership, name='admin-membership-role-api'),
+    path('api/admin/turnusse/<int:turnus_id>/leitung/', create_leitung_membership, name='admin-leitung-membership-create-api'),
     path('settings/', admin_settings_page, name='admin-settings-page'),
     path(
         'api/settings/recalculate-travel-times/',

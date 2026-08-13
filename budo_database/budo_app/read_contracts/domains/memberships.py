@@ -55,6 +55,7 @@ def admin_team_overview(request):
             "name": _display_name(user),
             "relationships": sorted(relationships, key=str.casefold),
             "available": not relationships,
+            "turnus_ids": [item.turnus_id for item in user.turnus_memberships.all()],
         })
     people.sort(key=lambda item: item["name"].casefold())
     return {

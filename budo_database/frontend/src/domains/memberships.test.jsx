@@ -101,11 +101,43 @@ describe('admin team overview', () => {
     expect(screen.queryByText('Alex Muster')).not.toBeInTheDocument();
   });
 
+  it('synchronizes controlled year expansion only when crossing the mobile breakpoint', async () => {
+    const user = userEvent.setup();
+    const multiple = { years: [data.years[0], { year: 2025, turnuses: [{ id: 3, label: 'T1-2025', members: [] }] }], people: [] };
+    const view = render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
+    await user.click(screen.getByRole('button', { name: '2025 schließen' }));
+    expect(screen.getByRole('button', { name: '2025 öffnen' })).toBeInTheDocument();
+
+    viewport.mobile = true;
+    view.rerender(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
+    expect(screen.getByRole('button', { name: '2026 schließen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2025 öffnen' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '2026 schließen' }));
+    view.rerender(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
+    expect(screen.getByRole('button', { name: '2026 öffnen' })).toBeInTheDocument();
+
+    viewport.mobile = false;
+    view.rerender(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
+    expect(screen.getByRole('button', { name: '2026 schließen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2025 schließen' })).toBeInTheDocument();
+  });
+
   it('finds registered users without memberships and communicates availability', async () => {
     const user = userEvent.setup();
     render(<Toaster><AdminTeamOverviewPage data={data} mutate={vi.fn()} /></Toaster>);
     await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Chris');
     expect(screen.getByText('Chris Frei')).toBeInTheDocument();
     expect(screen.getByText('Keine Teamzugehörigkeiten · verfügbar')).toBeInTheDocument();
+  });
+
+  it('adds a searched person as Leitung to the selected Turnus with a person-specific action', async () => {
+    const user = userEvent.setup();
+    const mutate = vi.fn().mockResolvedValue({ membership_id: 31, role_label: 'Leitung', team_label: '' });
+    render(<Toaster><AdminTeamOverviewPage data={{ ...data, people: [{ ...data.people[0], turnus_ids: [] }] }} mutate={mutate} /></Toaster>);
+    await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Chris');
+    await user.click(screen.getByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' }));
+    expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 });
+    expect(await screen.findByText('Leitung')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' })).not.toBeInTheDocument();
   });
 });

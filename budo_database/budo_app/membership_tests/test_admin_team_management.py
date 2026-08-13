@@ -6,7 +6,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from budo_app.models import AuditEvent, Turnus, TurnusJoinRequest, TurnusMembership
-from budo_app.memberships import update_membership
+from budo_app.memberships import create_membership, update_membership
 
 
 class AdminTeamManagementTests(TestCase):
@@ -73,6 +73,17 @@ class AdminTeamManagementTests(TestCase):
         response = client.post(reverse("admin-membership-role-api", args=(self.membership.pk,)), {"functional_role": "leitung"})
         self.assertEqual(response.status_code, 403)
 
+    def test_create_leitung_requires_csrf(self):
+        available = User.objects.create_user("chris")
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.admin)
+        response = client.post(
+            reverse("admin-leitung-membership-create-api", args=(self.turnus.pk,)),
+            {"user_id": available.pk},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(TurnusMembership.objects.filter(user=available, turnus=self.turnus).exists())
+
     def test_forged_role_returns_stable_400_without_changing_membership(self):
         self.client.force_login(self.admin)
         response = self.client.post(
@@ -106,3 +117,51 @@ class AdminTeamManagementTests(TestCase):
             "changed": False,
         })
         self.assertFalse(AuditEvent.objects.filter(action="membership.role.change").exists())
+
+    @patch("budo_app.admin_team_views.create_membership", wraps=create_membership)
+    def test_superuser_can_add_available_account_as_leitung_through_domain_seam(self, create):
+        available = User.objects.create_user("chris", first_name="Chris", last_name="Frei")
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("admin-leitung-membership-create-api", args=(self.turnus.pk,)),
+            {"user_id": available.pk},
+        )
+        self.assertEqual(response.status_code, 201)
+        membership = TurnusMembership.objects.get(user=available, turnus=self.turnus)
+        self.assertEqual(membership.functional_role, "leitung")
+        self.assertEqual(membership.team_label, "")
+        self.assertEqual(create.call_args.kwargs["functional_role"], "leitung")
+        self.assertTrue(AuditEvent.objects.filter(action="membership.create", resource_id=str(membership.pk)).exists())
+
+    def test_create_leitung_rejects_non_admin_duplicate_and_cross_resource_ids_stably(self):
+        available = User.objects.create_user("chris")
+        url = reverse("admin-leitung-membership-create-api", args=(self.turnus.pk,))
+        self.client.force_login(available)
+        self.assertEqual(self.client.post(url, {"user_id": available.pk}).status_code, 403)
+        self.client.force_login(self.admin)
+        duplicate = self.client.post(url, {"user_id": self.member.pk})
+        self.assertEqual(duplicate.status_code, 400)
+        self.assertEqual(duplicate.json(), {"detail": "Diese Person gehört bereits zu diesem Turnus."})
+        self.assertEqual(self.client.post(url, {"user_id": available.pk + 1000}).status_code, 404)
+        missing_turnus = reverse("admin-leitung-membership-create-api", args=(self.turnus.pk + 1000,))
+        self.assertEqual(self.client.post(missing_turnus, {"user_id": available.pk}).status_code, 404)
+
+    def test_audit_failure_rolls_back_both_create_and_update_mutations(self):
+        available = User.objects.create_user("chris")
+        self.client.force_login(self.admin)
+        with patch("budo_app.admin_team_views.record_audit_event", side_effect=RuntimeError("audit unavailable")):
+            with self.assertRaises(RuntimeError):
+                self.client.post(
+                    reverse("admin-leitung-membership-create-api", args=(self.turnus.pk,)),
+                    {"user_id": available.pk},
+                )
+        self.assertFalse(TurnusMembership.objects.filter(user=available, turnus=self.turnus).exists())
+
+        with patch("budo_app.admin_team_views.record_audit_event", side_effect=RuntimeError("audit unavailable")):
+            with self.assertRaises(RuntimeError):
+                self.client.post(
+                    reverse("admin-membership-role-api", args=(self.membership.pk,)),
+                    {"functional_role": "leitung"},
+                )
+        self.membership.refresh_from_db()
+        self.assertEqual(self.membership.functional_role, "teamer")

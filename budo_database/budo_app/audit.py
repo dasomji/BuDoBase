@@ -85,6 +85,10 @@ ACTION_DETAIL_FIELDS = {
         "new_role": (str,),
         "member_id": (int,),
     },
+    "membership.create": {
+        "functional_role": (str,),
+        "member_id": (int,),
+    },
     "happy_cleaning.event.create": COMMON_DETAIL_FIELDS,
     "happy_cleaning.event.update": COMMON_DETAIL_FIELDS,
     "happy_cleaning.event.delete": COMMON_DETAIL_FIELDS,
