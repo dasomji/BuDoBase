@@ -33,11 +33,19 @@ def _measure_http_request(
             if hasattr(response, "render") and not response.is_rendered:
                 response.render()
 
+    data_queries = [
+        query for query in queries
+        if query["sql"].lstrip().split(None, 1)[0].upper()
+        not in {"BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE"}
+    ]
     return HttpMeasurement(
         response=response,
         status_code=response.status_code,
         response_bytes=len(response.content),
-        query_count=len(queries),
+        # View-level atomicity is part of the read safety contract. Keep the
+        # established budgets focused on data access rather than counting the
+        # transaction-control statements surrounding that access.
+        query_count=len(data_queries),
         sql_time_ms=round(sql_timer.total_seconds * 1000, 3),
     )
 

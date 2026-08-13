@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.core.exceptions import FieldDoesNotExist
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.db.models import F
 from django.template.defaultfilters import filesizeformat
 from django.utils.html import format_html
 
@@ -27,6 +28,7 @@ from .models import (
     SpezialFamilien,
     Tag,
     Turnus,
+    TurnusMembership,
 )
 
 
@@ -513,10 +515,15 @@ class TurnusEntryAdmin(admin.ModelAdmin):
 
     def has_module_permission(self, request):
         from .memberships import scoped_turnus_for
-        return request.user.is_staff and scoped_turnus_for(request.user) is not None
+        return request.user.is_staff and (
+            request.user.is_superuser
+            or scoped_turnus_for(request.user) is not None
+        )
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
+        if request.user.is_superuser:
+            return queryset
         from .memberships import scoped_turnus_for
         turnus = scoped_turnus_for(request.user)
         turnus_id = turnus.pk if turnus is not None else None
@@ -538,6 +545,8 @@ class TurnusEntryAdmin(admin.ModelAdmin):
     def _same_turnus(request, obj):
         from .memberships import scoped_turnus_for
         if obj is None:
+            return True
+        if request.user.is_superuser:
             return True
         turnus = scoped_turnus_for(request.user)
         return turnus is not None and obj.kinder.turnus_id == turnus.pk

@@ -21,6 +21,7 @@ from budo_app.audit import (
 )
 from budo_app.audit_queries import FILTER_NAMES
 from budo_app.audit_tests.test_kid_edit_audit_schema import valid_details
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import AuditEvent, Turnus, TurnusMembership
 from budo_app.read_contracts.registry import get_contract
 
@@ -44,7 +45,8 @@ class AuditListContractTests(TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save(update_fields=["turnus"])
-        TurnusMembership.objects.create(user=self.user, turnus=self.turnus)
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.url = reverse(
             "route-data-api", kwargs={"contract_key": "audit-events"},
@@ -268,9 +270,8 @@ class AuditListContractTests(TestCase):
                 turnus = Turnus.objects.create(
                     turnus_nr=index, turnus_beginn=date(2026, 9, 1),
                 )
-                TurnusMembership.objects.create(user=self.user, turnus=turnus)
-                self.user.profil.selected_turnus = turnus
-                self.user.profil.save(update_fields=["selected_turnus"])
+                create_membership(user=self.user, turnus=turnus)
+                select_turnus(self.user, turnus)
                 details = {**valid_details(), **mutation}
                 self.event(
                     action="kid.edit", details=details, turnus=turnus,

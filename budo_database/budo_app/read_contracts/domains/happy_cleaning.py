@@ -51,17 +51,14 @@ def _requested_event(request, *, active_only=True):
     return event
 def overview(request):
     active_turnus_id = require_active_turnus_id(request)
-    active_turnus = (
-        HappyCleaning.objects.filter(turnus_id=active_turnus_id)
-        .values("turnus__turnus_beginn")
-        .first()
-    )
-    if active_turnus is None:
-        active_start = Turnus.objects.filter(id=active_turnus_id).values_list(
+    active_turnus = getattr(request, "active_turnus", None)
+    active_start = (
+        active_turnus.turnus_beginn
+        if active_turnus is not None and active_turnus.id == active_turnus_id
+        else Turnus.objects.filter(id=active_turnus_id).values_list(
             "turnus_beginn", flat=True
         ).first()
-    else:
-        active_start = active_turnus["turnus__turnus_beginn"]
+    )
     if active_start is None:
         raise Http404
     active_year = active_start.year

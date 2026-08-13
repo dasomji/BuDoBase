@@ -247,7 +247,9 @@ def _good_to_know_kid_payload(kid):
 
 
 def build_good_to_know_contract(request):
-    selected_turnus = selected_turnus_for_read(request.user)
+    selected_turnus = getattr(request, "active_turnus", None)
+    if not hasattr(request, "active_turnus"):
+        selected_turnus = selected_turnus_for_read(request.user)
     if selected_turnus is None:
         return {"totals": {"kids": 0}, "kids": []}
 
@@ -327,7 +329,9 @@ def _membership_turnuses(user):
 
 
 def build_dashboard_contract(request):
-    profile = selected_profile_for_read(request.user)
+    profile = getattr(request, "selected_profile", None)
+    if not hasattr(request, "selected_profile"):
+        profile = selected_profile_for_read(request.user)
     has_approved_selection = profile is not None
     if profile is None:
         profile = Profil.objects.select_related("user").filter(

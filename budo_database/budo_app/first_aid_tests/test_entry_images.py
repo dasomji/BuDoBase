@@ -13,6 +13,7 @@ from budo_app.first_aid_photos import (
     create_note,
     process_first_aid_photos,
 )
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import ErsteHilfeFoto, Kinder, NotizFoto, Turnus
 
 
@@ -42,6 +43,8 @@ class EntryImageTests(TransactionTestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.user = User.objects.create_user(username="entry-images")
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.user.profil.turnus = self.turnus
         self.user.profil.save(update_fields=("turnus",))
         self.kid = Kinder.objects.create(
@@ -100,3 +103,18 @@ class EntryImageTests(TransactionTestCase):
         note.delete()
 
         self.assertFalse(self.storage.exists(storage_key))
+
+    def test_attachment_access_is_revoked_with_selected_membership(self):
+        note = create_note(
+            child=self.kid,
+            actor=self.user,
+            text="Privat",
+            photos=process_first_aid_photos([image_upload()]),
+        )
+        self.client.force_login(self.user)
+        url = reverse("attachment-media", args=("notes", note.fotos.get().id))
+
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.user.turnus_memberships.get(turnus=self.turnus).delete()
+
+        self.assertEqual(self.client.get(url).status_code, 404)

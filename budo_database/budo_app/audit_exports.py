@@ -129,7 +129,7 @@ def export_audit_events(command):
     # authorization lock is held. The response later reads no database rows.
     snapshot = create_export_snapshot()
     try:
-        for line in _stream_records(header, queryset):
+        for line in _materialize_records(header, queryset):
             snapshot.write(line.encode("utf-8"))
         snapshot.seek(0)
     except Exception:

@@ -10,7 +10,10 @@ def active_turnus_id(request):
     The selection and approved membership are validated together by one query.
     Callers never accept the legacy profile Turnus as authority.
     """
-    turnus = selected_turnus_for_read(request.user)
+    if hasattr(request, "active_turnus"):
+        turnus = request.active_turnus
+    else:
+        turnus = selected_turnus_for_read(request.user)
     return turnus.id if turnus is not None else None
 
 

@@ -47,7 +47,8 @@ class AuditExportV2HttpTests(TestCase):
         )
         self.user.profil.turnus = self.turnus
         self.user.profil.save(update_fields=["turnus"])
-        TurnusMembership.objects.create(user=self.user, turnus=self.turnus)
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.url = reverse("audit-export-api")
 
@@ -155,8 +156,9 @@ class AuditExportV2HttpTests(TestCase):
         self.assertEqual(issuance.details["result_count"], 0)
 
     def test_large_snapshot_rolls_to_disk_and_survives_membership_removal(self):
-        membership = create_membership(user=self.user, turnus=self.turnus)
-        select_turnus(self.user, self.turnus)
+        membership = TurnusMembership.objects.get(
+            user=self.user, turnus=self.turnus,
+        )
         self.event(details={"station_name": "x" * 256})
         snapshot = tempfile.SpooledTemporaryFile(max_size=8, mode="w+b")
 
@@ -172,8 +174,6 @@ class AuditExportV2HttpTests(TestCase):
         self.assertTrue(snapshot.closed)
 
     def test_abandoned_snapshot_closes_with_response(self):
-        create_membership(user=self.user, turnus=self.turnus)
-        select_turnus(self.user, self.turnus)
         self.event(details={"station_name": "x" * 256})
         snapshot = tempfile.SpooledTemporaryFile(max_size=8, mode="w+b")
 
