@@ -1,5 +1,8 @@
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.contrib.auth.models import User
+
+from budo_app.models import TurnusMembership
 
 
 @override_settings(REGISTRATION_PASSPHRASE="legacy-shared-secret")
@@ -20,3 +23,5 @@ class PublicRegistrationTests(TestCase):
             reverse("dashboard"),
             fetch_redirect_response=False,
         )
+        user = User.objects.get(username="new-teamer")
+        self.assertFalse(TurnusMembership.objects.filter(user=user).exists())

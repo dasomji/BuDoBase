@@ -33,6 +33,8 @@ from budo_app.models import (
     NotizFoto,
     Profil,
     Schwerpunkte,
+    Turnus,
+    TurnusJoinRequest,
 )
 from budo_app.read_contracts.common import (
     kid_full_name,
@@ -311,6 +313,35 @@ def build_dashboard_contract(request):
                 "notes": _activity_page("notes", None),
                 "transactions": _activity_page("transactions", None),
             },
+        }
+
+    # A newly registered account has no authority-bearing membership.  Its
+    # dashboard deliberately exposes only public Turnus identity and its own
+    # request history.
+    if profile.turnus_id is None and not request.user.turnus_memberships.exists():
+        latest_requests = {}
+        for join_request in TurnusJoinRequest.objects.filter(user=request.user):
+            latest_requests.setdefault(join_request.turnus_id, join_request.status)
+        return {
+            **_empty_summary(profile),
+            "activity": {
+                "first_aid": _activity_page("first_aid", None),
+                "notes": _activity_page("notes", None),
+                "transactions": _activity_page("transactions", None),
+            },
+            "membership_awaiting": True,
+            "turnuses": [
+                {
+                    "id": turnus.id,
+                    "label": str(turnus),
+                    "number": turnus.turnus_nr,
+                    "start": turnus.turnus_beginn.isoformat(),
+                    "request_status": latest_requests.get(turnus.id),
+                }
+                for turnus in Turnus.objects.only(
+                    "id", "turnus_nr", "turnus_beginn"
+                ).order_by("-turnus_beginn", "turnus_nr", "id")
+            ],
         }
 
     turnus_id = profile.turnus_id

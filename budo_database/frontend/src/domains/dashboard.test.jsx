@@ -93,6 +93,23 @@ describe('dashboard page', () => {
     window.history.pushState({}, '', '/');
   });
 
+  it('shows only safe Turnus request state while membership is awaiting', () => {
+    const mutate = vi.fn();
+    render(<DashboardPage data={{
+      membership_awaiting: true,
+      turnuses: [
+        { id: 1, label: '2. Turnus 2027', request_status: 'pending' },
+        { id: 2, label: '3. Turnus 2027', request_status: 'rejected' },
+      ],
+    }} mutate={mutate} />);
+
+    expect(screen.getByText('Anfrage ausstehend (noch kein Zugriff)', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('Anfrage abgelehnt', { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText('Kinder')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft anfragen' }));
+    expect(mutate).toHaveBeenCalledWith('/api/turnusse/2/join-requests/', {});
+  });
+
   it('renders exactly the requested operational dashboard cards', () => {
     render(<DashboardPage data={dashboardData()} />);
 

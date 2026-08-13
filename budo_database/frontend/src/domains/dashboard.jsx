@@ -197,6 +197,9 @@ function HappyCleaningStationCard({ event, station, kidsById, mutate, refresh })
 }
 
 export function DashboardPage({ data, fetchImpl = fetch, mutate, refresh, onFirstAidItemsChange }) {
+  if (data.membership_awaiting) {
+    return <AwaitingMembershipDashboard data={data} mutate={mutate} />;
+  }
   const {
     profile,
     totals,
@@ -273,6 +276,34 @@ export function DashboardPage({ data, fetchImpl = fetch, mutate, refresh, onFirs
         </div>
       </Card>
       </ResponsiveCardGrid>
+  );
+}
+
+function AwaitingMembershipDashboard({ data, mutate }) {
+  const requestLabels = {
+    pending: 'Anfrage ausstehend (noch kein Zugriff)',
+    approved: 'Anfrage angenommen',
+    rejected: 'Anfrage abgelehnt',
+    cancelled: 'Anfrage storniert',
+    superseded: 'Anfrage ersetzt',
+  };
+  return (
+    <ResponsiveCardGrid>
+      <Card title="Turnus-Mitgliedschaft ausstehend">
+        <p>Dein Konto ist erstellt. Du erhältst erst nach der ausdrücklichen Freigabe durch eine Leitung Zugriff auf Turnus-Daten.</p>
+        {data.turnuses.length ? <ul className="grid gap-3">{data.turnuses.map(turnus => (
+          <li key={turnus.id}>
+            <strong>{turnus.label}</strong>{' '}
+            {turnus.request_status && <span>– {requestLabels[turnus.request_status]}</span>}{' '}
+            {turnus.request_status !== 'pending' && turnus.request_status !== 'approved'
+              && <Button
+                  type="button"
+                  onClick={() => mutate(`/api/turnusse/${turnus.id}/join-requests/`, {})}
+                >Mitgliedschaft anfragen</Button>}
+          </li>
+        ))}</ul> : <p>Derzeit sind keine Turnusse verfügbar.</p>}
+      </Card>
+    </ResponsiveCardGrid>
   );
 }
 

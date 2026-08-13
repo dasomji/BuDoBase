@@ -14,7 +14,6 @@ export function AuthPage({ kind, data }) {
             { name: 'email', label: 'E-Mail', type: 'email', required: true },
             { name: 'password1', label: 'Passwort', type: 'password', required: true },
             { name: 'password2', label: 'Passwort bestätigen', type: 'password', required: true },
-            { name: 'passphrase', label: 'Geheime Zugangskennung', type: 'password', required: true },
           ] : [
             { name: 'username', label: 'Username', required: true },
             { name: 'password', label: 'Password', type: 'password', required: true },

@@ -13,7 +13,6 @@ from budo_app.react_views import ReactPageTemplateMixin, render_react_page
 from django.views.decorators.http import require_GET
 from django.views.generic.edit import UpdateView
 from django.urls import reverse_lazy
-from django.conf import settings
 from .forms import LoginForm, RegisterForm
 from budo_app.utils import cache_user_profile
 from .dashboard_services import build_dashboard_context
@@ -66,20 +65,15 @@ def sign_up(request):
 
     if request.method == 'POST':
         form = RegisterForm(request.POST)
-        passphrase = request.POST.get('passphrase')
 
-        if form.is_valid() and passphrase == settings.REGISTRATION_PASSPHRASE:
+        if form.is_valid():
             user = form.save(commit=False)
             user.username = user.username.lower()
             user.save()
             messages.success(request, 'You have signed up successfully.')
             login(request, user)
-            return redirect('profil-edit')
-        else:
-            if passphrase != settings.REGISTRATION_PASSPHRASE:
-                messages.error(
-                    request, 'Invalid passphrase. Please try again.')
-            return render_react_page(request, {'form': form})
+            return redirect('dashboard')
+        return render_react_page(request, {'form': form})
 
 
 @login_required

@@ -644,6 +644,40 @@ class TurnusMembership(models.Model):
         return f"{self.user} – {self.turnus} ({self.get_functional_role_display()})"
 
 
+class TurnusJoinRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ausstehend"
+        APPROVED = "approved", "Angenommen"
+        REJECTED = "rejected", "Abgelehnt"
+        CANCELLED = "cancelled", "Storniert"
+        SUPERSEDED = "superseded", "Ersetzt"
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="turnus_join_requests"
+    )
+    turnus = models.ForeignKey(
+        Turnus, on_delete=models.CASCADE, related_name="join_requests"
+    )
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.PENDING
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "turnus"),
+                condition=models.Q(status="pending"),
+                name="unique_pending_user_turnus_join_request",
+            )
+        ]
+        ordering = ("-created_at", "-id")
+
+    def __str__(self):
+        return f"{self.user} – {self.turnus} ({self.get_status_display()})"
+
+
 class HappyCleaning(models.Model):
     """One numbered Happy Cleaning event inside a Turnus."""
 
