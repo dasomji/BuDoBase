@@ -52,6 +52,9 @@ describe('Profil pages', () => {
     render(<ProfileEditPage data={data} />);
 
     expect(screen.getByLabelText('Rufname')).toHaveValue('Ada');
+    expect(screen.getByLabelText('E-Mail')).toHaveValue('ada@example.test');
+    expect(screen.getByLabelText('E-Mail')).toHaveAttribute('type', 'email');
+    expect(screen.getByLabelText('E-Mail')).toBeRequired();
     expect(screen.getByLabelText('Allergien')).toHaveValue('Nüsse');
     expect(screen.getByLabelText('Kaffee')).toHaveValue('Schwarz');
     expect(screen.queryByLabelText('Rolle')).not.toBeInTheDocument();
@@ -68,6 +71,8 @@ describe('Profil pages', () => {
     render(<ProfileEditPage data={data} target="/profil/5/" />);
 
     expect(screen.getByLabelText('Rufname').form).toHaveAttribute('action', '/profil/5/');
+    expect(screen.getByLabelText('E-Mail')).toHaveValue('ada@example.test');
+    expect(screen.getByLabelText('E-Mail')).toBeRequired();
   });
 
   it('declares read-only, own-edit, and admin-edit profile routes, but no Teamer detail route', () => {

@@ -197,6 +197,54 @@ class GoogleMapsPlaceWriteContractTests(TestCase):
             [(48.2081743, 16.3738189)],
         )
 
+    def test_reduced_create_payload_auto_populates_the_omitted_address(self):
+        gateway = GoogleMapsGatewayStub(
+            addresses={
+                (48.4, 15.9): {
+                    "street": "Nachgetragener Waldweg 3",
+                    "city": "Zwettl",
+                    "state": "Niederösterreich",
+                    "postal_code": "3910",
+                    "country": "Österreich",
+                },
+            },
+        )
+        payload = {
+            "_target": "/auslagerorte/create",
+            "name": "Reduzierter Waldplatz",
+            "maps_link": "https://www.google.com/maps/@48.4,15.9,17z",
+            "maps_link_parkspot": "",
+            "beschreibung": "Nur die sichtbaren Felder wurden gesendet.",
+            "kontakt": "Ada",
+        }
+
+        with patch.object(
+            location_services,
+            "google_maps_gateway",
+            gateway,
+            create=True,
+        ):
+            response = self.client.post(reverse("form-submit-api"), payload)
+
+        place = Auslagerorte.objects.get(name="Reduzierter Waldplatz")
+        self.assertEqual(response.status_code, 200, response.json())
+        self.assertEqual(
+            (
+                place.strasse,
+                place.ort,
+                place.bundesland,
+                place.postleitzahl,
+                place.land,
+            ),
+            (
+                "Nachgetragener Waldweg 3",
+                "Zwettl",
+                "Niederösterreich",
+                "3910",
+                "Österreich",
+            ),
+        )
+
     def test_create_never_overwrites_user_address_values(self):
         gateway = GoogleMapsGatewayStub(
             addresses={
@@ -230,6 +278,65 @@ class GoogleMapsPlaceWriteContractTests(TestCase):
         self.assertEqual(place.land, "Österreich")
         self.assertEqual(place.bundesland, "Google-Land")
         self.assertEqual(place.postleitzahl, "9999")
+
+    def test_changed_link_preserves_existing_address_adjustments(self):
+        place = Auslagerorte.objects.create(
+            name="Waldlichtung",
+            strasse="Forstweg ohne Hausnummer",
+            ort="Unser Ortsname",
+            bundesland="Niederösterreich",
+            postleitzahl="3910",
+            land="Österreich",
+            maps_link="https://www.google.com/maps/@48.1,15.1,17z",
+            koordinaten="48.1,15.1",
+        )
+        gateway = GoogleMapsGatewayStub(
+            addresses={
+                (48.3, 15.8): {
+                    "street": "Googlestraße 9",
+                    "city": "Google-Stadt",
+                    "state": "Google-Land",
+                    "postal_code": "9999",
+                    "country": "Google-Land",
+                },
+            },
+        )
+
+        with patch.object(
+            location_services,
+            "google_maps_gateway",
+            gateway,
+            create=True,
+        ):
+            response = self.submit(
+                f"/auslagerorte/{place.id}/update",
+                maps_link="https://www.google.com/maps/@48.3,15.8,17z",
+                strasse=place.strasse,
+                ort=place.ort,
+                bundesland=place.bundesland,
+                postleitzahl=place.postleitzahl,
+                land=place.land,
+            )
+
+        place.refresh_from_db()
+        self.assertEqual(response.status_code, 200, response.json())
+        self.assertEqual(place.koordinaten, "48.3,15.8")
+        self.assertEqual(
+            (
+                place.strasse,
+                place.ort,
+                place.bundesland,
+                place.postleitzahl,
+                place.land,
+            ),
+            (
+                "Forstweg ohne Hausnummer",
+                "Unser Ortsname",
+                "Niederösterreich",
+                "3910",
+                "Österreich",
+            ),
+        )
 
     def test_create_accepts_long_google_maps_parkspot_link(self):
         parking_link = (

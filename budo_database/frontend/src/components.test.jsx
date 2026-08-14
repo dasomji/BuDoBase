@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Printer } from 'lucide-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -78,6 +78,30 @@ describe('reusable components', () => {
     expect(content).toContainElement(screen.getByText('12 Teammitglieder'));
     expect(toggle).toHaveAttribute('tabindex', '0');
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(content).toHaveAttribute('aria-hidden', 'false');
+    expect(content).not.toHaveAttribute('inert');
+  });
+
+  it('renders a non-collapsible card as an always-visible static section on mobile', () => {
+    window.matchMedia = vi.fn().mockImplementation(query => ({
+      matches: query.includes('max-width'),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+
+    render(<Card title="SWP Wald" collapsible={false}><p>26 Kinder</p></Card>);
+
+    const heading = screen.getByRole('heading', { name: 'SWP Wald' });
+    const card = heading.closest('.card');
+    const content = screen.getByText('26 Kinder').closest('.card-info-container');
+    expect(within(card).queryByRole('button')).not.toBeInTheDocument();
+    expect(heading.parentElement).not.toHaveAttribute('tabindex');
+    expect(heading.parentElement).not.toHaveAttribute('aria-expanded');
+    expect(content).toHaveAttribute('aria-hidden', 'false');
+    expect(content).not.toHaveAttribute('inert');
+
+    fireEvent.click(heading);
     expect(content).toHaveAttribute('aria-hidden', 'false');
     expect(content).not.toHaveAttribute('inert');
   });

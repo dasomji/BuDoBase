@@ -511,9 +511,46 @@ function TagInput({ availableTags, initialTags, tagCatalog }) {
   </fieldset>;
 }
 
+const addressFields = [
+  ['strasse', 'Straße', 'street'],
+  ['ort', 'Stadt', 'city'],
+  ['bundesland', 'Bundesland', 'state'],
+  ['postleitzahl', 'Postleitzahl', 'postal_code'],
+  ['land', 'Land', 'country'],
+];
+
+function AddressAdjustments({ place }) {
+  const [expanded, setExpanded] = useState(false);
+  const fieldsId = useId();
+  return <div className="grid gap-3">
+    <Button
+      className="justify-self-start"
+      variant="secondary"
+      type="button"
+      aria-controls={fieldsId}
+      aria-expanded={expanded}
+      onClick={() => setExpanded(current => !current)}
+    >
+      {expanded ? 'Adressfelder ausblenden' : 'Adresse manuell anpassen'}
+    </Button>
+    <div className="grid gap-3" id={fieldsId} hidden={!expanded}>
+      {addressFields.map(([name, label, key]) => <label key={name}>{label}<Input name={name} defaultValue={place?.[key] || ''} /></label>)}
+    </div>
+  </div>;
+}
+
 export function PlaceFormPage({ data, id }) {
-  const place = id ? findById(data.places, id) : null; const keys = { name: 'name', strasse: 'street', ort: 'city', bundesland: 'state', postleitzahl: 'postal_code', land: 'country', maps_link: 'maps_link', beschreibung: 'description', kontakt: 'contact', maps_link_parkspot: 'parking_link' };
-  const fields = [['name', 'Name'], ['strasse', 'Straße'], ['ort', 'Stadt'], ['bundesland', 'Bundesland'], ['postleitzahl', 'Postleitzahl'], ['land', 'Land'], ['maps_link', 'Google Maps Link'], ['beschreibung', 'Beschreibung', 'textarea'], ['kontakt', 'Kontakt', 'textarea'], ['maps_link_parkspot', 'Google Maps Link Parkspot']].map(([name, label, type]) => ({ name, label, type, value: place?.[keys[name]] })); fields.push({ name: 'tags', render: () => <TagInput availableTags={data.available_tags || []} initialTags={place?.tags || []} tagCatalog={data.tag_catalog || []} /> });
+  const place = id ? findById(data.places, id) : null;
+  const keys = { name: 'name', maps_link: 'maps_link', maps_link_parkspot: 'parking_link', beschreibung: 'description', kontakt: 'contact' };
+  const fields = [
+    ['name', 'Name'],
+    ['maps_link', 'Google Maps Link'],
+    ['maps_link_parkspot', 'Google Maps Link Parkspot'],
+    ['beschreibung', 'Beschreibung', 'textarea'],
+    ['kontakt', 'Kontakt', 'textarea'],
+  ].map(([name, label, type]) => ({ name, label, type, value: place?.[keys[name]] }));
+  if (place) fields.push({ name: 'address_adjustments', render: () => <AddressAdjustments place={place} /> });
+  fields.push({ name: 'tags', render: () => <TagInput availableTags={data.available_tags || []} initialTags={place?.tags || []} tagCatalog={data.tag_catalog || []} /> });
   return <Columns><Column id="single-column"><Card title={`Auslagerort ${place ? 'updaten' : 'erstellen'}`}><NativeForm token={data.csrf_token} action={place ? `/auslagerorte/${place.id}/update` : '/auslagerorte/create'} fields={fields} /></Card></Column></Columns>;
 }
 

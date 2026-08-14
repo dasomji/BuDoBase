@@ -43,7 +43,6 @@ describe('Audit-Log navigation capability', () => {
     const orgiMenu = document.getElementById(orgi.getAttribute('aria-controls'));
     expect(within(orgiMenu).getAllByRole('link').map(link => link.textContent)).toEqual([
       'Serienbrief',
-      'Turnis',
       'Aufenthaltsdoku',
       'Audit-Log',
       'Admin',

@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.http import Http404
@@ -10,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .audit import AuditEventData, actor_label_for_user, client_ip_from_request, record_audit_event
+from .forms import UploadForm
 from .memberships import create_membership, lock_membership_scopes, update_membership
 from .models import Turnus, TurnusMembership
 from .product_admin_policy import require_locked_product_admin, require_product_admin
@@ -35,6 +37,54 @@ def admin_teams_page(request):
         return redirect_to_login(request.get_full_path())
     require_product_admin(request.user, "Admin team management access denied.")
     return render_react_page(request)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_turnus(request):
+    """Create a Turnus for a product admin or an existing Leitung.
+
+    A Leitung is assigned to the new Turnus so the newly created scope remains
+    visible and manageable. Product admins retain their global authority and do
+    not receive an implicit Turnus membership.
+    """
+    with transaction.atomic():
+        actor = get_user_model().objects.select_for_update().get(pk=request.user.pk)
+        is_product_admin = actor.is_superuser
+        is_leitung = TurnusMembership.objects.filter(
+            user=actor,
+            functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+        ).exists()
+        if not is_product_admin and not is_leitung:
+            raise PermissionDenied("Turnus creation access denied.")
+
+        form = UploadForm({
+            "turnus_nr": request.data.get("turnus_nr"),
+            "turnus_beginn": request.data.get("turnus_beginn"),
+        })
+        if not form.is_valid():
+            errors = [
+                str(error)
+                for field_errors in form.errors.values()
+                for error in field_errors
+            ]
+            raise ValidationError({"detail": " ".join(errors)})
+        turnus = form.save()
+        if not is_product_admin:
+            create_membership(
+                user=actor,
+                turnus=turnus,
+                functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+            )
+
+    return Response({
+        "id": turnus.pk,
+        "label": str(turnus),
+        "number": turnus.turnus_nr,
+        "start": turnus.turnus_beginn.isoformat(),
+        "end": turnus.get_turnus_ende().isoformat(),
+        "excel_uploaded": False,
+    }, status=201)
 
 
 @api_view(["POST"])

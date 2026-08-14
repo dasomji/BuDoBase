@@ -1,8 +1,10 @@
 from datetime import date
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
+from unittest.mock import patch
 
 from budo_app.models import Turnus, TurnusMembership
 
@@ -75,6 +77,42 @@ class ExcelUploadAuthorizationTests(TestCase):
         missing = reverse("upload_excel", args=(999999,))
         self.assertEqual(self.client.get(self.url).status_code, 404)
         self.assertEqual(self.client.get(missing).status_code, 404)
+
+    @patch("budo_app.excel_views._save_uploaded_workbook")
+    def test_relevant_leitung_can_upload_from_team_management_api(self, save_workbook):
+        save_workbook.side_effect = lambda turnus, _form: turnus
+        leitung = self.user(
+            "api-leitung", role=TurnusMembership.FunctionalRole.LEITUNG
+        )
+        self.client.force_login(leitung)
+
+        response = self.client.post(
+            reverse("turnus-excel-upload-api", args=(self.turnus.pk,)),
+            {
+                "uploadedFile": SimpleUploadedFile(
+                    "turnus.xlsx",
+                    b"workbook",
+                    content_type=(
+                        "application/vnd.openxmlformats-officedocument."
+                        "spreadsheetml.sheet"
+                    ),
+                ),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"excel_uploaded": True})
+        save_workbook.assert_called_once()
+
+    def test_unscoped_excel_api_targets_are_not_disclosed(self):
+        user = self.user("api-unscoped")
+        self.client.force_login(user)
+        for turnus_id in (self.turnus.pk, 999999):
+            response = self.client.post(
+                reverse("turnus-excel-upload-api", args=(turnus_id,)),
+                {"uploadedFile": SimpleUploadedFile("turnus.xlsx", b"workbook")},
+            )
+            self.assertEqual(response.status_code, 404)
 
     def test_import_mutation_requires_csrf(self):
         leitung = self.user(

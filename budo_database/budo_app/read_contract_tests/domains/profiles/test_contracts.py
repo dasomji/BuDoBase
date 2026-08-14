@@ -146,6 +146,7 @@ class ProfileContractTests(TestCase):
         submission = {
             "_target": target,
             "rufname": "Grace Neu",
+            "email": "Grace.Neu@EXAMPLE.TEST",
             "allergien": "Keine",
             "coffee": "Milch",
             "rolle": "o",
@@ -166,7 +167,10 @@ class ProfileContractTests(TestCase):
         self.assertEqual(saved.status_code, 200)
         self.assertEqual(saved.json(), {"ok": True, "redirect": "/teams/"})
         selected.refresh_from_db()
+        selected.user.refresh_from_db()
         self.assertEqual(selected.rufname, "Grace Neu")
+        self.assertEqual(selected.user.email, "grace.neu@example.test")
+        self.assertEqual(self.user.email, "ada@example.test")
         self.assertEqual(selected.allergien, "Keine")
         self.assertEqual(selected.budo_family, "XL")
         self.assertFalse(selected.user.turnus_memberships.filter(turnus=self.other_turnus).exists())
@@ -201,6 +205,7 @@ class ProfileContractTests(TestCase):
             {
                 "_target": "/profil/bearbeiten/",
                 "rufname": "Ada Test",
+                "email": "ada@example.test",
                 "allergien": "Haselnüsse",
                 "coffee": "Schwarz",
                 "rolle": "o",
@@ -228,6 +233,7 @@ class ProfileContractTests(TestCase):
             {
                 "_target": "/profil/bearbeiten/",
                 "rufname": "Not saved",
+                "email": "ada@example.test",
                 "allergien": "Neu",
                 "coffee": "Milch",
                 "rolle": "b",
@@ -249,6 +255,7 @@ class ProfileContractTests(TestCase):
             {
                 "_target": "/profil/bearbeiten/",
                 "rufname": "Ada Neu",
+                "email": "  Ada.Neu@EXAMPLE.TEST  ",
                 "allergien": "Keine",
                 "coffee": "Milch",
                 "rolle": "b",
@@ -266,11 +273,15 @@ class ProfileContractTests(TestCase):
         })
         self.profile.refresh_from_db()
         self.assertEqual(self.profile.rufname, "Ada Neu")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "ada.neu@example.test")
         self.assertEqual(self.profile.allergien, "Keine")
         self.assertEqual(self.profile.coffee, "Milch")
         self.assertEqual(self.profile.essen, "vn")
         self.assertEqual(self.profile.budo_family, "XL")
         self.assertEqual(str(self.profile.telefonnummer), "+436641234567")
+        profile_contract = self.client.get(self.contract_url("profile")).json()
+        self.assertEqual(profile_contract["profile"]["email"], "ada.neu@example.test")
         bootstrap = self.client.get(reverse("bootstrap-api")).json()
         self.assertEqual(bootstrap["profile"]["rufname"], "Ada Neu")
         self.assertEqual(bootstrap["turnus"]["id"], self.turnus.id)
@@ -278,6 +289,36 @@ class ProfileContractTests(TestCase):
             "text": "Profil upgedatet!",
             "tags": "success",
         }])
+
+    def test_profile_email_is_required_valid_unique_and_does_not_partially_save(self):
+        User.objects.create_user(
+            username="email-owner",
+            email="taken@example.test",
+        )
+        submission = {
+            "_target": "/profil/bearbeiten/",
+            "rufname": "Must not be saved",
+            "allergien": "Neu",
+            "coffee": "Milch",
+            "essen": "vn",
+            "telefonnummer": "+436641234567",
+            "budo_family": "L",
+        }
+
+        for email in ("", "not-an-email", "TAKEN@EXAMPLE.TEST"):
+            with self.subTest(email=email):
+                rejected = self.client.post(
+                    reverse("form-submit-api"),
+                    {**submission, "email": email},
+                )
+
+                self.assertEqual(rejected.status_code, 422)
+                self.assertFalse(rejected.json()["ok"])
+                self.assertTrue(rejected.json()["errors"])
+                self.profile.refresh_from_db()
+                self.user.refresh_from_db()
+                self.assertEqual(self.profile.rufname, "Ada")
+                self.assertEqual(self.user.email, "ada@example.test")
 
 
 @override_settings(STORAGES=TEST_STORAGES)

@@ -109,7 +109,7 @@ class JoinRequestDecisionHttpTests(TestCase):
         turnuses = [item for year in response.json()["years"] for item in year["turnuses"]]
         self.assertEqual([item["id"] for item in turnuses], [self.turnus.id])
         self.assertEqual(turnuses[0]["pending_requests"], [{
-            "id": own.id, "user_id": own_user.id, "name": "own", "email": "own@example.test",
+            "id": own.id, "user_id": own_user.id, "name": "Own", "email": "own@example.test",
         }])
 
     def test_admin_can_reject_across_turnusse_without_granting_access_and_it_is_audited(self):

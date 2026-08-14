@@ -19,6 +19,8 @@ describe('route inventory', () => {
     ['/upload', 'turnus-upload', 'maintenance', 'turnus-list'],
     ['/upload_excel/9', 'turnus-upload', 'maintenance', 'turnus-upload'],
     ['/settings/', 'admin-settings', 'maintenance', 'admin-settings'],
+    ['/teams/', 'team-management', 'memberships', 'team-management'],
+    ['/admin/teams/', 'admin-team-overview', 'memberships', 'admin-team-overview'],
     ['/all_kids', 'kids', 'kids', 'kids-directory'],
     ['/zugabreise', 'train-departure', 'attendance', 'train-departure'],
     ['/zuganreise', 'train-arrival', 'attendance', 'train-arrival'],
@@ -67,6 +69,11 @@ describe('route inventory', () => {
   it('propagates entity identifiers and the allocation week for future loaders', () => {
     expect(parseRoute('/kid_details/21')).toMatchObject({ id: '21' });
     expect(parseRoute('/swp-einteilung-w2')).toMatchObject({ week: '2' });
+  });
+
+  it('names Team management consistently in the page title', () => {
+    expect(resolveRouteTitle(parseRoute('/teams/'), { authenticated: true })).toBe('Team and Turnus');
+    expect(resolveRouteTitle(parseRoute('/admin/teams/'), { authenticated: true })).toBe('Team and Turnus');
   });
 
   it('keeps dynamic titles owned by their route domains', () => {

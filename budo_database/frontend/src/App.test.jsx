@@ -131,6 +131,77 @@ describe('application loading', () => {
     expect(await screen.findByRole('heading', { name: 'T4-2026' })).toBeInTheDocument();
   });
 
+  it('refreshes Aktiver Turnus after the signed-in user is added to another Turnus', async () => {
+    window.history.pushState({}, '', '/teams/');
+    const originalBootstrap = {
+      authenticated: true,
+      csrf_token: 'token',
+      messages: [],
+      profile: { id: 1, rufname: 'Ada' },
+      turnus: { id: 1, label: 'T1-2026' },
+      turnus_selection: { selected_id: 1, options: [{ id: 1, label: 'T1-2026' }] },
+      permissions: {},
+      search_index: { kids: [], focuses: [], places: [] },
+      happy_cleaning_events: [],
+    };
+    const teamData = {
+      years: [{
+        year: 2026,
+        turnuses: [{
+          id: 1, label: 'T1-2026', start: '2026-07-04', end: '2026-07-17',
+          excel_uploaded: false, members: [], pending_requests: [], request_summary: { pending: 0 },
+        }, {
+          id: 2, label: 'T2-2026', start: '2026-07-18', end: '2026-07-31',
+          excel_uploaded: false, members: [], pending_requests: [], request_summary: { pending: 0 },
+        }],
+      }],
+      people: [{
+        id: 1,
+        name: 'Ada Admin',
+        email: 'ada@example.test',
+        relationships: ['T1-2026'],
+        turnus_ids: [1],
+        available: false,
+      }],
+      can_manage_leitung: true,
+      can_manage_memberships: true,
+      can_create_turnus: true,
+    };
+    let bootstrapRequests = 0;
+    const fetchImpl = vi.fn((url, options = {}) => {
+      if (url === '/api/bootstrap/') {
+        bootstrapRequests += 1;
+        return Promise.resolve(response(bootstrapRequests === 1 ? originalBootstrap : {
+          ...originalBootstrap,
+          turnus_selection: {
+            selected_id: 1,
+            options: [{ id: 1, label: 'T1-2026' }, { id: 2, label: 'T2-2026' }],
+          },
+        }));
+      }
+      if (url === '/api/route-data/team-management/') return Promise.resolve(response(teamData));
+      if (url === '/api/turnusse/2/memberships/' && options.method === 'POST') {
+        return Promise.resolve(response({ membership_id: 77, role_label: 'Teamer', team_label: '' }));
+      }
+      throw new Error(`Unexpected request: ${options.method || 'GET'} ${url}`);
+    });
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByRole('option', { name: 'T1-2026' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'T2-2026' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /T2-2026/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
+    fireEvent.click(await screen.findByRole('button', {
+      name: 'Ada Admin als Teamer zu T2-2026 hinzufügen',
+    }));
+    await screen.findByText('Ada Admin ist jetzt Teamer.');
+    fireEvent.click(screen.getByRole('button', { name: 'Dialog schließen' }));
+
+    expect(await screen.findByRole('option', { name: 'T2-2026' })).toBeInTheDocument();
+    expect(bootstrapRequests).toBe(2);
+  });
+
   it('keeps the current page and shows the shared error toast when a Turnus switch fails', async () => {
     window.history.pushState({}, '', '/all_kids');
     const bootstrap = {

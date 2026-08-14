@@ -9,7 +9,9 @@ from django.core.exceptions import PermissionDenied
 
 
 def _display_name(user):
-    return user.get_full_name().strip() or user.username
+    profile = getattr(user, "profil", None)
+    profile_name = (getattr(profile, "rufname", "") or "").strip()
+    return profile_name or user.get_full_name().strip() or user.username
 
 
 def _profile_card(membership, turnus_id, visible_turnus_labels):
@@ -113,6 +115,7 @@ def _team_overview(request, *, admin_only):
             "number": turnus.turnus_nr,
             "start": turnus.turnus_beginn.isoformat(),
             "end": turnus.get_turnus_ende().isoformat(),
+            "excel_uploaded": bool(turnus.uploadedFile),
             "members": members,
             "request_summary": {"pending": len(pending_requests)},
             "pending_requests": pending_requests,
@@ -121,7 +124,11 @@ def _team_overview(request, *, admin_only):
         })
     people = []
     if global_admin or managed_turnus_ids:
-        people_source = User.objects.filter(is_active=True).prefetch_related("turnus_memberships__turnus")
+        people_source = (
+            User.objects.filter(is_active=True)
+            .select_related("profil")
+            .prefetch_related("turnus_memberships__turnus")
+        )
         visible_turnus_ids = None if global_admin else {
             turnus.id for turnus in turnuses
         }
@@ -147,6 +154,7 @@ def _team_overview(request, *, admin_only):
         "people": people,
         "can_manage_leitung": global_admin,
         "can_manage_memberships": global_admin or bool(managed_turnus_ids),
+        "can_create_turnus": global_admin or bool(managed_turnus_ids),
         "identity_verification_warning": IDENTITY_VERIFICATION_WARNING,
     }
 

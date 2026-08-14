@@ -132,9 +132,16 @@ describe('Schwerpunkte pages', () => {
     expect(within(kidRow).getByRole('link', { name: 'Ada Kind' })).toHaveAttribute('href', '/kid_details/21');
     expect(screen.getByText('Asthmaspray')).toBeInTheDocument();
     expect(screen.getByText('Allergie')).toBeInTheDocument();
+    const detailsCard = screen.getByRole('heading', { name: 'Wald' }).closest('.card');
     const mealsCard = screen.getByRole('heading', { name: 'Essen' }).closest('.card');
     expect(within(mealsCard).getByRole('rowheader', { name: 'Tag 1' })).toBeInTheDocument();
     expect(within(mealsCard).getByText('warm')).toBeInTheDocument();
+    const overview = screen.getByRole('region', { name: 'Schwerpunktübersicht' });
+    expect(overview).toContainElement(detailsCard);
+    expect(overview).toContainElement(mealsCard);
+    expect(overview).not.toContainElement(kidRow);
+    expect(overview.compareDocumentPosition(kidRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Karte' })).not.toBeInTheDocument();
     const editFocus = screen.getByRole('link', { name: 'SWP bearbeiten' });
     expect(editFocus).toHaveAttribute('href', '/schwerpunkt/3/update');
     expect(within(mealsCard).getByRole('link', { name: 'Essen bearbeiten' })).toHaveAttribute('href', '/swpmeals/3');

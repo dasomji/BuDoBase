@@ -8,12 +8,19 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
+from django.db import IntegrityError, transaction
 from budo_app.models import Kinder, Profil, TurnusMembership
 from budo_app.react_views import ReactPageTemplateMixin, render_react_page
 from django.views.decorators.http import require_GET
 from django.views.generic.edit import UpdateView
 from django.urls import reverse_lazy
-from .forms import LoginForm, RegisterForm
+from .forms import (
+    DUPLICATE_EMAIL_ERROR,
+    LoginForm,
+    ProfileForm,
+    RegisterForm,
+    is_email_unique_integrity_error,
+)
 from budo_app.utils import cache_user_profile
 from .dashboard_services import build_dashboard_context
 
@@ -69,10 +76,17 @@ def sign_up(request):
         if form.is_valid():
             user = form.save(commit=False)
             user.username = user.username.lower()
-            user.save()
-            messages.success(request, 'You have signed up successfully.')
-            login(request, user)
-            return redirect('dashboard')
+            try:
+                with transaction.atomic():
+                    user.save()
+            except IntegrityError as error:
+                if not is_email_unique_integrity_error(error):
+                    raise
+                form.add_error("email", DUPLICATE_EMAIL_ERROR)
+            else:
+                messages.success(request, 'You have signed up successfully.')
+                login(request, user)
+                return redirect('dashboard')
         return render_react_page(request, {'form': form})
 
 
@@ -102,8 +116,7 @@ def profile_detail(request):
 
 class ProfilUpdate(ReactPageTemplateMixin, UpdateView):
     model = Profil
-    fields = ['rufname', 'allergien', 'coffee', 'essen',
-              'telefonnummer', 'budo_family']
+    form_class = ProfileForm
     success_url = reverse_lazy('dashboard')
 
     def dispatch(self, request, *args, **kwargs):
@@ -115,8 +128,15 @@ class ProfilUpdate(ReactPageTemplateMixin, UpdateView):
         return self.request.user.profil
 
     def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+        except IntegrityError as error:
+            if not is_email_unique_integrity_error(error):
+                raise
+            form.add_error("email", DUPLICATE_EMAIL_ERROR)
+            return self.form_invalid(form)
         messages.success(self.request, "Profil upgedatet!")
-        return super(ProfilUpdate, self).form_valid(form)
+        return response
 
 
 class ProfilAdminUpdate(ProfilUpdate):

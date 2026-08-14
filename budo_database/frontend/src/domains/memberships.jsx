@@ -79,7 +79,7 @@ function Member({ member, mutate, onChanged, canManageLeitung, canManageMembersh
   const remove = async () => {
     setBusy(true);
     try {
-      await mutate(`/api/memberships/${member.id}/remove/`, {});
+      await mutate(`/api/memberships/${member.id}/remove/`, {}, true, true, true);
       onChanged(member, { removed: true });
       showSuccess(`${member.name} wurde aus dem Turnus entfernt.`);
     } catch (error) {
@@ -92,10 +92,13 @@ function Member({ member, mutate, onChanged, canManageLeitung, canManageMembersh
   const profileSaved = async (_result, form) => {
     const formData = new FormData(form);
     const food = formData.get('essen');
+    const rufname = formData.get('rufname');
     onChanged(member, {
+      name: rufname,
       profile: {
         ...member.profile,
-        rufname: formData.get('rufname'),
+        rufname,
+        email: formData.get('email'),
         allergies: formData.get('allergien'),
         coffee: formData.get('coffee'),
         food,
@@ -104,7 +107,7 @@ function Member({ member, mutate, onChanged, canManageLeitung, canManageMembersh
         phone: formData.get('telefonnummer'),
       },
     });
-    showSuccess(`Das Profil von ${member.name} wurde aktualisiert.`);
+    showSuccess(`Das Profil von ${rufname} wurde aktualisiert.`);
   };
 
   const manageable = canManageLeitung || (canManageMemberships && !isLead);
@@ -331,12 +334,111 @@ function PersonAddDialog({ open, close, people, selectedContext, selectedTurnusI
   );
 }
 
-export function AdminTeamOverviewPage({ data, mutate }) {
+function TurnusCreateDialog({ open, onOpenChange, mutate, onCreated }) {
+  const [busy, setBusy] = useState(false);
+  const showError = useErrorToast();
+
+  const submit = async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    setBusy(true);
+    try {
+      const turnus = await mutate('/api/turnusse/', {
+        turnus_nr: Number(formData.get('turnus_nr')),
+        turnus_beginn: formData.get('turnus_beginn'),
+      }, true, true, true);
+      onCreated(turnus);
+      form.reset();
+    } catch (error) {
+      showError(error.payload?.detail || 'Der Turnus konnte nicht hinzugefügt werden.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      {open && (
+        <Dialog.Portal>
+          <Dialog.Backdrop className="fixed inset-0 z-[var(--z-modal)] bg-black/45" />
+          <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] grid place-items-center overflow-y-auto p-4">
+            <Dialog.Popup className="relative grid max-h-[calc(100dvh-2rem)] w-full max-w-md gap-5 overflow-y-auto rounded-xl border border-border bg-popover p-5 text-popover-foreground shadow-xl">
+              <Dialog.Title className="mr-10 text-xl font-semibold">Turnus hinzufügen</Dialog.Title>
+              <Dialog.Description className="sr-only">Turnusnummer und Startdatum festlegen.</Dialog.Description>
+              <Dialog.Close className="absolute top-2 right-2" render={<Button type="button" variant="ghost" size="icon" />} aria-label="Dialog schließen">
+                <X aria-hidden="true" />
+              </Dialog.Close>
+              <form className="grid gap-4" onSubmit={submit}>
+                <label className="grid gap-1 font-medium">
+                  Welcher Turnus?
+                  <Input autoFocus min="1" name="turnus_nr" required type="number" />
+                </label>
+                <label className="grid gap-1 font-medium">
+                  Startdatum
+                  <Input name="turnus_beginn" required type="date" />
+                </label>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button type="button" variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>Abbrechen</Button>
+                  <Button type="submit" disabled={busy}>{busy ? 'Wird hinzugefügt…' : 'Turnus hinzufügen'}</Button>
+                </div>
+              </form>
+            </Dialog.Popup>
+          </Dialog.Viewport>
+        </Dialog.Portal>
+      )}
+    </Dialog.Root>
+  );
+}
+
+function TurnusExcelUpload({ turnus, mutate, onUploaded }) {
+  const [busy, setBusy] = useState(false);
+  const showError = useErrorToast();
+
+  const upload = async event => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    try {
+      await mutate(`/api/turnusse/${turnus.id}/excel/`, { uploadedFile: file }, false);
+      onUploaded();
+    } catch (error) {
+      showError(error.payload?.detail || 'Die Excel-Datei konnte nicht hochgeladen werden.');
+      input.value = '';
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (turnus.excel_uploaded) {
+    return <p className="flex items-center gap-1.5 font-medium text-success"><Check aria-hidden="true" /> Excel uploaded.</p>;
+  }
+
+  return (
+    <div>
+      <Button type="button" variant="outline" disabled={busy} onClick={event => event.currentTarget.nextElementSibling?.click()}>
+        {busy ? 'Uploading Excel…' : 'Upload Excel file'}
+      </Button>
+      <input
+        className="sr-only"
+        type="file"
+        accept=".xlsx,.xls"
+        aria-label="Excel file"
+        disabled={busy}
+        onChange={upload}
+      />
+    </div>
+  );
+}
+
+export function AdminTeamOverviewPage({ data, mutate, createOpen = false, onCreateOpenChange = () => {} }) {
   const showError = useErrorToast();
   const showSuccess = useSuccessToast();
   const [personDialogOpen, setPersonDialogOpen] = useState(false);
   const [years, setYears] = useState(data.years || []);
   const [people, setPeople] = useState(data.people || []);
+  const [pendingTurnusId, setPendingTurnusId] = useState(null);
   const canManageLeitung = data.can_manage_leitung !== false;
   const defaultCanManageMemberships = data.can_manage_memberships === true;
   const [selectedTurnusId, setSelectedTurnusId] = useState(() => data.years?.[0]?.turnuses?.[0]?.id ?? null);
@@ -351,9 +453,14 @@ export function AdminTeamOverviewPage({ data, mutate }) {
   const canEditProfiles = selectedTurnus?.can_edit_profiles ?? canManageMemberships;
 
   useEffect(() => {
+    if (pendingTurnusId != null && allTurnuses.some(turnus => turnus.id === pendingTurnusId)) {
+      setSelectedTurnusId(pendingTurnusId);
+      setPendingTurnusId(null);
+      return;
+    }
     if (!selectedContext && allTurnuses.length) setSelectedTurnusId(allTurnuses[0].id);
     if (!allTurnuses.length && selectedTurnusId !== null) setSelectedTurnusId(null);
-  }, [allTurnuses, selectedContext, selectedTurnusId]);
+  }, [allTurnuses, pendingTurnusId, selectedContext, selectedTurnusId]);
 
   const changed = (changedMember, change) => {
     const membershipId = changedMember.id;
@@ -374,6 +481,11 @@ export function AdminTeamOverviewPage({ data, mutate }) {
       turnus_ids: (person.turnus_ids || []).filter(id => id !== selectedTurnusId),
       available: (person.turnus_ids || []).filter(id => id !== selectedTurnusId).length === 0,
     } : person));
+    if (change.profile) setPeople(current => current.map(person => person.id === changedMember.user_id ? {
+      ...person,
+      name: change.name || person.name,
+      email: change.profile.email,
+    } : person));
   };
 
   const requestDecided = (requestId, approvedMember) => setYears(current => current.map(year => ({
@@ -391,7 +503,7 @@ export function AdminTeamOverviewPage({ data, mutate }) {
 
   const addPerson = async (person, { role, url }) => {
     try {
-      const result = await mutate(url, { user_id: person.id });
+      const result = await mutate(url, { user_id: person.id }, true, true, true);
       setYears(current => current.map(year => ({
         ...year,
         turnuses: year.turnuses.map(turnus => turnus.id === selectedTurnusId ? {
@@ -420,6 +532,16 @@ export function AdminTeamOverviewPage({ data, mutate }) {
 
   const addLeitung = person => addPerson(person, { role: 'leitung', url: `/api/admin/turnusse/${selectedTurnusId}/leitung/` });
   const addTeamer = person => addPerson(person, { role: 'teamer', url: `/api/turnusse/${selectedTurnusId}/memberships/` });
+  const markExcelUploaded = () => setYears(current => current.map(year => ({
+    ...year,
+    turnuses: year.turnuses.map(turnus => turnus.id === selectedTurnusId
+      ? { ...turnus, excel_uploaded: true }
+      : turnus),
+  })));
+  const turnusCreated = turnus => {
+    setPendingTurnusId(turnus.id);
+    onCreateOpenChange(false);
+  };
   const leads = selectedTurnus?.members.filter(member => member.functional_role === 'leitung') || [];
 
   return (
@@ -467,10 +589,15 @@ export function AdminTeamOverviewPage({ data, mutate }) {
                 <p><ShieldCheck aria-hidden="true" /> Leitung: {leads.length ? leads.map(member => member.name).join(' und ') : 'noch nicht besetzt'}</p>
               </div>
               {(canManageLeitung || canManageMemberships) && (
-                <Button className="mobile-icon-action" size="responsive-icon" type="button" variant="secondary" aria-label="Person hinzufügen" onClick={() => setPersonDialogOpen(true)}>
-                  <span className="desktop-action-label">Person hinzufügen</span>
-                  <UserPlus className="mobile-action-label" aria-hidden="true" />
-                </Button>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {canManageMemberships && (
+                    <TurnusExcelUpload turnus={selectedTurnus} mutate={mutate} onUploaded={markExcelUploaded} />
+                  )}
+                  <Button className="mobile-icon-action" size="responsive-icon" type="button" variant="secondary" aria-label="Person hinzufügen" onClick={() => setPersonDialogOpen(true)}>
+                    <span className="desktop-action-label">Person hinzufügen</span>
+                    <UserPlus className="mobile-action-label" aria-hidden="true" />
+                  </Button>
+                </div>
               )}
             </header>
             {Boolean(selectedTurnus.pending_requests?.length) && (
@@ -496,6 +623,12 @@ export function AdminTeamOverviewPage({ data, mutate }) {
           </section>
         )}
       </div>
+      <TurnusCreateDialog
+        open={createOpen}
+        onOpenChange={onCreateOpenChange}
+        mutate={mutate}
+        onCreated={turnusCreated}
+      />
       {personDialogOpen && selectedTurnus && (
         <PersonAddDialog
           open
@@ -513,20 +646,42 @@ export function AdminTeamOverviewPage({ data, mutate }) {
   );
 }
 
-const renderTeamManagement = ({ data, mutate }) => <AdminTeamOverviewPage data={data} mutate={mutate} />;
+const teamHeaderAction = (data, { setPageState }) => data.can_create_turnus ? (
+  <Button
+    className="mobile-icon-action"
+    size="responsive-icon"
+    type="button"
+    aria-label="Turnus hinzufügen"
+    onClick={() => setPageState?.(current => ({ ...current, createTurnusOpen: true }))}
+  >
+    <span className="desktop-action-label">Turnus hinzufügen</span>
+    <Plus className="mobile-action-label" aria-hidden="true" />
+  </Button>
+) : null;
+
+const renderTeamManagement = ({ data, mutate, pageState, setPageState }) => (
+  <AdminTeamOverviewPage
+    data={data}
+    mutate={mutate}
+    createOpen={Boolean(pageState?.createTurnusOpen)}
+    onCreateOpenChange={open => setPageState?.(current => ({ ...current, createTurnusOpen: open }))}
+  />
+);
 
 export const membershipRoutes = [{
   pattern: /^\/admin\/teams$/,
   page: 'admin-team-overview',
-  title: 'Teamverwaltung',
+  title: 'Team and Turnus',
   domain: 'memberships',
   readContractKey: 'admin-team-overview',
+  headerAction: teamHeaderAction,
   render: renderTeamManagement,
 }, {
   pattern: /^\/teams$/,
   page: 'team-management',
-  title: 'Teamverwaltung',
+  title: 'Team and Turnus',
   domain: 'memberships',
   readContractKey: 'team-management',
+  headerAction: teamHeaderAction,
   render: renderTeamManagement,
 }];

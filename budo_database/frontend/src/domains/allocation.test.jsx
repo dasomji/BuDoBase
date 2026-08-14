@@ -59,6 +59,9 @@ describe('allocation page', () => {
         name: 'Wald',
         week: 'w2',
         kid_ids: [1, 2, 3],
+        place_id: 7,
+        place: 'Waldplatz',
+        carers: ['Alex', 'Grace'],
         stats: {
           average_age: 12.5,
           sex: { male: 1, female: 1, diverse: 1 },
@@ -72,20 +75,31 @@ describe('allocation page', () => {
       ],
     }} />);
 
-    const card = screen.getByRole('heading', { name: 'Wald: 3' }).closest('.card');
+    const heading = screen.getByRole('heading', { name: 'Wald: 3' });
+    const card = heading.closest('.card');
+    expect(within(heading).getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/2/');
+    expect(within(card).queryByRole('button')).not.toBeInTheDocument();
     const overview = card.parentElement;
-    const stickyControls = overview.parentElement;
+    const tableControls = overview.parentElement;
     expect(overview).toHaveAccessibleName('SWP-Übersicht');
     expect(overview).toHaveClass('max-[900px]:flex-wrap', 'max-[900px]:overflow-x-visible');
-    expect(stickyControls).toHaveAttribute('data-slot', 'table-sticky-controls');
-    expect(within(stickyControls).getByRole('searchbox', { name: 'Kinder filtern' })).toBeInTheDocument();
-    expect(stickyControls.nextElementSibling).toHaveAttribute('data-slot', 'table-scroll');
-    expect(stickyControls.nextElementSibling).toHaveAttribute('data-vertical-scroll');
+    expect(tableControls).toHaveAttribute('data-slot', 'table-controls');
+    expect(tableControls).not.toHaveClass('max-[900px]:sticky');
+    expect(within(tableControls).getByRole('searchbox', { name: 'Kinder filtern' })).toBeInTheDocument();
+    expect(tableControls.nextElementSibling).toHaveAttribute('data-slot', 'table-scroll');
+    expect(tableControls.nextElementSibling).toHaveAttribute('data-vertical-scroll');
     const stats = within(card).getByLabelText('Statistik Wald');
     expect(stats).toHaveTextContent('Ø Alter: 12,5');
     expect(stats).toHaveTextContent('Geschlechter: 1 ♂ · 1 ♀ · 1 ⚧');
     expect(stats).toHaveTextContent('BuDo-Familien: 1 S · 1 M · 0 L · 1 XL');
-    expect(within(card).getByRole('list')).toBeInTheDocument();
+    expect(stats).toHaveTextContent('Betreuer:innen: Alex, Grace');
+    expect(within(stats).queryByRole('link', { name: 'Alex' })).not.toBeInTheDocument();
+    expect(within(stats).queryByRole('link', { name: 'Grace' })).not.toBeInTheDocument();
+    expect(within(stats).getByRole('link', { name: 'Waldplatz' })).toHaveAttribute('href', '/auslagerorte/7/');
+    const kidList = within(card).getByRole('list');
+    expect(kidList).not.toHaveAttribute('inert');
+    fireEvent.click(heading);
+    expect(kidList).not.toHaveAttribute('inert');
     const printPages = screen.getByRole('region', { name: 'SWP-Listen', hidden: true });
     const printPage = within(printPages).getByRole('heading', { name: 'Wald', hidden: true }).closest('.allocation-print-page');
     expect(printPage.querySelector('.allocation-print-illustration[aria-hidden="true"]')).toBeInTheDocument();

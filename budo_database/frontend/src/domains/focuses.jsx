@@ -93,8 +93,15 @@ export function FocusDetailPage({ data, id }) {
   const focus = data.focus;
   if (!focus) return <NotFoundPage />;
   const kids = data.kids;
-  const mapPlaces = focus.place_id ? [{ id: focus.place_id, name: focus.place, coordinates: focus.coordinates }] : [];
-  return <Columns><Column id="left-column"><Card title={focus.name} actions={<Button href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</Button>}><FocusDetails focus={focus} kidCount={kids.length} /></Card><Card title="Essen" actions={<Button href={`/swpmeals/${focus.id}`}>Essen bearbeiten</Button>}><MealTable focus={focus} /></Card><GoogleMapCard apiKey={data.google_maps_browser_api_key} mapId={data.google_maps_map_id} places={mapPlaces} /></Column><Column id="right-column"><DataTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
+  return <Columns className="grid min-w-0 grid-cols-1 items-start">
+    <Column id="focus-detail-content" className="w-full min-w-0">
+      <section className="grid min-w-0 grid-cols-1 items-start gap-4 min-[901px]:grid-cols-2" aria-label="Schwerpunktübersicht">
+        <Card className="min-w-0" title={focus.name} actions={<Button href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</Button>}><FocusDetails focus={focus} kidCount={kids.length} /></Card>
+        <Card className="min-w-0" title="Essen" actions={<Button href={`/swpmeals/${focus.id}`}>Essen bearbeiten</Button>}><MealTable focus={focus} /></Card>
+      </section>
+      <DataTable columns={focusKidColumns} rows={kids} />
+    </Column>
+  </Columns>;
 }
 
 export function FocusFormPage({ data, id }) {

@@ -8,6 +8,10 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from . import models
 from .excelProcessor import process_excel
@@ -25,6 +29,47 @@ from .storage_lifecycle import delete_storage_object_on_commit
 from .updateExcel import update_excel_file
 
 logger = logging.getLogger(__name__)
+
+
+def _editable_turnuses(user):
+    turnuses = models.Turnus.objects.all()
+    if not user.is_superuser:
+        turnuses = turnuses.filter(
+            memberships__user_id=user.pk,
+            memberships__functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+        )
+    return turnuses
+
+
+def _save_uploaded_workbook(turnus, form):
+    persisted_turnus = models.Turnus.objects.only("uploadedFile").get(pk=turnus.pk)
+    previous_file = persisted_turnus.uploadedFile
+    previous_name = previous_file.name
+    previous_storage = previous_file.storage
+    turnus._defer_replaced_file_cleanup = True
+
+    try:
+        with transaction.atomic():
+            turnus = form.save()
+            process_excel(turnus)
+            current_name = turnus.uploadedFile.name
+            if previous_name and previous_name != current_name:
+                delete_storage_object_on_commit(previous_storage, previous_name)
+        return turnus
+    except Exception:
+        failed_file = turnus.uploadedFile
+        if (
+            failed_file.name
+            and failed_file.name != previous_name
+            and failed_file._committed
+        ):
+            delete_storage_object_on_commit(failed_file.storage, failed_file.name)
+        raise
+    finally:
+        if hasattr(turnus, "_defer_replaced_file_cleanup"):
+            del turnus._defer_replaced_file_cleanup
+        if hasattr(turnus, "_replaced_storage_file"):
+            del turnus._replaced_storage_file
 
 
 @login_required
@@ -65,62 +110,60 @@ def uploadFile(request):
 
 @login_required
 def upload_excel(request, turnus_id):
-    turnuses = models.Turnus.objects.all()
-    if not request.user.is_superuser:
-        turnuses = turnuses.filter(
-            memberships__user_id=request.user.pk,
-            memberships__functional_role=TurnusMembership.FunctionalRole.LEITUNG,
-        )
-    turnus = get_object_or_404(turnuses, id=turnus_id)
+    turnus = get_object_or_404(_editable_turnuses(request.user), id=turnus_id)
     if request.method == "POST":
         form = UploadForm(request.POST, request.FILES, instance=turnus)
         if form.is_valid():
-            persisted_turnus = models.Turnus.objects.only(
-                "uploadedFile"
-            ).get(pk=turnus.pk)
-            previous_file = persisted_turnus.uploadedFile
-            previous_name = previous_file.name
-            previous_storage = previous_file.storage
-            turnus._defer_replaced_file_cleanup = True
-
             try:
-                with transaction.atomic():
-                    turnus = form.save()
-                    process_excel(turnus)
-                    current_name = turnus.uploadedFile.name
-                    if previous_name and previous_name != current_name:
-                        delete_storage_object_on_commit(
-                            previous_storage,
-                            previous_name,
-                        )
+                turnus = _save_uploaded_workbook(turnus, form)
                 messages.success(
                     request, "Excel-Datei wurde erfolgreich verarbeitet.")
                 logger.info(
                     f"Excel file processed successfully for turnus {turnus.id}")
                 return redirect('uploadFile')
             except Exception as e:
-                failed_file = turnus.uploadedFile
-                if (
-                    failed_file.name
-                    and failed_file.name != previous_name
-                    and failed_file._committed
-                ):
-                    delete_storage_object_on_commit(
-                        failed_file.storage,
-                        failed_file.name,
-                    )
                 logger.error(
                     f"Excel processing failed for turnus {turnus.id}: {str(e)}")
                 messages.error(
                     request, f"Fehler beim Verarbeiten der Excel-Datei: {str(e)}")
-            finally:
-                if hasattr(turnus, "_defer_replaced_file_cleanup"):
-                    del turnus._defer_replaced_file_cleanup
-                if hasattr(turnus, "_replaced_storage_file"):
-                    del turnus._replaced_storage_file
     else:
         form = UploadForm(instance=turnus)
     return render_react_page(request, {'form': form, 'turnus': turnus})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def upload_turnus_excel(request, turnus_id):
+    turnus = get_object_or_404(_editable_turnuses(request.user), id=turnus_id)
+    uploaded_file = request.FILES.get("uploadedFile")
+    if uploaded_file is None:
+        raise ValidationError({"detail": "Bitte eine Excel-Datei auswählen."})
+    form = UploadForm(
+        {
+            "turnus_nr": turnus.turnus_nr,
+            "turnus_beginn": turnus.turnus_beginn.isoformat(),
+        },
+        {"uploadedFile": uploaded_file},
+        instance=turnus,
+    )
+    if not form.is_valid():
+        errors = [
+            str(error)
+            for field_errors in form.errors.values()
+            for error in field_errors
+        ]
+        raise ValidationError({"detail": " ".join(errors)})
+    try:
+        turnus = _save_uploaded_workbook(turnus, form)
+    except Exception as error:
+        logger.error(
+            "Excel processing failed for turnus %s: %s", turnus.id, error
+        )
+        raise ValidationError({
+            "detail": f"Fehler beim Verarbeiten der Excel-Datei: {error}",
+        }) from error
+    logger.info("Excel file processed successfully for turnus %s", turnus.id)
+    return Response({"excel_uploaded": True})
 
 
 @login_required

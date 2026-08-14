@@ -140,6 +140,7 @@ class BootstrapContractTests(TestCase):
             reverse("profil-edit"),
             {
                 "rufname": "Bootstrap Teamer",
+                "email": "bootstrap@example.test",
                 "allergien": "",
                 "coffee": "",
                 "rolle": "b",

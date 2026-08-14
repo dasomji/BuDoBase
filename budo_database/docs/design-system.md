@@ -259,11 +259,16 @@ import { Card } from '../components';
 A Card is an expandable `section` with an `h2` by default. Its whole header is
 keyboard- and pointer-operable. On desktop it starts open unless
 `initiallyClosed` is true. Below 901px it starts closed, and that default reacts
-when the shared mobile state changes.
+when the shared mobile state changes. Set `collapsible={false}` only when the
+surface must remain visible at every breakpoint; its header then has ordinary
+non-button semantics and the Card ignores collapse state.
 
 ```jsx
 <Card title="Gesundheit">
   <HealthDetails />
+</Card>
+<Card title="Immer sichtbar" collapsible={false}>
+  <PermanentSummary />
 </Card>
 ```
 
@@ -310,7 +315,7 @@ Card props:
 
 | Prop | Contract |
 |---|---|
-| `title` | Required visible title and basis of the toggle's accessible name |
+| `title` | Required visible title and, for collapsible cards, basis of the toggle's accessible name |
 | `children` | Expandable content |
 | `id`, `className` | Optional DOM id and additional classes |
 | `initiallyClosed` | Start closed on desktop too |
@@ -321,6 +326,7 @@ Card props:
 | `headingLevel` | Heading level number; defaults to `2` |
 | `expanded` | Controlled expanded state |
 | `onExpandedChange` | Controlled-state callback |
+| `collapsible` | Defaults to `true`; set `false` for an always-visible Card with a non-interactive header |
 
 Do not build a second collapse state around Card. Use `expanded` and
 `onExpandedChange` when another component must control it.
@@ -528,7 +534,10 @@ Each row must have a stable, unique `id`. A column supports:
 `DataTable` accepts `empty` (default `Keine Einträge`), an optional explicit
 `id`, `beforeFilter`, and the three `TableScroll` behavior flags. Its shared
 controls area provides consistent top spacing below application chrome and
-spacing between stacked controls. It never generates a table id.
+spacing between stacked controls. A controls area with `beforeFilter` is sticky
+below the mobile application header by default. Pass `stickyControls={false}`
+when that content can be taller than a compact control bar; tall summaries must
+scroll normally instead of covering table rows. It never generates a table id.
 
 `showFilter` is not a general full-row search. It filters the first available
 value from `row.filterText`, `row.full_name`, or `row.name`, using German

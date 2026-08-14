@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Toaster } from '../components/ui/toast';
+import { parseRoute, routeHeaderAction } from '../routes';
 import { AdminTeamOverviewPage } from './memberships';
 
 const alexProfile = {
@@ -24,6 +25,7 @@ const data = { csrf_token: 'token', years: [{ year: 2026, turnuses: [{
   label: 'T2-2026',
   start: '2026-07-04',
   end: '2026-07-17',
+  excel_uploaded: false,
   members: [
     { id: 11, name: 'Alex Muster', functional_role: 'teamer', role_label: 'Teamer', team_label: 'Küche', profile: alexProfile },
     { id: 12, name: 'Bea Beispiel', functional_role: 'leitung', role_label: 'Leitung', team_label: 'Organisation', profile: { ...alexProfile, id: 52, rufname: 'Bea', email: 'bea@example.test', focuses: [] } },
@@ -121,6 +123,9 @@ describe('admin team overview', () => {
     const editDialog = screen.getByRole('dialog', { name: 'Alex Muster bearbeiten' });
     expect(within(editDialog).queryByText('Mitgliedschaft verwalten.')).not.toBeInTheDocument();
     expect(within(editDialog).getByLabelText('Rufname')).toHaveValue('Alex');
+    expect(within(editDialog).getByLabelText('E-Mail')).toHaveValue('alex@example.test');
+    expect(within(editDialog).getByLabelText('E-Mail')).toHaveAttribute('type', 'email');
+    expect(within(editDialog).getByLabelText('E-Mail')).toBeRequired();
     expect(within(editDialog).getByLabelText('Allergien')).toHaveValue('Nüsse');
     expect(within(editDialog).getByLabelText('Kaffee')).toHaveValue('Schwarz');
     expect(within(editDialog).getByLabelText('Essen')).toHaveValue('vt');
@@ -129,6 +134,8 @@ describe('admin team overview', () => {
 
     await user.clear(within(editDialog).getByLabelText('Rufname'));
     await user.type(within(editDialog).getByLabelText('Rufname'), 'Alex Neu');
+    await user.clear(within(editDialog).getByLabelText('E-Mail'));
+    await user.type(within(editDialog).getByLabelText('E-Mail'), 'alex.neu@example.test');
     await user.click(within(editDialog).getByRole('button', { name: 'Speichern' }));
 
     expect(fetchMock).toHaveBeenCalledOnce();
@@ -136,7 +143,15 @@ describe('admin team overview', () => {
     expect(url).toBe('/api/form-submit/');
     expect(options.body.get('_target')).toBe('/profil/51/');
     expect(options.body.get('rufname')).toBe('Alex Neu');
+    expect(options.body.get('email')).toBe('alex.neu@example.test');
     expect(within(editDialog).getByLabelText('Rufname')).toHaveValue('Alex Neu');
+
+    await user.click(within(editDialog).getByRole('button', { name: 'Dialog schließen' }));
+    expect(screen.getByRole('button', { name: 'Alex Neu Profil öffnen' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Alex Neu Profil öffnen' }));
+    expect(within(screen.getByRole('dialog', { name: 'Profil von Alex Neu' })).getByRole('link', {
+      name: 'alex.neu@example.test',
+    })).toHaveAttribute('href', 'mailto:alex.neu@example.test');
   });
 
   it('hides the request panel when the selected Turnus has no requests', () => {
@@ -152,6 +167,91 @@ describe('admin team overview', () => {
 
     expect(screen.queryByTestId('pending-request-panel')).not.toBeInTheDocument();
     expect(screen.queryByText('Keine offenen Anfragen.')).not.toBeInTheDocument();
+  });
+
+  it('offers Turnus creation from the route header only when authorized', async () => {
+    const user = userEvent.setup();
+    const setPageState = vi.fn();
+    const { unmount } = render(routeHeaderAction(
+      parseRoute('/teams/'),
+      { can_create_turnus: true },
+      { setPageState },
+    ));
+
+    await user.click(screen.getByRole('button', { name: 'Turnus hinzufügen' }));
+    expect(setPageState.mock.calls[0][0]({ untouched: true })).toEqual({
+      untouched: true,
+      createTurnusOpen: true,
+    });
+    unmount();
+
+    render(routeHeaderAction(parseRoute('/teams/'), { can_create_turnus: false }, { setPageState }));
+    expect(screen.queryByRole('button', { name: 'Turnus hinzufügen' })).not.toBeInTheDocument();
+  });
+
+  it('creates a Turnus from an opaque dialog with only number and start date', async () => {
+    const user = userEvent.setup();
+    const mutate = vi.fn().mockResolvedValue({ id: 9, label: 'T3-2027' });
+    const onCreateOpenChange = vi.fn();
+    render(
+      <Toaster>
+        <AdminTeamOverviewPage
+          data={data}
+          mutate={mutate}
+          createOpen
+          onCreateOpenChange={onCreateOpenChange}
+        />
+      </Toaster>,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Turnus hinzufügen' });
+    expect(dialog).toHaveClass('bg-popover');
+    expect(dialog).not.toHaveClass('card');
+    expect(within(dialog).getByLabelText('Welcher Turnus?')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Startdatum')).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/Excel/i)).not.toBeInTheDocument();
+
+    await user.type(within(dialog).getByLabelText('Welcher Turnus?'), '3');
+    await user.type(within(dialog).getByLabelText('Startdatum'), '2027-07-03');
+    await user.click(within(dialog).getByRole('button', { name: 'Turnus hinzufügen' }));
+
+    expect(mutate).toHaveBeenCalledWith('/api/turnusse/', {
+      turnus_nr: 3,
+      turnus_beginn: '2027-07-03',
+    }, true, true, true);
+    expect(onCreateOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('uploads Excel for the selected Turnus and replaces the option with a green check', async () => {
+    const user = userEvent.setup();
+    const mutate = vi.fn().mockResolvedValue({ excel_uploaded: true });
+    render(<Toaster><AdminTeamOverviewPage data={data} mutate={mutate} /></Toaster>);
+
+    await user.click(screen.getByRole('button', { name: 'Upload Excel file' }));
+    const file = new File(['workbook'], 'turnus.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    await user.upload(screen.getByLabelText('Excel file'), file);
+
+    expect(mutate).toHaveBeenCalledWith('/api/turnusse/4/excel/', { uploadedFile: file }, false);
+    const status = await screen.findByText('Excel uploaded.');
+    expect(status).toHaveClass('text-success');
+    expect(status.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByRole('button', { name: 'Upload Excel file' })).not.toBeInTheDocument();
+  });
+
+  it('shows only the successful Excel state when a workbook already exists', () => {
+    const uploaded = {
+      ...data,
+      years: [{ ...data.years[0], turnuses: [{
+        ...data.years[0].turnuses[0],
+        excel_uploaded: true,
+      }] }],
+    };
+    render(<Toaster><AdminTeamOverviewPage data={uploaded} mutate={vi.fn()} /></Toaster>);
+
+    expect(screen.getByText('Excel uploaded.')).toHaveClass('text-success');
+    expect(screen.queryByRole('button', { name: 'Upload Excel file' })).not.toBeInTheDocument();
   });
 
   it('renders the year, Turnus, and functional roles without membership-specific labels', () => {
@@ -330,7 +430,7 @@ describe('admin team overview', () => {
     await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Chris');
     expect(screen.getByRole('button', { name: 'Chris Frei als Teamer zu T2-2026 hinzufügen' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' }));
-    expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 });
+    expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 }, true, true, true);
     expect(await screen.findAllByText('Leitung', { selector: 'small' })).not.toHaveLength(0);
     expect(screen.queryByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' })).not.toBeInTheDocument();
   });
@@ -346,11 +446,11 @@ describe('admin team overview', () => {
     await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
     await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Chris');
     await user.click(screen.getByRole('button', { name: 'Chris Frei als Teamer zu T2-2026 hinzufügen' }));
-    expect(mutate).toHaveBeenCalledWith('/api/turnusse/4/memberships/', { user_id: 30 });
+    expect(mutate).toHaveBeenCalledWith('/api/turnusse/4/memberships/', { user_id: 30 }, true, true, true);
     await user.click(screen.getByRole('button', { name: 'Dialog schließen' }));
     await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
     await user.click(screen.getByRole('button', { name: 'Alex Muster aus dem Turnus entfernen' }));
-    expect(mutate).toHaveBeenCalledWith('/api/memberships/11/remove/', {});
+    expect(mutate).toHaveBeenCalledWith('/api/memberships/11/remove/', {}, true, true, true);
     expect(screen.queryByText('Alex Muster')).not.toBeInTheDocument();
   });
 
@@ -370,7 +470,7 @@ describe('admin team overview', () => {
     await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
     await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Alex');
     await user.click(screen.getByRole('button', { name: 'Alex Muster als Teamer zu T2-2026 hinzufügen' }));
-    expect(mutate).toHaveBeenLastCalledWith('/api/turnusse/4/memberships/', { user_id: 30 });
+    expect(mutate).toHaveBeenLastCalledWith('/api/turnusse/4/memberships/', { user_id: 30 }, true, true, true);
     expect(screen.getAllByText('Alex Muster')).not.toHaveLength(0);
   });
 
@@ -392,6 +492,6 @@ describe('admin team overview', () => {
     expect(screen.getByRole('dialog', { name: 'Person zu T2-2026 hinzufügen' })).toBeInTheDocument();
     const add = screen.getByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' });
     await user.click(add);
-    expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 });
+    expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 }, true, true, true);
   });
 });

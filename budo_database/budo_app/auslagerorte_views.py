@@ -24,6 +24,8 @@ from .react_views import ReactPageTemplateMixin, render_react_page
 
 logger = logging.getLogger(__name__)
 
+_ADDRESS_FIELDS = ("strasse", "ort", "bundesland", "postleitzahl", "land")
+
 
 @method_decorator(membership_scoped_read, name="dispatch")
 class AuslagerorteUpdate(
@@ -176,6 +178,12 @@ class AuslagerorteCreate(
         return context
 
     def form_valid(self, form):
+        # The reduced create form intentionally omits address controls. Apply
+        # their cleaned empty values so the model's country default cannot
+        # prevent reverse geocoding from filling the complete address.
+        for field_name in _ADDRESS_FIELDS:
+            if field_name not in form.data:
+                setattr(form.instance, field_name, form.cleaned_data[field_name])
         form.instance = update_auslagerorte_coordinates(form.instance)
         for warning in getattr(form.instance, '_location_warnings', []):
             messages.warning(self.request, warning)

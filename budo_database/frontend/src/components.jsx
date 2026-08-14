@@ -199,13 +199,14 @@ export function Card({
   headingLevel = 2,
   expanded,
   onExpandedChange,
+  collapsible = true,
 }) {
   const mobile = useIsMobile();
   const contentId = useId();
   const [internallyClosed, setInternallyClosed] = useState(initiallyClosed || mobile);
   const controlled = expanded !== undefined;
-  const closed = controlled ? !expanded : internallyClosed;
-  const toggleIconVisible = showToggleIcon ?? className.split(/\s+/).includes('transparent');
+  const closed = collapsible && (controlled ? !expanded : internallyClosed);
+  const toggleIconVisible = collapsible && (showToggleIcon ?? className.split(/\s+/).includes('transparent'));
   useEffect(() => {
     if (!controlled) setInternallyClosed(initiallyClosed || mobile);
   }, [controlled, initiallyClosed, mobile]);
@@ -217,19 +218,19 @@ export function Card({
   return (
     <Container className={`card ${closed ? 'closed-card' : ''} ${className}`} id={id}>
       <div
-        className="info-header-container card-toggle"
-        role="button"
-        tabIndex={0}
-        aria-expanded={!closed}
-        aria-controls={contentId}
-        aria-label={`${title} ${closed ? 'öffnen' : 'schließen'}`}
-        onClick={toggle}
-        onKeyDown={event => {
+        className={`info-header-container ${collapsible ? 'card-toggle' : 'card-static-header'}`}
+        role={collapsible ? 'button' : undefined}
+        tabIndex={collapsible ? 0 : undefined}
+        aria-expanded={collapsible ? !closed : undefined}
+        aria-controls={collapsible ? contentId : undefined}
+        aria-label={collapsible ? `${title} ${closed ? 'öffnen' : 'schließen'}` : undefined}
+        onClick={collapsible ? toggle : undefined}
+        onKeyDown={collapsible ? event => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             toggle();
           }
-        }}
+        } : undefined}
       >
         <Heading>{title}</Heading>
         {headerAction && (
@@ -422,6 +423,7 @@ export function DataTable({
   id,
   empty = 'Keine Einträge',
   beforeFilter = null,
+  stickyControls = true,
   stickyHeader = false,
   stickyFirstColumn = false,
   verticalScroll = false,
@@ -450,8 +452,8 @@ export function DataTable({
     <>
       {(beforeFilter || showFilter) && (
         <div
-          className={`table-controls${beforeFilter ? ' max-[900px]:sticky max-[900px]:top-[var(--app-header-height,0px)] max-[900px]:z-5 max-[900px]:flex-none' : ''}`}
-          data-slot={beforeFilter ? 'table-sticky-controls' : undefined}
+          className={`table-controls${beforeFilter && stickyControls ? ' max-[900px]:sticky max-[900px]:top-[var(--app-header-height,0px)] max-[900px]:z-5 max-[900px]:flex-none' : ''}`}
+          data-slot={beforeFilter ? (stickyControls ? 'table-sticky-controls' : 'table-controls') : undefined}
         >
           {beforeFilter}
           {showFilter && <input className="filter-table" type="search" placeholder="Kinder filtern..." aria-label="Kinder filtern" value={query} onChange={event => setQuery(event.target.value)} />}

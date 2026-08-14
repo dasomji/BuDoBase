@@ -68,13 +68,12 @@ export const sidebarItems = [
   { label: 'Auslagerorte', href: '/auslagerorte-list/', icon: MapPinned },
   { label: 'Küche', href: '/kitchen', icon: ChefHat },
   { label: 'Spiele', href: gamesUrl, icon: Gamepad2, external: true },
-  { label: 'Team', href: '/teams/', icon: UsersRound },
+  { label: 'Team and Turnus', href: '/teams/', icon: UsersRound },
   {
     label: 'Orgi',
     icon: Settings,
     children: [
       { label: 'Serienbrief', href: '/serienbrief' },
-      { label: 'Turnis', href: '/upload/' },
       { label: 'Aufenthaltsdoku', href: '/download-updated-excel/' },
       { label: 'Admin', href: '/admin/' },
     ],

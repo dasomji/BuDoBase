@@ -1,3 +1,4 @@
+from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
@@ -52,3 +53,34 @@ class PublicRegistrationTests(TestCase):
             User.objects.get(username="normalized-email").email,
             "new.teamer@example.com",
         )
+
+    def test_email_must_be_case_insensitively_unique(self):
+        User.objects.create_user(
+            username="existing-teamer",
+            email="existing@example.com",
+        )
+
+        response = self.client.post(
+            reverse("register"),
+            {
+                "username": "duplicate-email",
+                "email": "EXISTING@EXAMPLE.COM",
+                "password1": "A-safe-password-189!",
+                "password2": "A-safe-password-189!",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(username="duplicate-email").exists())
+
+    def test_database_rejects_case_variant_nonblank_duplicate_email(self):
+        User.objects.create_user(
+            username="database-email-owner",
+            email="database@example.com",
+        )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            User.objects.create_user(
+                username="database-email-duplicate",
+                email="DATABASE@EXAMPLE.COM",
+            )

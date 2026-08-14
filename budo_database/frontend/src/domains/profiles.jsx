@@ -36,6 +36,7 @@ export function ProfilePage({ data }) {
 export function profileFields(profile) {
   return [
     { name: 'rufname', label: 'Rufname', value: profile.rufname },
+    { name: 'email', label: 'E-Mail', type: 'email', value: profile.email, required: true },
     { name: 'allergien', label: 'Allergien', value: profile.allergies },
     { name: 'coffee', label: 'Kaffee', value: profile.coffee },
     { name: 'essen', label: 'Essen', type: 'select', value: profile.food, options: [{ value: 'ft', label: 'Flexitarisch' }, { value: 'vt', label: 'Vegetarisch' }, { value: 'vn', label: 'Vegan' }] },

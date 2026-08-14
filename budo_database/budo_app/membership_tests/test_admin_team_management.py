@@ -24,7 +24,9 @@ class AdminTeamManagementTests(TestCase):
         turnus = response.json()["years"][0]["turnuses"][0]
         self.assertEqual(turnus["start"], "2026-07-04")
         self.assertEqual(turnus["end"], "2026-07-17")
+        self.assertFalse(turnus["excel_uploaded"])
         self.assertEqual(turnus["members"][0]["team_label"], "Küche")
+        self.assertTrue(response.json()["can_create_turnus"])
 
     def test_overview_includes_real_pending_requests_and_users_without_membership(self):
         requester = User.objects.create_user("bea", first_name="Bea", last_name="Beispiel")
@@ -34,6 +36,8 @@ class AdminTeamManagementTests(TestCase):
             first_name="Chris",
             last_name="Frei",
         )
+        requester.profil.rufname = "Bea Beispiel"
+        requester.profil.save(update_fields=("rufname",))
         TurnusJoinRequest.objects.create(user=requester, turnus=self.turnus)
         TurnusJoinRequest.objects.create(
             user=available,
@@ -51,6 +55,18 @@ class AdminTeamManagementTests(TestCase):
         self.assertEqual(person["email"], "chris.frei@example.test")
         self.assertEqual(person["relationships"], [])
         self.assertTrue(person["available"])
+
+    def test_product_admin_creates_a_turnus_without_an_implicit_membership(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("turnus-create-api"),
+            {"turnus_nr": 4, "turnus_beginn": "2027-07-03"},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        created = Turnus.objects.get(pk=response.json()["id"])
+        self.assertFalse(TurnusMembership.objects.filter(user=self.admin, turnus=created).exists())
 
     def test_product_admin_page_is_reachable_ahead_of_django_admin(self):
         self.client.force_login(self.admin)

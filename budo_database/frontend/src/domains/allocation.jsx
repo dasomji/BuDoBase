@@ -49,7 +49,9 @@ function AllocationStats({ focus, showKids }) {
     <div className={showKids ? 'mb-3 border-b border-foreground/25 pb-2' : ''} aria-label={`Statistik ${focus.name}`}>
       <p className="mb-1"><span className="label">Ø Alter</span>: {formatAverageAge(stats.average_age)}</p>
       <p className="mb-1"><span className="label">Geschlechter</span>: {sex.male} ♂ · {sex.female} ♀ · {sex.diverse} ⚧</p>
-      <p className="m-0"><span className="label">BuDo-Familien</span>: {families.S} S · {families.M} M · {families.L} L · {families.XL} XL</p>
+      <p className="mb-1"><span className="label">BuDo-Familien</span>: {families.S} S · {families.M} M · {families.L} L · {families.XL} XL</p>
+      <p className="mb-1"><span className="label">Betreuer:innen</span>: {focus.carers?.join(', ') || '---'}</p>
+      <p className="m-0"><span className="label">Ort</span>: {focus.place_id ? <a href={`/auslagerorte/${focus.place_id}/`}>{focus.place}</a> : '---'}</p>
     </div>
   );
 }
@@ -57,7 +59,10 @@ function AllocationStats({ focus, showKids }) {
 function AllocationCard({ focus, kids, showKids }) {
   const assignedKids = kids.filter(kid => focus.kid_ids.includes(kid.id));
   return (
-    <Card title={`${focus.name}: ${focus.kid_ids.length}`}>
+    <Card
+      collapsible={false}
+      title={<><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a>: {focus.kid_ids.length}</>}
+    >
       <AllocationStats focus={focus} showKids={showKids} />
       <ul className={`${showKids ? 'grid' : 'hidden'} m-0 grid-cols-1 gap-x-4 gap-y-1 pl-4 min-[901px]:grid-cols-2 [&>li]:min-w-0 [&>li]:break-inside-avoid`} aria-hidden={!showKids}>
         {showKids && assignedKids.length === 0
@@ -168,7 +173,7 @@ export function AllocationPage({ data, week, mutate, showKids = true }) {
   return (
     <main className="allocation-page flex min-w-0 flex-col min-[901px]:h-[calc(100svh-var(--app-header-height,0px))] min-[901px]:min-h-0 min-[901px]:flex-none min-[901px]:overflow-hidden" id="body-container">
       <Column id="right-column" className="allocation-table-column min-w-0 w-full min-[901px]:flex min-[901px]:h-full min-[901px]:min-h-0 min-[901px]:flex-none min-[901px]:flex-col min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:h-0 min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:min-h-[50vh] min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:max-h-none min-[901px]:[&>[data-slot=table-scroll][data-vertical-scroll]]:flex-1 min-[901px]:[&_[data-slot=table]]:min-h-[50vh]">
-        <DataTable columns={columns} rows={rows} showFilter beforeFilter={overview} stickyHeader stickyFirstColumn verticalScroll />
+        <DataTable columns={columns} rows={rows} showFilter beforeFilter={overview} stickyControls={false} stickyHeader stickyFirstColumn verticalScroll />
       </Column>
       <section className="allocation-print-pages" aria-label="SWP-Listen">
         {focuses.map(focus => (

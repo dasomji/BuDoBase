@@ -1,7 +1,7 @@
 from django.db.models import Prefetch
 from rest_framework.exceptions import ParseError
 
-from budo_app.models import Kinder, Schwerpunkte, SchwerpunktWahl
+from budo_app.models import Kinder, Profil, Schwerpunkte, SchwerpunktWahl
 from budo_app.read_contracts.common import kid_full_name, require_active_turnus_id
 
 
@@ -48,12 +48,20 @@ def build_allocation_contract(request):
     week = f"w{week_number}"
     turnus_id = require_active_turnus_id(request)
 
+    carers = (
+        Profil.objects.filter(user__turnus_memberships__turnus_id=turnus_id)
+        .only("id", "rufname")
+        .order_by("rufname", "id")
+    )
     focuses = list(
         Schwerpunkte.objects.filter(
             schwerpunktzeit__turnus_id=turnus_id,
             schwerpunktzeit__woche=week,
         )
-        .values("id", "swp_name")
+        .select_related("ort")
+        .prefetch_related(
+            Prefetch("betreuende", queryset=carers, to_attr="allocation_carers"),
+        )
         .order_by("swp_name", "id")
     )
     kids = list(
@@ -80,8 +88,8 @@ def build_allocation_contract(request):
         .order_by("kid_vorname", "kid_nachname", "id")
     )
 
-    focus_members = {focus["id"]: [] for focus in focuses}
-    focus_stats = {focus["id"]: _empty_focus_stats() for focus in focuses}
+    focus_members = {focus.id: [] for focus in focuses}
+    focus_stats = {focus.id: _empty_focus_stats() for focus in focuses}
     kid_items = []
     for kid in kids:
         age = kid.get_alter()
@@ -128,11 +136,14 @@ def build_allocation_contract(request):
         "kids": kid_items,
         "focuses": [
             {
-                "id": focus["id"],
-                "name": focus["swp_name"],
+                "id": focus.id,
+                "name": focus.swp_name,
                 "week": week,
-                "kid_ids": focus_members[focus["id"]],
-                "stats": _serialize_focus_stats(focus_stats[focus["id"]]),
+                "place_id": focus.ort_id,
+                "place": focus.ort.name if focus.ort else None,
+                "carers": [carer.rufname for carer in focus.allocation_carers],
+                "kid_ids": focus_members[focus.id],
+                "stats": _serialize_focus_stats(focus_stats[focus.id]),
             }
             for focus in focuses
         ],

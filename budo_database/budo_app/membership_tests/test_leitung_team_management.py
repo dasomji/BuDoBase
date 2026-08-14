@@ -15,6 +15,10 @@ class TeamerTeamManagementReadTests(TestCase):
         teamer = User.objects.create_user("teamer", first_name="Tina", last_name="Teamer")
         teammate = User.objects.create_user("teammate", first_name="Mara", last_name="Muster")
         outsider = User.objects.create_user("outsider", first_name="Otto", last_name="Privat")
+        teamer.profil.rufname = "Tina Teamer"
+        teamer.profil.save(update_fields=("rufname",))
+        teammate.profil.rufname = "Mara Muster"
+        teammate.profil.save(update_fields=("rufname",))
         TurnusMembership.objects.create(user=teamer, turnus=own)
         TurnusMembership.objects.create(user=teammate, turnus=own)
         TurnusMembership.objects.create(user=teammate, turnus=foreign)
@@ -36,6 +40,8 @@ class TeamerTeamManagementReadTests(TestCase):
         )
         self.assertFalse(visible_turnus["can_manage_memberships"])
         self.assertFalse(visible_turnus["can_edit_profiles"])
+        self.assertFalse(visible_turnus["excel_uploaded"])
+        self.assertFalse(payload["can_create_turnus"])
         teammate_payload = next(
             member for member in visible_turnus["members"] if member["name"] == "Mara Muster"
         )
@@ -43,6 +49,12 @@ class TeamerTeamManagementReadTests(TestCase):
         self.assertEqual(visible_turnus["pending_requests"], [])
         self.assertEqual(payload["people"], [])
         self.assertNotContains(response, "Otto Privat")
+        denied = self.client.post(
+            reverse("turnus-create-api"),
+            {"turnus_nr": 3, "turnus_beginn": "2029-07-07"},
+        )
+        self.assertEqual(denied.status_code, 403)
+        self.assertFalse(Turnus.objects.filter(turnus_nr=3, turnus_beginn=date(2029, 7, 7)).exists())
 
     def test_team_management_embeds_the_existing_profile_card_fields(self):
         turnus = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2028, 7, 1))
@@ -112,6 +124,10 @@ class LeitungTeamManagementHttpTests(TestCase):
             first_name="Alex",
             last_name="Muster",
         )
+        leitung.profil.rufname = "leitung"
+        leitung.profil.save(update_fields=("rufname",))
+        available.profil.rufname = "Alex Muster"
+        available.profil.save(update_fields=("rufname",))
         TurnusMembership.objects.create(
             user=leitung,
             turnus=turnus,
@@ -161,19 +177,57 @@ class LeitungTeamManagementHttpTests(TestCase):
     def setUp(self):
         self.own = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2028, 7, 1))
         self.foreign = Turnus.objects.create(turnus_nr=2, turnus_beginn=date(2028, 7, 15))
-        self.leitung = User.objects.create_user("own-leitung")
-        self.member = User.objects.create_user("member", first_name="Mara", last_name="Muster")
+        self.leitung = User.objects.create_user(
+            "own-leitung", email="leitung@example.test",
+        )
+        self.member = User.objects.create_user(
+            "member",
+            email="mara@example.test",
+            first_name="Mara",
+            last_name="Muster",
+        )
         self.leadership = TurnusMembership.objects.create(
             user=self.leitung, turnus=self.own, functional_role="leitung",
         )
         self.membership = TurnusMembership.objects.create(user=self.member, turnus=self.own)
         self.client.force_login(self.leitung)
 
+    def test_leitung_creates_a_turnus_and_is_automatically_assigned_as_leitung(self):
+        response = self.client.post(
+            reverse("turnus-create-api"),
+            {"turnus_nr": 3, "turnus_beginn": "2029-07-07"},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        created = Turnus.objects.get(pk=response.json()["id"])
+        membership = TurnusMembership.objects.get(user=self.leitung, turnus=created)
+        self.assertEqual(membership.functional_role, TurnusMembership.FunctionalRole.LEITUNG)
+        self.assertEqual(response.json(), {
+            "id": created.id,
+            "label": "T3-2029",
+            "number": 3,
+            "start": "2029-07-07",
+            "end": "2029-07-20",
+            "excel_uploaded": False,
+        })
+        payload = self.client.get(
+            reverse("route-data-api", args=("team-management",))
+        ).json()
+        self.assertTrue(payload["can_create_turnus"])
+        self.assertIn(created.id, [
+            turnus["id"]
+            for year in payload["years"]
+            for turnus in year["turnuses"]
+        ])
+
     def test_leitung_can_edit_a_profile_in_own_turnus_but_not_a_foreign_profile(self):
-        foreign_member = User.objects.create_user("foreign-member")
+        foreign_member = User.objects.create_user(
+            "foreign-member", email="foreign@example.test",
+        )
         TurnusMembership.objects.create(user=foreign_member, turnus=self.foreign)
         submission = {
             "rufname": "Mara Neu",
+            "email": "Mara.Neu@EXAMPLE.TEST",
             "allergien": "Keine",
             "coffee": "Milch",
             "essen": "vt",
@@ -193,10 +247,28 @@ class LeitungTeamManagementHttpTests(TestCase):
         self.assertEqual(own_response.status_code, 200)
         self.assertEqual(own_response.json(), {"ok": True, "redirect": "/teams/"})
         self.assertEqual(foreign_response.status_code, 403)
+        self.member.refresh_from_db()
         self.member.profil.refresh_from_db()
+        foreign_member.refresh_from_db()
         foreign_member.profil.refresh_from_db()
         self.assertEqual(self.member.profil.rufname, "Mara Neu")
+        self.assertEqual(self.member.email, "mara.neu@example.test")
         self.assertNotEqual(foreign_member.profil.rufname, "Mara Neu")
+        self.assertEqual(foreign_member.email, "foreign@example.test")
+
+        workspace = self.client.get(
+            reverse("route-data-api", args=("team-management",))
+        ).json()
+        member = next(
+            item
+            for item in workspace["years"][0]["turnuses"][0]["members"]
+            if item["user_id"] == self.member.id
+        )
+        person = next(
+            item for item in workspace["people"] if item["id"] == self.member.id
+        )
+        self.assertEqual(member["name"], "Mara Neu")
+        self.assertEqual(person["name"], "Mara Neu")
 
     def test_directory_exposes_accounts_but_not_foreign_membership_data(self):
         foreign_user = User.objects.create_user("foreign-person")
