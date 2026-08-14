@@ -5,24 +5,22 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toaster } from '../components/ui/toast';
 import { AdminTeamOverviewPage } from './memberships';
 
-const viewport = vi.hoisted(() => ({ mobile: false }));
-vi.mock('../hooks/use-mobile', () => ({ useIsMobile: () => viewport.mobile }));
-
 const data = { years: [{ year: 2026, turnuses: [{
   id: 4,
   label: 'T2-2026',
+  start: '2026-07-04',
+  end: '2026-07-17',
   members: [
     { id: 11, name: 'Alex Muster', functional_role: 'teamer', role_label: 'Teamer', team_label: 'Küche' },
     { id: 12, name: 'Bea Beispiel', functional_role: 'leitung', role_label: 'Leitung', team_label: 'Organisation' },
   ],
   request_summary: { pending: 1 },
-  pending_requests: [{ id: 21, name: 'Dana Anfrage' }],
-}] }], people: [{ id: 30, name: 'Chris Frei', relationships: [], available: true }] };
+  pending_requests: [{ id: 21, name: 'Dana Anfrage', email: 'dana@example.test' }],
+}] }], people: [{ id: 30, name: 'Chris Frei', relationships: [], available: true }], can_manage_memberships: true };
 
 describe('admin team overview', () => {
   afterEach(() => {
     cleanup();
-    viewport.mobile = false;
   });
 
   it('prominently repeats the email identity warning and resolves a request explicitly', async () => {
@@ -35,15 +33,15 @@ describe('admin team overview', () => {
       },
     });
     const warning = 'Bitte kontaktiere die Person über einen dir bekannten, unabhängigen Kanal. Prüfe dabei, dass die E-Mail-Adresse wirklich zu ihr gehört und dass sie diese Anfrage selbst gestellt hat.';
-    render(<Toaster><AdminTeamOverviewPage data={{ ...data, identity_verification_warning: warning, can_manage_leitung: false }} mutate={mutate} /></Toaster>);
+    render(<Toaster><AdminTeamOverviewPage data={{ ...data, identity_verification_warning: warning, can_manage_leitung: false, can_manage_memberships: false }} mutate={mutate} /></Toaster>);
 
     expect(screen.getByRole('alert')).toHaveTextContent(warning);
     await user.click(screen.getByRole('button', { name: 'Dana Anfrage annehmen' }));
     expect(mutate).toHaveBeenCalledWith('/api/join-requests/21/decision/', { decision: 'approve' });
     expect(await screen.findByText('Keine offenen Anfragen.')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Team (3)' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '3 Personen' })).toBeInTheDocument();
     expect(screen.getByText('Dana Anfrage')).toBeInTheDocument();
-    expect(screen.getByText('Teamer', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.getByText('Teamer', { selector: 'small' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Alex Muster bearbeiten/ })).not.toBeInTheDocument();
   });
 
@@ -57,6 +55,18 @@ describe('admin team overview', () => {
     expect(screen.getByText('Dana Anfrage')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Alex Muster bearbeiten' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bea Beispiel bearbeiten' })).toBeInTheDocument();
+  });
+
+  it('renders Variant C as one master-detail surface with distinct request and member panels', () => {
+    render(<Toaster><AdminTeamOverviewPage data={data} mutate={vi.fn()} /></Toaster>);
+
+    const composition = screen.getByTestId('team-master-detail');
+    expect(composition).toContainElement(screen.getByRole('navigation', { name: 'Turnus auswählen' }));
+    expect(composition).toContainElement(screen.getByRole('region', { name: 'T2-2026 verwalten' }));
+    expect(screen.getByTestId('pending-request-panel')).toHaveTextContent('Dana Anfrage');
+    expect(screen.getByTestId('member-panel')).toHaveTextContent('Alex Muster');
+    expect(screen.getByText('04.–17. Juli 2026')).toBeInTheDocument();
+    expect(screen.getByText('Leitung: Bea Beispiel')).toBeInTheDocument();
   });
 
   it('opens the admin member editor before changing Leitung through an explicit action', async () => {
@@ -110,8 +120,7 @@ describe('admin team overview', () => {
     expect(screen.queryByText('Alex Muster')).not.toBeInTheDocument();
   });
 
-  it('keeps mobile navigation usable while year and detail cards expand and collapse', async () => {
-    viewport.mobile = true;
+  it('keeps every year and Turnus reachable in the non-collapsible mobile selector', async () => {
     const user = userEvent.setup();
     const multiple = { years: [{ year: 2026, turnuses: [
       data.years[0].turnuses[0],
@@ -119,37 +128,12 @@ describe('admin team overview', () => {
     ] }] };
     render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
 
-    expect(document.querySelector('[data-slot="team-master-detail"]')).toHaveAttribute('data-layout', 'stacked');
-    expect(screen.getByRole('navigation', { name: 'Turnus auswählen' })).toHaveClass('overflow-x-auto');
-    expect(screen.getByRole('button', { name: '2026 schließen' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '2026 schließen' }));
-    expect(screen.getByRole('button', { name: '2026 öffnen' })).toHaveAttribute('aria-expanded', 'false');
-    await user.click(screen.getByRole('button', { name: '2026 öffnen' }));
+    expect(screen.getByTestId('team-master-detail')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Turnus auswählen' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '2026' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'T3-2026 auswählen' }));
-    await user.click(screen.getByRole('button', { name: 'T3-2026 öffnen' }));
     expect(screen.getByText('Chris Demo')).toBeInTheDocument();
     expect(screen.queryByText('Alex Muster')).not.toBeInTheDocument();
-  });
-
-  it('synchronizes controlled year expansion only when crossing the mobile breakpoint', async () => {
-    const user = userEvent.setup();
-    const multiple = { years: [data.years[0], { year: 2025, turnuses: [{ id: 3, label: 'T1-2025', members: [] }] }], people: [] };
-    const view = render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
-    await user.click(screen.getByRole('button', { name: '2025 schließen' }));
-    expect(screen.getByRole('button', { name: '2025 öffnen' })).toBeInTheDocument();
-
-    viewport.mobile = true;
-    view.rerender(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
-    expect(screen.getByRole('button', { name: '2026 schließen' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '2025 öffnen' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '2026 schließen' }));
-    view.rerender(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
-    expect(screen.getByRole('button', { name: '2026 öffnen' })).toBeInTheDocument();
-
-    viewport.mobile = false;
-    view.rerender(<Toaster><AdminTeamOverviewPage data={multiple} mutate={vi.fn()} /></Toaster>);
-    expect(screen.getByRole('button', { name: '2026 schließen' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '2025 schließen' })).toBeInTheDocument();
   });
 
   it('reconciles refreshed membership data while preserving local navigation state', async () => {
@@ -164,7 +148,6 @@ describe('admin team overview', () => {
     };
     const view = render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={mutate} /></Toaster>);
     await user.click(screen.getByRole('button', { name: 'T3-2026 auswählen' }));
-    await user.click(screen.getByRole('button', { name: '2025 schließen' }));
     await user.click(screen.getByRole('button', { name: 'Chris Demo bearbeiten' }));
     await user.click(screen.getByRole('button', { name: 'Chris Demo als Leitung einsetzen' }));
 
@@ -192,7 +175,7 @@ describe('admin team overview', () => {
     view.rerender(<Toaster><AdminTeamOverviewPage data={refreshed} mutate={mutate} /></Toaster>);
 
     expect(screen.getByRole('button', { name: 'T3-2026 auswählen' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: '2025 öffnen' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '2025' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Chris Demo bearbeiten' })).toBeInTheDocument();
     expect(screen.getByText('Neue Person')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Offene Anfragen (1)' })).toBeInTheDocument();
@@ -214,6 +197,7 @@ describe('admin team overview', () => {
     const mutate = vi.fn().mockResolvedValue({ membership_id: 31, role_label: 'Leitung', team_label: '' });
     render(<Toaster><AdminTeamOverviewPage data={{ ...data, people: [{ ...data.people[0], turnus_ids: [] }] }} mutate={mutate} /></Toaster>);
     await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Chris');
+    expect(screen.getByRole('button', { name: 'Chris Frei als Teamer zu T2-2026 hinzufügen' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' }));
     expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 });
     expect(await screen.findByText('Leitung')).toBeInTheDocument();
@@ -294,7 +278,6 @@ describe('admin team overview', () => {
 
     expect(screen.getByRole('heading', { name: 'T2-2026' })).toBeInTheDocument();
     const add = screen.getByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' });
-    expect(add).toHaveTextContent('Chris Frei als Leitung zu T2-2026 hinzufügen');
     await user.click(add);
     expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 });
   });

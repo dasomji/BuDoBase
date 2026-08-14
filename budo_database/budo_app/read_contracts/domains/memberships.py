@@ -61,6 +61,7 @@ def _team_overview(request, *, admin_only):
             "label": str(turnus),
             "number": turnus.turnus_nr,
             "start": turnus.turnus_beginn.isoformat(),
+            "end": turnus.get_turnus_ende().isoformat(),
             "members": members,
             "request_summary": {"pending": len(pending_requests)},
             "pending_requests": pending_requests,

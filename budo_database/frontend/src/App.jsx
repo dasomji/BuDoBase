@@ -14,8 +14,8 @@ import { isPublicRoute, parseRoute, renderRoute, resolveRouteHeaderTitle, resolv
 export { parseRoute } from './routes';
 
 const findHappyCleaningOverviewEvent = (data, eventId) => data?.years
-  ?.flatMap(group => group.turnuses)
-  .flatMap(turnus => turnus.events)
+  ?.flatMap(group => group.turnuses || [])
+  .flatMap(turnus => turnus.events || [])
   .find(event => event.id === eventId);
 
 function ErrorState({ title, error }) {

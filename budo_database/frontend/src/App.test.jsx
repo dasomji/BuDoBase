@@ -100,6 +100,37 @@ describe('application loading', () => {
     );
   });
 
+  it('renders Team management when its Turnus records have no Happy Cleaning events', async () => {
+    window.history.pushState({}, '', '/teams/');
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({
+        authenticated: true,
+        csrf_token: 'token',
+        messages: [],
+        permissions: {},
+        happy_cleaning_events: [],
+      }))
+      .mockResolvedValueOnce(response({
+        years: [{
+          year: 2026,
+          turnuses: [{
+            id: 4,
+            label: 'T4-2026',
+            members: [],
+            pending_requests: [],
+            request_summary: { pending: 0 },
+          }],
+        }],
+        people: [],
+        can_manage_leitung: true,
+        can_manage_memberships: true,
+      }));
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByRole('heading', { name: 'T4-2026' })).toBeInTheDocument();
+  });
+
   it('keeps the current page and shows the shared error toast when a Turnus switch fails', async () => {
     window.history.pushState({}, '', '/all_kids');
     const bootstrap = {

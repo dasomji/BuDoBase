@@ -21,7 +21,10 @@ class AdminTeamManagementTests(TestCase):
         response = self.client.get(reverse("route-data-api", kwargs={"contract_key": "admin-team-overview"}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["years"][0]["year"], 2026)
-        self.assertEqual(response.json()["years"][0]["turnuses"][0]["members"][0]["team_label"], "Küche")
+        turnus = response.json()["years"][0]["turnuses"][0]
+        self.assertEqual(turnus["start"], "2026-07-04")
+        self.assertEqual(turnus["end"], "2026-07-17")
+        self.assertEqual(turnus["members"][0]["team_label"], "Küche")
 
     def test_overview_includes_real_pending_requests_and_users_without_membership(self):
         requester = User.objects.create_user("bea", first_name="Bea", last_name="Beispiel")
