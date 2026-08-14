@@ -1,7 +1,7 @@
 from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
-from django.contrib.auth.models import Group, Permission, User
+from django.contrib.auth.models import Permission, User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -50,7 +50,7 @@ class ProfileContractTests(TestCase):
         self.profile.budo_family = "M"
         self.profile.turnus = self.turnus
         self.profile.save()
-        create_membership(user=self.user, turnus=self.turnus)
+        create_membership(user=self.user, turnus=self.turnus, team_label="Organisator")
         select_turnus(self.user, self.turnus)
         self.focus = Schwerpunkte.objects.create(
             swp_name="Wald",
@@ -90,7 +90,7 @@ class ProfileContractTests(TestCase):
         selected.budo_family = "L"
         selected.turnus = self.turnus
         selected.save()
-        create_membership(user=selected_user, turnus=self.turnus)
+        create_membership(user=selected_user, turnus=self.turnus, team_label="Betreuer:in")
         return selected
 
     def grant_profile_change(self):
@@ -103,7 +103,7 @@ class ProfileContractTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(set(payload), {"profile", "focuses", "turnuses"})
+        self.assertEqual(set(payload), {"profile", "focuses"})
         self.assertEqual(payload["profile"], {
             "id": self.profile.id,
             "email": "ada@example.test",
@@ -111,27 +111,16 @@ class ProfileContractTests(TestCase):
             "phone": "+4312345",
             "allergies": "Haselnüsse",
             "coffee": "Schwarz",
-            "role": "o",
+            "role": "teamer",
             "role_display": "Organisator",
             "food": "vt",
             "food_display": "🧀 Vegetarisch",
             "budo_family": "M",
-            "can_change_turnus": True,
         })
         self.assertEqual(payload["focuses"], [{
             "id": self.focus.id,
             "name": "Wald",
         }])
-        self.assertEqual(payload["turnuses"], [
-            {
-                "id": self.other_turnus.id,
-                "label": str(self.other_turnus),
-            },
-            {
-                "id": self.turnus.id,
-                "label": str(self.turnus),
-            },
-        ])
         self.assertNotContains(response, "Deprecated accounting data")
         self.assertNotContains(response, "Privates Kind")
         self.assertNotIn("money_total", payload["profile"])
@@ -171,7 +160,7 @@ class ProfileContractTests(TestCase):
                 "phone": "+4312345",
                 "allergies": "Haselnüsse",
                 "coffee": "Schwarz",
-                "role": "o",
+                "role": "teamer",
                 "role_display": "Organisator",
                 "food": "vt",
                 "food_display": "🧀 Vegetarisch",
@@ -185,7 +174,7 @@ class ProfileContractTests(TestCase):
                 "phone": "+4398765",
                 "allergies": "Sellerie",
                 "coffee": "Hafermilch",
-                "role": "b",
+                "role": "teamer",
                 "role_display": "Betreuer:in",
                 "food": "vn",
                 "food_display": "🌱 Vegan",
@@ -222,7 +211,6 @@ class ProfileContractTests(TestCase):
         payload = allowed.json()
         self.assertEqual(payload["profile"]["id"], selected.id)
         self.assertEqual(payload["profile"]["rufname"], "Grace")
-        self.assertTrue(payload["profile"]["can_change_turnus"])
         self.assertNotIn("money_total", payload["profile"])
 
     def test_profile_admin_can_update_a_selected_profile_but_ordinary_users_cannot(self):
@@ -254,7 +242,7 @@ class ProfileContractTests(TestCase):
         self.assertEqual(selected.rufname, "Grace Neu")
         self.assertEqual(selected.allergien, "Keine")
         self.assertEqual(selected.budo_family, "XL")
-        self.assertEqual(selected.turnus, self.other_turnus)
+        self.assertFalse(selected.user.turnus_memberships.filter(turnus=self.other_turnus).exists())
 
     def test_deprecated_teamer_accounting_route_and_form_target_are_unavailable(self):
         selected = self.create_teammate()
@@ -282,10 +270,7 @@ class ProfileContractTests(TestCase):
         self.assertEqual(profile.status_code, 403)
         self.assertEqual(team.status_code, 403)
 
-    def test_test_users_cannot_select_or_submit_a_different_turnus(self):
-        self.user.groups.add(Group.objects.create(name="Test-users"))
-
-        contract = self.client.get(self.contract_url("profile"))
+    def test_profile_submission_cannot_change_membership_role_or_selected_turnus(self):
         submitted = self.client.post(
             reverse("form-submit-api"),
             {
@@ -301,9 +286,6 @@ class ProfileContractTests(TestCase):
             },
         )
 
-        self.assertEqual(contract.status_code, 200)
-        self.assertFalse(contract.json()["profile"]["can_change_turnus"])
-        self.assertEqual(contract.json()["turnuses"], [])
         self.assertEqual(submitted.status_code, 200)
         self.assertEqual(submitted.json(), {
             "ok": True,
@@ -311,31 +293,9 @@ class ProfileContractTests(TestCase):
         })
         self.profile.refresh_from_db()
         self.assertEqual(self.profile.rufname, "Ada Test")
-        self.assertEqual(self.profile.turnus, self.turnus)
-
-        normal_user = User.objects.create_user(username="normal-after-test-user")
-        approve_and_select_turnus(normal_user.profil.user, self.turnus)
-        normal_user.profil.save()
-        select_turnus(normal_user, self.turnus)
-        self.client.force_login(normal_user)
-        normal_submission = self.client.post(
-            reverse("form-submit-api"),
-            {
-                "_target": "/profil/bearbeiten/",
-                "rufname": "Normal user",
-                "allergien": "",
-                "coffee": "",
-                "rolle": "b",
-                "essen": "ft",
-                "telefonnummer": "",
-                "budo_family": "S",
-                "turnus": self.other_turnus.id,
-            },
-        )
-
-        self.assertEqual(normal_submission.status_code, 200)
-        normal_user.profil.refresh_from_db()
-        self.assertEqual(normal_user.profil.turnus, self.other_turnus)
+        self.assertEqual(self.profile.selected_turnus, self.turnus)
+        membership = self.user.turnus_memberships.get(turnus=self.turnus)
+        self.assertEqual(membership.team_label, "Organisator")
 
     def test_profile_form_preserves_validation_persistence_redirect_and_message(self):
         invalid = self.client.post(
@@ -383,11 +343,9 @@ class ProfileContractTests(TestCase):
         self.assertEqual(self.profile.rufname, "Ada Neu")
         self.assertEqual(self.profile.allergien, "Keine")
         self.assertEqual(self.profile.coffee, "Milch")
-        self.assertEqual(self.profile.rolle, "b")
         self.assertEqual(self.profile.essen, "vn")
         self.assertEqual(self.profile.budo_family, "XL")
         self.assertEqual(str(self.profile.telefonnummer), "+436641234567")
-        self.assertEqual(self.profile.turnus, self.other_turnus)
         bootstrap = self.client.get(reverse("bootstrap-api")).json()
         self.assertEqual(bootstrap["profile"]["rufname"], "Ada Neu")
         self.assertEqual(bootstrap["turnus"]["id"], self.turnus.id)

@@ -175,6 +175,7 @@ class RouteContractDispatchTests(TestCase):
         self.user.profil.selected_turnus = turnus
         approve_and_select_turnus(self.user.profil.user, turnus)
         self.user.profil.save()
+        self.user.turnus_memberships.filter(turnus=turnus).delete()
         Kinder.objects.create(
             kid_index="PRIVATE-1",
             kid_vorname="Private",

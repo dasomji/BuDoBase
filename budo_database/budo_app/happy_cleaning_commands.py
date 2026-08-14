@@ -410,7 +410,7 @@ def _responsible(context, profile_id, *, event_id, station_id=None):
         return None
     profile = Profil.objects.filter(
         pk=profile_id,
-        turnus=context.turnus,
+        user__turnus_memberships__turnus=context.turnus,
     ).first()
     if profile is None:
         details = {"happy_cleaning_id": event_id}

@@ -22,7 +22,7 @@ class ReportContractTests(TestCase):
             username="reports-user",
             password="secret",
         )
-        approve_and_select_turnus(self.user, self.turnus)
+        approve_and_select_turnus(self.user, self.turnus, team_label="Organisator")
         self.user.profil.rufname = "Zora"
         self.user.profil.rolle = "o"
         self.user.profil.save()
@@ -97,7 +97,7 @@ class ReportContractTests(TestCase):
             anwesend=False,
         )
         teammate = User.objects.create_user(username="murder-teamer")
-        approve_and_select_turnus(teammate, self.turnus)
+        approve_and_select_turnus(teammate, self.turnus, team_label="Betreuer:in")
         teammate.profil.rufname = "Aaron"
         teammate.profil.telefonnummer = "+436641234567"
         teammate.profil.save()
@@ -105,7 +105,6 @@ class ReportContractTests(TestCase):
             turnus_nr=3,
             turnus_beginn=date(2026, 8, 1),
         )
-        teammate.turnus_memberships.all().delete()
         other_user = User.objects.create_user(username="other-murder-teamer")
         approve_and_select_turnus(other_user, other_turnus)
         other_user.profil.rufname = "Private Other Teamer"

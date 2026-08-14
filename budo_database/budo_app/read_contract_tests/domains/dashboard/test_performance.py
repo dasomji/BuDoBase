@@ -47,7 +47,6 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
         )
 
     def test_initial_query_growth_is_bounded_and_payload_beats_legacy(self):
-        self.assertTrue(self.user.profil.membership_selection_enabled)
         self.fixtures.grow_to(kids=3, focuses=2, team=2, places=1)
         small = measure_http_get(self.client, self.contract_url())
 

@@ -11,6 +11,11 @@ from django.db.models import F
 from .models import Profil, Turnus, TurnusJoinRequest, TurnusMembership
 
 
+def membership_role_display(membership):
+    """Return the membership-specific team label, falling back to its role."""
+    return membership.team_label or membership.get_functional_role_display()
+
+
 def _synchronize_cached_profile(user, profile):
     """Keep Django's reverse one-to-one cache aligned with stored selection."""
     cached = user._state.fields_cache.get("profil")

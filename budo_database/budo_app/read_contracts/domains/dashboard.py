@@ -40,6 +40,7 @@ from budo_app.models import (
     TurnusJoinRequest,
     TurnusMembership,
 )
+from budo_app.memberships import membership_role_display
 from budo_app.read_contracts.common import (
     kid_full_name,
     serialize_first_aid_photos,
@@ -584,8 +585,7 @@ def _build_dashboard_contract(request, profile):
                 profile,
                 focus_ids,
                 next((
-                    membership.team_label
-                    or membership.get_functional_role_display()
+                    membership_role_display(membership)
                     for membership in profile.user.turnus_memberships.all()
                     if membership.turnus_id == turnus_id
                 ), ""),

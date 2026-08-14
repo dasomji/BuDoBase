@@ -14,20 +14,15 @@ def reconcile_late_legacy_authority(apps, schema_editor):
     """Capture profile writes made after the expand migration was deployed."""
     Profil = apps.get_model("budo_app", "Profil")
     Membership = apps.get_model("budo_app", "TurnusMembership")
-    for profile in Profil.objects.exclude(turnus_id=None).iterator():
+    for profile in Profil.objects.filter(
+        membership_selection_enabled=False,
+    ).exclude(turnus_id=None).iterator():
         legacy_label = LEGACY_TEAM_LABELS.get(profile.rolle, "")
-        membership, created = Membership.objects.get_or_create(
+        Membership.objects.get_or_create(
             user_id=profile.user_id,
             turnus_id=profile.turnus_id,
             defaults={"functional_role": "teamer", "team_label": legacy_label},
         )
-        # Blank and the value previously derived from the legacy code remain
-        # compatibility-owned.  A membership-specific label is authoritative.
-        policy_labels = set(LEGACY_TEAM_LABELS.values())
-        if not created and membership.team_label in ("", *policy_labels):
-            if membership.team_label != legacy_label:
-                membership.team_label = legacy_label
-                membership.save(update_fields=("team_label",))
         if profile.selected_turnus_id != profile.turnus_id:
             profile.selected_turnus_id = profile.turnus_id
             profile.save(update_fields=("selected_turnus",))

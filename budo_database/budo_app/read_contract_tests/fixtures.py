@@ -16,6 +16,7 @@ from budo_app.models import (
     Geld,
     Kinder,
     Notizen,
+    Profil,
     Schwerpunkte,
     SchwerpunktWahl,
 )
@@ -88,7 +89,10 @@ class ActiveTurnusFixtureFactory:
         places = list(
             Auslagerorte.objects.filter(name__startswith="Baseline Ort").order_by("id")
         )
-        team = list(self.turnus.teamer.order_by("id"))
+        team = list(
+            Profil.objects.filter(user__turnus_memberships__turnus=self.turnus)
+            .order_by("id")
+        )
         for index in range(current, target):
             focus = Schwerpunkte.objects.create(
                 swp_name=f"Baseline Schwerpunkt {index}",

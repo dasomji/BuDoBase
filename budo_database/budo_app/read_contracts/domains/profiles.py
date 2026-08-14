@@ -2,15 +2,12 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 
-from budo_app.models import Profil, Schwerpunkte, Turnus, TurnusMembership
+from budo_app.models import Profil, Schwerpunkte, TurnusMembership
+from budo_app.memberships import membership_role_display
 from budo_app.read_contracts.common import (
     active_turnus_id,
     required_query_integer,
 )
-
-
-def _can_change_turnus(user):
-    return not user.groups.filter(name="Test-users").exists()
 
 
 def _profile_queryset(turnus_id):
@@ -25,15 +22,17 @@ def _profile_queryset(turnus_id):
         )
     return Profil.objects.select_related("user").prefetch_related(
         Prefetch("swp", queryset=focuses, to_attr="route_focuses"),
+        Prefetch(
+            "user__turnus_memberships",
+            queryset=TurnusMembership.objects.filter(turnus_id=turnus_id),
+            to_attr="route_memberships",
+        ),
     )
 
 
 def _profile_fields(profile, turnus_id=None):
-    membership = None
-    if turnus_id is not None:
-        membership = TurnusMembership.objects.filter(
-            user_id=profile.user_id, turnus_id=turnus_id,
-        ).first()
+    memberships = getattr(profile.user, "route_memberships", ())
+    membership = memberships[0] if memberships else None
     return {
         "id": profile.id,
         "email": profile.user.email,
@@ -42,36 +41,17 @@ def _profile_fields(profile, turnus_id=None):
         "allergies": profile.allergien,
         "coffee": profile.coffee,
         "role": membership.functional_role if membership else "",
-        "role_display": (
-            membership.team_label or membership.get_functional_role_display()
-            if membership else ""
-        ),
+        "role_display": membership_role_display(membership) if membership else "",
         "food": profile.essen,
         "food_display": profile.get_food(),
         "budo_family": profile.budo_family,
     }
 
 
-def _profile(profile, *, can_change_turnus, turnus_id=None):
-    payload = _profile_fields(profile, turnus_id)
-    if can_change_turnus is not None:
-        payload["can_change_turnus"] = can_change_turnus
-    return payload
-
-
 def _focuses(profile):
     return [
         {"id": focus.id, "name": focus.swp_name}
         for focus in profile.route_focuses
-    ]
-
-
-def _turnuses(can_change_turnus):
-    if not can_change_turnus:
-        return []
-    return [
-        {"id": turnus.id, "label": str(turnus)}
-        for turnus in Turnus.objects.order_by("-turnus_beginn", "-id")
     ]
 
 
@@ -92,15 +72,9 @@ def profile(request):
             ),
             id=required_query_integer(request),
         )
-    can_change_turnus = _can_change_turnus(request.user)
     return {
-        "profile": _profile(
-            selected_profile,
-            can_change_turnus=can_change_turnus,
-            turnus_id=turnus_id,
-        ),
+        "profile": _profile_fields(selected_profile, turnus_id),
         "focuses": _focuses(selected_profile),
-        "turnuses": _turnuses(can_change_turnus),
     }
 
 

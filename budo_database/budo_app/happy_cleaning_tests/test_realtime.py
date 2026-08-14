@@ -51,8 +51,7 @@ class HappyCleaningSocketAuthorizationTests(TestCase):
         self.assertFalse(may_access_happy_cleaning_event(self.user.id, stale_id))
 
     def test_removed_membership_immediately_blocks_realtime_access(self):
-        membership = create_membership(user=self.user, turnus=self.turnus)
-        select_turnus(user=self.user, turnus=self.turnus)
+        membership = self.user.turnus_memberships.get(turnus=self.turnus)
         self.assertTrue(may_access_happy_cleaning_event(self.user.id, self.event.id))
 
         membership.delete()

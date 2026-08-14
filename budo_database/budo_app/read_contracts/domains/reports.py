@@ -1,6 +1,7 @@
 from django.db.models import Count, Q
 
 from budo_app.models import Kinder, TurnusMembership
+from budo_app.memberships import membership_role_display
 from budo_app.read_contracts.common import active_turnus_id, kid_full_name
 from budo_app.utils import parse_sv_birthday
 
@@ -79,7 +80,7 @@ def murder_game(request):
             {
                 "id": member.user.profil.id,
                 "rufname": member.user.profil.rufname,
-                "role_display": member.team_label or member.get_functional_role_display(),
+                "role_display": membership_role_display(member),
             }
             for member in team
         ],

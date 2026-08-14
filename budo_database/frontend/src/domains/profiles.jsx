@@ -15,10 +15,8 @@ function AssignedFocuses({ focuses = [] }) {
   return <><p><span className="label">Meine Schwerpunkte</span>:</p><ul>{focuses.length ? focuses.map(focus => <li key={focus.id}><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a></li>) : <li>Keine Schwerpunkte zugeteilt.</li>}</ul></>;
 }
 
-function PersonCard({ person, focuses, turnus, id = 'db-profil', updateHref }) {
+function PersonCard({ person, focuses, id = 'db-profil', updateHref }) {
   return <Card title={person.rufname} id={id}><FieldList items={[
-    ['Rolle', person.role_display],
-    ['Turnus', turnus?.label],
     ['Essen', person.food_display],
     ['BuDo-Familie', familyLabels[person.budo_family]],
     ['Allergien', person.allergies],
@@ -45,7 +43,6 @@ export function TeamPage({ data }) {
             id={`team-profile-${person.id}`}
             person={person}
             focuses={person.focuses}
-            turnus={data.turnus}
             updateHref={updateHref}
             key={person.id}
           />
@@ -58,7 +55,7 @@ export function TeamPage({ data }) {
 export function ProfilePage({ data }) {
   const profile = data.profile;
   if (!profile) return <NotFoundPage />;
-  return <Columns><Column id="single-column"><PersonCard person={profile} focuses={data.focuses} turnus={data.turnus} /></Column></Columns>;
+  return <Columns><Column id="single-column"><PersonCard person={profile} focuses={data.focuses} /></Column></Columns>;
 }
 
 export function ProfileEditPage({ data, target = '/profil/bearbeiten/' }) {
@@ -68,14 +65,10 @@ export function ProfileEditPage({ data, target = '/profil/bearbeiten/' }) {
     { name: 'rufname', label: 'Rufname', value: profile.rufname },
     { name: 'allergien', label: 'Allergien', value: profile.allergies },
     { name: 'coffee', label: 'Kaffee', value: profile.coffee },
-    { name: 'rolle', label: 'Rolle', type: 'select', value: profile.role, options: [{ value: 'b', label: 'Betreuer:in' }, { value: 'k', label: 'Küche' }, { value: 'o', label: 'Organisator' }, { value: 'f', label: 'Freiwillige:r' }] },
     { name: 'essen', label: 'Essen', type: 'select', value: profile.food, options: [{ value: 'ft', label: 'Flexitarisch' }, { value: 'vt', label: 'Vegetarisch' }, { value: 'vn', label: 'Vegan' }] },
     { name: 'budo_family', label: 'BuDo-Familie', type: 'select', value: profile.budo_family, options: [{ value: '', label: 'Nicht zugeordnet' }, { value: 'S', label: 'Smallie' }, { value: 'M', label: 'Medi' }, { value: 'L', label: 'Largie' }, { value: 'XL', label: 'X-largie' }] },
     { name: 'telefonnummer', label: 'Telefonnummer', value: profile.phone },
   ];
-  if (profile.can_change_turnus) {
-    fields.push({ name: 'turnus', label: 'Turnus', type: 'select', value: data.turnus?.id, options: data.turnuses.map(item => ({ value: item.id, label: item.label })) });
-  }
   return <Columns><Column id="single-column"><Card title="Profil"><NativeForm token={data.csrf_token} action={target} fields={fields} /></Card></Column></Columns>;
 }
 

@@ -38,15 +38,15 @@ class DashboardContractTests(TestCase):
         )
         self.profile = self.user.profil
         self.profile.rufname = "Ada"
-        approve_and_select_turnus(self.profile.user, self.turnus)
+        approve_and_select_turnus(
+            self.profile.user, self.turnus, team_label="Betreuer:in"
+        )
         self.profile.rolle = "b"
         self.profile.essen = "vt"
         self.profile.budo_family = "M"
         self.profile.allergien = "Haselnüsse"
         self.profile.coffee = "Schwarz"
         self.profile.save()
-        create_membership(user=self.user, turnus=self.turnus)
-        select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
             kid_vorname="Grace",
