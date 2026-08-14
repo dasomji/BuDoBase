@@ -1,0 +1,63 @@
+{
+  "variant": "light",
+  "metadata": {
+    "name": "BuDoBase camp map decluttering",
+    "purpose": "Hide nonessential POIs and highway label clutter while retaining roads and camp-useful places."
+  },
+  "styles": [
+    {
+      "id": "pointOfInterest",
+      "label": {
+        "visible": false
+      }
+    },
+    {
+      "id": "pointOfInterest.emergency",
+      "label": {
+        "visible": true
+      }
+    },
+    {
+      "id": "pointOfInterest.foodAndDrink",
+      "label": {
+        "visible": true
+      }
+    },
+    {
+      "id": "pointOfInterest.recreation",
+      "label": {
+        "visible": true
+      }
+    },
+    {
+      "id": "pointOfInterest.service.restroom",
+      "label": {
+        "visible": true
+      }
+    },
+    {
+      "id": "pointOfInterest.transit",
+      "label": {
+        "visible": true
+      }
+    },
+    {
+      "id": "infrastructure.roadNetwork.road.highway",
+      "label": {
+        "visible": false
+      }
+    },
+    {
+      "id": "infrastructure.roadNetwork.roadShield",
+      "label": {
+        "visible": false
+      }
+    },
+    {
+      "id": "infrastructure.roadNetwork.roadSign",
+      "label": {
+        "visible": false
+      }
+    }
+  ]
+}
