@@ -12,6 +12,7 @@
   src: url("@fontsource-variable/roboto/files/roboto-latin-ext-wght-normal.woff2") format("woff2-variations");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
+
 @font-face {
   font-family: "Roboto";
   font-style: normal;
@@ -1520,7 +1521,7 @@ gmp-advanced-marker:focus-visible .map-marker {
 
   .team-year-group > h2 {
     margin: 1.05rem 0.45rem 0.45rem;
-    color: #68747b;
+    color: var(--color-muted-foreground);
     font-size: 0.8125rem;
     font-weight: 500;
     letter-spacing: 0.08em;
@@ -1543,12 +1544,11 @@ gmp-advanced-marker:focus-visible .map-marker {
   }
 
   .team-turnus-option[data-selected] {
-    background: white;
+    background: var(--color-background);
     box-shadow: 0 0.1875rem 0.75rem rgb(60 80 90 / 10%);
   }
 
-  .team-turnus-option:focus-visible,
-  .team-member-panel > header > button:focus-visible {
+  .team-turnus-option:focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
   }
@@ -1567,7 +1567,7 @@ gmp-advanced-marker:focus-visible .map-marker {
   .team-turnus-option small {
     margin-top: 0.1875rem;
     overflow: hidden;
-    color: #68747b;
+    color: var(--color-muted-foreground);
     font-size: 0.75rem;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1580,8 +1580,8 @@ gmp-advanced-marker:focus-visible .map-marker {
     flex: 0 0 auto;
     place-items: center;
     border-radius: 999px;
-    background: #b93f3b;
-    color: white;
+    background: var(--color-destructive);
+    color: var(--color-destructive-foreground);
     font-size: 0.8125rem;
     font-style: normal;
     font-weight: 700;
@@ -1619,7 +1619,7 @@ gmp-advanced-marker:focus-visible .map-marker {
     align-items: center;
     gap: 0.375rem;
     margin: 0.3rem 0 0;
-    color: #66747c;
+    color: var(--color-muted-foreground);
   }
 
   .team-detail-header p svg {
@@ -1627,7 +1627,7 @@ gmp-advanced-marker:focus-visible .map-marker {
   }
 
   .team-eyebrow {
-    color: #64727a;
+    color: var(--color-muted-foreground);
     font-size: 0.6875rem;
     font-weight: 800;
     letter-spacing: 0.11em;
@@ -1674,7 +1674,7 @@ gmp-advanced-marker:focus-visible .map-marker {
     padding: 0.5625rem 0.625rem;
     border: 1px solid #ece5d3;
     border-radius: 0.625rem;
-    background: white;
+    background: var(--color-background);
   }
 
   .team-avatar {
@@ -1684,7 +1684,7 @@ gmp-advanced-marker:focus-visible .map-marker {
     flex: 0 0 2.1875rem;
     place-items: center;
     border-radius: 50%;
-    background: #d6ebf9;
+    background: var(--color-surface-solid);
     font-size: 0.75rem;
     font-weight: 800;
   }
@@ -1703,7 +1703,7 @@ gmp-advanced-marker:focus-visible .map-marker {
 
   .team-person-copy small {
     margin-top: 0.125rem;
-    color: #68747b;
+    color: var(--color-muted-foreground);
   }
 
   .team-request-actions,
@@ -1719,18 +1719,13 @@ gmp-advanced-marker:focus-visible .map-marker {
     border-radius: 50%;
   }
 
-  .team-request-actions [data-slot="button"]:last-child {
-    background: #54b958;
-    color: #163f19;
-  }
-
   .team-identity-warning {
     display: flex;
     gap: 0.5625rem;
     margin: 0.75rem 0 0;
     padding-top: 0.75rem;
     border-top: 1px solid #ead8a2;
-    color: #7a4500;
+    color: var(--color-warning-foreground);
     font-size: 0.75rem;
     line-height: 1.35;
   }
@@ -1779,13 +1774,8 @@ gmp-advanced-marker:focus-visible .map-marker {
     font-weight: 400;
   }
 
-  .team-member-panel > header > button {
+  .team-directory-trigger {
     max-width: 18rem;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font-weight: 650;
     text-align: right;
   }
 
@@ -1804,7 +1794,7 @@ gmp-advanced-marker:focus-visible .map-marker {
     padding: 0.5625rem;
     border: 1px solid #dbe4e9;
     border-radius: 0.625rem;
-    background: white;
+    background: var(--color-background);
   }
 
   .team-pencil-action {
@@ -1826,7 +1816,7 @@ gmp-advanced-marker:focus-visible .map-marker {
     padding: 0.875rem;
     border: 1px solid #c7d9e5;
     border-radius: 0.75rem;
-    background: rgb(255 255 255 / 66%);
+    background: color-mix(in srgb, var(--color-background) 66%, transparent);
   }
 
   .team-person-directory h4 {
@@ -1849,27 +1839,12 @@ gmp-advanced-marker:focus-visible .map-marker {
   @media (max-width: 900px) {
     .team-management-page#body-container {
       width: 100%;
+      overflow-x: clip;
       padding: 0.8125rem;
     }
 
     .team-management-subtitle {
       display: none;
-    }
-
-    .team-management-add-action {
-      width: 2.125rem;
-      height: 2.125rem;
-      padding: 0;
-      border-radius: 50%;
-    }
-
-    .team-management-add-action > span {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
     }
 
     .team-master-detail {
@@ -1951,23 +1926,6 @@ gmp-advanced-marker:focus-visible .map-marker {
       font-size: 0.8125rem;
     }
 
-    .team-detail-manage {
-      width: 2.125rem;
-      height: 2.125rem;
-      flex: 0 0 2.125rem;
-      padding: 0;
-      border-radius: 50%;
-    }
-
-    .team-detail-manage > span {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-    }
-
     .team-request-panel,
     .team-member-panel {
       padding: 0.8125rem;
@@ -1997,7 +1955,7 @@ gmp-advanced-marker:focus-visible .map-marker {
       align-items: center;
     }
 
-    .team-member-panel > header > button {
+    .team-directory-trigger {
       max-width: 9.7rem;
       font-size: 0.75rem;
     }

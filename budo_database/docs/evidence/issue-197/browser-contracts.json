@@ -34,6 +34,16 @@
         "rowOverflow": [
           "visible",
           "visible"
+        ],
+        "rowWidths": [
+          {
+            "client": 263,
+            "scroll": 263
+          },
+          {
+            "client": 263,
+            "scroll": 263
+          }
         ]
       }
     },
@@ -49,7 +59,7 @@
         "borderRadius": "18px",
         "railWidth": 364,
         "railTop": 75,
-        "detailTop": 293.1875
+        "detailTop": 287.46875
       },
       "requests": {
         "background": "rgb(255, 248, 229)",
@@ -71,6 +81,16 @@
         "rowOverflow": [
           "auto",
           "auto"
+        ],
+        "rowWidths": [
+          {
+            "client": 298,
+            "scroll": 351
+          },
+          {
+            "client": 298,
+            "scroll": 351
+          }
         ]
       }
     }
@@ -110,6 +130,16 @@
         "rowOverflow": [
           "visible",
           "visible"
+        ],
+        "rowWidths": [
+          {
+            "client": 263,
+            "scroll": 263
+          },
+          {
+            "client": 263,
+            "scroll": 263
+          }
         ]
       }
     },
@@ -125,7 +155,7 @@
         "borderRadius": "18px",
         "railWidth": 364,
         "railTop": 75,
-        "detailTop": 293.1875
+        "detailTop": 287.46875
       },
       "requests": {
         "background": "rgb(255, 248, 229)",
@@ -147,6 +177,16 @@
         "rowOverflow": [
           "auto",
           "auto"
+        ],
+        "rowWidths": [
+          {
+            "client": 298,
+            "scroll": 351
+          },
+          {
+            "client": 298,
+            "scroll": 351
+          }
         ]
       }
     }

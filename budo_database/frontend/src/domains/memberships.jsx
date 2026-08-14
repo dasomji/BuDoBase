@@ -119,7 +119,7 @@ function Member({ member, mutate, onChanged, canManageLeitung, canManageMembersh
           aria-expanded={editing}
           title={`${member.name} bearbeiten`}
           type="button"
-          size="icon-sm"
+          size="icon"
           variant="ghost"
           disabled={busy}
           onClick={() => setEditing(value => !value)}
@@ -180,8 +180,8 @@ function PendingRequest({ request, mutate, onDecided }) {
         {request.email && <small>{request.email}</small>}
       </span>
       <span className="team-request-actions">
-        <Button type="button" size="icon-sm" variant="ghost" disabled={busy} aria-label={`${request.name} ablehnen`} title={`${request.name} ablehnen`} onClick={() => decide('reject')}><X aria-hidden="true" /></Button>
-        <Button className="bg-[#54b958]! text-[#163f19]! hover:bg-[#49a84d]!" type="button" size="icon-sm" disabled={busy} aria-label={`${request.name} annehmen`} title={`${request.name} annehmen`} onClick={() => decide('approve')}><Check aria-hidden="true" /></Button>
+        <Button type="button" size="icon" variant="ghost" disabled={busy} aria-label={`${request.name} ablehnen`} title={`${request.name} ablehnen`} onClick={() => decide('reject')}><X aria-hidden="true" /></Button>
+        <Button type="button" size="icon" variant="success" disabled={busy} aria-label={`${request.name} annehmen`} title={`${request.name} annehmen`} onClick={() => decide('approve')}><Check aria-hidden="true" /></Button>
       </span>
     </li>
   );
@@ -346,11 +346,12 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
                   {year.turnuses.map(turnus => {
                     const pending = turnus.request_summary?.pending || 0;
                     return (
-                      <button
-                        className="team-turnus-option"
+                      <Button
+                        className="team-turnus-option h-auto justify-between whitespace-normal p-[0.6875rem] text-left max-[900px]:p-[0.5625rem]"
                         data-selected={turnus.id === selectedTurnusId || undefined}
                         key={turnus.id}
                         type="button"
+                        variant="ghost"
                         aria-label={`${turnus.label} auswählen`}
                         aria-pressed={turnus.id === selectedTurnusId}
                         onClick={() => setSelectedTurnusId(turnus.id)}
@@ -360,7 +361,7 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
                           <small>{turnus.members.length} Mitglieder · {turnus.members.filter(member => member.functional_role === 'leitung').length} Leitung</small>
                         </span>
                         {pending > 0 && <em aria-label={`${pending} offene ${pending === 1 ? 'Anfrage' : 'Anfragen'}`}>{pending}</em>}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -377,7 +378,12 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
                 <h2>{selectedTurnus.label}</h2>
                 <p><ShieldCheck aria-hidden="true" /> Leitung: {leads.length ? leads.map(member => member.name).join(' und ') : 'noch nicht besetzt'}</p>
               </div>
-              {(canManageLeitung || canManageMemberships) && <Button className="team-detail-manage" type="button" variant="secondary" aria-label="Mitglieder verwalten" onClick={openDirectory}><UserPlus aria-hidden="true" /><span>Mitglieder verwalten</span></Button>}
+              {(canManageLeitung || canManageMemberships) && (
+                <Button className="mobile-icon-action" size="responsive-icon" type="button" variant="secondary" aria-label="Mitglieder verwalten" onClick={openDirectory}>
+                  <span className="desktop-action-label">Mitglieder verwalten</span>
+                  <UserPlus className="mobile-action-label" aria-hidden="true" />
+                </Button>
+              )}
             </header>
             <section className="team-request-panel" data-testid="pending-request-panel" aria-labelledby="pending-requests-heading">
               <h3 id="pending-requests-heading"><Clock3 aria-hidden="true" /> Offene Anfragen ({selectedTurnus.request_summary?.pending ?? 0})</h3>
@@ -394,7 +400,11 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
             <section className="team-member-panel" data-testid="member-panel" aria-labelledby="team-members-heading">
               <header>
                 <div><span className="team-eyebrow">Team</span><h3 id="team-members-heading">{selectedTurnus.members.length} Personen</h3></div>
-                {(canManageLeitung || canManageMemberships) && <button type="button" aria-expanded={directoryVisible} onClick={openDirectory}>Alle verfügbaren Personen durchsuchen</button>}
+                {(canManageLeitung || canManageMemberships) && (
+                  <Button className="team-directory-trigger h-auto whitespace-normal p-0 text-right" type="button" variant="link" aria-expanded={directoryVisible} onClick={openDirectory}>
+                    Alle verfügbaren Personen durchsuchen
+                  </Button>
+                )}
               </header>
               {directoryVisible && <PersonDirectory people={matchedPeople} selectedContext={selectedContext} selectedTurnusId={selectedTurnusId} canManageLeitung={canManageLeitung} canManageMemberships={canManageMemberships} addLeitung={addLeitung} addTeamer={addTeamer} />}
               {selectedTurnus.members.length
@@ -412,13 +422,14 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
 function membershipHeaderAction(_data, { setPageState }) {
   return (
     <Button
-      className="team-management-add-action"
+      className="mobile-icon-action"
+      size="responsive-icon"
       type="button"
       aria-label="Person hinzufügen"
       onClick={() => setPageState?.(current => ({ ...current, personSearchOpen: true }))}
     >
-      <UserPlus aria-hidden="true" />
-      <span>Person hinzufügen</span>
+      <span className="desktop-action-label">Person hinzufügen</span>
+      <UserPlus className="mobile-action-label" aria-hidden="true" />
     </Button>
   );
 }

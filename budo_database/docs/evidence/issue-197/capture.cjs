@@ -200,6 +200,7 @@ async function inspect(browser, role, viewport) {
         yearGroupCount: yearGroups.length,
         yearGroupDisplays: yearGroups.map(group => getComputedStyle(group).display),
         rowOverflow: turnusRows.map(row => getComputedStyle(row).overflowX),
+        rowWidths: turnusRows.map(row => ({ client: row.clientWidth, scroll: row.scrollWidth })),
       },
     };
   });
@@ -232,6 +233,7 @@ async function inspect(browser, role, viewport) {
     assert(contract.selector.yearGroupCount === 2, `${role} mobile selector lost a year group`);
     assert(contract.selector.yearGroupDisplays.every(display => display === 'grid'), `${role} mobile year grouping disappeared`);
     assert(contract.selector.rowOverflow.every(overflow => overflow === 'auto'), `${role} mobile Turnus rows are not horizontally scrollable`);
+    assert(contract.selector.rowWidths.every(({ client, scroll }) => scroll > client), `${role} mobile Turnus rows do not expose horizontal overflow`);
   }
 
   const viewportName = viewport.width > 900 ? 'desktop' : 'mobile';
