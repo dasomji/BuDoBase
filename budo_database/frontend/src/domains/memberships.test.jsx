@@ -16,7 +16,7 @@ const data = { years: [{ year: 2026, turnuses: [{
   ],
   request_summary: { pending: 1 },
   pending_requests: [{ id: 21, name: 'Dana Anfrage', email: 'dana@example.test' }],
-}] }], people: [{ id: 30, name: 'Chris Frei', relationships: [], available: true }], can_manage_memberships: true };
+}] }], people: [{ id: 30, name: 'Chris Frei', email: 'chris.frei@example.test', relationships: [], available: true }], can_manage_memberships: true };
 
 describe('admin team overview', () => {
   afterEach(() => {
@@ -67,16 +67,14 @@ describe('admin team overview', () => {
     expect(screen.getByTestId('member-panel')).toHaveTextContent('Alex Muster');
     expect(screen.getByText('04.–17. Juli 2026')).toBeInTheDocument();
     expect(screen.getByText('Leitung: Bea Beispiel')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /Turnusse/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Person hinzufügen' })).toBeInTheDocument();
   });
 
   it('opens the admin member editor before changing Leitung through an explicit action', async () => {
     const user = userEvent.setup();
     const mutate = vi.fn().mockResolvedValue({ functional_role: 'leitung' });
     render(<Toaster><AdminTeamOverviewPage data={data} mutate={mutate} /></Toaster>);
-    const search = screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' });
-    await user.type(search, 'niemand');
-    expect(screen.getByText('Keine Turnusse oder Personen gefunden.')).toBeInTheDocument();
-    await user.clear(search);
     await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
     expect(mutate).not.toHaveBeenCalled();
     expect(screen.getByRole('textbox', { name: 'Bezeichnung für Alex Muster' })).toHaveValue('Küche');
@@ -170,7 +168,7 @@ describe('admin team overview', () => {
           pending_requests: [{ id: 22, name: 'Neue Anfrage' }],
         } : turnus),
       })),
-      people: [...multiple.people, { id: 31, name: 'Neue Suche', relationships: [], turnus_ids: [], available: true }],
+      people: [...multiple.people, { id: 31, name: 'Neue Suche', email: 'neue@example.test', relationships: [], turnus_ids: [], available: true }],
     };
     view.rerender(<Toaster><AdminTeamOverviewPage data={refreshed} mutate={mutate} /></Toaster>);
 
@@ -180,23 +178,34 @@ describe('admin team overview', () => {
     expect(screen.getByText('Neue Person')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Offene Anfragen (1)' })).toBeInTheDocument();
     expect(screen.getByText('Neue Anfrage')).toBeInTheDocument();
-    await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Neue Suche');
+    await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
+    await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'neue@example.test');
     expect(screen.getByText('Neue Suche')).toBeInTheDocument();
   });
 
-  it('finds registered users without memberships and communicates availability', async () => {
+  it('opens a Turnus-scoped dialog and finds registered users by name or email', async () => {
     const user = userEvent.setup();
     render(<Toaster><AdminTeamOverviewPage data={data} mutate={vi.fn()} /></Toaster>);
-    await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Chris');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
+    const dialog = screen.getByRole('dialog', { name: 'Person zu T2-2026 hinzufügen' });
+    const search = screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' });
+    expect(dialog).toContainElement(search);
+    expect(search).toHaveFocus();
+    await user.type(search, 'chris.frei@example.test');
     expect(screen.getByText('Chris Frei')).toBeInTheDocument();
+    expect(screen.getByText('chris.frei@example.test')).toBeInTheDocument();
     expect(screen.getByText('Keine Teamzugehörigkeiten · verfügbar')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Schließen' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('adds a searched person as Leitung to the selected Turnus with a person-specific action', async () => {
     const user = userEvent.setup();
     const mutate = vi.fn().mockResolvedValue({ membership_id: 31, role_label: 'Leitung', team_label: '' });
     render(<Toaster><AdminTeamOverviewPage data={{ ...data, people: [{ ...data.people[0], turnus_ids: [] }] }} mutate={mutate} /></Toaster>);
-    await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Chris');
+    await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
+    await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Chris');
     expect(screen.getByRole('button', { name: 'Chris Frei als Teamer zu T2-2026 hinzufügen' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' }));
     expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 });
@@ -213,10 +222,11 @@ describe('admin team overview', () => {
     const leitungData = { ...data, can_manage_leitung: false, can_manage_memberships: true, people: [{ ...data.people[0], turnus_ids: [] }] };
     render(<Toaster><AdminTeamOverviewPage data={leitungData} mutate={mutate} /></Toaster>);
     expect(screen.queryByRole('button', { name: 'Bea Beispiel bearbeiten' })).not.toBeInTheDocument();
-    await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Chris');
+    await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
+    await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Chris');
     await user.click(screen.getByRole('button', { name: 'Chris Frei als Teamer zu T2-2026 hinzufügen' }));
     expect(mutate).toHaveBeenCalledWith('/api/turnusse/4/memberships/', { user_id: 30 });
-    await user.clear(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }));
+    await user.click(screen.getByRole('button', { name: 'Schließen' }));
     await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
     const label = screen.getByRole('textbox', { name: 'Bezeichnung für Alex Muster' });
     await user.clear(label);
@@ -242,7 +252,8 @@ describe('admin team overview', () => {
     render(<Toaster><AdminTeamOverviewPage data={{ ...removableData, can_manage_leitung: false, can_manage_memberships: true, people: [person] }} mutate={mutate} /></Toaster>);
     await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
     await user.click(screen.getByRole('button', { name: 'Alex Muster aus dem Turnus entfernen' }));
-    await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Alex');
+    await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
+    await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Alex');
     await user.click(screen.getByRole('button', { name: 'Alex Muster als Teamer zu T2-2026 hinzufügen' }));
     expect(mutate).toHaveBeenLastCalledWith('/api/turnusse/4/memberships/', { user_id: 30 });
     expect(screen.getAllByText('Alex Muster')).not.toHaveLength(0);
@@ -262,7 +273,7 @@ describe('admin team overview', () => {
     expect(screen.queryByText('Die Bezeichnung konnte nicht gespeichert werden.', { selector: '.app-toast-description' })).not.toBeInTheDocument();
   });
 
-  it('keeps the selected assignment target visible when search matches a person and another Turnus', async () => {
+  it('keeps the selected Turnus as the assignment target while searching the dialog', async () => {
     const user = userEvent.setup();
     const mutate = vi.fn().mockResolvedValue({ membership_id: 32, role_label: 'Leitung', team_label: '' });
     const multiple = {
@@ -270,13 +281,14 @@ describe('admin team overview', () => {
         data.years[0].turnuses[0],
         { id: 5, label: 'T3-2026', members: [{ id: 13, name: 'Chris Frei', functional_role: 'teamer', role_label: 'Teamer', team_label: '' }] },
       ] }],
-      people: [{ id: 30, name: 'Chris Frei', relationships: ['T3-2026'], turnus_ids: [5] }],
+      people: [{ id: 30, name: 'Chris Frei', email: 'chris@example.test', relationships: ['T3-2026'], turnus_ids: [5] }],
     };
     render(<Toaster><AdminTeamOverviewPage data={multiple} mutate={mutate} /></Toaster>);
 
-    await user.type(screen.getByRole('textbox', { name: 'Turnusse und Personen suchen' }), 'Chris');
+    await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
+    await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Chris');
 
-    expect(screen.getByRole('heading', { name: 'T2-2026' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Person zu T2-2026 hinzufügen' })).toBeInTheDocument();
     const add = screen.getByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' });
     await user.click(add);
     expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 });

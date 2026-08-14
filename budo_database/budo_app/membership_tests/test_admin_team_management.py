@@ -28,7 +28,12 @@ class AdminTeamManagementTests(TestCase):
 
     def test_overview_includes_real_pending_requests_and_users_without_membership(self):
         requester = User.objects.create_user("bea", first_name="Bea", last_name="Beispiel")
-        available = User.objects.create_user("chris", first_name="Chris", last_name="Frei")
+        available = User.objects.create_user(
+            "chris",
+            email="chris.frei@example.test",
+            first_name="Chris",
+            last_name="Frei",
+        )
         TurnusJoinRequest.objects.create(user=requester, turnus=self.turnus)
         TurnusJoinRequest.objects.create(
             user=available,
@@ -43,6 +48,7 @@ class AdminTeamManagementTests(TestCase):
         self.assertEqual(turnus["request_summary"], {"pending": 1})
         self.assertEqual(turnus["pending_requests"][0]["name"], "Bea Beispiel")
         person = next(person for person in payload["people"] if person["id"] == available.id)
+        self.assertEqual(person["email"], "chris.frei@example.test")
         self.assertEqual(person["relationships"], [])
         self.assertTrue(person["available"])
 

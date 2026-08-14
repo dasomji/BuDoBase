@@ -17,10 +17,14 @@ The script serves the built assets and deterministic API contracts through
 Playwright request interception, so it does not need a live Django database or
 development server.
 
+Each role/viewport pair also has a `--person-dialog.png` capture showing the
+Turnus-scoped add-person dialog. The browser contract verifies that the former
+rail and header searches are absent and that the dialog filters people by email.
+
 ## Final verification
 
-- Focused membership/read-contract coverage: 14 frontend tests and 31 backend
-  tests passed (4 backend skips).
+- Focused team-management coverage: 14 frontend tests passed.
+- Membership backend suite: 97 tests passed (18 skipped).
 - Full frontend suite: 34 files, 376 tests passed.
 - Full Django suite with isolated in-memory SQLite and a fresh media root: 794
   tests passed, 60 skipped.
@@ -43,6 +47,11 @@ also rejects horizontal page overflow at 390px.
 | Mobile | [`../../../frontend/prototypes/team-management-C-mobile.png`](../../../frontend/prototypes/team-management-C-mobile.png) | [`admin--mobile.png`](admin--mobile.png) |
 | Leitung desktop | Same approved composition with Leitung capabilities | [`leitung--desktop.png`](leitung--desktop.png) |
 | Leitung mobile | Same approved composition with Leitung capabilities | [`leitung--mobile.png`](leitung--mobile.png) |
+
+Dialog captures: [`admin--desktop--person-dialog.png`](admin--desktop--person-dialog.png),
+[`admin--mobile--person-dialog.png`](admin--mobile--person-dialog.png),
+[`leitung--desktop--person-dialog.png`](leitung--desktop--person-dialog.png), and
+[`leitung--mobile--person-dialog.png`](leitung--mobile--person-dialog.png).
 
 Computed geometry and surface values are recorded in
 [`browser-contracts.json`](browser-contracts.json).

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Dialog } from '@base-ui/react/dialog';
 import {
   AlertTriangle,
   Check,
@@ -189,10 +190,9 @@ function PendingRequest({ request, mutate, onDecided }) {
 
 function PersonDirectory({ people, selectedContext, selectedTurnusId, canManageLeitung, canManageMemberships, addLeitung, addTeamer }) {
   return (
-    <section className="team-person-directory" aria-labelledby="person-search-heading">
-      <h4 id="person-search-heading">Registrierte Personen</h4>
+    <div className="team-person-directory">
       {people.length ? (
-        <ul>
+        <ul aria-label={`Registrierte Personen für ${selectedContext.label}`}>
           {people.map(person => {
             const availableForSelected = selectedContext != null && !(person.turnus_ids || []).includes(selectedTurnusId);
             return (
@@ -200,6 +200,7 @@ function PersonDirectory({ people, selectedContext, selectedTurnusId, canManageL
                 <span className="team-avatar" aria-hidden="true">{initials(person.name)}</span>
                 <span className="team-person-copy">
                   <strong>{person.name}</strong>
+                  {person.email && <small>{person.email}</small>}
                   <small>{person.relationships.length ? person.relationships.join(' · ') : 'Keine Teamzugehörigkeiten · verfügbar'}</small>
                 </span>
                 {availableForSelected && (canManageLeitung || canManageMemberships) && (
@@ -213,16 +214,66 @@ function PersonDirectory({ people, selectedContext, selectedTurnusId, canManageL
           })}
         </ul>
       ) : <p>Keine registrierten Personen gefunden.</p>}
-    </section>
+    </div>
   );
 }
 
-export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, onPersonSearchOpenChange }) {
+function PersonAddDialog({ open, close, people, selectedContext, selectedTurnusId, canManageLeitung, canManageMemberships, addLeitung, addTeamer }) {
+  const [query, setQuery] = useState('');
+  const normalized = query.trim().toLocaleLowerCase('de');
+  const matchedPeople = useMemo(() => people.filter(person => !normalized
+    || `${person.name} ${person.email || ''}`.toLocaleLowerCase('de').includes(normalized)), [normalized, people]);
+  const closeAndReset = () => {
+    setQuery('');
+    close();
+  };
+
+  return (
+    <Dialog.Root open={open} onOpenChange={nextOpen => { if (!nextOpen) closeAndReset(); }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-[var(--z-modal)] bg-black/45" />
+        <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] grid place-items-center overflow-y-auto p-4">
+          <Dialog.Popup className="card grid max-h-[calc(100dvh-2rem)] w-full max-w-2xl gap-4 overflow-hidden bg-surface-solid p-5">
+            <div>
+              <Dialog.Title className="text-xl font-semibold">Person zu {selectedContext.label} hinzufügen</Dialog.Title>
+              <Dialog.Description className="text-sm text-muted-foreground">Registrierte Personen nach Name oder E-Mail-Adresse durchsuchen.</Dialog.Description>
+            </div>
+            <label className="grid gap-1 font-medium">
+              Person suchen
+              <span className="team-dialog-search">
+                <Search aria-hidden="true" />
+                <Input
+                  autoFocus
+                  aria-label="Person nach Name oder E-Mail-Adresse suchen"
+                  placeholder="Name oder E-Mail-Adresse"
+                  value={query}
+                  onChange={event => setQuery(event.target.value)}
+                />
+              </span>
+            </label>
+            <PersonDirectory
+              people={matchedPeople}
+              selectedContext={selectedContext}
+              selectedTurnusId={selectedTurnusId}
+              canManageLeitung={canManageLeitung}
+              canManageMemberships={canManageMemberships}
+              addLeitung={addLeitung}
+              addTeamer={addTeamer}
+            />
+            <div className="flex justify-end">
+              <Dialog.Close render={<Button type="button" variant="secondary" />}>Schließen</Dialog.Close>
+            </div>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+export function AdminTeamOverviewPage({ data, mutate }) {
   const showError = useErrorToast();
   const showSuccess = useSuccessToast();
-  const [query, setQuery] = useState('');
-  const [directoryRequested, setDirectoryRequested] = useState(false);
-  const searchInput = useRef(null);
+  const [personDialogOpen, setPersonDialogOpen] = useState(false);
   const [years, setYears] = useState(data.years || []);
   const [people, setPeople] = useState(data.people || []);
   const canManageLeitung = data.can_manage_leitung !== false;
@@ -232,17 +283,7 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
   useEffect(() => setYears(data.years || []), [data.years]);
   useEffect(() => setPeople(data.people || []), [data.people]);
 
-  const normalized = query.trim().toLocaleLowerCase('de');
-  const filtered = useMemo(() => years.map(year => ({
-    ...year,
-    turnuses: year.turnuses.filter(turnus => !normalized
-      || turnus.label.toLocaleLowerCase('de').includes(normalized)
-      || turnus.members.some(member => `${member.name} ${member.team_label} ${member.role_label}`.toLocaleLowerCase('de').includes(normalized))),
-  })).filter(year => year.turnuses.length), [years, normalized]);
   const allTurnuses = useMemo(() => years.flatMap(year => year.turnuses), [years]);
-  const directoryVisible = personSearchOpen || directoryRequested || normalized.length > 0;
-  const matchedPeople = useMemo(() => directoryVisible ? people.filter(person => !normalized
-    || `${person.name} ${person.relationships.join(' ')}`.toLocaleLowerCase('de').includes(normalized)) : [], [directoryVisible, normalized, people]);
   const selectedContext = allTurnuses.find(turnus => turnus.id === selectedTurnusId) || null;
   const selectedTurnus = selectedContext;
 
@@ -250,16 +291,6 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
     if (!selectedContext && allTurnuses.length) setSelectedTurnusId(allTurnuses[0].id);
     if (!allTurnuses.length && selectedTurnusId !== null) setSelectedTurnusId(null);
   }, [allTurnuses, selectedContext, selectedTurnusId]);
-
-  useEffect(() => {
-    if (personSearchOpen) searchInput.current?.focus();
-  }, [personSearchOpen]);
-
-  const openDirectory = () => {
-    setDirectoryRequested(true);
-    onPersonSearchOpenChange?.(true);
-    searchInput.current?.focus();
-  };
 
   const changed = (changedMember, change) => {
     const membershipId = changedMember.id;
@@ -333,13 +364,8 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
       <p className="team-management-subtitle">Teams überblicken, Personen im Detail verwalten</p>
       <div className="team-master-detail" data-testid="team-master-detail">
         <nav className="team-turnus-rail" aria-label="Turnus auswählen">
-          <label className="team-rail-search">
-            <span className="sr-only">Turnusse und Personen suchen</span>
-            <Search aria-hidden="true" />
-            <Input ref={searchInput} value={query} onChange={event => setQuery(event.target.value)} placeholder="Turnus suchen …" />
-          </label>
           <div className="team-year-selector">
-            {filtered.map(year => (
+            {years.map(year => (
               <section className="team-year-group" key={year.year} aria-labelledby={`team-year-${year.year}`}>
                 <h2 id={`team-year-${year.year}`}>{year.year}</h2>
                 <div className="team-year-turnuses">
@@ -368,7 +394,7 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
               </section>
             ))}
           </div>
-          {!filtered.length && <p className="team-rail-empty">Keine Turnusse gefunden.</p>}
+          {!years.length && <p className="team-rail-empty">Keine Turnusse vorhanden.</p>}
         </nav>
         {selectedTurnus && (
           <section className="team-detail" aria-label={`${selectedTurnus.label} verwalten`}>
@@ -379,8 +405,8 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
                 <p><ShieldCheck aria-hidden="true" /> Leitung: {leads.length ? leads.map(member => member.name).join(' und ') : 'noch nicht besetzt'}</p>
               </div>
               {(canManageLeitung || canManageMemberships) && (
-                <Button className="mobile-icon-action" size="responsive-icon" type="button" variant="secondary" aria-label="Mitglieder verwalten" onClick={openDirectory}>
-                  <span className="desktop-action-label">Mitglieder verwalten</span>
+                <Button className="mobile-icon-action" size="responsive-icon" type="button" variant="secondary" aria-label="Person hinzufügen" onClick={() => setPersonDialogOpen(true)}>
+                  <span className="desktop-action-label">Person hinzufügen</span>
                   <UserPlus className="mobile-action-label" aria-hidden="true" />
                 </Button>
               )}
@@ -400,13 +426,7 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
             <section className="team-member-panel" data-testid="member-panel" aria-labelledby="team-members-heading">
               <header>
                 <div><span className="team-eyebrow">Team</span><h3 id="team-members-heading">{selectedTurnus.members.length} Personen</h3></div>
-                {(canManageLeitung || canManageMemberships) && (
-                  <Button className="team-directory-trigger h-auto whitespace-normal p-0 text-right" type="button" variant="link" aria-expanded={directoryVisible} onClick={openDirectory}>
-                    Alle verfügbaren Personen durchsuchen
-                  </Button>
-                )}
               </header>
-              {directoryVisible && <PersonDirectory people={matchedPeople} selectedContext={selectedContext} selectedTurnusId={selectedTurnusId} canManageLeitung={canManageLeitung} canManageMemberships={canManageMemberships} addLeitung={addLeitung} addTeamer={addTeamer} />}
               {selectedTurnus.members.length
                 ? <ul className="team-member-list">{selectedTurnus.members.map(member => <Member key={member.id} member={member} mutate={mutate} onChanged={changed} canManageLeitung={canManageLeitung} canManageMemberships={canManageMemberships} />)}</ul>
                 : <p>Noch keine Teammitglieder.</p>}
@@ -414,34 +434,24 @@ export function AdminTeamOverviewPage({ data, mutate, personSearchOpen = false, 
           </section>
         )}
       </div>
-      {!filtered.length && !matchedPeople.length && normalized && <p className="team-no-results">Keine Turnusse oder Personen gefunden.</p>}
+      {personDialogOpen && selectedTurnus && (
+        <PersonAddDialog
+          open
+          close={() => setPersonDialogOpen(false)}
+          people={people}
+          selectedContext={selectedContext}
+          selectedTurnusId={selectedTurnusId}
+          canManageLeitung={canManageLeitung}
+          canManageMemberships={canManageMemberships}
+          addLeitung={addLeitung}
+          addTeamer={addTeamer}
+        />
+      )}
     </Columns>
   );
 }
 
-function membershipHeaderAction(_data, { setPageState }) {
-  return (
-    <Button
-      className="mobile-icon-action"
-      size="responsive-icon"
-      type="button"
-      aria-label="Person hinzufügen"
-      onClick={() => setPageState?.(current => ({ ...current, personSearchOpen: true }))}
-    >
-      <span className="desktop-action-label">Person hinzufügen</span>
-      <UserPlus className="mobile-action-label" aria-hidden="true" />
-    </Button>
-  );
-}
-
-const renderTeamManagement = ({ data, mutate, pageState, setPageState }) => (
-  <AdminTeamOverviewPage
-    data={data}
-    mutate={mutate}
-    personSearchOpen={Boolean(pageState?.personSearchOpen)}
-    onPersonSearchOpenChange={open => setPageState?.(current => ({ ...current, personSearchOpen: open }))}
-  />
-);
+const renderTeamManagement = ({ data, mutate }) => <AdminTeamOverviewPage data={data} mutate={mutate} />;
 
 export const membershipRoutes = [{
   pattern: /^\/admin\/teams$/,
@@ -449,7 +459,6 @@ export const membershipRoutes = [{
   title: 'Teamverwaltung',
   domain: 'memberships',
   readContractKey: 'admin-team-overview',
-  headerAction: membershipHeaderAction,
   render: renderTeamManagement,
 }, {
   pattern: /^\/teams$/,
@@ -457,6 +466,5 @@ export const membershipRoutes = [{
   title: 'Teamverwaltung',
   domain: 'memberships',
   readContractKey: 'team-management',
-  headerAction: membershipHeaderAction,
   render: renderTeamManagement,
 }];

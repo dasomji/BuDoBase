@@ -80,6 +80,7 @@ def _team_overview(request, *, admin_only):
         people.append({
             "id": user.id,
             "name": _display_name(user),
+            "email": user.email,
             "relationships": sorted(relationships, key=str.casefold),
             "available": not relationships,
             # Memberships outside the actor's management scope deliberately do

@@ -90,8 +90,8 @@ function routeData(role) {
   return {
     years,
     people: [
-      { id: 301, name: 'Kim Bauer', relationships: [], turnus_ids: [], available: true },
-      { id: 302, name: 'Noah Graf mit einem sehr langen Namen', relationships: ['T2-2026'], turnus_ids: [3], available: false },
+      { id: 301, name: 'Kim Bauer', email: 'kim.bauer@example.test', relationships: [], turnus_ids: [], available: true },
+      { id: 302, name: 'Noah Graf mit einem sehr langen Namen', email: 'noah.graf@example.test', relationships: ['T2-2026'], turnus_ids: [3], available: false },
     ],
     can_manage_leitung: role === 'admin',
     can_manage_memberships: true,
@@ -210,7 +210,11 @@ async function inspect(browser, role, viewport) {
   assert(contract.requests.background === 'rgb(255, 248, 229)', `${role} request panel lost its warm surface (${contract.requests.background})`);
   assert(contract.requests.borderStyle === 'solid', `${role} request panel lost its border`);
   assert(contract.members.tileCount === 7, `${role} populated member panel did not render seven members`);
-  assert(await page.getByRole('button', { name: 'Person hinzufügen' }).count() === 1, `${role} page-level add-person action is missing`);
+  const addPersonTrigger = page.getByRole('button', { name: 'Person hinzufügen' });
+  assert(await addPersonTrigger.count() === 1, `${role} selected-Turnus add-person action is missing or duplicated`);
+  assert(await addPersonTrigger.evaluate(button => document.querySelector('.team-detail').contains(button)), `${role} add-person action is not tied to the selected Turnus`);
+  assert(await page.locator('#headerbutton').getByRole('button').count() === 0, `${role} retained a redundant header action`);
+  assert(await page.getByPlaceholder('Turnus suchen …').count() === 0, `${role} retained the Turnus search`);
   assert(await page.getByRole('button', { name: 'Sofia Hofer annehmen' }).count() === 1, `${role} approval action is missing`);
   assert(await page.getByRole('button', { name: 'Sofia Hofer ablehnen' }).count() === 1, `${role} rejection action is missing`);
   assert(await page.getByRole('button', { name: 'Amira König bearbeiten' }).count() === 1, `${role} person-specific pencil action is missing`);
@@ -242,13 +246,24 @@ async function inspect(browser, role, viewport) {
     animations: 'disabled',
   });
 
-  await page.getByRole('button', { name: 'Person hinzufügen' }).click();
-  await page.getByRole('heading', { name: 'Registrierte Personen' }).waitFor();
-  assert(await page.getByRole('button', { name: 'Kim Bauer als Teamer zu T1-2027 hinzufügen' }).count() === 1, `${role} cannot add an available Teamer`);
+  await addPersonTrigger.click();
+  const dialog = page.getByRole('dialog', { name: 'Person zu T1-2027 hinzufügen' });
+  await dialog.waitFor();
+  const personSearch = dialog.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' });
+  assert(await personSearch.evaluate(input => input === document.activeElement), `${role} person search is not initially focused`);
+  await page.screenshot({
+    path: path.join(outputDirectory, `${role}--${viewportName}--person-dialog.png`),
+    animations: 'disabled',
+  });
+  await personSearch.fill('kim.bauer@example.test');
+  assert(await dialog.getByText('Kim Bauer', { exact: true }).count() === 1, `${role} cannot find a person by email address`);
+  assert(await dialog.getByText('Noah Graf mit einem sehr langen Namen', { exact: true }).count() === 0, `${role} email search did not filter the directory`);
+  assert(await dialog.getByRole('button', { name: 'Kim Bauer als Teamer zu T1-2027 hinzufügen' }).count() === 1, `${role} cannot add an available Teamer`);
   assert(
-    await page.getByRole('button', { name: 'Kim Bauer als Leitung zu T1-2027 hinzufügen' }).count() === (role === 'admin' ? 1 : 0),
+    await dialog.getByRole('button', { name: 'Kim Bauer als Leitung zu T1-2027 hinzufügen' }).count() === (role === 'admin' ? 1 : 0),
     `${role} add-person controls do not match its capability scope`,
   );
+  await dialog.getByRole('button', { name: 'Schließen' }).click();
 
   if (viewport.width <= 900) {
     await page.getByRole('button', { name: 'T1-2026 auswählen' }).scrollIntoViewIfNeeded();
