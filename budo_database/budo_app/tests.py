@@ -439,7 +439,8 @@ class TurnusUploadTest(TestCase):
         # Create a test user and log in
         self.user = User.objects.create_user(
             username='testuser',
-            password='testpass123'
+            password='testpass123',
+            is_superuser=True,
         )
         self.client.login(username='testuser', password='testpass123')
 
@@ -534,6 +535,7 @@ class TurnusWorkbookReplacementTest(TestCase):
         self.user = User.objects.create_user(
             username="workbook-uploader",
             password="testpass123",
+            is_superuser=True,
         )
         self.client.login(
             username="workbook-uploader",

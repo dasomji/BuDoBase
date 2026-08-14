@@ -18,6 +18,8 @@ from .export_snapshots import (
     stream_snapshot,
 )
 from .memberships import authorized_turnus_scope
+from .models import TurnusMembership
+from .product_admin_policy import require_product_admin
 from .react_views import render_react_page
 from .storage_lifecycle import delete_storage_object_on_commit
 from .updateExcel import update_excel_file
@@ -27,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def uploadFile(request):
+    require_product_admin(request.user, "Turnus import access denied.")
     documents = models.Turnus.objects.all()
     context = {
         "documents": documents,
@@ -62,7 +65,13 @@ def uploadFile(request):
 
 @login_required
 def upload_excel(request, turnus_id):
-    turnus = get_object_or_404(models.Turnus, id=turnus_id)
+    turnuses = models.Turnus.objects.all()
+    if not request.user.is_superuser:
+        turnuses = turnuses.filter(
+            memberships__user_id=request.user.pk,
+            memberships__functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+        )
+    turnus = get_object_or_404(turnuses, id=turnus_id)
     if request.method == "POST":
         form = UploadForm(request.POST, request.FILES, instance=turnus)
         if form.is_valid():

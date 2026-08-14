@@ -196,7 +196,11 @@ class AdminSettingsTests(TestCase):
 
 class MaintenanceMultipartWorkflowTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="maintenance-uploader")
+        self.user = User.objects.create_superuser(
+            username="maintenance-uploader",
+            email="maintenance@example.test",
+            password=None,
+        )
         self.turnus = Turnus.objects.create(
             turnus_nr=2,
             turnus_beginn=date(2026, 7, 1),

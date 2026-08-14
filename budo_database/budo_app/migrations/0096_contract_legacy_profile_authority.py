@@ -102,10 +102,19 @@ def restore_activation_guard(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    # PostgreSQL cannot alter a table with pending trigger events from data
+    # updates in the same transaction. Keep reconciliation atomic on its own,
+    # then perform the authority-column contraction outside that transaction.
+    atomic = False
+
     dependencies = [("budo_app", "0095_harden_membership_selection_activation")]
 
     operations = [
-        migrations.RunPython(reconcile_late_legacy_authority, restore_legacy_authority),
+        migrations.RunPython(
+            reconcile_late_legacy_authority,
+            restore_legacy_authority,
+            atomic=True,
+        ),
         migrations.RunPython(remove_activation_guard, restore_activation_guard),
         migrations.RemoveField(model_name="profil", name="turnus"),
         migrations.RemoveField(model_name="profil", name="rolle"),
