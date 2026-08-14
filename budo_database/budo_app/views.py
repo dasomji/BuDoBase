@@ -192,11 +192,6 @@ def upload_spezialfamilien(request):
 
 
 @login_required
-def team(request):
-    return render_react_page(request)
-
-
-@login_required
 @cache_user_profile
 def kindergeburtstage(request):
     if not request.user_profile:

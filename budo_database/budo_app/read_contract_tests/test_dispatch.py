@@ -15,7 +15,6 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "dashboard",
     "gut-zu-wissen",
     "profile",
-    "team",
     "turnus-list",
     "turnus-upload",
     "admin-settings",
@@ -79,9 +78,8 @@ class RouteContractDispatchTests(TestCase):
             )
         )
 
-    def test_profile_contracts_use_glossary_aligned_domain_name(self):
+    def test_profile_contract_uses_glossary_aligned_domain_name(self):
         self.assertEqual(ROUTE_CONTRACTS["profile"].domain, "profiles")
-        self.assertEqual(ROUTE_CONTRACTS["team"].domain, "profiles")
 
     def test_unknown_route_contract_is_rejected(self):
         self.client.force_login(self.user)

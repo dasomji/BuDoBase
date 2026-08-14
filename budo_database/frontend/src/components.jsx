@@ -513,7 +513,7 @@ export function RestForm({ target, token, children, className = '', encType, onS
         return;
       }
       if (onSuccess) {
-        await onSuccess(result);
+        await onSuccess(result, form);
         if (resetOnSuccess) form.reset();
         return;
       }
@@ -528,7 +528,7 @@ export function RestForm({ target, token, children, className = '', encType, onS
   return <form action={target} method="post" encType={encType} className={className} onSubmit={submit} aria-busy={submitting}><CsrfInput token={token} />{typeof children === 'function' ? children({ submitting }) : children}{submitting && <p aria-live="polite">Wird gespeichert…</p>}</form>;
 }
 
-export function NativeForm({ action = '', method = 'post', token, encType, fields, submit = 'Speichern', children }) {
+export function NativeForm({ action = '', method = 'post', token, encType, fields, submit = 'Speichern', children, onSuccess }) {
   const contents = (submitting = false) => (
     <>
       {fields.map(field => {
@@ -555,7 +555,7 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
     </>
   );
   if (method.toLowerCase() === 'post') {
-    return <RestForm target={action} token={token} encType={encType} className="form-grid">{({ submitting }) => contents(submitting)}</RestForm>;
+    return <RestForm target={action} token={token} encType={encType} className="form-grid" onSuccess={onSuccess}>{({ submitting }) => contents(submitting)}</RestForm>;
   }
   return <form action={action} method={method} encType={encType} className="form-grid">{contents()}</form>;
 }

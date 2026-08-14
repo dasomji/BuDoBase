@@ -221,22 +221,6 @@ class ReactShellTests(TestCase):
         self.assertNotContains(response, "fonts.googleapis.com")
         self.assertNotContains(response, "fonts.gstatic.com")
 
-    def test_team_page_deep_link_uses_the_authenticated_react_shell(self):
-        user = User.objects.create_user("team-page-user", password="secret")
-        self.client.force_login(user)
-
-        response = self.client.get(reverse("team"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '<div id="root"></div>', html=True)
-        self.assertContains(response, "/static/frontend/app.js")
-
-    def test_team_page_deep_link_requires_authentication(self):
-        response = self.client.get("/team/")
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, "/login/?next=/team/")
-
     def test_kitchen_uses_the_same_react_shell_as_every_other_page(self):
         user = User.objects.create_user("kitchen-print-user", password="secret")
         self.client.force_login(user)
@@ -435,7 +419,6 @@ class ReactPageRouteSmokeTests(TestCase):
             "upload_spezialfamilien": reverse("upload_spezialfamilien"),
             "spezial_familien": reverse("spezial_familien"),
             "kindergeburtstage": reverse("kindergeburtstage"),
-            "team": reverse("team"),
             "dashboard": reverse("dashboard"),
             "good-to-know": reverse("good-to-know"),
             "register": reverse("register"),

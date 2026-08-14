@@ -78,25 +78,6 @@ def profile(request):
     }
 
 
-def team(request):
-    turnus_id = active_turnus_id(request)
-    if turnus_id is None:
-        return {"team": []}
-    profiles = (
-        _profile_queryset(turnus_id)
-        .filter(user__turnus_memberships__turnus_id=turnus_id)
-        .distinct()
-        .order_by("rufname", "id")
-    )
-    return {
-        "team": [
-            {**_profile_fields(item, turnus_id), "focuses": _focuses(item)}
-            for item in profiles
-        ],
-    }
-
-
 CONTRACTS = {
     "profile": profile,
-    "team": team,
 }

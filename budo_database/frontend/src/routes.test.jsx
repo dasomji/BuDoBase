@@ -16,7 +16,6 @@ describe('route inventory', () => {
     ['/profil', 'profile', 'profiles', 'profile'],
     ['/profil/bearbeiten', 'profile-edit', 'profiles', 'profile'],
     ['/profil/5', 'profile-edit', 'profiles', 'profile'],
-    ['/team', 'team', 'profiles', 'team'],
     ['/upload', 'turnus-upload', 'maintenance', 'turnus-list'],
     ['/upload_excel/9', 'turnus-upload', 'maintenance', 'turnus-upload'],
     ['/settings/', 'admin-settings', 'maintenance', 'admin-settings'],

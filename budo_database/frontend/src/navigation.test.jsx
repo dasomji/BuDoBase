@@ -31,7 +31,7 @@ describe('application sidebar navigation', () => {
     expect(focuses).toHaveAttribute('aria-expanded', 'true');
     expect(happyCleaning).toHaveAttribute('aria-expanded', 'true');
     expect(orga).toHaveAttribute('aria-expanded', 'true');
-    expect(within(navigation).getByRole('link', { name: 'Team' })).toHaveAttribute('href', '/team/');
+    expect(within(navigation).getByRole('link', { name: 'Team' })).toHaveAttribute('href', '/teams/');
     expect(within(navigation).getByRole('link', { name: 'Alle Kinder' })).toHaveAttribute('href', '/all_kids');
     expect(within(listsMenu).getByRole('link', { name: 'Gut zu wissen' })).toHaveAttribute('href', '/gut-zu-wissen/');
     expect(within(focusesMenu).getAllByRole('link').map(link => link.textContent)).toEqual([

@@ -8,7 +8,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
-from budo_app.models import Kinder, Profil
+from budo_app.models import Kinder, Profil, TurnusMembership
 from budo_app.react_views import ReactPageTemplateMixin, render_react_page
 from django.views.decorators.http import require_GET
 from django.views.generic.edit import UpdateView
@@ -120,12 +120,20 @@ class ProfilUpdate(ReactPageTemplateMixin, UpdateView):
 
 
 class ProfilAdminUpdate(ProfilUpdate):
-    success_url = reverse_lazy('team')
+    success_url = reverse_lazy('team-management-page')
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect_to_login(request.get_full_path())
-        if not request.user.has_perm('budo_app.change_profil'):
+        can_edit_shared_turnus_profile = TurnusMembership.objects.filter(
+            user=request.user,
+            functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+            turnus__memberships__user__profil__id=self.kwargs['pk'],
+        ).exists()
+        if (
+            not request.user.has_perm('budo_app.change_profil')
+            and not can_edit_shared_turnus_profile
+        ):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 

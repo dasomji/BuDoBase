@@ -5,7 +5,99 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from unittest.mock import patch
 
-from budo_app.models import AuditEvent, Turnus, TurnusMembership
+from budo_app.models import AuditEvent, Schwerpunkte, Turnus, TurnusMembership
+
+
+class TeamerTeamManagementReadTests(TestCase):
+    def test_teamer_reads_only_own_turnuses_without_management_data(self):
+        own = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2028, 7, 1))
+        foreign = Turnus.objects.create(turnus_nr=2, turnus_beginn=date(2028, 7, 15))
+        teamer = User.objects.create_user("teamer", first_name="Tina", last_name="Teamer")
+        teammate = User.objects.create_user("teammate", first_name="Mara", last_name="Muster")
+        outsider = User.objects.create_user("outsider", first_name="Otto", last_name="Privat")
+        TurnusMembership.objects.create(user=teamer, turnus=own)
+        TurnusMembership.objects.create(user=teammate, turnus=own)
+        TurnusMembership.objects.create(user=teammate, turnus=foreign)
+        TurnusMembership.objects.create(user=outsider, turnus=foreign)
+        self.client.force_login(teamer)
+
+        response = self.client.get(reverse("route-data-api", args=("team-management",)))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(
+            [turnus["id"] for year in payload["years"] for turnus in year["turnuses"]],
+            [own.id],
+        )
+        visible_turnus = payload["years"][0]["turnuses"][0]
+        self.assertEqual(
+            [member["name"] for member in visible_turnus["members"]],
+            ["Mara Muster", "Tina Teamer"],
+        )
+        self.assertFalse(visible_turnus["can_manage_memberships"])
+        self.assertFalse(visible_turnus["can_edit_profiles"])
+        teammate_payload = next(
+            member for member in visible_turnus["members"] if member["name"] == "Mara Muster"
+        )
+        self.assertEqual(teammate_payload["profile"]["turnuses"], [str(own)])
+        self.assertEqual(visible_turnus["pending_requests"], [])
+        self.assertEqual(payload["people"], [])
+        self.assertNotContains(response, "Otto Privat")
+
+    def test_team_management_embeds_the_existing_profile_card_fields(self):
+        turnus = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2028, 7, 1))
+        viewer = User.objects.create_user("viewer")
+        teammate = User.objects.create_user(
+            "teammate",
+            email="mara@example.test",
+            first_name="Mara",
+            last_name="Muster",
+        )
+        TurnusMembership.objects.create(user=viewer, turnus=turnus)
+        membership = TurnusMembership.objects.create(
+            user=teammate,
+            turnus=turnus,
+            team_label="Küche",
+        )
+        profile = teammate.profil
+        profile.rufname = "Mara"
+        profile.telefonnummer = "+436641234567"
+        profile.allergien = "Nüsse"
+        profile.coffee = "Schwarz"
+        profile.essen = "vt"
+        profile.budo_family = "M"
+        profile.save()
+        focus = Schwerpunkte.objects.create(
+            swp_name="Wald",
+            schwerpunktzeit=turnus.schwerpunktzeit_set.get(woche="w1"),
+        )
+        focus.betreuende.add(profile)
+        self.client.force_login(viewer)
+
+        payload = self.client.get(
+            reverse("route-data-api", args=("team-management",))
+        ).json()
+
+        member = next(
+            item
+            for item in payload["years"][0]["turnuses"][0]["members"]
+            if item["id"] == membership.id
+        )
+        self.assertEqual(member["profile"], {
+            "id": profile.id,
+            "email": "mara@example.test",
+            "rufname": "Mara",
+            "phone": "+436641234567",
+            "allergies": "Nüsse",
+            "coffee": "Schwarz",
+            "role": "teamer",
+            "role_display": "Küche",
+            "food": "vt",
+            "food_display": "🧀 Vegetarisch",
+            "budo_family": "M",
+            "turnuses": [str(turnus)],
+            "focuses": [{"id": focus.id, "name": "Wald"}],
+        })
 
 
 class LeitungTeamManagementHttpTests(TestCase):
@@ -38,8 +130,14 @@ class LeitungTeamManagementHttpTests(TestCase):
         )
         self.assertEqual(workspace.status_code, 200)
         managed_turnus = workspace.json()["years"][0]["turnuses"][0]
+        membership_fields = (
+            "id", "user_id", "name", "functional_role", "role_label", "team_label",
+        )
         self.assertEqual(
-            managed_turnus["members"],
+            [
+                {key: member[key] for key in membership_fields}
+                for member in managed_turnus["members"]
+            ],
             [
                 {
                     "id": managed_turnus["members"][0]["id"],
@@ -70,6 +168,35 @@ class LeitungTeamManagementHttpTests(TestCase):
         )
         self.membership = TurnusMembership.objects.create(user=self.member, turnus=self.own)
         self.client.force_login(self.leitung)
+
+    def test_leitung_can_edit_a_profile_in_own_turnus_but_not_a_foreign_profile(self):
+        foreign_member = User.objects.create_user("foreign-member")
+        TurnusMembership.objects.create(user=foreign_member, turnus=self.foreign)
+        submission = {
+            "rufname": "Mara Neu",
+            "allergien": "Keine",
+            "coffee": "Milch",
+            "essen": "vt",
+            "telefonnummer": "+436641234567",
+            "budo_family": "XL",
+        }
+
+        own_response = self.client.post(
+            reverse("form-submit-api"),
+            {"_target": f"/profil/{self.member.profil.id}/", **submission},
+        )
+        foreign_response = self.client.post(
+            reverse("form-submit-api"),
+            {"_target": f"/profil/{foreign_member.profil.id}/", **submission},
+        )
+
+        self.assertEqual(own_response.status_code, 200)
+        self.assertEqual(own_response.json(), {"ok": True, "redirect": "/teams/"})
+        self.assertEqual(foreign_response.status_code, 403)
+        self.member.profil.refresh_from_db()
+        foreign_member.profil.refresh_from_db()
+        self.assertEqual(self.member.profil.rufname, "Mara Neu")
+        self.assertNotEqual(foreign_member.profil.rufname, "Mara Neu")
 
     def test_directory_exposes_accounts_but_not_foreign_membership_data(self):
         foreign_user = User.objects.create_user("foreign-person")

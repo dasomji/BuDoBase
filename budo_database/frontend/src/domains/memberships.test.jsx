@@ -1,18 +1,32 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Toaster } from '../components/ui/toast';
 import { AdminTeamOverviewPage } from './memberships';
 
-const data = { years: [{ year: 2026, turnuses: [{
+const alexProfile = {
+  id: 51,
+  email: 'alex@example.test',
+  rufname: 'Alex',
+  phone: '+4312345',
+  allergies: 'Nüsse',
+  coffee: 'Schwarz',
+  food: 'vt',
+  food_display: '🧀 Vegetarisch',
+  budo_family: 'M',
+  turnuses: ['T2-2026', 'T3-2026'],
+  focuses: [{ id: 3, name: 'Wald' }],
+};
+
+const data = { csrf_token: 'token', years: [{ year: 2026, turnuses: [{
   id: 4,
   label: 'T2-2026',
   start: '2026-07-04',
   end: '2026-07-17',
   members: [
-    { id: 11, name: 'Alex Muster', functional_role: 'teamer', role_label: 'Teamer', team_label: 'Küche' },
-    { id: 12, name: 'Bea Beispiel', functional_role: 'leitung', role_label: 'Leitung', team_label: 'Organisation' },
+    { id: 11, name: 'Alex Muster', functional_role: 'teamer', role_label: 'Teamer', team_label: 'Küche', profile: alexProfile },
+    { id: 12, name: 'Bea Beispiel', functional_role: 'leitung', role_label: 'Leitung', team_label: 'Organisation', profile: { ...alexProfile, id: 52, rufname: 'Bea', email: 'bea@example.test', focuses: [] } },
   ],
   request_summary: { pending: 1 },
   pending_requests: [{ id: 21, name: 'Dana Anfrage', email: 'dana@example.test' }],
@@ -21,6 +35,7 @@ const data = { years: [{ year: 2026, turnuses: [{
 describe('admin team overview', () => {
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
   });
 
   it('prominently repeats the email identity warning and resolves a request explicitly', async () => {
@@ -38,19 +53,115 @@ describe('admin team overview', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(warning);
     await user.click(screen.getByRole('button', { name: 'Dana Anfrage annehmen' }));
     expect(mutate).toHaveBeenCalledWith('/api/join-requests/21/decision/', { decision: 'approve' });
-    expect(await screen.findByText('Keine offenen Anfragen.')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '3 Personen' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '3 Personen' })).toBeInTheDocument();
+    expect(screen.queryByTestId('pending-request-panel')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByText('Dana Anfrage')).toBeInTheDocument();
-    expect(screen.getByText('Teamer', { selector: 'small' })).toBeInTheDocument();
+    expect(screen.getAllByText('Teamer', { selector: 'small' })).not.toHaveLength(0);
     expect(screen.queryByRole('button', { name: /Alex Muster bearbeiten/ })).not.toBeInTheDocument();
   });
 
-  it('renders the year, Turnus, functional roles, and membership-specific labels', () => {
+  it('opens the existing profile card from a member name without edit controls for a Teamer', async () => {
+    const user = userEvent.setup();
+    const readonly = {
+      ...data,
+      can_manage_leitung: false,
+      can_manage_memberships: false,
+      years: [{ ...data.years[0], turnuses: [{
+        ...data.years[0].turnuses[0],
+        can_manage_memberships: false,
+        can_edit_profiles: false,
+        request_summary: { pending: 0 },
+        pending_requests: [],
+      }] }],
+    };
+    render(<Toaster><AdminTeamOverviewPage data={readonly} mutate={vi.fn()} /></Toaster>);
+
+    expect(screen.queryByRole('button', { name: 'Person hinzufügen' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Alex Muster Profil öffnen' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Profil von Alex Muster' });
+    expect(dialog).toHaveTextContent('🧀 Vegetarisch');
+    expect(dialog).toHaveTextContent('Nüsse');
+    expect(within(dialog).getByRole('link', { name: 'alex@example.test' })).toHaveAttribute('href', 'mailto:alex@example.test');
+    expect(dialog).toHaveTextContent('Turnis: T2-2026, T3-2026');
+    expect(dialog).toHaveTextContent('Schwerpunkte:');
+    expect(dialog).not.toHaveTextContent('Meine Schwerpunkte');
+    expect(within(dialog).getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/3/');
+    expect(within(dialog).queryByLabelText('Rufname')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Alex Muster bearbeiten' })).not.toBeInTheDocument();
+  });
+
+  it('keeps profile viewing read-only and lets Leitung edit every profile field through the pencil flow', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, redirect: '/teams/' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const editable = {
+      ...data,
+      can_manage_leitung: false,
+      can_manage_memberships: true,
+      years: [{ ...data.years[0], turnuses: [{
+        ...data.years[0].turnuses[0],
+        can_manage_memberships: true,
+        can_edit_profiles: true,
+      }] }],
+    };
+    render(<Toaster><AdminTeamOverviewPage data={editable} mutate={vi.fn()} /></Toaster>);
+
+    await user.click(screen.getByRole('button', { name: 'Alex Muster Profil öffnen' }));
+    const profileDialog = screen.getByRole('dialog', { name: 'Profil von Alex Muster' });
+    expect(within(profileDialog).queryByLabelText('Rufname')).not.toBeInTheDocument();
+    expect(within(profileDialog).queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+    await user.click(within(profileDialog).getByRole('button', { name: 'Dialog schließen' }));
+
+    await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
+    const editDialog = screen.getByRole('dialog', { name: 'Alex Muster bearbeiten' });
+    expect(within(editDialog).queryByText('Mitgliedschaft verwalten.')).not.toBeInTheDocument();
+    expect(within(editDialog).getByLabelText('Rufname')).toHaveValue('Alex');
+    expect(within(editDialog).getByLabelText('Allergien')).toHaveValue('Nüsse');
+    expect(within(editDialog).getByLabelText('Kaffee')).toHaveValue('Schwarz');
+    expect(within(editDialog).getByLabelText('Essen')).toHaveValue('vt');
+    expect(within(editDialog).getByLabelText('BuDo-Familie')).toHaveValue('M');
+    expect(within(editDialog).getByLabelText('Telefonnummer')).toHaveValue('+4312345');
+
+    await user.clear(within(editDialog).getByLabelText('Rufname'));
+    await user.type(within(editDialog).getByLabelText('Rufname'), 'Alex Neu');
+    await user.click(within(editDialog).getByRole('button', { name: 'Speichern' }));
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/form-submit/');
+    expect(options.body.get('_target')).toBe('/profil/51/');
+    expect(options.body.get('rufname')).toBe('Alex Neu');
+    expect(within(editDialog).getByLabelText('Rufname')).toHaveValue('Alex Neu');
+  });
+
+  it('hides the request panel when the selected Turnus has no requests', () => {
+    const noRequests = {
+      ...data,
+      years: [{ ...data.years[0], turnuses: [{
+        ...data.years[0].turnuses[0],
+        request_summary: { pending: 0 },
+        pending_requests: [],
+      }] }],
+    };
+    render(<Toaster><AdminTeamOverviewPage data={noRequests} mutate={vi.fn()} /></Toaster>);
+
+    expect(screen.queryByTestId('pending-request-panel')).not.toBeInTheDocument();
+    expect(screen.queryByText('Keine offenen Anfragen.')).not.toBeInTheDocument();
+  });
+
+  it('renders the year, Turnus, and functional roles without membership-specific labels', () => {
     render(<Toaster><AdminTeamOverviewPage data={data} mutate={vi.fn()} /></Toaster>);
     expect(screen.getByRole('heading', { name: '2026' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'T2-2026' })).toBeInTheDocument();
-    expect(screen.getByText('Teamer · Küche')).toBeInTheDocument();
-    expect(screen.getByText('Leitung · Organisation')).toBeInTheDocument();
+    expect(screen.getByText('Teamer', { selector: 'small' })).toBeInTheDocument();
+    expect(screen.getByText('Leitung', { selector: 'small' })).toBeInTheDocument();
+    expect(screen.queryByText('Küche')).not.toBeInTheDocument();
+    expect(screen.queryByText('Organisation')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Offene Anfragen (1)' })).toBeInTheDocument();
     expect(screen.getByText('Dana Anfrage')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Alex Muster bearbeiten' })).toBeInTheDocument();
@@ -77,9 +188,18 @@ describe('admin team overview', () => {
     render(<Toaster><AdminTeamOverviewPage data={data} mutate={mutate} /></Toaster>);
     await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
     expect(mutate).not.toHaveBeenCalled();
-    expect(screen.getByRole('textbox', { name: 'Bezeichnung für Alex Muster' })).toHaveValue('Küche');
-    expect(screen.getByRole('button', { name: 'Alex Muster als Leitung einsetzen' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Alex Muster aus dem Turnus entfernen' })).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: 'Alex Muster bearbeiten' });
+    const roleAction = screen.getByRole('button', { name: 'Alex Muster als Leitung einsetzen' });
+    const removeAction = screen.getByRole('button', { name: 'Alex Muster aus dem Turnus entfernen' });
+    expect(dialog).toContainElement(roleAction);
+    expect(dialog).toContainElement(removeAction);
+    expect(roleAction).toHaveTextContent(/^Als Leitung$/);
+    expect(removeAction).toHaveTextContent(/^Aus Turnus entfernen$/);
+    expect(screen.queryByText(/Bezeichnung/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('Mitgliedschaft verwalten.')).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Rufname')).toHaveValue('Alex');
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeInTheDocument();
+    expect(roleAction.compareDocumentPosition(within(dialog).getByLabelText('Rufname')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Alex Muster als Leitung einsetzen' }));
     expect(mutate).toHaveBeenCalledWith('/api/admin/memberships/11/role/', { functional_role: 'leitung' });
     expect(await screen.findByRole('button', { name: 'Alex Muster Leitung entfernen' })).toBeInTheDocument();
@@ -98,6 +218,7 @@ describe('admin team overview', () => {
     await user.click(screen.getByRole('button', { name: 'Chris Demo bearbeiten' }));
     await user.click(screen.getByRole('button', { name: 'Chris Demo Leitung entfernen' }));
     expect(screen.getByText('Chris Demo')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Dialog schließen' }));
     expect(screen.getByRole('button', { name: 'T3-2026 auswählen' })).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -148,6 +269,7 @@ describe('admin team overview', () => {
     await user.click(screen.getByRole('button', { name: 'T3-2026 auswählen' }));
     await user.click(screen.getByRole('button', { name: 'Chris Demo bearbeiten' }));
     await user.click(screen.getByRole('button', { name: 'Chris Demo als Leitung einsetzen' }));
+    await user.click(screen.getByRole('button', { name: 'Dialog schließen' }));
 
     // Parent rerenders with its still-stale route data before App's mutation
     // refresh completes. That must not undo the local mutation result.
@@ -196,7 +318,7 @@ describe('admin team overview', () => {
     expect(screen.getByText('Chris Frei')).toBeInTheDocument();
     expect(screen.getByText('chris.frei@example.test')).toBeInTheDocument();
     expect(screen.getByText('Keine Teamzugehörigkeiten · verfügbar')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Schließen' }));
+    await user.click(screen.getByRole('button', { name: 'Dialog schließen' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
@@ -209,30 +331,23 @@ describe('admin team overview', () => {
     expect(screen.getByRole('button', { name: 'Chris Frei als Teamer zu T2-2026 hinzufügen' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' }));
     expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 });
-    expect(await screen.findByText('Leitung')).toBeInTheDocument();
+    expect(await screen.findAllByText('Leitung', { selector: 'small' })).not.toHaveLength(0);
     expect(screen.queryByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' })).not.toBeInTheDocument();
   });
 
-  it('lets Leitung add, relabel, and remove Teamers through accessible actions', async () => {
+  it('lets Leitung add and remove Teamers through accessible actions', async () => {
     const user = userEvent.setup();
     const mutate = vi.fn()
       .mockResolvedValueOnce({ membership_id: 31, role_label: 'Teamer', team_label: '' })
-      .mockResolvedValueOnce({ membership_id: 11, team_label: 'Material' })
       .mockResolvedValueOnce({ membership_id: 11, removed: true });
     const leitungData = { ...data, can_manage_leitung: false, can_manage_memberships: true, people: [{ ...data.people[0], turnus_ids: [] }] };
     render(<Toaster><AdminTeamOverviewPage data={leitungData} mutate={mutate} /></Toaster>);
-    expect(screen.queryByRole('button', { name: 'Bea Beispiel bearbeiten' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bea Beispiel bearbeiten' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
     await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Chris');
     await user.click(screen.getByRole('button', { name: 'Chris Frei als Teamer zu T2-2026 hinzufügen' }));
     expect(mutate).toHaveBeenCalledWith('/api/turnusse/4/memberships/', { user_id: 30 });
-    await user.click(screen.getByRole('button', { name: 'Schließen' }));
-    await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
-    const label = screen.getByRole('textbox', { name: 'Bezeichnung für Alex Muster' });
-    await user.clear(label);
-    await user.type(label, 'Material');
-    await user.click(screen.getByRole('button', { name: 'Speichern' }));
-    expect(mutate).toHaveBeenCalledWith('/api/memberships/11/label/', { team_label: 'Material' });
+    await user.click(screen.getByRole('button', { name: 'Dialog schließen' }));
     await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
     await user.click(screen.getByRole('button', { name: 'Alex Muster aus dem Turnus entfernen' }));
     expect(mutate).toHaveBeenCalledWith('/api/memberships/11/remove/', {});
@@ -257,20 +372,6 @@ describe('admin team overview', () => {
     await user.click(screen.getByRole('button', { name: 'Alex Muster als Teamer zu T2-2026 hinzufügen' }));
     expect(mutate).toHaveBeenLastCalledWith('/api/turnusse/4/memberships/', { user_id: 30 });
     expect(screen.getAllByText('Alex Muster')).not.toHaveLength(0);
-  });
-
-  it('renders label field errors inline and focuses the invalid input without a generic toast', async () => {
-    const user = userEvent.setup();
-    const mutate = vi.fn().mockRejectedValue({ payload: { team_label: ['Höchstens 255 Zeichen.'] } });
-    render(<Toaster><AdminTeamOverviewPage data={{ ...data, can_manage_leitung: false, can_manage_memberships: true }} mutate={mutate} /></Toaster>);
-    await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
-    const input = screen.getByRole('textbox', { name: 'Bezeichnung für Alex Muster' });
-    await user.click(screen.getByRole('button', { name: 'Speichern' }));
-    expect(await screen.findByText('Höchstens 255 Zeichen.', { selector: '[role="alert"]' })).toBeInTheDocument();
-    expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(input).toHaveAttribute('aria-describedby', 'team-label-11-error');
-    expect(input).toHaveFocus();
-    expect(screen.queryByText('Die Bezeichnung konnte nicht gespeichert werden.', { selector: '.app-toast-description' })).not.toBeInTheDocument();
   });
 
   it('keeps the selected Turnus as the assignment target while searching the dialog', async () => {

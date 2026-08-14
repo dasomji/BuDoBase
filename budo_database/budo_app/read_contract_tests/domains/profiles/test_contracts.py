@@ -126,79 +126,6 @@ class ProfileContractTests(TestCase):
         self.assertNotIn("money_total", payload["profile"])
         self.assertNotIn("money_items", payload["profile"])
 
-    def test_team_returns_active_turnus_profile_cards_without_accounting(self):
-        selected = self.create_teammate()
-        selected_focus = Schwerpunkte.objects.create(
-            swp_name="Theater",
-            schwerpunktzeit=self.turnus.schwerpunktzeit_set.get(woche="w2"),
-        )
-        selected_focus.betreuende.add(selected)
-        BetreuerinnenGeld.objects.create(
-            who=selected,
-            amount=99.5,
-            what="Private Abrechnung",
-        )
-        other = User.objects.create_user(
-            username="other-team-card",
-            email="other-private@example.test",
-        ).profil
-        other.rufname = "Other Turnus Private"
-        other.turnus = self.other_turnus
-        other.save()
-        create_membership(user=other.user, turnus=self.other_turnus)
-
-        response = self.client.get(self.contract_url("team"))
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertEqual(set(payload), {"team"})
-        self.assertEqual(payload["team"], [
-            {
-                "id": self.profile.id,
-                "email": "ada@example.test",
-                "rufname": "Ada",
-                "phone": "+4312345",
-                "allergies": "Haselnüsse",
-                "coffee": "Schwarz",
-                "role": "teamer",
-                "role_display": "Organisator",
-                "food": "vt",
-                "food_display": "🧀 Vegetarisch",
-                "budo_family": "M",
-                "focuses": [{"id": self.focus.id, "name": "Wald"}],
-            },
-            {
-                "id": selected.id,
-                "email": "grace@example.test",
-                "rufname": "Grace",
-                "phone": "+4398765",
-                "allergies": "Sellerie",
-                "coffee": "Hafermilch",
-                "role": "teamer",
-                "role_display": "Betreuer:in",
-                "food": "vn",
-                "food_display": "🌱 Vegan",
-                "budo_family": "L",
-                "focuses": [{
-                    "id": selected_focus.id,
-                    "name": "Theater",
-                }],
-            },
-        ])
-        self.assertNotContains(response, "Other Turnus Private")
-        self.assertNotContains(response, "other-private@example.test")
-        self.assertNotContains(response, "Private Abrechnung")
-        self.assertNotIn("money_total", payload["team"][0])
-        self.assertNotIn("money_items", payload["team"][0])
-
-    def test_team_without_an_active_turnus_is_empty(self):
-        self.user.turnus_memberships.all().delete()
-
-        response = self.client.get(self.contract_url("team"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"team": []})
-
     def test_only_profile_admins_can_read_a_selected_profile_for_editing(self):
         selected = self.create_teammate()
 
@@ -237,7 +164,7 @@ class ProfileContractTests(TestCase):
         saved = self.client.post(reverse("form-submit-api"), submission)
 
         self.assertEqual(saved.status_code, 200)
-        self.assertEqual(saved.json(), {"ok": True, "redirect": "/team/"})
+        self.assertEqual(saved.json(), {"ok": True, "redirect": "/teams/"})
         selected.refresh_from_db()
         self.assertEqual(selected.rufname, "Grace Neu")
         self.assertEqual(selected.allergien, "Keine")
@@ -261,14 +188,12 @@ class ProfileContractTests(TestCase):
         self.assertEqual(submission.status_code, 400)
         self.assertFalse(selected.betreuerinnen_geld.exists())
 
-    def test_profile_contracts_require_authentication(self):
+    def test_profile_contract_requires_authentication(self):
         self.client.logout()
 
         profile = self.client.get(self.contract_url("profile"))
-        team = self.client.get(self.contract_url("team"))
 
         self.assertEqual(profile.status_code, 403)
-        self.assertEqual(team.status_code, 403)
 
     def test_profile_submission_cannot_change_membership_role_or_selected_turnus(self):
         submitted = self.client.post(
@@ -373,29 +298,21 @@ class ProfileContractPerformanceTests(QueryBudgetAssertions, TestCase):
         url = reverse("route-data-api", kwargs={"contract_key": key})
         return measure_http_get(self.client, url)
 
-    def test_profile_and_team_queries_stay_bounded_and_payloads_beat_legacy(self):
+    def test_profile_queries_stay_bounded_and_payload_beats_legacy(self):
         self.fixtures.grow_to(kids=3, focuses=2, team=2, places=1)
-        small = {
-            "profile": self.measure_contract("profile"),
-            "team": self.measure_contract("team"),
-        }
+        small = self.measure_contract("profile")
 
         self.fixtures.grow_to(kids=48, focuses=8, team=10, places=6)
         focuses = list(
             Schwerpunkte.objects.filter(schwerpunktzeit__turnus=self.turnus),
         )
         self.user.profil.swp.add(*focuses)
-        realistic = {
-            "profile": self.measure_contract("profile"),
-            "team": self.measure_contract("team"),
-        }
+        realistic = self.measure_contract("profile")
 
-        for key in small:
-            with self.subTest(contract=key):
-                self.assertEqual(realistic[key].status_code, 200)
-                self.assertQueryCountAtMost(realistic[key], 9)
-                self.assertQueryGrowthAtMost(small[key], realistic[key], 1)
-                self.assertLess(
-                    realistic[key].response_bytes,
-                    RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
-                )
+        self.assertEqual(realistic.status_code, 200)
+        self.assertQueryCountAtMost(realistic, 9)
+        self.assertQueryGrowthAtMost(small, realistic, 1)
+        self.assertLess(
+            realistic.response_bytes,
+            RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
+        )

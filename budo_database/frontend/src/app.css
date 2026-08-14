@@ -1465,11 +1465,6 @@ gmp-advanced-marker:focus-visible .map-marker {
     padding: 1.25rem;
   }
 
-  .team-management-subtitle {
-    margin: 0 0 1.25rem;
-    color: var(--color-muted-foreground);
-  }
-
   .team-master-detail {
     display: grid;
     min-height: 41.875rem;
@@ -1489,26 +1484,19 @@ gmp-advanced-marker:focus-visible .map-marker {
   }
 
   .team-dialog-search {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.1rem 0.625rem;
-    border: 1px solid #cfd6da;
-    border-radius: 0.6875rem;
-    background: var(--color-background);
+    position: relative;
+    display: block;
+    min-width: 0;
   }
 
   .team-dialog-search > svg {
+    position: absolute;
+    top: 50%;
+    left: 0.75rem;
+    z-index: 1;
     width: 1.0625rem;
-    flex: 0 0 1.0625rem;
-  }
-
-  .team-dialog-search [data-slot="input"] {
-    height: 2.35rem;
-    padding-inline: 0;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
+    transform: translateY(-50%);
+    pointer-events: none;
   }
 
   .team-year-selector,
@@ -1781,7 +1769,7 @@ gmp-advanced-marker:focus-visible .map-marker {
   .team-member-tile {
     display: grid;
     min-width: 0;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.5625rem;
     padding: 0.5625rem;
@@ -1793,15 +1781,6 @@ gmp-advanced-marker:focus-visible .map-marker {
   .team-pencil-action {
     margin-left: auto;
     border-radius: 50%;
-  }
-
-  .team-member-editor {
-    display: grid;
-    grid-column: 1 / -1;
-    gap: 0.75rem;
-    margin-top: 0.25rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-border);
   }
 
   .team-person-directory {
@@ -1831,10 +1810,6 @@ gmp-advanced-marker:focus-visible .map-marker {
       width: 100%;
       overflow-x: clip;
       padding: 0.8125rem;
-    }
-
-    .team-management-subtitle {
-      display: none;
     }
 
     .team-master-detail {

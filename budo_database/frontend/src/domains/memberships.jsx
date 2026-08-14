@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import {
   AlertTriangle,
@@ -16,6 +16,7 @@ import { Columns } from '../components';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useErrorToast, useSuccessToast } from '../components/ui/toast';
+import { PersonCard, ProfileForm } from './profiles';
 
 function initials(name) {
   return name
@@ -47,19 +48,19 @@ function formatDateRange(startValue, endValue) {
   return `${startDay}. ${startMonth} ${startYear}–${endDay}. ${endMonth} ${endYear}`;
 }
 
-function Member({ member, mutate, onChanged, canManageLeitung, canManageMemberships }) {
+const foodDisplays = {
+  ft: '🥩 Flexitarisch',
+  vt: '🧀 Vegetarisch',
+  vn: '🌱 Vegan',
+};
+
+function Member({ member, mutate, onChanged, canManageLeitung, canManageMemberships, canEditProfiles, token }) {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [teamLabel, setTeamLabel] = useState(member.team_label || '');
-  const [labelError, setLabelError] = useState('');
-  const labelInput = useRef(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   const showError = useErrorToast();
   const showSuccess = useSuccessToast();
   const isLead = member.functional_role === 'leitung';
-
-  useEffect(() => {
-    if (labelError) labelInput.current?.querySelector('input')?.focus();
-  }, [labelError]);
 
   const changeRole = async () => {
     const functionalRole = isLead ? 'teamer' : 'leitung';
@@ -70,23 +71,6 @@ function Member({ member, mutate, onChanged, canManageLeitung, canManageMembersh
       showSuccess(isLead ? `${member.name} ist jetzt Teamer.` : `${member.name} ist jetzt Leitung.`);
     } catch (error) {
       showError(error.payload?.detail || 'Die Funktionsrolle konnte nicht geändert werden.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const saveLabel = async () => {
-    setBusy(true);
-    setLabelError('');
-    try {
-      const result = await mutate(`/api/memberships/${member.id}/label/`, { team_label: teamLabel });
-      onChanged(member, { team_label: result.team_label });
-      setEditing(false);
-      showSuccess(`Bezeichnung für ${member.name} gespeichert.`);
-    } catch (error) {
-      const fieldError = error.payload?.team_label;
-      const message = Array.isArray(fieldError) ? fieldError.join(' ') : fieldError;
-      setLabelError(message || 'Die Bezeichnung konnte nicht gespeichert werden.');
     } finally {
       setBusy(false);
     }
@@ -105,15 +89,52 @@ function Member({ member, mutate, onChanged, canManageLeitung, canManageMembersh
     }
   };
 
+  const profileSaved = async (_result, form) => {
+    const formData = new FormData(form);
+    const food = formData.get('essen');
+    onChanged(member, {
+      profile: {
+        ...member.profile,
+        rufname: formData.get('rufname'),
+        allergies: formData.get('allergien'),
+        coffee: formData.get('coffee'),
+        food,
+        food_display: foodDisplays[food] || '',
+        budo_family: formData.get('budo_family'),
+        phone: formData.get('telefonnummer'),
+      },
+    });
+    showSuccess(`Das Profil von ${member.name} wurde aktualisiert.`);
+  };
+
   const manageable = canManageLeitung || (canManageMemberships && !isLead);
+  const editable = manageable || (canEditProfiles && member.profile);
   return (
     <li className="team-member-tile">
-      <span className="team-avatar" aria-hidden="true">{initials(member.name)}</span>
-      <span className="team-person-copy">
-        <strong>{member.name}</strong>
-        <small>{member.role_label}{member.team_label ? ` · ${member.team_label}` : ''}</small>
-      </span>
-      {manageable && (
+      {member.profile ? (
+        <Button
+          aria-label={`${member.name} Profil öffnen`}
+          className="grid min-w-0 cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-[0.5625rem] text-left hover:bg-transparent hover:text-inherit"
+          type="button"
+          variant="full-surface"
+          onClick={() => setProfileOpen(true)}
+        >
+          <span className="team-avatar" aria-hidden="true">{initials(member.name)}</span>
+          <span className="team-person-copy">
+            <strong>{member.name}</strong>
+            <small>{member.role_label}</small>
+          </span>
+        </Button>
+      ) : (
+        <span className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-[0.5625rem]">
+          <span className="team-avatar" aria-hidden="true">{initials(member.name)}</span>
+          <span className="team-person-copy">
+            <strong>{member.name}</strong>
+            <small>{member.role_label}</small>
+          </span>
+        </span>
+      )}
+      {editable && (
         <Button
           className="team-pencil-action"
           aria-label={`${member.name} bearbeiten`}
@@ -128,27 +149,66 @@ function Member({ member, mutate, onChanged, canManageLeitung, canManageMembersh
           <PencilIcon aria-hidden="true" />
         </Button>
       )}
-      {editing && (
-        <div className="team-member-editor">
-          {labelError && <p className="text-sm font-medium text-destructive" role="alert" id={`team-label-${member.id}-error`}>{labelError}</p>}
-          <label className="grid gap-1" ref={labelInput}>
-            <span className="text-sm font-medium">Bezeichnung für {member.name}</span>
-            <Input
-              maxLength={255}
-              value={teamLabel}
-              aria-invalid={labelError ? 'true' : undefined}
-              aria-describedby={labelError ? `team-label-${member.id}-error` : undefined}
-              onChange={event => { setTeamLabel(event.target.value); setLabelError(''); }}
-            />
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" disabled={busy} onClick={saveLabel}>Speichern</Button>
-            {canManageLeitung && <Button type="button" variant="outline" disabled={busy} onClick={changeRole}>{isLead ? `${member.name} Leitung entfernen` : `${member.name} als Leitung einsetzen`}</Button>}
-            <Button type="button" variant="destructive" disabled={busy} onClick={remove}>{member.name} aus dem Turnus entfernen</Button>
-            <Button type="button" variant="ghost" disabled={busy} onClick={() => setEditing(false)}>Abbrechen</Button>
-          </div>
-        </div>
-      )}
+      <Dialog.Root open={profileOpen} onOpenChange={setProfileOpen}>
+        {profileOpen && member.profile && (
+          <Dialog.Portal>
+            <Dialog.Backdrop className="fixed inset-0 z-[var(--z-modal)] bg-black/45" />
+            <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] grid place-items-center overflow-y-auto p-4">
+              <Dialog.Popup className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto">
+                <Dialog.Title className="sr-only">Profil von {member.name}</Dialog.Title>
+                <Dialog.Close className="absolute top-2 right-2 z-10" render={<Button type="button" variant="ghost" size="icon" />} aria-label="Dialog schließen">
+                  <X aria-hidden="true" />
+                </Dialog.Close>
+                <PersonCard
+                  id={`team-profile-${member.profile.id}`}
+                  person={member.profile}
+                  focuses={member.profile.focuses}
+                />
+              </Dialog.Popup>
+            </Dialog.Viewport>
+          </Dialog.Portal>
+        )}
+      </Dialog.Root>
+      <Dialog.Root open={editing} onOpenChange={setEditing}>
+        {editing && (
+          <Dialog.Portal>
+            <Dialog.Backdrop className="fixed inset-0 z-[var(--z-modal)] bg-black/45" />
+            <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] grid place-items-center overflow-y-auto p-4">
+              <Dialog.Popup className="card relative grid max-h-[calc(100dvh-2rem)] w-full max-w-lg gap-4 overflow-y-auto bg-surface-solid p-5">
+                <Dialog.Title className="mr-10 text-xl font-semibold">{member.name} bearbeiten</Dialog.Title>
+                <Dialog.Close className="absolute top-2 right-2" render={<Button type="button" variant="ghost" size="icon" />} aria-label="Dialog schließen">
+                  <X aria-hidden="true" />
+                </Dialog.Close>
+                {manageable && (
+                  <div className="flex flex-wrap gap-2">
+                    {canManageLeitung && (
+                      <Button
+                        aria-label={isLead ? `${member.name} Leitung entfernen` : `${member.name} als Leitung einsetzen`}
+                        type="button"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={changeRole}
+                      >
+                        {!isLead && <Plus aria-hidden="true" />}
+                        {isLead ? 'Leitung entfernen' : 'Als Leitung'}
+                      </Button>
+                    )}
+                    <Button aria-label={`${member.name} aus dem Turnus entfernen`} type="button" variant="destructive" disabled={busy} onClick={remove}>Aus Turnus entfernen</Button>
+                  </div>
+                )}
+                {canEditProfiles && member.profile && (
+                  <ProfileForm
+                    profile={member.profile}
+                    token={token}
+                    target={`/profil/${member.profile.id}/`}
+                    onSuccess={profileSaved}
+                  />
+                )}
+              </Dialog.Popup>
+            </Dialog.Viewport>
+          </Dialog.Portal>
+        )}
+      </Dialog.Root>
     </li>
   );
 }
@@ -233,16 +293,20 @@ function PersonAddDialog({ open, close, people, selectedContext, selectedTurnusI
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-[var(--z-modal)] bg-black/45" />
         <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] grid place-items-center overflow-y-auto p-4">
-          <Dialog.Popup className="card grid max-h-[calc(100dvh-2rem)] w-full max-w-2xl gap-4 overflow-hidden bg-surface-solid p-5">
-            <div>
+          <Dialog.Popup className="card relative grid max-h-[calc(100dvh-2rem)] w-full max-w-2xl grid-rows-[auto_auto_minmax(0,1fr)] gap-4 overflow-hidden bg-surface-solid p-5">
+            <div className="mr-10">
               <Dialog.Title className="text-xl font-semibold">Person zu {selectedContext.label} hinzufügen</Dialog.Title>
               <Dialog.Description className="text-sm text-muted-foreground">Registrierte Personen nach Name oder E-Mail-Adresse durchsuchen.</Dialog.Description>
             </div>
+            <Dialog.Close className="absolute top-2 right-2" render={<Button type="button" variant="ghost" size="icon" />} aria-label="Dialog schließen">
+              <X aria-hidden="true" />
+            </Dialog.Close>
             <label className="grid gap-1 font-medium">
               Person suchen
               <span className="team-dialog-search">
                 <Search aria-hidden="true" />
                 <Input
+                  className="pl-9"
                   autoFocus
                   aria-label="Person nach Name oder E-Mail-Adresse suchen"
                   placeholder="Name oder E-Mail-Adresse"
@@ -260,9 +324,6 @@ function PersonAddDialog({ open, close, people, selectedContext, selectedTurnusI
               addLeitung={addLeitung}
               addTeamer={addTeamer}
             />
-            <div className="flex justify-end">
-              <Dialog.Close render={<Button type="button" variant="secondary" />}>Schließen</Dialog.Close>
-            </div>
           </Dialog.Popup>
         </Dialog.Viewport>
       </Dialog.Portal>
@@ -277,7 +338,7 @@ export function AdminTeamOverviewPage({ data, mutate }) {
   const [years, setYears] = useState(data.years || []);
   const [people, setPeople] = useState(data.people || []);
   const canManageLeitung = data.can_manage_leitung !== false;
-  const canManageMemberships = data.can_manage_memberships === true;
+  const defaultCanManageMemberships = data.can_manage_memberships === true;
   const [selectedTurnusId, setSelectedTurnusId] = useState(() => data.years?.[0]?.turnuses?.[0]?.id ?? null);
 
   useEffect(() => setYears(data.years || []), [data.years]);
@@ -286,6 +347,8 @@ export function AdminTeamOverviewPage({ data, mutate }) {
   const allTurnuses = useMemo(() => years.flatMap(year => year.turnuses), [years]);
   const selectedContext = allTurnuses.find(turnus => turnus.id === selectedTurnusId) || null;
   const selectedTurnus = selectedContext;
+  const canManageMemberships = selectedTurnus?.can_manage_memberships ?? defaultCanManageMemberships;
+  const canEditProfiles = selectedTurnus?.can_edit_profiles ?? canManageMemberships;
 
   useEffect(() => {
     if (!selectedContext && allTurnuses.length) setSelectedTurnusId(allTurnuses[0].id);
@@ -361,7 +424,6 @@ export function AdminTeamOverviewPage({ data, mutate }) {
 
   return (
     <Columns className="team-management-page">
-      <p className="team-management-subtitle">Teams überblicken, Personen im Detail verwalten</p>
       <div className="team-master-detail" data-testid="team-master-detail">
         <nav className="team-turnus-rail" aria-label="Turnus auswählen">
           <div className="team-year-selector">
@@ -411,24 +473,24 @@ export function AdminTeamOverviewPage({ data, mutate }) {
                 </Button>
               )}
             </header>
-            <section className="team-request-panel" data-testid="pending-request-panel" aria-labelledby="pending-requests-heading">
-              <h3 id="pending-requests-heading"><Clock3 aria-hidden="true" /> Offene Anfragen ({selectedTurnus.request_summary?.pending ?? 0})</h3>
-              {selectedTurnus.pending_requests?.length
-                ? <ul>{selectedTurnus.pending_requests.map(request => <PendingRequest key={request.id} request={request} mutate={mutate} onDecided={requestDecided} />)}</ul>
-                : <p className="team-empty-state"><Check aria-hidden="true" /> Keine offenen Anfragen.</p>}
-              {data.identity_verification_warning && (
-                <p className="team-identity-warning" role="alert">
-                  <AlertTriangle aria-hidden="true" />
-                  <span><strong>Identität zuerst überprüfen</strong>{data.identity_verification_warning}</span>
-                </p>
-              )}
-            </section>
+            {Boolean(selectedTurnus.pending_requests?.length) && (
+              <section className="team-request-panel" data-testid="pending-request-panel" aria-labelledby="pending-requests-heading">
+                <h3 id="pending-requests-heading"><Clock3 aria-hidden="true" /> Offene Anfragen ({selectedTurnus.pending_requests.length})</h3>
+                <ul>{selectedTurnus.pending_requests.map(request => <PendingRequest key={request.id} request={request} mutate={mutate} onDecided={requestDecided} />)}</ul>
+                {data.identity_verification_warning && (
+                  <p className="team-identity-warning" role="alert">
+                    <AlertTriangle aria-hidden="true" />
+                    <span><strong>Identität zuerst überprüfen</strong>{data.identity_verification_warning}</span>
+                  </p>
+                )}
+              </section>
+            )}
             <section className="team-member-panel" data-testid="member-panel" aria-labelledby="team-members-heading">
               <header>
                 <div><span className="team-eyebrow">Team</span><h3 id="team-members-heading">{selectedTurnus.members.length} Personen</h3></div>
               </header>
               {selectedTurnus.members.length
-                ? <ul className="team-member-list">{selectedTurnus.members.map(member => <Member key={member.id} member={member} mutate={mutate} onChanged={changed} canManageLeitung={canManageLeitung} canManageMemberships={canManageMemberships} />)}</ul>
+                ? <ul className="team-member-list">{selectedTurnus.members.map(member => <Member key={member.id} member={member} mutate={mutate} onChanged={changed} canManageLeitung={canManageLeitung} canManageMemberships={canManageMemberships} canEditProfiles={canEditProfiles} token={data.csrf_token} />)}</ul>
                 : <p>Noch keine Teammitglieder.</p>}
             </section>
           </section>

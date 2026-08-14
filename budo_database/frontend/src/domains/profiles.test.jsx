@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { parseRoute } from '../routes';
-import { ProfileEditPage, ProfilePage, TeamPage } from './profiles';
+import { ProfileEditPage, ProfilePage } from './profiles';
 
 const profile = {
   id: 5,
@@ -23,7 +23,7 @@ const data = {
   turnus: { id: 2, label: 'T2-2026' },
 };
 
-describe('Profil and Team pages', () => {
+describe('Profil pages', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
@@ -70,91 +70,14 @@ describe('Profil and Team pages', () => {
     expect(screen.getByLabelText('Rufname').form).toHaveAttribute('action', '/profil/5/');
   });
 
-  it('shows an update button only on the signed-in user’s Team card', () => {
-    render(<TeamPage data={{
-      profile: { id: 5 },
-      permissions: { change_profiles: false },
-      turnus: data.turnus,
-      team: [
-        { ...profile, focuses: data.focuses },
-        {
-          ...profile,
-          id: 6,
-          rufname: 'Grace',
-          email: 'grace@example.test',
-          phone: '+436789',
-          focuses: [],
-        },
-      ],
-    }} />);
-
-    const adaCard = screen.getByRole('heading', { name: 'Ada' }).closest('section');
-    expect(within(adaCard).queryByText('Turnus')).not.toBeInTheDocument();
-    expect(within(adaCard).getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/3/');
-    expect(within(adaCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/bearbeiten/');
-    const graceCard = screen.getByRole('heading', { name: 'Grace' }).closest('section');
-    expect(within(graceCard).getByText('Keine Schwerpunkte zugeteilt.')).toBeInTheDocument();
-    expect(within(graceCard).queryByRole('link', { name: 'Informationen aktualisieren' })).not.toBeInTheDocument();
-  });
-
-  it('lets admins update every profile from its Team card', () => {
-    render(<TeamPage data={{
-      profile: { id: 5 },
-      permissions: { change_profiles: true },
-      turnus: data.turnus,
-      team: [
-        { ...profile, focuses: [] },
-        { ...profile, id: 6, rufname: 'Grace', focuses: [] },
-      ],
-    }} />);
-
-    const adaCard = screen.getByRole('heading', { name: 'Ada' }).closest('section');
-    const graceCard = screen.getByRole('heading', { name: 'Grace' }).closest('section');
-    expect(within(adaCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/bearbeiten/');
-    expect(within(graceCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/6/');
-  });
-
-  it('keeps every Team profile in contract order', () => {
-    const team = Array.from({ length: 5 }, (_, index) => ({
-      ...profile,
-      id: index + 5,
-      rufname: `Teamer ${index + 1}`,
-      focuses: [],
-    }));
-
-    render(<TeamPage data={{ team, turnus: data.turnus }} />);
-    expect(screen.getAllByRole('heading').map(heading => heading.textContent)).toEqual([
-      'Teamer 1', 'Teamer 2', 'Teamer 3', 'Teamer 4', 'Teamer 5',
-    ]);
-  });
-
-  it('preserves long contact links inside Team cards without truncating their value', () => {
-    const longEmail = `${'long-address-'.repeat(8)}@example.test`;
-    render(<TeamPage data={{
-      team: [{ ...profile, email: longEmail, focuses: [] }],
-      turnus: data.turnus,
-    }} />);
-
-    const card = screen.getByRole('heading', { name: 'Ada' }).closest('section');
-    expect(within(card).getByRole('link', { name: longEmail })).toHaveAttribute('href', `mailto:${longEmail}`);
-  });
-
-  it('shows an empty state when no active-turnus Team exists', () => {
-    render(<TeamPage data={{ team: [], turnus: null }} />);
-
-    expect(screen.getByText('Kein Team für den aktiven Turnus vorhanden.')).toBeInTheDocument();
-  });
-
-  it('declares read-only, own-edit, admin-edit, and Team routes, but no Teamer detail route', () => {
+  it('declares read-only, own-edit, and admin-edit profile routes, but no Teamer detail route', () => {
     const ownProfileRoute = parseRoute('/profil');
     const ownProfileEditRoute = parseRoute('/profil/bearbeiten');
     const selectedProfileRoute = parseRoute('/profil/5');
-    const teamRoute = parseRoute('/team');
 
     expect(ownProfileRoute).toMatchObject({ page: 'profile', readContractKey: 'profile' });
     expect(ownProfileEditRoute).toMatchObject({ page: 'profile-edit', readContractKey: 'profile', title: 'Profil bearbeiten' });
     expect(selectedProfileRoute).toMatchObject({ page: 'profile-edit', readContractKey: 'profile', id: '5' });
-    expect(teamRoute).toMatchObject({ page: 'team', readContractKey: 'team', title: 'Team' });
     expect(parseRoute('/teamer/5').page).toBe('not-found');
   });
 });

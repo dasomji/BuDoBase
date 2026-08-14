@@ -68,7 +68,7 @@ export const sidebarItems = [
   { label: 'Auslagerorte', href: '/auslagerorte-list/', icon: MapPinned },
   { label: 'Küche', href: '/kitchen', icon: ChefHat },
   { label: 'Spiele', href: gamesUrl, icon: Gamepad2, external: true },
-  { label: 'Team', href: '/team/', icon: UsersRound },
+  { label: 'Team', href: '/teams/', icon: UsersRound },
   {
     label: 'Orgi',
     icon: Settings,
@@ -217,9 +217,6 @@ function withDynamicNavEntries(events, permissions) {
       }
       if (permissions?.admin_settings) {
         settings.push({ label: 'Einstellungen', href: '/settings/' });
-      }
-      if (permissions?.manage_teams) {
-        settings.push({ label: 'Team verwalten', href: '/teams/' });
       }
       return {
         ...item,
