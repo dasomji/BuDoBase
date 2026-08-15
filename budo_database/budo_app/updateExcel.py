@@ -29,6 +29,7 @@ def _original_booking_values(turnus):
     for _, row in source.iterrows():
         kid_index = str(row["Index"]).strip()
         values[kid_index] = {
+            "zug_anreise": "Betreute Anreise" in str(row["AnreiseText"]),
             "zug_abreise": "Betreute Abreise" in str(row["AbreiseText"]),
             "turnus_dauer": 2 if "ganz" in str(row["Turnusdauer"]) else 1,
         }
@@ -69,8 +70,9 @@ def update_excel_file(file_path, turnus):
     # Create a new DataFrame with the required columns
     columns = ['Index', 'Vorname', 'Nachname', 'Alter', 'Anwesend 1. Woche',
                'Anwesend 2. Woche', 'verspätete Anreise', 'vorzeitige Abreise',
-               'Zuganreise', 'Zugabreise', 'Zugabreise geändert',
-               'Aufenthalt geändert', 'Abreisenotiz', 'Check-Out-Notiz']
+               'Zuganreise', 'Zuganreise geändert', 'Zugabreise',
+               'Zugabreise geändert', 'Aufenthalt geändert', 'Abreisenotiz',
+               'Check-Out-Notiz']
     df = pd.DataFrame(columns=columns)
 
     # List to hold data for each kid
@@ -91,6 +93,7 @@ def update_excel_file(file_path, turnus):
             'verspätete Anreise': kid.check_in_date.strftime('%Y-%m-%d') if kid.check_in_date and kid.check_in_date != turnus.turnus_beginn + timedelta(days=1) else '',
             'vorzeitige Abreise': kid.early_abreise_date.strftime('%Y-%m-%d') if _is_early_departure(kid, turnus) else '',
             'Zuganreise': 'ja' if kid.zug_anreise else '',
+            'Zuganreise geändert': ('ja' if kid.zug_anreise != original['zug_anreise'] else 'nein') if original else '',
             'Zugabreise': 'ja' if kid.zug_abreise else '',
             'Zugabreise geändert': ('ja' if kid.zug_abreise != original['zug_abreise'] else 'nein') if original else '',
             'Aufenthalt geändert': ('ja' if kid.turnus_dauer != original['turnus_dauer'] else 'nein') if original else '',

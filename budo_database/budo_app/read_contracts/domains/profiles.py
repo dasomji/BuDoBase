@@ -27,12 +27,24 @@ def _profile_queryset(turnus_id):
             queryset=TurnusMembership.objects.filter(turnus_id=turnus_id),
             to_attr="route_memberships",
         ),
+        Prefetch(
+            "user__turnus_memberships",
+            queryset=TurnusMembership.objects.select_related("turnus").order_by(
+                "-turnus__turnus_beginn", "turnus__turnus_nr", "id"
+            ),
+            to_attr="route_all_memberships",
+        ),
     )
 
 
-def _profile_fields(profile, turnus_id=None):
+def _profile_fields(profile, turnus_id=None, *, include_all_turnuses=False):
     memberships = getattr(profile.user, "route_memberships", ())
     membership = memberships[0] if memberships else None
+    visible_memberships = (
+        getattr(profile.user, "route_all_memberships", ())
+        if include_all_turnuses
+        else memberships
+    )
     return {
         "id": profile.id,
         "email": profile.user.email,
@@ -45,6 +57,7 @@ def _profile_fields(profile, turnus_id=None):
         "food": profile.essen,
         "food_display": profile.get_food(),
         "budo_family": profile.budo_family,
+        "turnuses": [str(item.turnus) for item in visible_memberships],
     }
 
 
@@ -58,7 +71,8 @@ def _focuses(profile):
 def profile(request):
     turnus_id = active_turnus_id(request)
     selected_id = request.query_params.get("id")
-    if selected_id is None:
+    own_profile = selected_id is None
+    if own_profile:
         selected_profile = get_object_or_404(
             _profile_queryset(turnus_id),
             user_id=request.user.id,
@@ -73,7 +87,11 @@ def profile(request):
             id=required_query_integer(request),
         )
     return {
-        "profile": _profile_fields(selected_profile, turnus_id),
+        "profile": _profile_fields(
+            selected_profile,
+            turnus_id,
+            include_all_turnuses=own_profile,
+        ),
         "focuses": _focuses(selected_profile),
     }
 

@@ -105,37 +105,6 @@ class FocusContractTests(TestCase):
         url = reverse("route-data-api", kwargs={"contract_key": key})
         return f"{url}?id={focus.id}" if focus else url
 
-    def test_dashboard_returns_only_active_turnus_summary_fields(self):
-        response = self.client.get(self.contract_url("focus-dashboard"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {
-            "focuses": [{
-                "id": self.focus.id,
-                "name": "Wald",
-                "week": "w1",
-                "place_id": self.place.id,
-                "place": "Waldplatz",
-                "coordinates": "48.5, 15.0",
-                "carers": "Grace",
-                "off_site": True,
-                "kid_count": 1,
-                "meals_assigned": True,
-            }],
-        })
-        self.assertNotContains(response, "Fremder Schwerpunkt")
-        self.assertNotContains(response, "Private Krankheit")
-        self.assertNotContains(response, "Privater Notfallkontakt")
-
-    def test_dashboard_ignores_a_cross_turnus_carer_linked_to_a_focus(self):
-        self.focus.betreuende.add(self.other_carer)
-
-        response = self.client.get(self.contract_url("focus-dashboard"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["focuses"][0]["carers"], "Grace")
-        self.assertNotContains(response, "Other")
-
     def test_detail_returns_one_focus_assignments_timing_place_and_meals(self):
         response = self.client.get(self.contract_url("focus-detail", self.focus))
 
@@ -300,7 +269,6 @@ class FocusContractTests(TestCase):
 
         for key in (
             "focus-create",
-            "focus-dashboard",
             "focus-detail",
             "focus-meals",
             "focus-update",
@@ -309,7 +277,7 @@ class FocusContractTests(TestCase):
                 response = self.client.get(
                     self.contract_url(
                         key,
-                        self.focus if key not in ("focus-create", "focus-dashboard") else None,
+                        self.focus if key != "focus-create" else None,
                     ),
                 )
                 self.assertEqual(response.status_code, 403)
@@ -318,7 +286,6 @@ class FocusContractTests(TestCase):
         user_without_turnus = User.objects.create_user(username="no-focus-turnus")
         self.client.force_login(user_without_turnus)
 
-        dashboard = self.client.get(self.contract_url("focus-dashboard"))
         create = self.client.get(self.contract_url("focus-create"))
         detail = self.client.get(self.contract_url("focus-detail", self.focus))
         submitted = self.client.post(
@@ -331,7 +298,6 @@ class FocusContractTests(TestCase):
             },
         )
 
-        self.assertEqual(dashboard.json(), {"focuses": []})
         self.assertEqual(create.json(), {
             "places": [],
             "team": [],
@@ -528,29 +494,6 @@ class FocusContractPerformanceTests(QueryBudgetAssertions, TestCase):
     def contract_url(self, key, focus=None):
         url = reverse("route-data-api", kwargs={"contract_key": key})
         return f"{url}?id={focus.id}" if focus else url
-
-    def test_dashboard_query_growth_is_bounded_and_payload_beats_legacy(self):
-        self.fixtures.grow_to(kids=3, focuses=2, team=2, places=1)
-        small = measure_http_get(
-            self.client,
-            self.contract_url("focus-dashboard"),
-        )
-
-        self.fixtures.grow_to(kids=48, focuses=8, team=10, places=6)
-        realistic = measure_http_get(
-            self.client,
-            self.contract_url("focus-dashboard"),
-        )
-
-        self.assertEqual(small.status_code, 200)
-        self.assertEqual(realistic.status_code, 200)
-        self.assertEqual(len(realistic.response.json()["focuses"]), 8)
-        self.assertQueryCountAtMost(realistic, 8)
-        self.assertQueryGrowthAtMost(small, realistic, 1)
-        self.assertLess(
-            realistic.response_bytes,
-            RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
-        )
 
     def test_detail_query_growth_is_bounded_as_assignments_increase(self):
         self.fixtures.grow_to(kids=3, focuses=2, team=2, places=1)

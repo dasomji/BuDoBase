@@ -12,4 +12,5 @@ urlpatterns = [
     path('profil/<int:pk>/', ProfilAdminUpdate.as_view(), name='profil-admin'),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("gut-zu-wissen/", views.good_to_know, name="good-to-know"),
+    path("taschengeld/", views.pocket_money, name="pocket-money"),
 ]

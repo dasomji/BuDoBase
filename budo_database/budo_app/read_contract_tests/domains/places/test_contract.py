@@ -81,6 +81,7 @@ class PlacesContractTests(TestCase):
             password="secret",
         )
         approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.rufname = "Pia"
         self.user.profil.save()
         select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
@@ -187,7 +188,7 @@ class PlacesContractTests(TestCase):
         self.assertEqual(place["notes"], [{
             "id": note.id,
             "text": "Wasser abdrehen",
-            "author": "places-user",
+            "author": "Pia",
             "date": note.date_added.isoformat(),
             "day": note.date_added.strftime("%d.%m."),
             "photos": [],

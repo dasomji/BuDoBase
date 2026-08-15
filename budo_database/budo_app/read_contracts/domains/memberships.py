@@ -5,7 +5,6 @@ from budo_app.models import Schwerpunkte, Turnus, TurnusJoinRequest
 from budo_app.join_requests import IDENTITY_VERIFICATION_WARNING
 from budo_app.memberships import membership_role_display
 from budo_app.product_admin_policy import require_product_admin
-from django.core.exceptions import PermissionDenied
 
 
 def _display_name(user):
@@ -41,25 +40,21 @@ def _profile_card(membership, turnus_id, visible_turnus_labels):
 
 def _team_overview(request, *, admin_only):
     global_admin = request.user.is_superuser
-    managed_turnus_ids = set()
     if admin_only:
         require_product_admin(request.user, "Admin team overview access denied.")
-        turnuses = Turnus.objects.all()
-    elif global_admin:
-        turnuses = Turnus.objects.all()
-    else:
-        actor_memberships = request.user.turnus_memberships.values(
+
+    actor_memberships = {
+        membership["turnus_id"]: membership["functional_role"]
+        for membership in request.user.turnus_memberships.values(
             "turnus_id", "functional_role"
         )
-        visible_turnus_ids = []
-        for membership in actor_memberships:
-            visible_turnus_ids.append(membership["turnus_id"])
-            if membership["functional_role"] == "leitung":
-                managed_turnus_ids.add(membership["turnus_id"])
-        if not visible_turnus_ids:
-            raise PermissionDenied("Team management access denied.")
-        turnuses = Turnus.objects.filter(pk__in=visible_turnus_ids)
-    turnuses = list(turnuses.prefetch_related(
+    }
+    managed_turnus_ids = {
+        turnus_id
+        for turnus_id, role in actor_memberships.items()
+        if role == "leitung"
+    }
+    turnuses = list(Turnus.objects.prefetch_related(
         "memberships__user__profil",
         Prefetch(
             "memberships__user__profil__swp",
@@ -71,32 +66,62 @@ def _team_overview(request, *, admin_only):
     ).order_by(
         "-turnus_beginn", "turnus_nr", "id"
     ))
+
+    full_team_turnus_ids = (
+        {turnus.id for turnus in turnuses}
+        if global_admin
+        else set(actor_memberships)
+    )
     visible_turnuses_by_user = {}
     for turnus in turnuses:
+        if turnus.id not in full_team_turnus_ids:
+            continue
         for membership in turnus.memberships.all():
             visible_turnuses_by_user.setdefault(membership.user_id, []).append(str(turnus))
+
     years = {}
     for turnus in turnuses:
+        can_view_team = global_admin or turnus.id in actor_memberships
         can_manage_memberships = global_admin or turnus.id in managed_turnus_ids
-        members = []
-        for membership in sorted(
+        ordered_memberships = sorted(
             turnus.memberships.all(),
-            key=lambda item: (item.functional_role != "leitung", _display_name(item.user).casefold()),
-        ):
-            members.append({
-                "id": membership.id,
-                "user_id": membership.user_id,
-                "name": _display_name(membership.user),
-                "functional_role": membership.functional_role,
-                "role_label": membership.get_functional_role_display(),
-                "team_label": membership.team_label,
-                "profile": _profile_card(
-                    membership,
-                    turnus.id,
-                    visible_turnuses_by_user[membership.user_id],
-                ),
-            })
-        year = str(turnus.turnus_beginn.year)
+            key=lambda item: (
+                item.functional_role != "leitung",
+                _display_name(item.user).casefold(),
+            ),
+        )
+        leads = [
+            {"name": _display_name(membership.user)}
+            for membership in ordered_memberships
+            if membership.functional_role == "leitung"
+        ]
+        members = []
+        if can_view_team:
+            for membership in ordered_memberships:
+                members.append({
+                    "id": membership.id,
+                    "user_id": membership.user_id,
+                    "name": _display_name(membership.user),
+                    "functional_role": membership.functional_role,
+                    "role_label": membership.get_functional_role_display(),
+                    "team_label": membership.team_label,
+                    "profile": _profile_card(
+                        membership,
+                        turnus.id,
+                        visible_turnuses_by_user[membership.user_id],
+                    ),
+                })
+
+        own_requests = [
+            join_request
+            for join_request in turnus.join_requests.all()
+            if join_request.user_id == request.user.id
+        ]
+        request_status = (
+            TurnusJoinRequest.Status.APPROVED
+            if turnus.id in actor_memberships
+            else own_requests[0].status if own_requests else None
+        )
         pending_requests = []
         if can_manage_memberships:
             for join_request in turnus.join_requests.all():
@@ -109,19 +134,26 @@ def _team_overview(request, *, admin_only):
                     "email": join_request.user.email,
                 })
             pending_requests.sort(key=lambda item: item["name"].casefold())
+
+        year = str(turnus.turnus_beginn.year)
         years.setdefault(year, []).append({
             "id": turnus.id,
             "label": str(turnus),
             "number": turnus.turnus_nr,
             "start": turnus.turnus_beginn.isoformat(),
             "end": turnus.get_turnus_ende().isoformat(),
-            "excel_uploaded": bool(turnus.uploadedFile),
+            "excel_uploaded": bool(turnus.uploadedFile) if can_view_team else False,
             "members": members,
+            "leads": leads,
+            "can_view_team": can_view_team,
+            "is_member": turnus.id in actor_memberships,
+            "request_status": request_status,
             "request_summary": {"pending": len(pending_requests)},
             "pending_requests": pending_requests,
             "can_manage_memberships": can_manage_memberships,
             "can_edit_profiles": can_manage_memberships,
         })
+
     people = []
     if global_admin or managed_turnus_ids:
         people_source = (
@@ -129,9 +161,7 @@ def _team_overview(request, *, admin_only):
             .select_related("profil")
             .prefetch_related("turnus_memberships__turnus")
         )
-        visible_turnus_ids = None if global_admin else {
-            turnus.id for turnus in turnuses
-        }
+        visible_turnus_ids = None if global_admin else managed_turnus_ids
         for user in people_source:
             visible_memberships = [
                 item for item in user.turnus_memberships.all()

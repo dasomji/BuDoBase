@@ -107,8 +107,15 @@ class JoinRequestDecisionHttpTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         turnuses = [item for year in response.json()["years"] for item in year["turnuses"]]
-        self.assertEqual([item["id"] for item in turnuses], [self.turnus.id])
-        self.assertEqual(turnuses[0]["pending_requests"], [{
+        self.assertEqual(
+            [item["id"] for item in turnuses],
+            [self.other_turnus.id, self.turnus.id],
+        )
+        foreign = next(item for item in turnuses if item["id"] == self.other_turnus.id)
+        managed = next(item for item in turnuses if item["id"] == self.turnus.id)
+        self.assertFalse(foreign["can_view_team"])
+        self.assertEqual(foreign["pending_requests"], [])
+        self.assertEqual(managed["pending_requests"], [{
             "id": own.id, "user_id": own_user.id, "name": "Own", "email": "own@example.test",
         }])
 

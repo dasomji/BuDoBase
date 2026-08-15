@@ -405,6 +405,85 @@ describe('stylesheet structure contracts', () => {
 });
 
 describe('print stylesheet contracts', () => {
+  it('recreates content margins when printable pages suppress browser headers and footers', () => {
+    const printCss = cssBlock(appCss, '@media print');
+
+    for (const selector of [
+      String.raw`\.kitchen-print-page`,
+      String.raw`\.happy-cleaning-print-page#body-container`,
+      String.raw`\.murder-print-page#body-container`,
+    ]) {
+      expect(
+        printCss.match(new RegExp(`${selector}\\s*\\{[^}]*padding:\\s*14mm;`, 's')),
+        `Missing an internal print margin for ${selector}`,
+      ).not.toBeNull();
+    }
+  });
+
+  it('prints allocation names in two larger columns beneath a playful centered heading', () => {
+    const printCss = cssBlock(appCss, '@media print');
+    const headingRule = printCss.match(
+      /\.allocation-page \.allocation-print-page h1\s*\{[^}]*font-family:\s*"Fredoka Variable"[^}]*font-size:\s*30pt;[^}]*text-align:\s*center;[^}]*\}/s,
+    );
+    const listRule = printCss.match(
+      /\.allocation-page \.allocation-print-page ul\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*font-size:\s*15pt;[^}]*\}/s,
+    );
+
+    expect(appCss).toContain('font-family: "Fredoka Variable";');
+    expect(appCss).toContain('@fontsource-variable/fredoka/files/fredoka-latin-wght-normal.woff2');
+    expect(headingRule, 'Missing the playful centered SWP print heading').not.toBeNull();
+    expect(listRule, 'Missing the larger two-column SWP kids list').not.toBeNull();
+  });
+
+  it('omits check-in indicators from printed kid names', () => {
+    const printCss = cssBlock(appCss, '@media print');
+
+    expect(printCss).toMatch(/\.kid-presence-indicator\s*\{[^}]*display:\s*none\s*!important;[^}]*\}/s);
+  });
+
+  it('prints each Gut zu wissen card on its own internally padded page', () => {
+    const printCss = cssBlock(appCss, '@media print');
+    const pageRule = printCss.match(
+      /\.good-to-know-print-page\s*\{[^}]*padding:\s*14mm;[^}]*break-after:\s*page;[^}]*page-break-after:\s*always;[^}]*\}/s,
+    );
+    const lastPageRule = printCss.match(
+      /\.good-to-know-print-page:last-child\s*\{[^}]*break-after:\s*auto;[^}]*page-break-after:\s*auto;[^}]*\}/s,
+    );
+    const headingRule = printCss.match(
+      /\.good-to-know-print-page h1\s*\{[^}]*column-span:\s*all;[^}]*\}/s,
+    );
+
+    expect(appCss).toMatch(/\.good-to-know-print-pages\s*\{\s*display:\s*none;\s*\}/s);
+    expect(printCss).toMatch(/\.good-to-know-screen#body-container\s*\{[^}]*display:\s*none\s*!important;/s);
+    expect(pageRule, 'Each Gut zu wissen card needs a forced page boundary').not.toBeNull();
+    expect(pageRule[0]).toMatch(/column-count:\s*2;/);
+    expect(headingRule, 'Gut zu wissen headings need to span both print columns').not.toBeNull();
+    expect(lastPageRule, 'The final Gut zu wissen card must not add a blank page').not.toBeNull();
+  });
+
+  it('prints BuDo families with only the shared allocation-style pages', () => {
+    const printCss = cssBlock(appCss, '@media print');
+    const familyPageRule = printCss.match(
+      /\.families-page\s*\{[^}]*background-image:[^}]*radial-gradient[^}]*\}/s,
+    );
+    const screenRule = printCss.match(
+      /\.families-screen#body-container\s*\{[^}]*display:\s*none\s*!important;[^}]*\}/s,
+    );
+
+    expect(familyPageRule, 'Family print pages need the allocation artwork background').not.toBeNull();
+    expect(screenRule, 'The interactive family cards must not be printed alongside print pages').not.toBeNull();
+  });
+
+  it('keeps allocation artwork inside its own printed page', () => {
+    const printCss = cssBlock(appCss, '@media print');
+    const illustrationRule = printCss.match(
+      /\.allocation-page \.allocation-print-illustration\s*\{[^}]*position:\s*absolute;[^}]*\}/s,
+    );
+
+    expect(illustrationRule, 'Allocation artwork must not use cross-page fixed positioning').not.toBeNull();
+    expect(illustrationRule[0]).not.toContain('fixed');
+  });
+
   it('keeps transparent-card inline padding after the general card print rule', () => {
     const printCss = cssBlock(appCss, '@media print');
     const generalRule = printCss.match(

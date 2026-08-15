@@ -14,7 +14,7 @@ import {
   TableScroll,
 } from '../components';
 import { Button } from '../components/ui/button';
-import { linkKid } from './shared';
+import { linkKid, PrintPageStyle } from './shared';
 
 const mealTypes = [
   ['breakfast', 'Frühstück'],
@@ -176,6 +176,7 @@ export function KitchenPage({ data }) {
   const weeks = ['w1', 'w2'];
   return (
     <>
+      <PrintPageStyle />
       <Columns className="kitchen-layout grid grid-cols-1 items-start gap-4 min-[901px]:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)] [&_.card-info-container]:min-w-0 [&_.card-info-content]:min-w-0 [&_.card]:min-w-0 [&_.detail-column]:min-w-0">
         <Column id="left-column">
           {weeks.map(week => (

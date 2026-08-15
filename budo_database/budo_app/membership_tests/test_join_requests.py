@@ -79,21 +79,25 @@ class JoinRequestHttpTests(TestCase):
         self.assertEqual(TurnusJoinRequest.objects.count(), 1)
         self.assertEqual(len(mail.outbox), 2)
 
-    def test_awaiting_dashboard_contains_only_safe_request_state(self):
+    def test_awaiting_dashboard_is_empty_and_team_list_contains_safe_request_state(self):
         TurnusJoinRequest.objects.create(user=self.requester, turnus=self.turnus)
         response = self.client.get(reverse("route-data-api", args=["dashboard"]))
+        team_response = self.client.get(
+            reverse("route-data-api", args=["team-management"])
+        )
+
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertTrue(payload["membership_awaiting"])
         self.assertEqual(payload["kids"], [])
-        self.assertEqual(payload["team"], [])
-        self.assertEqual(payload["turnuses"], [{
-                "id": self.turnus.id,
-                "label": str(self.turnus),
-                "number": 2,
-                "start": "2027-07-10",
-                "request_status": "pending",
-            }])
+        self.assertNotIn("team", payload)
+        self.assertNotIn("turnuses", payload)
+        self.assertEqual(team_response.status_code, 200)
+        turnus = team_response.json()["years"][0]["turnuses"][0]
+        self.assertEqual(turnus["id"], self.turnus.id)
+        self.assertEqual(turnus["request_status"], "pending")
+        self.assertFalse(turnus["can_view_team"])
+        self.assertEqual(turnus["members"], [])
 
     def test_migrated_user_awaits_membership_after_last_membership_is_deleted(self):
         membership = create_membership(
@@ -116,16 +120,16 @@ class JoinRequestHttpTests(TestCase):
 
         self.assertTrue(payload["membership_awaiting"])
         self.assertEqual(payload["kids"], [])
-        self.assertEqual(payload["team"], [])
+        self.assertNotIn("team", payload)
         self.assertEqual(payload["focuses"], [])
         self.assertEqual(payload["happy_cleanings"], [])
-        self.assertEqual(payload["turnuses"], [{
-            "id": self.turnus.id,
-            "label": str(self.turnus),
-            "number": 2,
-            "start": "2027-07-10",
-            "request_status": "rejected",
-        }])
+        self.assertNotIn("turnuses", payload)
+        team_payload = self.client.get(
+            reverse("route-data-api", args=["team-management"])
+        ).json()
+        turnus = team_payload["years"][0]["turnuses"][0]
+        self.assertEqual(turnus["id"], self.turnus.id)
+        self.assertEqual(turnus["request_status"], "rejected")
 
     def test_membership_created_without_selection_awaits_after_deletion(self):
         profile = self.requester.profil
@@ -141,7 +145,7 @@ class JoinRequestHttpTests(TestCase):
 
         self.assertTrue(payload["membership_awaiting"])
         self.assertEqual(payload["kids"], [])
-        self.assertEqual(payload["team"], [])
+        self.assertNotIn("team", payload)
         self.assertEqual(payload["focuses"], [])
         self.assertEqual(payload["happy_cleanings"], [])
 
@@ -152,7 +156,7 @@ class JoinRequestHttpTests(TestCase):
 
         self.assertTrue(payload["membership_awaiting"])
         self.assertEqual(payload["kids"], [])
-        self.assertEqual(payload["team"], [])
+        self.assertNotIn("team", payload)
 
     def test_anonymous_and_csrf_requests_are_rejected(self):
         self.client.logout()
@@ -351,34 +355,36 @@ class JoinRequestHttpTests(TestCase):
         self.assertIsNotNone(notification.claimed_at)
         self.assertEqual(notification.last_error, "")
 
-    def test_approved_member_can_discover_other_turnuses_without_data_leak(self):
+    def test_approved_member_discovers_other_turnuses_in_team_list_without_data_leak(self):
         approve_and_select_turnus(self.requester, self.turnus)
         other = Turnus.objects.create(turnus_nr=3, turnus_beginn=date(2027, 8, 1))
+        private_member = User.objects.create_user(
+            "other-private-member", first_name="Other", last_name="Private"
+        )
+        TurnusMembership.objects.create(user=private_member, turnus=other)
 
-        payload = self.client.get(
+        dashboard = self.client.get(
             reverse("route-data-api", args=["dashboard"])
         ).json()
-
-        self.assertNotIn("membership_awaiting", payload)
-        self.assertEqual(
-            payload["membership_turnuses"],
-            [
-                {
-                    "id": other.id,
-                    "label": str(other),
-                    "number": 3,
-                    "start": "2027-08-01",
-                    "request_status": None,
-                },
-                {
-                    "id": self.turnus.id,
-                    "label": str(self.turnus),
-                    "number": 2,
-                    "start": "2027-07-10",
-                    "request_status": "approved",
-                },
-            ],
+        response = self.client.get(
+            reverse("route-data-api", args=["team-management"])
         )
+
+        self.assertNotIn("membership_awaiting", dashboard)
+        self.assertNotIn("membership_turnuses", dashboard)
+        turnuses = [
+            turnus
+            for year in response.json()["years"]
+            for turnus in year["turnuses"]
+        ]
+        self.assertEqual(
+            [(turnus["id"], turnus["request_status"]) for turnus in turnuses],
+            [(other.id, None), (self.turnus.id, "approved")],
+        )
+        foreign = turnuses[0]
+        self.assertFalse(foreign["can_view_team"])
+        self.assertEqual(foreign["members"], [])
+        self.assertNotContains(response, "Other Private")
 
 
 @skipUnless(connection.vendor == "postgresql", "requires PostgreSQL row locks")

@@ -24,6 +24,7 @@ import {
   HappyCleaningStationDetailPage,
 } from './happyCleaningStationDetail';
 import { BulkStationCopyDialog, ConflictResolution } from './happyCleaningCopy';
+import { PrintPageStyle } from './shared';
 
 
 const requestId = () => globalThis.crypto?.randomUUID?.()
@@ -765,52 +766,55 @@ function HappyCleaningPrintAction() {
 export function HappyCleaningPrintPage({ data, mutate, refresh, realtimeSync }) {
   const writeBlocked = Boolean(realtimeSync?.enabled && !realtimeSync.writesEnabled);
   return (
-    <main className="happy-cleaning-print-page mx-auto block w-[min(52rem,calc(100%-2rem))] p-6 text-black" id="body-container">
-      <header className="happy-cleaning-print-title mb-6 border-b-4 border-double border-current pb-2">
-        <h1 className="m-0 text-[clamp(1.65rem,5vw,2.4rem)] font-bold whitespace-normal [overflow-wrap:anywhere]">Happy Cleaning · Nummernliste</h1>
-      </header>
-      <PrintSection
-        id="happy-cleaning-present-numberless"
-        title="Anwesend ohne Nummer"
-        columns={[{ key: 'full_name', label: 'Name' }]}
-        rows={data.present_numberless}
-      >
-        {data.number_batch?.available && (
-          <div className="mb-2 flex justify-start print:hidden">
-            <HappyCleaningNumberBatchAction
-              eventId={data.number_batch_event_id}
-              numberBatch={data.number_batch}
-              mutate={mutate}
-              refresh={refresh}
-              disabled={writeBlocked}
-            />
-          </div>
-        )}
-      </PrintSection>
-      <PrintSection
-        id="happy-cleaning-present-numbered"
-        title="Anwesend mit Nummer"
-        columns={[
-          { key: 'number', label: 'Nummer', className: 'w-24 text-right font-bold tabular-nums' },
-          { key: 'full_name', label: 'Name' },
-        ]}
-        rows={data.present_numbered}
-      />
-      <PrintSection
-        id="happy-cleaning-absent"
-        title="Abwesend"
-        columns={[
-          {
-            key: 'number',
-            label: 'Nummer',
-            className: 'w-24 text-right font-bold tabular-nums',
-            render: child => child.number ?? '—',
-          },
-          { key: 'full_name', label: 'Name' },
-        ]}
-        rows={data.absent}
-      />
-    </main>
+    <>
+      <PrintPageStyle />
+      <main className="happy-cleaning-print-page mx-auto block w-[min(52rem,calc(100%-2rem))] p-6 text-black" id="body-container">
+        <header className="happy-cleaning-print-title mb-6 border-b-4 border-double border-current pb-2">
+          <h1 className="m-0 text-[clamp(1.65rem,5vw,2.4rem)] font-semibold whitespace-normal [overflow-wrap:anywhere]">Happy Cleaning · Nummernliste</h1>
+        </header>
+        <PrintSection
+          id="happy-cleaning-present-numberless"
+          title="Anwesend ohne Nummer"
+          columns={[{ key: 'full_name', label: 'Name' }]}
+          rows={data.present_numberless}
+        >
+          {data.number_batch?.available && (
+            <div className="mb-2 flex justify-start print:hidden">
+              <HappyCleaningNumberBatchAction
+                eventId={data.number_batch_event_id}
+                numberBatch={data.number_batch}
+                mutate={mutate}
+                refresh={refresh}
+                disabled={writeBlocked}
+              />
+            </div>
+          )}
+        </PrintSection>
+        <PrintSection
+          id="happy-cleaning-present-numbered"
+          title="Anwesend mit Nummer"
+          columns={[
+            { key: 'number', label: 'Nummer', className: 'w-24 text-right font-bold tabular-nums' },
+            { key: 'full_name', label: 'Name' },
+          ]}
+          rows={data.present_numbered}
+        />
+        <PrintSection
+          id="happy-cleaning-absent"
+          title="Abwesend"
+          columns={[
+            {
+              key: 'number',
+              label: 'Nummer',
+              className: 'w-24 text-right font-bold tabular-nums',
+              render: child => child.number ?? '—',
+            },
+            { key: 'full_name', label: 'Name' },
+          ]}
+          rows={data.absent}
+        />
+      </main>
+    </>
   );
 }
 

@@ -85,7 +85,7 @@
 **Solution Implemented**:
 - Created `get_turnus_data_optimized()` function with comprehensive query optimization
 - Added `select_related()` and `prefetch_related()` to commonly used queries:
-  - `Kinder` queries now include `select_related('turnus', 'spezial_familien')`
+  - `Kinder` queries now include `select_related('turnus')`
   - `Schwerpunkte` queries now include `select_related('ort', 'schwerpunktzeit')`
   - `Profil` queries now include `select_related('user', 'turnus')`
 - Optimized admin interface queries with `list_select_related`

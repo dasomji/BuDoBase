@@ -800,8 +800,9 @@ class DownloadUpdatedExcelTest(TestCase):
             "Explizit markierte Abreisenotiz",
         )
 
-    def test_export_marks_train_departure_and_stay_changes_from_original_workbook(self):
+    def test_export_marks_train_travel_and_stay_changes_from_original_workbook(self):
         kid = make_kid(self.turnus)
+        kid.zug_anreise = False
         kid.zug_abreise = False
         kid.turnus_dauer = 1
         kid.save()
@@ -820,6 +821,7 @@ class DownloadUpdatedExcelTest(TestCase):
             update_excel_file(path, self.turnus)
             exported = pd.read_excel(path, dtype=str).fillna("")
 
+        self.assertEqual(exported.loc[0, "Zuganreise geändert"], "ja")
         self.assertEqual(exported.loc[0, "Zugabreise geändert"], "ja")
         self.assertEqual(exported.loc[0, "Aufenthalt geändert"], "ja")
 

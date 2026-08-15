@@ -33,6 +33,7 @@ class MapFirstPlacesContractTests(TestCase):
         )
         self.user = User.objects.create_user(username="mia", password="secret")
         approve_and_select_turnus(self.user.profil.user, turnus)
+        self.user.profil.rufname = "Mia Rufname"
         self.user.profil.save()
         select_turnus(self.user, turnus)
         self.client.force_login(self.user)
@@ -107,7 +108,7 @@ class MapFirstPlacesContractTests(TestCase):
             "notes": [{
                 "id": note.id,
                 "text": "Das Gatter bitte schließen.",
-                "author": "mia",
+                "author": "Mia Rufname",
                 "date": note.date_added.isoformat(),
                 "day": note.date_added.strftime("%d.%m."),
                 "photos": [{

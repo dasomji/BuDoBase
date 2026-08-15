@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from budo_app.models import Kinder, Notizen, SpezialFamilien, Turnus
+from budo_app.models import Kinder, Notizen, Turnus
 from budo_app.memberships import create_membership, select_turnus
 
 
@@ -137,18 +137,9 @@ class ReportContractTests(TestCase):
         self.assertNotContains(response, "Private Other Teamer")
         self.assertNotContains(response, "+436641234567")
 
-    def test_family_contracts_preserve_group_and_kid_order_and_empty_behavior(self):
-        alpha_family = SpezialFamilien.objects.create(
-            name="Alpha-Haus",
-            turnus=self.turnus,
-        )
-        zeta_family = SpezialFamilien.objects.create(
-            name="Zeta-Haus",
-            turnus=self.turnus,
-        )
+    def test_family_contract_preserves_group_and_kid_order_and_empty_behavior(self):
         self.kid.budo_family = "L"
-        self.kid.spezial_familien = zeta_family
-        self.kid.save()
+        self.kid.save(update_fields=("budo_family",))
         aaron = Kinder.objects.create(
             kid_index="T2-2",
             kid_vorname="Aaron",
@@ -157,7 +148,6 @@ class ReportContractTests(TestCase):
             turnus=self.turnus,
             anwesend=False,
             budo_family="S",
-            spezial_familien=alpha_family,
         )
         abel = Kinder.objects.create(
             kid_index="T2-3",
@@ -167,7 +157,6 @@ class ReportContractTests(TestCase):
             turnus=self.turnus,
             anwesend=True,
             budo_family="S",
-            spezial_familien=alpha_family,
         )
         Kinder.objects.create(
             kid_index="T2-4",
@@ -177,9 +166,6 @@ class ReportContractTests(TestCase):
         )
 
         families = self.client.get(self.contract_url("families"))
-        special_families = self.client.get(
-            self.contract_url("special-families"),
-        )
 
         self.assertEqual(families.status_code, 200)
         self.assertEqual(
@@ -210,36 +196,7 @@ class ReportContractTests(TestCase):
                 ]
             },
         )
-        self.assertEqual(
-            special_families.json(),
-            {
-                "kids": [
-                    {
-                        "id": aaron.id,
-                        "full_name": "Aaron First",
-                        "present": False,
-                        "age": 13.0,
-                        "special_family": "Alpha-Haus",
-                    },
-                    {
-                        "id": abel.id,
-                        "full_name": "Abel Second",
-                        "present": True,
-                        "age": 12.0,
-                        "special_family": "Alpha-Haus",
-                    },
-                    {
-                        "id": self.kid.id,
-                        "full_name": "Ada Lovelace",
-                        "present": True,
-                        "age": 14.0,
-                        "special_family": "Zeta-Haus",
-                    },
-                ]
-            },
-        )
         self.assertNotContains(families, "Unassigned Hidden")
-        self.assertNotContains(special_families, "Unassigned Hidden")
 
     def test_birthdays_returns_derived_sv_date_without_the_raw_number(self):
         self.kid.anwesend = False
@@ -330,10 +287,6 @@ class ReportContractTests(TestCase):
             turnus_nr=3,
             turnus_beginn=date(2026, 8, 1),
         )
-        other_family = SpezialFamilien.objects.create(
-            name="Private Other Family",
-            turnus=other_turnus,
-        )
         Kinder.objects.create(
             kid_index="T3-1",
             kid_vorname="Private Other",
@@ -341,7 +294,6 @@ class ReportContractTests(TestCase):
             turnus=other_turnus,
             anwesend=True,
             budo_family="XL",
-            spezial_familien=other_family,
             sozialversicherungsnr="9876 030813",
             illness="Private other illness",
         )
@@ -351,7 +303,6 @@ class ReportContractTests(TestCase):
             "families",
             "murder-game",
             "serial-letter",
-            "special-families",
         ):
             with self.subTest(key=key):
                 response = self.client.get(self.contract_url(key))
@@ -367,7 +318,6 @@ class ReportContractTests(TestCase):
             "kid-count",
             "murder-game",
             "serial-letter",
-            "special-families",
         )
         self.client.logout()
         for key in keys:

@@ -14,6 +14,7 @@ const profile = {
   food: 'vt',
   food_display: '🧀 Vegetarisch',
   budo_family: 'M',
+  turnuses: ['T2-2026', 'T3-2026'],
 };
 
 const data = {
@@ -43,6 +44,8 @@ describe('Profil pages', () => {
     expect(within(details).getByRole('link', { name: 'ada@example.test' })).toHaveAttribute('href', 'mailto:ada@example.test');
     expect(within(details).getByRole('link', { name: '+4312345' })).toHaveAttribute('href', 'tel:+4312345');
     expect(within(details).getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/3/');
+    expect(within(details).getByText('Turnis').closest('p')).toHaveTextContent('T2-2026, T3-2026');
+    expect(within(details).getByRole('link', { name: 'Zur Turnusliste' })).toHaveAttribute('href', '/teams/');
     expect(screen.queryByText(/Abrechnung/)).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Rufname')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();

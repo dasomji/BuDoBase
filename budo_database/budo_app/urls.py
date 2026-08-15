@@ -116,7 +116,6 @@ urlpatterns = [
     *legacy_slashless_page(
         'swpmeals/<int:pk>', MealUpdate.as_view(), name='swpmeals'
     ),
-    path("swp-dashboard/", views.swp_dashboard, name="swp-dashboard"),
     path("auslagerorte-list/", views.auslagerorte_list, name="auslagerorte-list"),
     *legacy_slashless_page(
         'auslagerorte/create',
@@ -132,6 +131,8 @@ urlpatterns = [
     ),
     path('auslagerorte/<int:pk>/upload-image/',
          AuslagerorteImageUpload.as_view(), name='auslagerorte-image-upload'),
+    path('toggle_zug_anreise/', views.toggle_zug_anreise,
+         name='toggle_zug_anreise'),
     path('toggle_zug_abreise/', views.toggle_zug_abreise,
          name='toggle_zug_abreise'),
     *legacy_slashless_page('kitchen', views.kitchen, name='kitchen'),
@@ -163,9 +164,6 @@ urlpatterns = [
     path('happy-cleaning/', views.happy_cleaning, name='happy_cleaning'),
     path('kindergesamtzahl/', views.kindergesamtzahl, name='kindergesamtzahl'),
     path('budo_familien/', views.budo_families, name='budo_familien'),
-    path('upload_spezialfamilien/', views.upload_spezialfamilien,
-         name='upload_spezialfamilien'),
-    path('spezial_familien/', views.spezial_familien, name='spezial_familien'),
     path('kindergeburtstage/', views.kindergeburtstage, name='kindergeburtstage'),
     path('update-birthdays-from-sv/', views.update_birthdays_from_sv,
          name='update_birthdays_from_sv'),

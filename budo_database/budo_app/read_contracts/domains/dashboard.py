@@ -7,7 +7,6 @@ from typing import Callable
 
 from django.db.models import (
     Case,
-    CharField,
     Count,
     Exists,
     F,
@@ -17,7 +16,6 @@ from django.db.models import (
     Prefetch,
     Q,
     Sum,
-    Subquery,
     Value,
     When,
 )
@@ -36,12 +34,10 @@ from budo_app.models import (
     NotizFoto,
     Profil,
     Schwerpunkte,
-    Turnus,
-    TurnusJoinRequest,
-    TurnusMembership,
 )
 from budo_app.memberships import membership_role_display
 from budo_app.read_contracts.common import (
+    author_name,
     kid_full_name,
     serialize_first_aid_photos,
     serialize_photos,
@@ -64,6 +60,9 @@ class ActivityStream:
     source_field: str
     response_field: str
     serialize_value: Callable[[object], object]
+
+
+DASHBOARD_ACTIVITY_KINDS = frozenset({"first_aid", "notes"})
 
 
 ACTIVITY_STREAMS = {
@@ -115,11 +114,12 @@ def _decode_cursor(value):
 def _activity_queryset(stream, turnus_id):
     queryset = (
         stream.model.objects.filter(kinder__turnus_id=turnus_id)
-        .select_related("kinder", "added_by")
+        .select_related("kinder", "added_by__profil")
         .only(
             "id",
             "date_added",
             "added_by__username",
+            "added_by__profil__rufname",
             "kinder_id",
             "kinder__kid_vorname",
             "kinder__kid_nachname",
@@ -150,7 +150,7 @@ def _activity_item(stream, item):
     common = {
         "id": item.id,
         "date": serialize_utc_datetime(item.date_added),
-        "author": item.added_by.username,
+        "author": author_name(item.added_by),
         "kid_id": item.kinder_id,
         "kid": child_name,
     }
@@ -283,50 +283,17 @@ def build_good_to_know_contract(request):
 def _empty_summary(profile):
     return {
         "profile": _profile_payload(profile, []),
-        "team": [],
         "totals": {
             "kids": 0,
             "checked_in": 0,
             "train_arrival": 0,
             "train_departure": 0,
-            "pocket_money": 0.0,
-            "pocket_money_paid": 0.0,
-            "team_money": 0.0,
         },
         "kids": [],
         "focuses": [],
         "focus_assignments_complete": {"w1": False, "w2": False},
         "happy_cleanings": [],
     }
-
-
-def _membership_turnuses(user):
-    return [
-        {
-            "id": turnus.id,
-            "label": str(turnus),
-            "number": turnus.turnus_nr,
-            "start": turnus.turnus_beginn.isoformat(),
-            "request_status": (
-                TurnusJoinRequest.Status.APPROVED
-                if turnus.dashboard_is_approved
-                else turnus.dashboard_request_status
-            ),
-        }
-        for turnus in Turnus.objects.annotate(
-            dashboard_is_approved=Exists(
-                TurnusMembership.objects.filter(user=user, turnus_id=OuterRef("pk"))
-            ),
-            dashboard_request_status=Subquery(
-                TurnusJoinRequest.objects.filter(
-                    user=user, turnus_id=OuterRef("pk")
-                ).values("status")[:1],
-                output_field=CharField(),
-            ),
-        )
-        .only("id", "turnus_nr", "turnus_beginn")
-        .order_by("-turnus_beginn", "turnus_nr", "id")
-    ]
 
 
 def build_dashboard_contract(request):
@@ -341,7 +308,6 @@ def build_dashboard_contract(request):
     if profile is None:
         return {
             "profile": None,
-            "team": [],
             "totals": {},
             "kids": [],
             "focuses": [],
@@ -350,22 +316,17 @@ def build_dashboard_contract(request):
             "activity": {
                 "first_aid": _activity_page("first_aid", None),
                 "notes": _activity_page("notes", None),
-                "transactions": _activity_page("transactions", None),
             },
         }
 
-    # An account without approved authority sees only public Turnus identity
-    # and its own request history, regardless of any stored legacy selection.
     if not has_approved_selection:
         return {
             **_empty_summary(profile),
             "activity": {
                 "first_aid": _activity_page("first_aid", None),
                 "notes": _activity_page("notes", None),
-                "transactions": _activity_page("transactions", None),
             },
             "membership_awaiting": True,
-            "turnuses": _membership_turnuses(request.user),
         }
 
     return _build_dashboard_contract(request, profile)
@@ -376,7 +337,7 @@ def _build_dashboard_contract(request, profile):
     activity_kind = request.query_params.get("activity")
     cursor = request.query_params.get("cursor")
     if activity_kind is not None:
-        if activity_kind not in ACTIVITY_STREAMS:
+        if activity_kind not in DASHBOARD_ACTIVITY_KINDS:
             raise ValidationError(
                 {"activity": "Unknown dashboard activity stream."}
             )
@@ -421,20 +382,6 @@ def _build_dashboard_contract(request, profile):
             focus for focus in focuses if focus.dashboard_is_personal
         ]
         focus_ids = [focus.id for focus in personal_focuses]
-        team = list(
-            Profil.objects.filter(
-                user__turnus_memberships__turnus_id=turnus_id,
-            )
-            .annotate(
-                dashboard_money_total=Coalesce(
-                    Sum("betreuerinnen_geld__amount"),
-                    Value(0.0),
-                    output_field=FloatField(),
-                )
-            )
-            .only("id", "rufname", "essen", "allergien")
-            .order_by("rufname", "id")
-        )
         kids = list(
             Kinder.objects.filter(turnus_id=turnus_id)
             .select_related("turnus")
@@ -458,14 +405,6 @@ def _build_dashboard_contract(request, profile):
                 "budo_family",
             )
             .order_by("kid_vorname", "kid_nachname", "id")
-        )
-        money_totals = Geld.objects.filter(kinder__turnus_id=turnus_id).aggregate(
-            total=Coalesce(Sum("amount"), Value(0.0), output_field=FloatField()),
-            paid=Coalesce(
-                Sum("amount", filter=Q(amount__gt=0)),
-                Value(0.0),
-                output_field=FloatField(),
-            ),
         )
         assigned_weeks_by_kid = {}
         for focus in focuses:
@@ -590,28 +529,11 @@ def _build_dashboard_contract(request, profile):
                     if membership.turnus_id == turnus_id
                 ), ""),
             ),
-            "team": [
-                {
-                    "id": member.id,
-                    "rufname": member.rufname,
-                    "food_display": member.get_food(),
-                    "allergies": member.allergien,
-                    "money_total": serialize_money(
-                        member.dashboard_money_total,
-                    ),
-                }
-                for member in team
-            ],
             "totals": {
                 "kids": len(kids),
                 "checked_in": sum(kid.anwesend is True for kid in kids),
                 "train_arrival": sum(kid.zug_anreise is True for kid in kids),
                 "train_departure": sum(kid.zug_abreise is True for kid in kids),
-                "pocket_money": serialize_money(money_totals["total"]),
-                "pocket_money_paid": serialize_money(money_totals["paid"]),
-                "team_money": serialize_money(
-                    sum(member.dashboard_money_total for member in team)
-                ),
             },
             "kids": [_kid_payload(kid) for kid in kids],
             "focuses": [
@@ -629,10 +551,43 @@ def _build_dashboard_contract(request, profile):
 
     return {
         **summary,
-        "membership_turnuses": _membership_turnuses(request.user),
         "activity": {
             "first_aid": _activity_page("first_aid", turnus_id),
             "notes": _activity_page("notes", turnus_id),
+        },
+    }
+
+
+def build_pocket_money_contract(request):
+    profile = selected_profile_for_read(request.user)
+    turnus_id = profile.selected_turnus_id if profile is not None else None
+    activity_kind = request.query_params.get("activity")
+    cursor = request.query_params.get("cursor")
+    if activity_kind is not None:
+        if activity_kind != "transactions":
+            raise ValidationError({"activity": "Unknown pocket-money activity stream."})
+        return {
+            "activity": {
+                "transactions": _activity_page("transactions", turnus_id, cursor),
+            }
+        }
+    if cursor is not None:
+        raise ValidationError({"cursor": "An activity stream is required."})
+
+    money_totals = Geld.objects.filter(kinder__turnus_id=turnus_id).aggregate(
+        total=Coalesce(Sum("amount"), Value(0.0), output_field=FloatField()),
+        paid=Coalesce(
+            Sum("amount", filter=Q(amount__gt=0)),
+            Value(0.0),
+            output_field=FloatField(),
+        ),
+    )
+    return {
+        "totals": {
+            "pocket_money": serialize_money(money_totals["total"]),
+            "pocket_money_paid": serialize_money(money_totals["paid"]),
+        },
+        "activity": {
             "transactions": _activity_page("transactions", turnus_id),
         },
     }
@@ -641,4 +596,5 @@ def _build_dashboard_contract(request, profile):
 CONTRACTS = {
     "dashboard": build_dashboard_contract,
     "gut-zu-wissen": build_good_to_know_contract,
+    "pocket-money": build_pocket_money_contract,
 }

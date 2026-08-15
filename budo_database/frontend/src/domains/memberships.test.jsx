@@ -189,7 +189,7 @@ describe('admin team overview', () => {
     expect(screen.queryByRole('button', { name: 'Turnus hinzufügen' })).not.toBeInTheDocument();
   });
 
-  it('creates a Turnus from an opaque dialog with only number and start date', async () => {
+  it('creates a Turnus from an opaque dialog with a Saturday-only calendar', async () => {
     const user = userEvent.setup();
     const mutate = vi.fn().mockResolvedValue({ id: 9, label: 'T3-2027' });
     const onCreateOpenChange = vi.fn();
@@ -208,18 +208,50 @@ describe('admin team overview', () => {
     expect(dialog).toHaveClass('bg-popover');
     expect(dialog).not.toHaveClass('card');
     expect(within(dialog).getByLabelText('Welcher Turnus?')).toBeInTheDocument();
-    expect(within(dialog).getByLabelText('Startdatum')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Startdatum' })).toBeInTheDocument();
     expect(within(dialog).queryByLabelText(/Excel/i)).not.toBeInTheDocument();
 
     await user.type(within(dialog).getByLabelText('Welcher Turnus?'), '3');
-    await user.type(within(dialog).getByLabelText('Startdatum'), '2027-07-03');
+    await user.click(within(dialog).getByRole('button', { name: 'Startdatum' }));
+    const calendar = screen.getByRole('dialog', { name: 'Startdatum auswählen' });
+    const dateButtons = within(calendar).getAllByRole('button').filter(button => button.dataset.date);
+    expect(dateButtons.length).toBeGreaterThan(0);
+    dateButtons.forEach(button => {
+      const isSaturday = new Date(`${button.dataset.date}T00:00:00Z`).getUTCDay() === 6;
+      expect(button).toHaveProperty('disabled', !isSaturday);
+    });
+    const saturday = dateButtons.find(button => !button.disabled);
+    const selectedDate = saturday.dataset.date;
+    await user.click(saturday);
     await user.click(within(dialog).getByRole('button', { name: 'Turnus hinzufügen' }));
 
     expect(mutate).toHaveBeenCalledWith('/api/turnusse/', {
       turnus_nr: 3,
-      turnus_beginn: '2027-07-03',
+      turnus_beginn: selectedDate,
     }, true, true, true);
     expect(onCreateOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('warns about a missing or non-numeric Turnus number and does not save', async () => {
+    const user = userEvent.setup();
+    const mutate = vi.fn();
+    render(
+      <Toaster>
+        <AdminTeamOverviewPage data={data} mutate={mutate} createOpen />
+      </Toaster>,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Turnus hinzufügen' });
+    const number = within(dialog).getByLabelText('Welcher Turnus?');
+    await user.type(number, 'keine Zahl');
+
+    expect(number).toHaveValue('');
+    expect(within(dialog).getByText('Nur Zahlen möglich')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Turnus hinzufügen' }));
+
+    expect(number).toHaveFocus();
+    expect(number).toHaveAttribute('aria-invalid', 'true');
+    expect(mutate).not.toHaveBeenCalled();
   });
 
   it('uploads Excel for the selected Turnus and replaces the option with a green check', async () => {
@@ -280,6 +312,58 @@ describe('admin team overview', () => {
     expect(screen.getByText('Leitung: Bea Beispiel')).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: /Turnusse/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Person hinzufügen' })).toBeInTheDocument();
+  });
+
+  it('defaults to an own Turnus and exposes a privacy-safe request flow for another Turnus', async () => {
+    const user = userEvent.setup();
+    const ownTurnus = {
+      ...data.years[0].turnuses[0],
+      is_member: true,
+      can_view_team: true,
+      leads: [{ name: 'Bea Beispiel' }],
+      can_manage_memberships: false,
+      can_edit_profiles: false,
+    };
+    const foreignTurnus = {
+      id: 5,
+      label: 'T3-2026',
+      start: '2026-07-18',
+      end: '2026-07-31',
+      excel_uploaded: false,
+      members: [],
+      leads: [{ name: 'Chris Leitung' }],
+      is_member: false,
+      can_view_team: false,
+      request_status: null,
+      request_summary: { pending: 0 },
+      pending_requests: [],
+      can_manage_memberships: false,
+      can_edit_profiles: false,
+    };
+    const integrated = {
+      ...data,
+      can_manage_leitung: false,
+      can_manage_memberships: false,
+      years: [{ year: 2026, turnuses: [foreignTurnus, ownTurnus] }],
+      people: [],
+    };
+    const mutate = vi.fn().mockResolvedValue({ status: 'pending' });
+
+    render(<Toaster><AdminTeamOverviewPage data={integrated} mutate={mutate} /></Toaster>);
+
+    expect(screen.getByRole('region', { name: 'T2-2026 verwalten' })).toBeInTheDocument();
+    expect(screen.getByTestId('member-panel')).toHaveTextContent('Alex Muster');
+    await user.click(screen.getByRole('button', { name: 'T3-2026 auswählen' }));
+
+    expect(screen.getByRole('region', { name: 'T3-2026 ansehen' })).toHaveTextContent('Leitung: Chris Leitung');
+    expect(screen.queryByTestId('member-panel')).not.toBeInTheDocument();
+    expect(screen.queryByText('Alex Muster')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Person hinzufügen' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Als Betreuer:in anfragen' }));
+
+    expect(mutate).toHaveBeenCalledWith('/api/turnusse/5/join-requests/', {});
+    expect(await screen.findByText('Anfrage ausstehend')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Als Betreuer:in anfragen' })).not.toBeInTheDocument();
   });
 
   it('opens the admin member editor before changing Leitung through an explicit action', async () => {
@@ -428,7 +512,7 @@ describe('admin team overview', () => {
     render(<Toaster><AdminTeamOverviewPage data={{ ...data, people: [{ ...data.people[0], turnus_ids: [] }] }} mutate={mutate} /></Toaster>);
     await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
     await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Chris');
-    expect(screen.getByRole('button', { name: 'Chris Frei als Teamer zu T2-2026 hinzufügen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Chris Frei als Betreuer:in zu T2-2026 hinzufügen' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' }));
     expect(mutate).toHaveBeenCalledWith('/api/admin/turnusse/4/leitung/', { user_id: 30 }, true, true, true);
     expect(await screen.findAllByText('Leitung', { selector: 'small' })).not.toHaveLength(0);
@@ -445,7 +529,7 @@ describe('admin team overview', () => {
     expect(screen.getByRole('button', { name: 'Bea Beispiel bearbeiten' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
     await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Chris');
-    await user.click(screen.getByRole('button', { name: 'Chris Frei als Teamer zu T2-2026 hinzufügen' }));
+    await user.click(screen.getByRole('button', { name: 'Chris Frei als Betreuer:in zu T2-2026 hinzufügen' }));
     expect(mutate).toHaveBeenCalledWith('/api/turnusse/4/memberships/', { user_id: 30 }, true, true, true);
     await user.click(screen.getByRole('button', { name: 'Dialog schließen' }));
     await user.click(screen.getByRole('button', { name: 'Alex Muster bearbeiten' }));
@@ -469,7 +553,7 @@ describe('admin team overview', () => {
     await user.click(screen.getByRole('button', { name: 'Alex Muster aus dem Turnus entfernen' }));
     await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
     await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Alex');
-    await user.click(screen.getByRole('button', { name: 'Alex Muster als Teamer zu T2-2026 hinzufügen' }));
+    await user.click(screen.getByRole('button', { name: 'Alex Muster als Betreuer:in zu T2-2026 hinzufügen' }));
     expect(mutate).toHaveBeenLastCalledWith('/api/turnusse/4/memberships/', { user_id: 30 }, true, true, true);
     expect(screen.getAllByText('Alex Muster')).not.toHaveLength(0);
   });

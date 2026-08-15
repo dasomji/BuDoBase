@@ -110,6 +110,12 @@ def good_to_know(request):
 
 @login_required
 @require_GET
+def pocket_money(request):
+    return render_react_page(request)
+
+
+@login_required
+@require_GET
 def profile_detail(request):
     return render_react_page(request)
 

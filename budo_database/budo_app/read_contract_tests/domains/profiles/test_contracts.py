@@ -51,6 +51,7 @@ class ProfileContractTests(TestCase):
         self.profile.turnus = self.turnus
         self.profile.save()
         create_membership(user=self.user, turnus=self.turnus, team_label="Organisator")
+        create_membership(user=self.user, turnus=self.other_turnus)
         select_turnus(self.user, self.turnus)
         self.focus = Schwerpunkte.objects.create(
             swp_name="Wald",
@@ -116,6 +117,7 @@ class ProfileContractTests(TestCase):
             "food": "vt",
             "food_display": "🧀 Vegetarisch",
             "budo_family": "M",
+            "turnuses": [str(self.other_turnus), str(self.turnus)],
         })
         self.assertEqual(payload["focuses"], [{
             "id": self.focus.id,

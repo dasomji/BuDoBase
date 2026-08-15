@@ -45,13 +45,19 @@ def serialize_datetime(value):
     return value.isoformat() if value else None
 
 
+def author_name(user):
+    profile = getattr(user, "profil", None)
+    rufname = getattr(profile, "rufname", "")
+    return rufname.strip() if rufname and rufname.strip() else user.get_username()
+
+
 def _serialize_text_entry(entry, text):
     return {
         "id": entry.id,
         "text": text or "",
         "date": serialize_datetime(entry.date_added),
         "day": entry.date_added.strftime("%d.%m.") if entry.date_added else "",
-        "author": entry.added_by.username,
+        "author": author_name(entry.added_by),
     }
 
 
@@ -106,7 +112,7 @@ def serialize_transaction(transaction):
             if transaction.date_added
             else ""
         ),
-        "author": transaction.added_by.username,
+        "author": author_name(transaction.added_by),
     }
 
 

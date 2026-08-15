@@ -15,8 +15,11 @@ function AssignedFocuses({ focuses = [] }) {
   return <><p><span className="label">Schwerpunkte</span>:</p><ul>{focuses.length ? focuses.map(focus => <li key={focus.id}><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}</a></li>) : <li>Keine Schwerpunkte zugeteilt.</li>}</ul></>;
 }
 
-export function PersonCard({ person, focuses, id = 'db-profil', updateHref }) {
-  return <Card title={person.rufname} id={id}><FieldList items={[
+export function PersonCard({ person, focuses, id = 'db-profil', updateHref, actions }) {
+  const cardActions = actions || (updateHref
+    ? <Button href={updateHref}>Informationen aktualisieren</Button>
+    : null);
+  return <Card title={person.rufname} id={id} actions={cardActions}><FieldList items={[
     ['Essen', person.food_display],
     ['BuDo-Familie', familyLabels[person.budo_family]],
     ['Allergien', person.allergies],
@@ -24,13 +27,13 @@ export function PersonCard({ person, focuses, id = 'db-profil', updateHref }) {
     ['Email', person.email ? <a href={`mailto:${person.email}`}>{person.email}</a> : null],
     ['Mobil', person.phone ? <a href={`tel:${person.phone}`}>{person.phone}</a> : null],
     ['Turnis', person.turnuses?.join(', ')],
-  ]} /><AssignedFocuses focuses={focuses} />{updateHref && <Button href={updateHref}>Informationen aktualisieren</Button>}</Card>;
+  ]} /><AssignedFocuses focuses={focuses} /></Card>;
 }
 
 export function ProfilePage({ data }) {
   const profile = data.profile;
   if (!profile) return <NotFoundPage />;
-  return <Columns><Column id="single-column"><PersonCard person={profile} focuses={data.focuses} /></Column></Columns>;
+  return <Columns><Column id="single-column"><PersonCard person={profile} focuses={data.focuses} actions={<Button href="/teams/">Zur Turnusliste</Button>} /></Column></Columns>;
 }
 
 export function profileFields(profile) {

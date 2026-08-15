@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Dialog } from '@base-ui/react/dialog';
 import {
+  ArrowRightLeft,
   ChefHat,
   ChevronRight,
   ClipboardList,
@@ -7,12 +9,14 @@ import {
   ListChecks,
   MapPinned,
   Settings,
+  ShieldCheck,
   Sparkles,
   UserRound,
   UsersRound,
 } from 'lucide-react';
 
 import { Logo } from './components';
+import { Button } from '@/components/ui/button';
 import {
   Sidebar,
   SidebarContent,
@@ -45,14 +49,12 @@ export const sidebarItems = [
       { label: 'Zugabreise', href: '/zugabreise' },
       { label: 'Zuganreise', href: '/zuganreise' },
       { label: 'BuDo-Familien', href: '/budo_familien/' },
-      { label: 'Spezialfamilien', href: '/spezial_familien/' },
     ],
   },
   {
     label: 'Schwerpunkte',
     icon: ListChecks,
     children: [
-      { label: 'Übersicht', href: '/swp-dashboard/' },
       { label: 'SWP 1', href: '/swp-einteilung-w1' },
       { label: 'SWP 2', href: '/swp-einteilung-w2' },
     ],
@@ -68,14 +70,21 @@ export const sidebarItems = [
   { label: 'Auslagerorte', href: '/auslagerorte-list/', icon: MapPinned },
   { label: 'Küche', href: '/kitchen', icon: ChefHat },
   { label: 'Spiele', href: gamesUrl, icon: Gamepad2, external: true },
-  { label: 'Team and Turnus', href: '/teams/', icon: UsersRound },
+  { label: 'Team & Turnus', href: '/teams/', icon: UsersRound },
   {
     label: 'Orgi',
     icon: Settings,
     children: [
+      { label: 'Taschengeld', href: '/taschengeld/' },
       { label: 'Serienbrief', href: '/serienbrief' },
       { label: 'Aufenthaltsdoku', href: '/download-updated-excel/' },
-      { label: 'Admin', href: '/admin/' },
+    ],
+  },
+  {
+    label: 'Admin',
+    icon: ShieldCheck,
+    children: [
+      { label: 'Django', href: '/admin/' },
     ],
   },
 ];
@@ -203,31 +212,113 @@ function withDynamicNavEntries(events, permissions) {
     if (item.label === 'Happy Cleaning') {
       return {
         ...item,
-        children: [item.children[0], ...eventItems, item.children[1]],
+        children: [...item.children, ...eventItems],
       };
     }
-    if (item.label === 'Orgi') {
-      const settings = [];
+    if (item.label === 'Admin') {
+      if (!permissions?.is_superuser) return null;
+      const adminItems = [];
       if (permissions?.change_tags) {
-        settings.push({ label: 'Auslagerort-Tags', href: '/auslagerorte/tags/' });
+        adminItems.push({ label: 'Auslagerort-Tags', href: '/auslagerorte/tags/' });
       }
       if (permissions?.view_auditevent) {
-        settings.push({ label: 'Audit-Log', href: '/audit/' });
+        adminItems.push({ label: 'Audit-Log', href: '/audit/' });
       }
       if (permissions?.admin_settings) {
-        settings.push({ label: 'Einstellungen', href: '/settings/' });
+        adminItems.push({ label: 'Einstellungen', href: '/settings/' });
       }
       return {
         ...item,
         children: [
-          ...item.children.slice(0, -1),
-          ...settings,
-          item.children.at(-1),
+          ...adminItems,
+          ...item.children,
         ],
       };
     }
     return item;
-  });
+  }).filter(Boolean);
+}
+
+function TurnusSwitcher({ selection, onChange, busy }) {
+  const [open, setOpen] = useState(false);
+  const options = selection.options || [];
+  const selected = options.find(option => Number(option.id) === Number(selection.selected_id));
+  const selectTurnus = option => {
+    setOpen(false);
+    if (Number(option.id) !== Number(selection.selected_id)) {
+      onChange?.(Number(option.id));
+    }
+  };
+
+  return (
+    <div className="px-4 py-2 group-data-[collapsible=icon]:hidden">
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <div className="flex min-w-0 items-center gap-1">
+          <span className="sr-only">Aktiver Turnus:</span>
+          <span
+            className="min-w-0 truncate text-sm font-semibold"
+            data-slot="active-turnus"
+            title={selected?.label}
+          >
+            {selected?.label || 'Nicht ausgewählt'}
+          </span>
+          <Dialog.Trigger
+            render={(
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Turnus wechseln"
+                aria-busy={busy}
+                title="Turnus wechseln"
+                disabled={busy}
+              />
+            )}
+            disabled={busy}
+          >
+            <ArrowRightLeft aria-hidden="true" />
+          </Dialog.Trigger>
+        </div>
+        <Dialog.Portal>
+          <Dialog.Backdrop className="fixed inset-0 z-[var(--z-modal)] bg-black/45" />
+          <Dialog.Viewport className="fixed inset-0 z-[var(--z-modal)] grid place-items-center overflow-y-auto p-4">
+            <Dialog.Popup className="card grid max-h-[calc(100dvh-2rem)] w-full max-w-md gap-4 overflow-y-auto bg-surface-solid p-5">
+              <div>
+                <Dialog.Title className="text-xl font-semibold">Turnus wechseln</Dialog.Title>
+                <Dialog.Description className="text-sm text-muted-foreground">
+                  Wähle den Turnus aus, mit dem du weiterarbeiten möchtest.
+                </Dialog.Description>
+              </div>
+              <div className="grid gap-2">
+                {options.map(option => {
+                  const current = Number(option.id) === Number(selection.selected_id);
+                  return (
+                    <Button
+                      className="h-auto w-full justify-between py-2 text-left whitespace-normal"
+                      variant={current ? 'outline' : 'secondary'}
+                      type="button"
+                      aria-current={current ? 'true' : undefined}
+                      disabled={busy}
+                      onClick={() => selectTurnus(option)}
+                      key={option.id}
+                    >
+                      <span>{option.label}</span>
+                      {current && <span className="text-xs text-muted-foreground">Aktiv</span>}
+                    </Button>
+                  );
+                })}
+              </div>
+              <div className="flex justify-end">
+                <Dialog.Close render={<Button type="button" variant="secondary" />}>
+                  Abbrechen
+                </Dialog.Close>
+              </div>
+            </Dialog.Popup>
+          </Dialog.Viewport>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </div>
+  );
 }
 
 export function AppSidebar({
@@ -257,23 +348,11 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         {options.length > 0 && (
-          <div className="px-2 py-2 group-data-[collapsible=icon]:hidden">
-            <label htmlFor="turnus-switcher" className="mb-1 block text-sm font-medium">
-              Aktiver Turnus
-            </label>
-            <select
-              id="turnus-switcher"
-              className="w-full rounded-md border bg-background px-2 py-2 text-sm"
-              value={turnusSelection.selected_id ?? ''}
-              disabled={turnusSwitching}
-              aria-busy={turnusSwitching}
-              onChange={event => onTurnusChange?.(Number(event.target.value))}
-            >
-              {options.map(option => (
-                <option value={option.id} key={option.id}>{option.label}</option>
-              ))}
-            </select>
-          </div>
+          <TurnusSwitcher
+            selection={turnusSelection}
+            onChange={onTurnusChange}
+            busy={turnusSwitching}
+          />
         )}
         <SidebarGroup>
           <SidebarGroupContent>

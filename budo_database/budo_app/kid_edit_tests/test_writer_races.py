@@ -3,7 +3,6 @@ import json
 import sys
 from contextlib import ExitStack, contextmanager
 from datetime import date
-from io import StringIO
 from queue import Queue
 from threading import Barrier, Event, Thread, current_thread
 from time import monotonic
@@ -11,19 +10,17 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.core.management import call_command
 from django.db import close_old_connections, connection, connections, transaction
 from django.test import Client, TransactionTestCase, skipUnlessDBFeature
 from django.urls import reverse
 
-from budo_app import kids_views, schwerpunkte_views, views
+from budo_app import schwerpunkte_views
 from budo_app.happy_cleaning_assignment_commands import (
     assign_child,
     set_child_number,
 )
 from budo_app.happy_cleaning_commands import CommandContext
 from budo_app.kid_edit_writes import versioned_child_write
-from budo_app.management.commands import fix_html_entities
 from budo_app.models import (
     HappyCleaning,
     HappyCleaningAssignment,
@@ -235,17 +232,6 @@ class VersionedWriterPostgreSQLRaceTests(TransactionTestCase):
             content_type="application/json",
         )
 
-    def post_check_in(self):
-        return self.new_client().post(
-            reverse("check_in", args=(self.child.pk,)),
-            {
-                "check_in_date": "2026-07-01",
-                "einverstaendnis_erklaerung": "on",
-                "notiz": "",
-                "amount": "",
-            },
-        )
-
     def scalar_write(self, *, field_name, value):
         with versioned_child_write(
             turnus_id=self.turnus.pk,
@@ -276,24 +262,6 @@ class VersionedWriterPostgreSQLRaceTests(TransactionTestCase):
             set(self.child.schwerpunkte.values_list("pk", flat=True)),
             {self.focus_w2_alternative.pk},
         )
-
-    def test_consent_and_birthday_writers_preserve_both_changes(self):
-        with self.scheduled_real_boundary(kids_views, views):
-            responses = self.race(
-                self.post_check_in,
-                lambda: self.new_client().post(
-                    reverse("update_birthdays_from_sv")
-                ),
-            )
-
-        self.assertEqual(
-            sorted(response.status_code for response in responses),
-            [302, 302],
-        )
-        self.child.refresh_from_db()
-        self.assertIs(self.child.einverstaendnis_erklaerung, True)
-        self.assertEqual(self.child.kid_birthday, date(2012, 7, 2))
-        self.assertEqual(self.child.edit_version, 3)
 
     def test_identical_canonical_writes_have_at_most_one_effective_bump(self):
         with self.scheduled_real_boundary(sys.modules[__name__]):
@@ -328,28 +296,6 @@ class VersionedWriterPostgreSQLRaceTests(TransactionTestCase):
         self.child.refresh_from_db()
         self.assertEqual(self.child.kid_vorname, "Updated")
         self.assertEqual(self.child.illness, "Distinct condition")
-        self.assertEqual(self.child.edit_version, 3)
-
-    def test_cleanup_and_interactive_writer_serialize_without_lost_update(self):
-        Kinder.objects.filter(pk=self.child.pk).update(
-            illness="Synthetic &lt;condition&gt;",
-        )
-
-        with self.scheduled_real_boundary(fix_html_entities, kids_views):
-            responses = self.race(
-                lambda: call_command(
-                    "fix_html_entities",
-                    turnus_id=self.turnus.pk,
-                    stdout=StringIO(),
-                ),
-                self.post_check_in,
-            )
-
-        self.assertIsNone(responses[0])
-        self.assertEqual(responses[1].status_code, 302)
-        self.child.refresh_from_db()
-        self.assertEqual(self.child.illness, "Synthetic <condition>")
-        self.assertIs(self.child.einverstaendnis_erklaerung, True)
         self.assertEqual(self.child.edit_version, 3)
 
     def test_focus_move_after_resolution_rejects_stale_rank_only_choice(self):

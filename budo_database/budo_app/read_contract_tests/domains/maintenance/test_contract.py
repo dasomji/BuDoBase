@@ -1,10 +1,7 @@
 from budo_app.test_membership_fixtures import approve_and_select_turnus
 import os
 from datetime import date
-from io import BytesIO
 from unittest.mock import Mock, patch
-
-import pandas as pd
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
@@ -12,7 +9,7 @@ from django.urls import reverse
 
 from budo_app import location_services
 from budo_app.memberships import create_membership, select_turnus
-from budo_app.models import Auslagerorte, Kinder, SpezialFamilien, Turnus
+from budo_app.models import Auslagerorte, Kinder, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
     RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
@@ -96,13 +93,6 @@ class MaintenanceContractTests(TestCase):
         })
         self.assertNotContains(response, "Privates Kind")
 
-    def test_special_upload_has_no_unrelated_domain_data(self):
-        response = self.client.get(self.contract_url("special-upload"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {})
-        self.assertNotContains(response, "Privates Kind")
-
     def test_turnus_upload_rejects_missing_invalid_and_unknown_identifiers(self):
         missing = self.client.get(self.contract_url("turnus-upload"))
         invalid = self.client.get(
@@ -124,14 +114,12 @@ class MaintenanceContractTests(TestCase):
             self.client.get(
                 self.contract_url("turnus-upload", turnus=self.turnus),
             ),
-            self.client.get(self.contract_url("special-upload")),
         ]
 
-        self.assertEqual([response.status_code for response in responses], [
-            403,
-            403,
-            403,
-        ])
+        self.assertEqual(
+            [response.status_code for response in responses],
+            [403, 403],
+        )
 
 
 @override_settings(STORAGES=TEST_STORAGES)
@@ -194,6 +182,7 @@ class AdminSettingsTests(TestCase):
         )
 
 
+@override_settings(STORAGES=TEST_STORAGES)
 class MaintenanceMultipartWorkflowTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_superuser(
@@ -223,51 +212,6 @@ class MaintenanceMultipartWorkflowTests(TestCase):
                 "spreadsheetml.sheet"
             ),
         )
-
-    def test_bootstrap_is_the_sole_consumer_of_queued_error_messages(self):
-        workbook = BytesIO()
-        pd.DataFrame([{"Unexpected": "column"}]).to_excel(
-            workbook,
-            index=False,
-        )
-        queued_text = (
-            "Ein Fehler ist aufgetreten: XLSX file must contain "
-            "'Index' and 'Coven' columns"
-        )
-
-        native_response = self.client.post(
-            reverse("upload_spezialfamilien"),
-            {
-                "csv_file": self.workbook(
-                    "invalid-families.xlsx",
-                    workbook.getvalue(),
-                ),
-            },
-            HTTP_X_CSRFTOKEN=self.csrf_token,
-        )
-        invalid_form = self.client.post(
-            reverse("form-submit-api"),
-            {
-                "_target": "/upload/",
-                "turnus_nr": "4",
-                "turnus_beginn": "not-a-date",
-            },
-            HTTP_X_CSRFTOKEN=self.csrf_token,
-        )
-        first_bootstrap = self.client.get(reverse("bootstrap-api")).json()
-        second_bootstrap = self.client.get(reverse("bootstrap-api")).json()
-
-        self.assertEqual(native_response.status_code, 200)
-        self.assertEqual(invalid_form.status_code, 422)
-        self.assertFalse(invalid_form.json()["ok"])
-        self.assertEqual(invalid_form.json()["errors"], [
-            "Enter a valid date.",
-        ])
-        self.assertEqual(first_bootstrap["messages"], [{
-            "text": queued_text,
-            "tags": "error",
-        }])
-        self.assertEqual(second_bootstrap["messages"], [])
 
     @patch("budo_app.excel_views.process_excel")
     def test_turnus_creation_preserves_multipart_file_csrf_message_and_redirect(
@@ -379,7 +323,7 @@ class MaintenanceMultipartWorkflowTests(TestCase):
             }],
         )
 
-    def test_turnus_and_special_upload_validation_errors_remain_in_context(self):
+    def test_turnus_upload_validation_errors_remain_in_context(self):
         invalid_turnus = self.client.post(
             reverse("form-submit-api"),
             {
@@ -389,70 +333,11 @@ class MaintenanceMultipartWorkflowTests(TestCase):
             },
             HTTP_X_CSRFTOKEN=self.csrf_token,
         )
-        invalid_special = self.client.post(
-            reverse("form-submit-api"),
-            {"_target": "/upload_spezialfamilien/"},
-            HTTP_X_CSRFTOKEN=self.csrf_token,
-        )
 
         self.assertEqual(invalid_turnus.status_code, 422)
         self.assertFalse(invalid_turnus.json()["ok"])
         self.assertTrue(invalid_turnus.json()["errors"])
         self.assertFalse(Turnus.objects.filter(turnus_nr=4).exists())
-        self.assertEqual(invalid_special.status_code, 422)
-        self.assertFalse(invalid_special.json()["ok"])
-        self.assertTrue(invalid_special.json()["errors"])
-
-    @patch("budo_app.views.pd.read_excel")
-    def test_special_family_upload_preserves_file_content_message_and_redirect(
-        self,
-        read_excel_mock,
-    ):
-        kid = Kinder.objects.create(
-            kid_index="T2-1",
-            kid_vorname="Ada",
-            kid_nachname="Kind",
-            turnus=self.turnus,
-        )
-        uploaded_content = b"special family workbook bytes"
-
-        def inspect_workbook(workbook):
-            self.assertEqual(workbook.name, "familien.xlsx")
-            self.assertEqual(workbook.read(), uploaded_content)
-            return pd.DataFrame([{"Index": "T2-1", "Coven": "Falken"}])
-
-        read_excel_mock.side_effect = inspect_workbook
-        response = self.client.post(
-            reverse("form-submit-api"),
-            {
-                "_target": "/upload_spezialfamilien/",
-                "csv_file": self.workbook(
-                    "familien.xlsx",
-                    uploaded_content,
-                ),
-            },
-            HTTP_X_CSRFTOKEN=self.csrf_token,
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {
-            "ok": True,
-            "redirect": "/upload_spezialfamilien/",
-        })
-        kid.refresh_from_db()
-        family = SpezialFamilien.objects.get(name="Falken")
-        self.assertEqual(kid.spezial_familien, family)
-        self.assertEqual(family.turnus, self.turnus)
-        self.assertEqual(
-            self.client.get(reverse("bootstrap-api")).json()["messages"],
-            [{
-                "text": (
-                    "Spezialfamilien wurden erfolgreich aktualisiert. "
-                    "1 Kinder wurden zugeordnet."
-                ),
-                "tags": "success",
-            }],
-        )
 
 
 @override_settings(STORAGES=TEST_STORAGES)
@@ -482,13 +367,6 @@ class MaintenanceContractPerformanceTests(QueryBudgetAssertions, TestCase):
             "turnus-upload": measure_http_get(
                 self.client,
                 f"{base}?id={self.turnus.id}",
-            ),
-            "special-upload": measure_http_get(
-                self.client,
-                reverse(
-                    "route-data-api",
-                    kwargs={"contract_key": "special-upload"},
-                ),
             ),
         }
 

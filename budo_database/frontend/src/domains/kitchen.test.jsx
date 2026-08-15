@@ -162,6 +162,10 @@ describe('Küche page', () => {
       focuses: [focus(11, 'Waldküche', 'w1'), focus(12, 'Seecamp', 'w2')],
     }} />);
 
+    const pageStyle = document.querySelector('style[data-print-page-style]');
+    expect(pageStyle).toHaveAttribute('media', 'print');
+    expect(pageStyle).toHaveTextContent('@page { margin: 0; }');
+
     const printPages = screen.getByRole('region', { name: 'Küchen-Druckseiten', hidden: true });
     const pages = [...printPages.querySelectorAll(':scope > .kitchen-print-page')];
     expect(pages.map(page => page.getAttribute('aria-label'))).toEqual([

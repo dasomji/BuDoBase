@@ -38,6 +38,41 @@ describe('allocation page', () => {
     expect(screen.queryByText('Noch keine Kinder für diesen Schwerpunkt eingeteilt')).not.toBeInTheDocument();
   });
 
+  it('builds one self-contained print kids list for every focus', () => {
+    render(<AllocationPage week="1" mutate={vi.fn()} data={{
+      focuses: [
+        { id: 2, name: 'Blubb', week: 'w1', kid_ids: [11], stats: null },
+        { id: 3, name: 'Test', week: 'w1', kid_ids: [12], stats: null },
+        { id: 4, name: 'hollla', week: 'w1', kid_ids: [], stats: null },
+        { id: 5, name: 'rumm', week: 'w1', kid_ids: [13], stats: null },
+      ],
+      kids: [
+        { id: 11, full_name: 'Ada', focus_ids: [2], choices: [], age: 12, siblings: '' },
+        { id: 12, full_name: 'Bea', focus_ids: [3], choices: [], age: 13, siblings: '' },
+        { id: 13, full_name: 'Chris', focus_ids: [5], choices: [], age: 14, siblings: '' },
+      ],
+    }} />);
+
+    const printPages = screen.getByRole('region', { name: 'SWP-Listen', hidden: true });
+    const pages = [...printPages.querySelectorAll(':scope > .allocation-print-page')];
+    expect(pages.map(page => within(page).getByRole('heading', { hidden: true }).textContent)).toEqual([
+      'Blubb',
+      'Test',
+      'hollla',
+      'rumm',
+    ]);
+    expect(pages.map(page => page.textContent)).toEqual([
+      'BlubbAda',
+      'TestBea',
+      'holllaKeine Kinder eingeteilt',
+      'rummChris',
+    ]);
+
+    const pageStyle = document.querySelector('style[data-print-page-style]');
+    expect(pageStyle).toHaveAttribute('media', 'print');
+    expect(pageStyle).toHaveTextContent('@page { margin: 0; }');
+  });
+
   it('shows failed allocation writes as error toasts, never inline', async () => {
     const mutate = vi.fn().mockRejectedValue(new Error('network down'));
     render(<AllocationPage week="2" mutate={mutate} data={{

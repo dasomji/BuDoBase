@@ -14,6 +14,7 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "audit-events",
     "dashboard",
     "gut-zu-wissen",
+    "pocket-money",
     "profile",
     "turnus-list",
     "turnus-upload",
@@ -33,7 +34,6 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "focus-update",
     "focus-detail",
     "focus-meals",
-    "focus-dashboard",
     "places-list",
     "place-create",
     "place-update",
@@ -44,8 +44,6 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "allocation",
     "kid-count",
     "families",
-    "special-upload",
-    "special-families",
     "birthdays",
     "happy-cleaning-overview",
     "happy-cleaning-assignment",
@@ -81,19 +79,24 @@ class RouteContractDispatchTests(TestCase):
     def test_profile_contract_uses_glossary_aligned_domain_name(self):
         self.assertEqual(ROUTE_CONTRACTS["profile"].domain, "profiles")
 
-    def test_unknown_route_contract_is_rejected(self):
+    def test_retired_contracts_are_rejected(self):
         self.client.force_login(self.user)
 
-        response = self.client.get(self.contract_url("complete-application"))
-
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(
-            response.json(),
-            {
-                "code": "unknown_contract",
-                "detail": "Unknown route contract.",
-            },
-        )
+        for key in (
+            "focus-dashboard",
+            "special-upload",
+            "special-families",
+        ):
+            with self.subTest(key=key):
+                response = self.client.get(self.contract_url(key))
+                self.assertEqual(response.status_code, 404)
+                self.assertEqual(
+                    response.json(),
+                    {
+                        "code": "unknown_contract",
+                        "detail": "Unknown route contract.",
+                    },
+                )
 
     def test_scoped_contracts_require_the_approved_selected_membership(self):
         legacy_turnus = Turnus.objects.create(

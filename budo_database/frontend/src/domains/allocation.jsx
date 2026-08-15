@@ -1,10 +1,11 @@
-import { EyeIcon, EyeOffIcon } from 'lucide-react';
+import { EyeIcon, EyeOffIcon, PrinterIcon } from 'lucide-react';
 
 import { Card, Column, DataTable } from '../components';
 import { Button } from '../components/ui/button';
 import { NativeSelect } from '../components/ui/input';
 import { useErrorToast } from '../components/ui/toast';
-import { displayOrPlaceholder, linkKid } from './shared';
+import { FocusCreateAction } from './focusActions';
+import { displayOrPlaceholder, linkKid, PrintPageStyle } from './shared';
 
 const EMPTY_STATS = {
   average_age: null,
@@ -171,20 +172,30 @@ export function AllocationPage({ data, week, mutate, showKids = true }) {
     </div>
   );
   return (
-    <main className="allocation-page flex min-w-0 flex-col" id="body-container">
-      <Column id="right-column" className="allocation-table-column min-w-0 w-full">
-        <DataTable columns={columns} rows={rows} showFilter beforeFilter={overview} stickyControls={false} stickyHeader stickyFirstColumn verticalScroll />
-      </Column>
-      <section className="allocation-print-pages" aria-label="SWP-Listen">
-        {focuses.map(focus => (
-          <article className="allocation-print-page" key={focus.id}>
-            <div className="allocation-print-illustration" aria-hidden="true" />
-            <h1>{focus.name}</h1>
-            <ul>{data.kids.filter(kid => focus.kid_ids.includes(kid.id)).map(kid => <li key={kid.id}>{kid.full_name}</li>)}</ul>
-          </article>
-        ))}
-      </section>
-    </main>
+    <>
+      <PrintPageStyle />
+      <main className="allocation-page flex min-w-0 flex-col" id="body-container">
+        <Column id="right-column" className="allocation-table-column min-w-0 w-full">
+          <DataTable columns={columns} rows={rows} showFilter beforeFilter={overview} stickyControls={false} stickyHeader stickyFirstColumn verticalScroll />
+        </Column>
+        <section className="allocation-print-pages" aria-label="SWP-Listen">
+          {focuses.map(focus => {
+            const assignedKids = data.kids.filter(kid => focus.kid_ids.includes(kid.id));
+            return (
+              <article className="allocation-print-page" key={focus.id}>
+                <div className="allocation-print-illustration" aria-hidden="true" />
+                <h1>{focus.name}</h1>
+                <ul>
+                  {assignedKids.length
+                    ? assignedKids.map(kid => <li key={kid.id}>{kid.full_name}</li>)
+                    : <li className="allocation-print-empty italic">Keine Kinder eingeteilt</li>}
+                </ul>
+              </article>
+            );
+          })}
+        </section>
+      </main>
+    </>
   );
 }
 
@@ -194,26 +205,39 @@ export const allocationRoutes = [{
   title: 'SWP-Einteilung',
   domain: 'allocation',
   readContractKey: 'allocation',
-  params: match => ({ week: match[1], title: `SWP-Einteilung Woche ${match[1]}` }),
-  headerAction: (_data, { pageState = {}, setPageState }) => (
-    <Button
-      className="mobile-icon-action"
-      size="responsive-icon"
-      type="button"
-      aria-label={pageState.showAllocationKids === false ? 'Kinder anzeigen' : 'Kinder ausblenden'}
-      aria-pressed={pageState.showAllocationKids !== false}
-      onClick={() => setPageState?.(current => ({
-        ...current,
-        showAllocationKids: current.showAllocationKids === false,
-      }))}
-    >
-      <span className="desktop-action-label">
-        {pageState.showAllocationKids === false ? 'Kinder anzeigen' : 'Kinder ausblenden'}
-      </span>
-      {pageState.showAllocationKids === false
-        ? <EyeIcon className="mobile-action-label" aria-hidden="true" />
-        : <EyeOffIcon className="mobile-action-label" aria-hidden="true" />}
-    </Button>
+  params: match => ({ week: match[1], title: `SWP ${match[1]}` }),
+  headerAction: (_data, { route, pageState = {}, setPageState }) => (
+    <span className="inline-flex gap-2" role="group" aria-label="SWP-Aktionen">
+      <FocusCreateAction week={route.week} />
+      <Button
+        aria-label="Drucken"
+        className="mobile-icon-action"
+        size="responsive-icon"
+        type="button"
+        onClick={() => window.print()}
+      >
+        <span className="desktop-action-label">Drucken</span>
+        <PrinterIcon className="mobile-action-label" aria-hidden="true" />
+      </Button>
+      <Button
+        className="mobile-icon-action"
+        size="responsive-icon"
+        type="button"
+        aria-label={pageState.showAllocationKids === false ? 'Kinder anzeigen' : 'Kinder ausblenden'}
+        aria-pressed={pageState.showAllocationKids !== false}
+        onClick={() => setPageState?.(current => ({
+          ...current,
+          showAllocationKids: current.showAllocationKids === false,
+        }))}
+      >
+        <span className="desktop-action-label">
+          {pageState.showAllocationKids === false ? 'Kinder anzeigen' : 'Kinder ausblenden'}
+        </span>
+        {pageState.showAllocationKids === false
+          ? <EyeIcon className="mobile-action-label" aria-hidden="true" />
+          : <EyeOffIcon className="mobile-action-label" aria-hidden="true" />}
+      </Button>
+    </span>
   ),
   render: ({ route, data, mutate, pageState = {} }) => (
     <AllocationPage

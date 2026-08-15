@@ -61,7 +61,9 @@ def places_list(request):
     images = AuslagerorteImage.objects.only(
         "id", "auslagerort_id", "notiz_id", "image",
     ).order_by("id")
-    notes = AuslagerorteNotizen.objects.select_related("added_by").prefetch_related(
+    notes = AuslagerorteNotizen.objects.select_related(
+        "added_by__profil"
+    ).prefetch_related(
         Prefetch("images", queryset=images, to_attr="route_images"),
     ).order_by("date_added", "id")
     places = Auslagerorte.objects.select_related("primary_tag").prefetch_related(
@@ -154,7 +156,9 @@ def place_detail(request):
         "notiz_id",
         "image",
     ).order_by("id")
-    notes = AuslagerorteNotizen.objects.select_related("added_by").prefetch_related(
+    notes = AuslagerorteNotizen.objects.select_related(
+        "added_by__profil"
+    ).prefetch_related(
         Prefetch("images", queryset=images, to_attr="route_images"),
     ).order_by(
         "date_added",

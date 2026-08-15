@@ -12,8 +12,7 @@ FORM_TARGETS = (
     r"/schwerpunkt/\d+/update/?", r"/swpmeals/\d+/?",
     r"/auslagerorte/create/?", r"/auslagerorte/\d+/update/?",
     r"/auslagerorte/\d+/upload-image/?", r"/auslagerorte/\d+/?",
-    r"/upload_spezialfamilien/?", r"/kindergeburtstage/?",
-    r"/update-birthdays-from-sv/?",
+    r"/kindergeburtstage/?", r"/update-birthdays-from-sv/?",
 )
 
 

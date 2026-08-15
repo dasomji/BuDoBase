@@ -24,9 +24,6 @@ def team_management_page(request):
     if not request.user.is_authenticated:
         from django.contrib.auth.views import redirect_to_login
         return redirect_to_login(request.get_full_path())
-    if not request.user.is_superuser and not request.user.turnus_memberships.exists():
-        from django.core.exceptions import PermissionDenied
-        raise PermissionDenied("Team management access denied.")
     return render_react_page(request)
 
 
@@ -69,6 +66,10 @@ def create_turnus(request):
                 for error in field_errors
             ]
             raise ValidationError({"detail": " ".join(errors)})
+        if form.cleaned_data["turnus_beginn"].weekday() != 5:
+            raise ValidationError({
+                "detail": "Der Turnus muss an einem Samstag beginnen."
+            })
         turnus = form.save()
         if not is_product_admin:
             create_membership(

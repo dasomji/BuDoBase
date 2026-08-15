@@ -127,12 +127,23 @@ class BootstrapContractTests(TestCase):
                 "change_kids", "change_profiles", "change_focuses",
                 "change_places", "delete_places", "delete_place_images",
                 "change_tags", "delete_tags", "view_auditevent", "export_auditevent",
-                "admin_settings", "manage_teams",
+                "admin_settings", "manage_teams", "is_superuser",
             },
         )
         self.assertFalse(payload["permissions"]["admin_settings"])
+        self.assertFalse(payload["permissions"]["is_superuser"])
         for unrelated in ("team", "focus_times", "totals", "activity", "turnuses"):
             self.assertNotIn(unrelated, payload)
+
+    def test_bootstrap_exposes_superuser_status_for_navigation_visibility(self):
+        self.user.is_superuser = True
+        self.user.save(update_fields=["is_superuser"])
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("bootstrap-api"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["permissions"]["is_superuser"])
 
     def test_only_bootstrap_consumes_each_queued_message_once(self):
         self.client.force_login(self.user)

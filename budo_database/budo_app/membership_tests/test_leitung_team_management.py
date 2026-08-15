@@ -9,20 +9,30 @@ from budo_app.models import AuditEvent, Schwerpunkte, Turnus, TurnusMembership
 
 
 class TeamerTeamManagementReadTests(TestCase):
-    def test_teamer_reads_only_own_turnuses_without_management_data(self):
+    def test_teamer_reads_all_turnuses_but_foreign_details_are_privacy_safe(self):
         own = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2028, 7, 1))
         foreign = Turnus.objects.create(turnus_nr=2, turnus_beginn=date(2028, 7, 15))
         teamer = User.objects.create_user("teamer", first_name="Tina", last_name="Teamer")
         teammate = User.objects.create_user("teammate", first_name="Mara", last_name="Muster")
         outsider = User.objects.create_user("outsider", first_name="Otto", last_name="Privat")
+        foreign_lead = User.objects.create_user(
+            "foreign-lead", first_name="Lena", last_name="Leitung"
+        )
         teamer.profil.rufname = "Tina Teamer"
         teamer.profil.save(update_fields=("rufname",))
         teammate.profil.rufname = "Mara Muster"
         teammate.profil.save(update_fields=("rufname",))
+        foreign_lead.profil.rufname = "Lena Leitung"
+        foreign_lead.profil.save(update_fields=("rufname",))
         TurnusMembership.objects.create(user=teamer, turnus=own)
         TurnusMembership.objects.create(user=teammate, turnus=own)
         TurnusMembership.objects.create(user=teammate, turnus=foreign)
         TurnusMembership.objects.create(user=outsider, turnus=foreign)
+        TurnusMembership.objects.create(
+            user=foreign_lead,
+            turnus=foreign,
+            functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+        )
         self.client.force_login(teamer)
 
         response = self.client.get(reverse("route-data-api", args=("team-management",)))
@@ -31,9 +41,20 @@ class TeamerTeamManagementReadTests(TestCase):
         payload = response.json()
         self.assertEqual(
             [turnus["id"] for year in payload["years"] for turnus in year["turnuses"]],
-            [own.id],
+            [foreign.id, own.id],
         )
-        visible_turnus = payload["years"][0]["turnuses"][0]
+        visible_turnus = next(
+            turnus
+            for year in payload["years"]
+            for turnus in year["turnuses"]
+            if turnus["id"] == own.id
+        )
+        foreign_turnus = next(
+            turnus
+            for year in payload["years"]
+            for turnus in year["turnuses"]
+            if turnus["id"] == foreign.id
+        )
         self.assertEqual(
             [member["name"] for member in visible_turnus["members"]],
             ["Mara Muster", "Tina Teamer"],
@@ -48,6 +69,12 @@ class TeamerTeamManagementReadTests(TestCase):
         self.assertEqual(teammate_payload["profile"]["turnuses"], [str(own)])
         self.assertEqual(visible_turnus["pending_requests"], [])
         self.assertEqual(payload["people"], [])
+        self.assertFalse(foreign_turnus["can_view_team"])
+        self.assertFalse(foreign_turnus["is_member"])
+        self.assertEqual(foreign_turnus["members"], [])
+        self.assertEqual(foreign_turnus["leads"], [{"name": "Lena Leitung"}])
+        self.assertIsNone(foreign_turnus["request_status"])
+        self.assertEqual(foreign_turnus["pending_requests"], [])
         self.assertNotContains(response, "Otto Privat")
         denied = self.client.post(
             reverse("turnus-create-api"),
@@ -55,6 +82,43 @@ class TeamerTeamManagementReadTests(TestCase):
         )
         self.assertEqual(denied.status_code, 403)
         self.assertFalse(Turnus.objects.filter(turnus_nr=3, turnus_beginn=date(2029, 7, 7)).exists())
+
+    def test_authenticated_non_member_can_open_team_list_and_request_safely(self):
+        turnus = Turnus.objects.create(turnus_nr=4, turnus_beginn=date(2028, 8, 1))
+        viewer = User.objects.create_user("non-member-viewer")
+        leader = User.objects.create_user(
+            "visible-leader", first_name="Vera", last_name="Leitung"
+        )
+        private_teamer = User.objects.create_user(
+            "private-teamer", first_name="Private", last_name="Person"
+        )
+        leader.profil.rufname = "Vera Leitung"
+        leader.profil.save(update_fields=("rufname",))
+        TurnusMembership.objects.create(
+            user=leader,
+            turnus=turnus,
+            functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+        )
+        TurnusMembership.objects.create(user=private_teamer, turnus=turnus)
+        self.client.force_login(viewer)
+
+        page = self.client.get(reverse("team-management-page"))
+        response = self.client.get(
+            reverse("route-data-api", args=("team-management",))
+        )
+
+        self.assertEqual(page.status_code, 200)
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        visible = payload["years"][0]["turnuses"][0]
+        self.assertEqual(visible["id"], turnus.id)
+        self.assertEqual(visible["leads"], [{"name": "Vera Leitung"}])
+        self.assertEqual(visible["members"], [])
+        self.assertFalse(visible["can_view_team"])
+        self.assertFalse(visible["is_member"])
+        self.assertIsNone(visible["request_status"])
+        self.assertEqual(payload["people"], [])
+        self.assertNotContains(response, "Private Person")
 
     def test_team_management_embeds_the_existing_profile_card_fields(self):
         turnus = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2028, 7, 1))
@@ -145,7 +209,12 @@ class LeitungTeamManagementHttpTests(TestCase):
             reverse("route-data-api", args=("team-management",))
         )
         self.assertEqual(workspace.status_code, 200)
-        managed_turnus = workspace.json()["years"][0]["turnuses"][0]
+        managed_turnus = next(
+            item
+            for year in workspace.json()["years"]
+            for item in year["turnuses"]
+            if item["id"] == turnus.id
+        )
         membership_fields = (
             "id", "user_id", "name", "functional_role", "role_label", "team_label",
         )
@@ -259,9 +328,15 @@ class LeitungTeamManagementHttpTests(TestCase):
         workspace = self.client.get(
             reverse("route-data-api", args=("team-management",))
         ).json()
+        managed_turnus = next(
+            item
+            for year in workspace["years"]
+            for item in year["turnuses"]
+            if item["id"] == self.own.id
+        )
         member = next(
             item
-            for item in workspace["years"][0]["turnuses"][0]["members"]
+            for item in managed_turnus["members"]
             if item["user_id"] == self.member.id
         )
         person = next(

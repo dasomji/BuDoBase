@@ -2,6 +2,7 @@ import { Children, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { SearchIcon } from 'lucide-react';
 
 import { Button, buttonVariants } from '@/components/ui/button';
+import { NativeSelect } from '@/components/ui/input';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
   Table,
@@ -542,7 +543,7 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
           return <fieldset className="checkbox-group" key={field.name}><legend>{field.label}</legend><div className="checkbox-group-options">{field.options?.map(option => <label className="checkbox-row" key={option.value}><input type="checkbox" name={field.name} value={option.value} defaultChecked={selected.has(String(option.value))} />{option.label}</label>)}</div></fieldset>;
         }
         if (field.type === 'select') {
-          return <label key={field.name}>{field.label}<select name={field.name} defaultValue={field.value ?? ''} multiple={field.multiple}>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
+          return <label key={field.name}>{field.label}<NativeSelect name={field.name} defaultValue={field.value ?? ''} multiple={field.multiple}>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</NativeSelect></label>;
         }
         if (field.type === 'textarea') {
           return <label key={field.name}>{field.label}<textarea name={field.name} defaultValue={field.value ?? ''} required={field.required} /></label>;

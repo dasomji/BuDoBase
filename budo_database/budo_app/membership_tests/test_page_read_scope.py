@@ -93,18 +93,6 @@ class PageReadMembershipScopeTests(TransactionTestCase):
         self.assertEqual(result["status"], 200)
         self.assertTrue(deletion_finished.is_set())
 
-    def test_kids_page_holds_membership_through_render(self):
-        Kinder.objects.create(
-            kid_index="page-race",
-            kid_vorname="Still",
-            kid_nachname="Authorized",
-            turnus=self.turnus,
-        )
-        self.assert_read_finishes_before_membership_removal(
-            url=reverse("spezial_familien"),
-            render_target="budo_app.kids_views.render_react_page",
-        )
-
     def test_places_page_holds_membership_through_render(self):
         self.assert_read_finishes_before_membership_removal(
             url=reverse("auslagerorte-list"),

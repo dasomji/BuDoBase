@@ -296,6 +296,8 @@ class ReactPageRouteSmokeTests(TestCase):
     non_page_route_names = {
         "attachment-media",
         "download_updated_excel",
+        "turnus-create-api",
+        "turnus-excel-upload-api",
         "place-delete-api",
         "place-image-delete-api",
         "place-tag-create-api",
@@ -305,6 +307,7 @@ class ReactPageRouteSmokeTests(TestCase):
         "turnus-join-request-api",
         "join-request-decision-api",
         "logout",
+        "toggle_zug_anreise",
         "toggle_zug_abreise",
         "admin-leitung-membership-create-api",
         "admin-membership-role-api",
@@ -382,7 +385,6 @@ class ReactPageRouteSmokeTests(TestCase):
                 args=(self.focus.id,),
             ),
             "swpmeals": reverse("swpmeals", args=(self.focus.id,)),
-            "swp-dashboard": reverse("swp-dashboard"),
             "auslagerorte-list": reverse("auslagerorte-list"),
             "place-tag-settings": reverse("place-tag-settings"),
             "admin-settings-page": reverse("admin-settings-page"),
@@ -416,11 +418,10 @@ class ReactPageRouteSmokeTests(TestCase):
             "happy_cleaning": reverse("happy_cleaning"),
             "kindergesamtzahl": reverse("kindergesamtzahl"),
             "budo_familien": reverse("budo_familien"),
-            "upload_spezialfamilien": reverse("upload_spezialfamilien"),
-            "spezial_familien": reverse("spezial_familien"),
             "kindergeburtstage": reverse("kindergeburtstage"),
             "dashboard": reverse("dashboard"),
             "good-to-know": reverse("good-to-know"),
+            "pocket-money": reverse("pocket-money"),
             "register": reverse("register"),
             "profil": reverse("profil"),
             "profil-edit": reverse("profil-edit"),
@@ -451,6 +452,13 @@ class ReactPageRouteSmokeTests(TestCase):
                 )
                 self.assertContains(response, "/static/frontend/app.js")
 
+    def test_retired_special_family_pages_return_not_found(self):
+        self.client.force_login(self.user)
+
+        for url in ("/spezial_familien/", "/upload_spezialfamilien/"):
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 404)
+
 
 class FormSubmitApiTests(TestCase):
     @override_settings(ROOT_URLCONF=__name__)
@@ -463,6 +471,15 @@ class FormSubmitApiTests(TestCase):
                 reverse("unstructured-form-submit-api"),
                 {"_target": "/login/"},
             )
+
+    def test_retired_special_family_upload_target_is_rejected(self):
+        response = self.client.post(
+            reverse("form-submit-api"),
+            {"_target": "/upload_spezialfamilien/"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
 
     def test_login_validation_is_returned_as_json(self):
         response = self.client.post(

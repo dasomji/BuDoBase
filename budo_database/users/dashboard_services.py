@@ -5,7 +5,7 @@ from budo_app.models import BetreuerinnenGeld, Geld, Kinder, Notizen, Profil
 
 def build_dashboard_context(profile, active_turnus):
     kids = Kinder.objects.filter(turnus=active_turnus).select_related(
-        'turnus', 'spezial_familien')
+        'turnus')
 
     geburtstagskinder = sorted(
         [kid for kid in kids if kid.is_birthday_during_turnus()],

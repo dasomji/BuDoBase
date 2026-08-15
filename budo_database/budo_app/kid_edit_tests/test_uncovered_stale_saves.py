@@ -2,13 +2,11 @@ import json
 from datetime import date
 from unittest.mock import patch
 
-import pandas as pd
 from django.contrib.auth.models import User
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from budo_app.models import Kinder, SpezialFamilien, Turnus
+from budo_app.models import Kinder, Turnus
 from budo_app.test_membership_fixtures import approve_and_select_turnus
 
 
@@ -77,42 +75,6 @@ class UncoveredStaleSaveTests(TestCase):
         })
         self.assert_fresh_covered_state()
         self.assertEqual(self.child.pfand, 1)
-
-    @patch("budo_app.views.pd.read_excel")
-    def test_special_family_import_preserves_fresher_covered_state_and_redirect(
-            self, read_excel_mock):
-        stale_child = self.stale_child_with_fresh_covered_state()
-        read_excel_mock.return_value = pd.DataFrame([{
-            "Index": self.child.kid_index,
-            "Coven": "Synthetic house",
-        }])
-
-        with patch(
-            "budo_app.views.Kinder.objects.get",
-            return_value=stale_child,
-        ):
-            response = self.client.post(
-                reverse("upload_spezialfamilien"),
-                {
-                    "csv_file": SimpleUploadedFile(
-                        "families.xlsx",
-                        b"synthetic workbook",
-                    ),
-                },
-            )
-
-        self.assertRedirects(
-            response,
-            reverse("upload_spezialfamilien"),
-        )
-        self.assert_fresh_covered_state()
-        self.assertEqual(
-            self.child.spezial_familien,
-            SpezialFamilien.objects.get(
-                turnus=self.turnus,
-                name="Synthetic house",
-            ),
-        )
 
     def test_departure_toggle_preserves_fresher_covered_state_and_response(self):
         stale_child = self.stale_child_with_fresh_covered_state()

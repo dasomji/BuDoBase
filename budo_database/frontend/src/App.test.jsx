@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
@@ -8,6 +8,15 @@ const response = (data, { ok = true, status = 200 } = {}) => ({
   status,
   json: vi.fn().mockResolvedValue(data),
 });
+
+function openTurnusDialog() {
+  fireEvent.click(screen.getByRole('button', { name: 'Turnus wechseln' }));
+  return screen.getByRole('dialog', { name: 'Turnus wechseln' });
+}
+
+function chooseTurnus(label) {
+  fireEvent.click(within(openTurnusDialog()).getByRole('button', { name: label }));
+}
 
 describe('application loading', () => {
   afterEach(() => {
@@ -188,18 +197,25 @@ describe('application loading', () => {
 
     render(<App fetchImpl={fetchImpl} />);
 
-    expect(await screen.findByRole('option', { name: 'T1-2026' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: 'T2-2026' })).not.toBeInTheDocument();
+    await screen.findByRole('button', { name: 'Turnus wechseln' });
+    let turnusDialog = openTurnusDialog();
+    expect(within(turnusDialog).getByRole('button', { name: /T1-2026/ })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(within(turnusDialog).queryByRole('button', { name: 'T2-2026' })).not.toBeInTheDocument();
+    fireEvent.click(within(turnusDialog).getByRole('button', { name: 'Abbrechen' }));
     fireEvent.click(screen.getByRole('button', { name: /T2-2026/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
     fireEvent.click(await screen.findByRole('button', {
-      name: 'Ada Admin als Teamer zu T2-2026 hinzufügen',
+      name: 'Ada Admin als Betreuer:in zu T2-2026 hinzufügen',
     }));
     await screen.findByText('Ada Admin ist jetzt Teamer.');
     fireEvent.click(screen.getByRole('button', { name: 'Dialog schließen' }));
 
-    expect(await screen.findByRole('option', { name: 'T2-2026' })).toBeInTheDocument();
-    expect(bootstrapRequests).toBe(2);
+    await waitFor(() => expect(bootstrapRequests).toBe(2));
+    turnusDialog = openTurnusDialog();
+    expect(within(turnusDialog).getByRole('button', { name: 'T2-2026' })).toBeInTheDocument();
   });
 
   it('keeps the current page and shows the shared error toast when a Turnus switch fails', async () => {
@@ -217,15 +233,16 @@ describe('application loading', () => {
       .mockResolvedValueOnce(response(bootstrap));
 
     render(<App fetchImpl={fetchImpl} />);
-    const switcher = await screen.findByRole('combobox', { name: 'Aktiver Turnus' });
-    fireEvent.change(switcher, { target: { value: '4' } });
+    await screen.findByRole('button', { name: 'Turnus wechseln' });
+    chooseTurnus('T4');
 
     expect(await screen.findByText(
       'Der Turnus konnte nicht gewechselt werden. Bitte erneut versuchen.',
       { selector: '.app-toast-description' },
     )).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Sitzung konnte nicht geladen werden' })).not.toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Aktiver Turnus' })).toHaveValue('2');
+    expect(screen.getByText('T2', { selector: '[data-slot="active-turnus"]' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Turnus wechseln' })).toBeEnabled();
   });
 
   it('blocks stale scoped UI and reloads when switch refreshes fail on the network', async () => {
@@ -244,10 +261,11 @@ describe('application loading', () => {
 
     const reload = vi.fn();
     render(<App fetchImpl={fetchImpl} reload={reload} />);
-    fireEvent.change(await screen.findByRole('combobox', { name: 'Aktiver Turnus' }), { target: { value: '4' } });
+    await screen.findByRole('button', { name: 'Turnus wechseln' });
+    chooseTurnus('T4');
 
     expect(await screen.findByText('Turnus wird gewechselt…')).toBeInTheDocument();
-    expect(screen.queryByRole('combobox', { name: 'Aktiver Turnus' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Turnus wechseln' })).not.toBeInTheDocument();
     await waitFor(() => expect(reload).toHaveBeenCalledOnce());
   });
 
@@ -270,17 +288,18 @@ describe('application loading', () => {
       .mockReturnValueOnce(selection);
 
     render(<App fetchImpl={fetchImpl} />);
-    const switcher = await screen.findByRole('combobox', { name: 'Aktiver Turnus' });
-    fireEvent.change(switcher, { target: { value: '4' } });
+    const trigger = await screen.findByRole('button', { name: 'Turnus wechseln' });
+    chooseTurnus('T4');
 
-    expect(switcher).toBeDisabled();
-    expect(switcher).toHaveAttribute('aria-busy', 'true');
-    fireEvent.change(switcher, { target: { value: '6' } });
+    expect(trigger).toBeDisabled();
+    expect(trigger).toHaveAttribute('aria-busy', 'true');
+    fireEvent.click(trigger);
+    expect(screen.queryByRole('button', { name: 'T6' })).not.toBeInTheDocument();
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(fetchImpl.mock.calls[2][1].body).toBe(JSON.stringify({ turnus_id: 4 }));
 
     resolveSelection(response({}, { ok: false, status: 403 }));
-    await waitFor(() => expect(switcher).not.toBeDisabled());
+    await waitFor(() => expect(trigger).not.toBeDisabled());
   });
 
   it('redirects an unauthenticated protected route without loading route data', async () => {

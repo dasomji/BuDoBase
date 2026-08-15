@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AppSidebar } from './app-sidebar';
@@ -7,7 +7,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 describe('Turnus switcher navigation', () => {
   afterEach(cleanup);
 
-  it('renders approved options with an accessible label and submits selection', () => {
+  it('shows the active Turnus as text and switches from an accessible dialog', () => {
     const onTurnusChange = vi.fn();
     render(
       <SidebarProvider>
@@ -24,16 +24,31 @@ describe('Turnus switcher navigation', () => {
       </SidebarProvider>,
     );
 
-    const switcher = screen.getByLabelText('Aktiver Turnus');
-    expect(switcher).toHaveValue('2');
-    expect(screen.getAllByRole('option').map(option => option.textContent)).toEqual([
-      'T2-2026', 'T4-2027',
-    ]);
-    fireEvent.change(switcher, { target: { value: '4' } });
+    expect(screen.queryByText('Aktiver Turnus')).not.toBeInTheDocument();
+    const activeTurnus = screen.getByText('T2-2026');
+    expect(activeTurnus).toHaveAttribute('data-slot', 'active-turnus');
+    expect(activeTurnus.parentElement.parentElement).toHaveClass('px-4');
+    expect(screen.queryByRole('combobox', { name: 'Aktiver Turnus' })).not.toBeInTheDocument();
+
+    const trigger = screen.getByRole('button', { name: 'Turnus wechseln' });
+    const switchIcon = trigger.querySelector('svg');
+    expect(switchIcon).toHaveAttribute('aria-hidden', 'true');
+    expect(switchIcon).toHaveClass('lucide-arrow-right-left');
+    expect(activeTurnus.nextElementSibling).toBe(trigger);
+    fireEvent.click(trigger);
+
+    const dialog = screen.getByRole('dialog', { name: 'Turnus wechseln' });
+    expect(within(dialog).getByRole('button', { name: /T2-2026/ })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'T4-2027' }));
+
     expect(onTurnusChange).toHaveBeenCalledWith(4);
+    expect(screen.queryByRole('dialog', { name: 'Turnus wechseln' })).not.toBeInTheDocument();
   });
 
-  it('exposes an accessible busy state and disables selection during a switch', () => {
+  it('exposes an accessible busy state and disables the dialog trigger during a switch', () => {
     render(
       <SidebarProvider>
         <AppSidebar
@@ -46,8 +61,10 @@ describe('Turnus switcher navigation', () => {
       </SidebarProvider>,
     );
 
-    const switcher = screen.getByLabelText('Aktiver Turnus');
-    expect(switcher).toBeDisabled();
-    expect(switcher).toHaveAttribute('aria-busy', 'true');
+    const trigger = screen.getByRole('button', { name: 'Turnus wechseln' });
+    expect(trigger).toBeDisabled();
+    expect(trigger).toHaveAttribute('aria-busy', 'true');
+    fireEvent.click(trigger);
+    expect(screen.queryByRole('dialog', { name: 'Turnus wechseln' })).not.toBeInTheDocument();
   });
 });

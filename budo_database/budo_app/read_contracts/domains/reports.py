@@ -87,10 +87,10 @@ def murder_game(request):
     }
 
 
-def _family_kids(turnus_id, *, special):
-    queryset = (
+def _family_kids(turnus_id):
+    return (
         Kinder.objects.filter(turnus_id=turnus_id)
-        .select_related("turnus", "spezial_familien")
+        .select_related("turnus")
         .only(
             "id",
             "kid_vorname",
@@ -98,25 +98,19 @@ def _family_kids(turnus_id, *, special):
             "kid_birthday",
             "anwesend",
             "budo_family",
-            "spezial_familien__id",
-            "spezial_familien__name",
-            "spezial_familien__turnus_id",
             "turnus__id",
             "turnus__turnus_beginn",
         )
+        .exclude(budo_family__isnull=True)
+        .exclude(budo_family="")
         .order_by("kid_vorname", "kid_nachname", "id")
     )
-    if special:
-        return queryset.filter(spezial_familien__turnus_id=turnus_id)
-    return queryset.exclude(budo_family__isnull=True).exclude(budo_family="")
 
 
-def _family_contract(request, *, special):
+def families(request):
     turnus_id = active_turnus_id(request)
     if turnus_id is None:
         return {"kids": []}
-    family_key = "special_family" if special else "budo_family"
-    kids = _family_kids(turnus_id, special=special)
     return {
         "kids": [
             {
@@ -126,23 +120,11 @@ def _family_contract(request, *, special):
                 ),
                 "present": kid.anwesend,
                 "age": kid.get_alter(),
-                family_key: (
-                    kid.spezial_familien.name
-                    if special
-                    else kid.budo_family
-                ),
+                "budo_family": kid.budo_family,
             }
-            for kid in kids
+            for kid in _family_kids(turnus_id)
         ]
     }
-
-
-def families(request):
-    return _family_contract(request, special=False)
-
-
-def special_families(request):
-    return _family_contract(request, special=True)
 
 
 def _birthday_kid(kid):
@@ -199,5 +181,4 @@ CONTRACTS = {
     "kid-count": kid_count,
     "murder-game": murder_game,
     "serial-letter": serial_letter,
-    "special-families": special_families,
 }

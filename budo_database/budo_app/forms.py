@@ -333,13 +333,6 @@ class MealChoiceForm(forms.ModelForm):
         fields = ('meal_choice',)
 
 
-# Form for uploading a CSV file to update the spezialfamilien for all kids in the current turnus
-
-
-class CSVUploadForm(forms.Form):
-    csv_file = forms.FileField()
-
-
 class BirthdayNotizForm(forms.ModelForm):
     class Meta:
         model = Notizen

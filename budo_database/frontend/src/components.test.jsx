@@ -276,6 +276,11 @@ describe('reusable components', () => {
     expect(textarea).toHaveClass('h-auto');
     expect(textarea).not.toHaveClass('h-8');
     expect(select).toHaveAttribute('data-slot', 'native-select');
+    expect(select).toHaveClass('appearance-none', 'pr-10');
+    expect(select.parentElement).toHaveAttribute('data-slot', 'native-select-control');
+    const selectIndicator = select.parentElement.querySelector('svg');
+    expect(selectIndicator).toHaveClass('right-3');
+    expect(selectIndicator).toHaveAttribute('aria-hidden', 'true');
     fireEvent.change(input, { target: { value: 'Sichtbar' } });
     fireEvent.change(textarea, { target: { value: 'Mehrzeilig' } });
     fireEvent.change(select, { target: { value: '7' } });

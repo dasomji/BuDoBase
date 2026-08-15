@@ -40,10 +40,10 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
 
-    def contract_url(self):
+    def contract_url(self, key="dashboard"):
         return reverse(
             "route-data-api",
-            kwargs={"contract_key": "dashboard"},
+            kwargs={"contract_key": key},
         )
 
     def test_initial_query_growth_is_bounded_and_payload_beats_legacy(self):
@@ -65,8 +65,8 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
             20,
         )
         self.assertEqual(
-            len(realistic.response.json()["activity"]["transactions"]["items"]),
-            20,
+            set(realistic.response.json()["activity"]),
+            {"notes", "first_aid"},
         )
         # Includes the bounded personal Happy-Cleaning station projection.
         # Includes BEGIN/COMMIT for the membership-lock lifetime.
@@ -133,6 +133,30 @@ class DashboardContractPerformanceTests(QueryBudgetAssertions, TestCase):
             len(after.response.json()["activity"]["first_aid"]["items"]),
             20,
         )
+        self.assertEqual(
+            set(after.response.json()["activity"]),
+            {"notes", "first_aid"},
+        )
+        self.assertLess(after.response_bytes - before.response_bytes, 2_000)
+
+    def test_pocket_money_activity_stays_bounded_as_history_grows(self):
+        self.fixtures.grow_to(kids=3, focuses=2, team=2, places=1)
+        kid = Kinder.objects.filter(turnus=self.turnus).first()
+        Geld.objects.bulk_create([
+            Geld(kinder=kid, amount=index, added_by=self.user)
+            for index in range(25)
+        ])
+        before = measure_http_get(self.client, self.contract_url("pocket-money"))
+        Geld.objects.bulk_create([
+            Geld(kinder=kid, amount=index, added_by=self.user)
+            for index in range(200)
+        ])
+
+        after = measure_http_get(self.client, self.contract_url("pocket-money"))
+
+        self.assertEqual(after.status_code, 200)
+        self.assertQueryCountAtMost(after, 9)
+        self.assertQueryGrowthAtMost(before, after, 0)
         self.assertEqual(
             len(after.response.json()["activity"]["transactions"]["items"]),
             20,

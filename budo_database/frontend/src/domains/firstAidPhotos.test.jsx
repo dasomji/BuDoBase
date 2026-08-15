@@ -116,7 +116,7 @@ function acceptedPhotoInput(input) {
 
 describe('EH photo upload and card strips', () => {
   beforeEach(() => {
-    document.cookie = 'interaction-bar=; Max-Age=0; Path=/';
+    document.cookie = 'kid-detail-activity=; Max-Age=0; Path=/';
     window.history.pushState({}, '', '/kid_details/7');
     window.matchMedia = vi.fn().mockReturnValue({
       matches: false,
@@ -138,10 +138,8 @@ describe('EH photo upload and card strips', () => {
     const onSaved = vi.fn().mockResolvedValue(undefined);
     const fetchMock = vi.fn().mockResolvedValue(response({ ok: true }));
     vi.stubGlobal('fetch', fetchMock);
-    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} kind="first_aid" />);
 
-    fireEvent.click(screen.getByText('Notiz'));
-    fireEvent.click(screen.getByText('Taschengeld'));
     const form = screen.getByRole('button', { name: 'EH-Eintrag senden' }).closest('form');
     const description = screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...');
     const photoInput = screen.getByLabelText(/EH-Fotos/i);
@@ -157,8 +155,8 @@ describe('EH photo upload and card strips', () => {
 
     fireEvent.change(description, { target: { value: 'Knie verbunden' } });
     fireEvent.change(photoInput, { target: { files } });
-    expect(document.querySelector('.first-aid-input-field .attachment-count')).toHaveTextContent('2');
-    expect(document.querySelector('.first-aid-input-field .attachment-button')).toBeInTheDocument();
+    expect(document.querySelector('[data-slot="attachment-count"]')).toHaveTextContent('2');
+    expect(screen.getByRole('button', { name: 'Fotos für Erste Hilfe auswählen' }).querySelector('.lucide-image-plus')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'EH-Eintrag senden' }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
@@ -169,6 +167,7 @@ describe('EH photo upload and card strips', () => {
     expect(body.getAll('erste_hilfe_fotos')).toEqual(files);
     expect(resetSpy).toHaveBeenCalledOnce();
     expect(description).toHaveValue('');
+    expect(document.querySelector('[data-slot="attachment-count"]')).not.toBeInTheDocument();
   });
 
   it('keeps the EH payload for correction and displays backend photo failures', async () => {
@@ -177,10 +176,8 @@ describe('EH photo upload and card strips', () => {
       { ok: false, errors: ['Es sind höchstens 5 Fotos erlaubt.'] },
       { ok: false, status: 422 },
     )));
-    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} kind="first_aid" />);
 
-    fireEvent.click(screen.getByText('Notiz'));
-    fireEvent.click(screen.getByText('Taschengeld'));
     const description = screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...');
     const photoInput = screen.getByLabelText(/EH-Fotos/i);
     fireEvent.change(description, { target: { value: 'Knie verbunden' } });
@@ -213,8 +210,7 @@ describe('EH photo upload and card strips', () => {
     render(<App fetchImpl={fetchImpl} />);
 
     expect(await screen.findByText('Noch keine EH-Einträge.')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Notiz'));
-    fireEvent.click(screen.getByText('Taschengeld'));
+    fireEvent.click(screen.getByRole('button', { name: 'Erste Hilfe öffnen' }));
     fireEvent.change(screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...'), {
       target: { value: 'Private medizinische Beschreibung' },
     });
@@ -259,6 +255,7 @@ describe('EH photo upload and card strips', () => {
       mutate={vi.fn()}
     />);
     const kidCard = screen.getByRole('heading', { name: 'Erste Hilfe' }).closest('.card');
+    fireEvent.click(screen.getByRole('button', { name: 'Erste Hilfe öffnen' }));
     const kidShape = assertPhotoEntry(kidCard);
     fireEvent.click(within(kidCard).getByRole('img', { name: photos[0].alt }));
     expect(window.location.pathname).toBe('/kid_details/7');

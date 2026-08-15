@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from django.db.models import Count, Exists, OuterRef, Prefetch, Q
+from django.db.models import Prefetch
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
@@ -17,56 +17,6 @@ from budo_app.read_contracts.common import (
     kid_full_name,
     required_query_integer,
 )
-
-
-def focus_dashboard(request):
-    turnus_id = active_turnus_id(request)
-    if turnus_id is None:
-        return {"focuses": []}
-
-    carers = (
-        Profil.objects.filter(user__turnus_memberships__turnus_id=turnus_id)
-        .only("id", "rufname")
-        .order_by("rufname", "id")
-    )
-    focuses = (
-        Schwerpunkte.objects.filter(schwerpunktzeit__turnus_id=turnus_id)
-        .select_related("ort", "schwerpunktzeit")
-        .prefetch_related(
-            Prefetch("betreuende", queryset=carers, to_attr="route_carers"),
-        )
-        .annotate(
-            kid_count=Count(
-                "swp_kinder",
-                filter=Q(swp_kinder__turnus_id=turnus_id),
-                distinct=True,
-            ),
-            meals_assigned=Exists(
-                Meal.objects.filter(
-                    schwerpunkt_id=OuterRef("pk"),
-                    meal_choice__gt="",
-                ),
-            ),
-        )
-        .order_by("schwerpunktzeit__woche", "swp_name", "id")
-    )
-    return {
-        "focuses": [
-            {
-                "id": focus.id,
-                "name": focus.swp_name,
-                "week": focus.schwerpunktzeit.woche,
-                "place_id": focus.ort_id,
-                "place": focus.ort.name if focus.ort else None,
-                "coordinates": focus.ort.koordinaten if focus.ort else "",
-                "carers": ", ".join(carer.rufname for carer in focus.route_carers),
-                "off_site": focus.auslagern,
-                "kid_count": focus.kid_count,
-                "meals_assigned": focus.meals_assigned,
-            }
-            for focus in focuses
-        ],
-    }
 
 
 def _focus_queryset(turnus_id, *, with_kids=False, with_meals=False):
@@ -243,7 +193,6 @@ def focus_meals(request):
 
 CONTRACTS = {
     "focus-create": focus_create,
-    "focus-dashboard": focus_dashboard,
     "focus-detail": focus_detail,
     "focus-meals": focus_meals,
     "focus-update": focus_update,

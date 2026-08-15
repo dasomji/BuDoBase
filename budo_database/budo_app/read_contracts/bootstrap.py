@@ -39,6 +39,7 @@ def _permissions(user):
         "view_auditevent": can_view_audit(user),
         "export_auditevent": can_export_audit(user),
         "admin_settings": user.is_staff,
+        "is_superuser": user.is_superuser,
         "manage_teams": user.is_superuser or TurnusMembership.objects.filter(
             user=user,
             functional_role=TurnusMembership.FunctionalRole.LEITUNG,

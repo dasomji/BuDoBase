@@ -40,7 +40,7 @@ describe('Kinder pages', () => {
   });
 
   beforeEach(() => {
-    document.cookie = 'interaction-bar=; Max-Age=0; Path=/';
+    document.cookie = 'kid-detail-activity=; Max-Age=0; Path=/';
     window.matchMedia = vi.fn().mockImplementation(query => ({
       matches: query.includes('max-width') ? false : true,
       media: query,
@@ -49,35 +49,24 @@ describe('Kinder pages', () => {
     }));
   });
 
-  it('switches modes, stores the cookie, and saves money without navigating', async () => {
+  it('saves money from its dedicated form without navigating', async () => {
     const onSaved = vi.fn();
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
     vi.stubGlobal('fetch', fetchMock);
-    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} kind="money" />);
 
-    const note = screen.getByPlaceholderText('Notiz...');
-    expect(note).toBeVisible();
-    expect(note.tagName).toBe('TEXTAREA');
-    expect(note).toHaveAttribute('rows', '2');
-    expect(screen.getByRole('button', { name: 'Senden' })).toHaveClass('interaction-send-button');
-    expect(screen.getByPlaceholderText('Taschengeld...').closest('#geld-form')).toHaveClass('hidden');
-    expect(screen.queryByRole('group', { name: 'Eingabemodus' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('Notiz'));
-
-    expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
-    expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
-    expect(screen.getByPlaceholderText('Taschengeld...')).toHaveAttribute('data-slot', 'input');
-    expect(document.cookie).toContain('interaction-bar=geld-form');
-    expect(screen.getByPlaceholderText('Taschengeld...')).toHaveAttribute('min', '0');
+    const amount = screen.getByPlaceholderText('Taschengeld...');
+    expect(amount).toBeVisible();
+    expect(amount).toHaveAttribute('data-slot', 'input');
+    expect(amount).toHaveAttribute('min', '0');
     expect(screen.getByRole('button', { name: 'Abbuchen' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Aufladen' })).toBeEnabled();
-    expect(screen.queryByRole('button', { name: 'Senden' })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText('Taschengeld...'), { target: { value: '5' } });
+    fireEvent.change(amount, { target: { value: '5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Abbuchen' }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
     expect(fetchMock.mock.calls[0][1].body.get('money_action')).toBe('withdraw');
-    expect(screen.getByPlaceholderText('Taschengeld...')).toHaveValue(null);
+    expect(amount).toHaveValue(null);
   });
 
   it('switches to Erste Hilfe and submits a required description', async () => {
@@ -87,17 +76,20 @@ describe('Kinder pages', () => {
       json: async () => ({ ok: true }),
     });
     vi.stubGlobal('fetch', fetchMock);
-    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} />);
-
-    fireEvent.click(screen.getByText('Notiz'));
-    fireEvent.click(screen.getByText('Taschengeld'));
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" onSaved={onSaved} kind="first_aid" />);
 
     const description = screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...');
+    const guidance = screen.getByText('Was ist passiert und welche Maßnahme wurde getroffen?');
     expect(description).toBeVisible();
+    expect(guidance).toBeVisible();
+    expect(screen.getByLabelText('Was ist passiert und welche Maßnahme wurde getroffen?')).toBe(description);
+    expect(guidance.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(description.tagName).toBe('TEXTAREA');
-    expect(description).toHaveAttribute('rows', '2');
+    expect(description).toHaveAttribute('rows', '1');
     expect(description).toBeRequired();
-    expect(document.cookie).toContain('interaction-bar=erste-hilfe-form');
+    expect(description).toHaveAttribute('data-slot', 'textarea');
+    expect(screen.getByRole('button', { name: 'Fotos für Erste Hilfe auswählen' }).querySelector('.lucide-image-plus')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'EH-Eintrag senden' })).toHaveTextContent('➤');
     fireEvent.change(description, { target: { value: 'Knie verbunden' } });
     fireEvent.click(screen.getByRole('button', { name: 'EH-Eintrag senden' }));
 
@@ -108,7 +100,7 @@ describe('Kinder pages', () => {
     expect(description).toHaveValue('');
   });
 
-  it('submits note image attachments through the + control', async () => {
+  it('submits note image attachments through the shared image control', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
     vi.stubGlobal('fetch', fetchMock);
     render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
@@ -117,11 +109,17 @@ describe('Kinder pages', () => {
     const photo = new File(['photo'], 'iphone.heic', { type: 'image/heic' });
     expect(input).toHaveAttribute('type', 'file');
     expect(input).toHaveAttribute('multiple');
+    const photoButton = screen.getByRole('button', { name: 'Fotos zur Notiz auswählen' });
+    const inputClick = vi.spyOn(input, 'click');
+    fireEvent.click(photoButton);
+    expect(inputClick).toHaveBeenCalledOnce();
     fireEvent.change(screen.getByPlaceholderText('Notiz...'), { target: { value: 'Mit Foto' } });
     fireEvent.change(input, { target: { files: [photo] } });
-    expect(document.querySelector('.attachment-count')).toHaveTextContent('1');
-    expect(document.querySelector('.note-input-field .attachment-button')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
+    expect(screen.getByPlaceholderText('Notiz...')).toHaveAttribute('rows', '1');
+    expect(document.querySelector('[data-slot="attachment-count"]')).toHaveTextContent('1');
+    expect(photoButton.querySelector('.lucide-image-plus')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Notiz senden' })).toHaveTextContent('➤');
+    fireEvent.click(screen.getByRole('button', { name: 'Notiz senden' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
     const body = fetchMock.mock.calls[0][1].body;
@@ -135,10 +133,8 @@ describe('Kinder pages', () => {
       { ok: false, status: 422 },
     ));
     vi.stubGlobal('fetch', fetchMock);
-    render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
+    render(<KidInteractionForm kid={{ id: 7 }} token="token" kind="first_aid" />);
 
-    fireEvent.click(screen.getByText('Notiz'));
-    fireEvent.click(screen.getByText('Taschengeld'));
     fireEvent.change(screen.getByPlaceholderText('Erste-Hilfe-Maßnahme...'), {
       target: { value: '   ' },
     });
@@ -147,13 +143,84 @@ describe('Kinder pages', () => {
     await expectErrorToastOnly('Bitte eine Beschreibung eingeben.');
   });
 
-  it('restores the saved Taschengeld mode from its cookie', () => {
-    document.cookie = 'interaction-bar=geld-form; Path=/';
+  it('keeps each input in its owning activity card and enforces accordion behavior', () => {
+    const kid = {
+      id: 7,
+      full_name: 'Ada Lovelace',
+      present: true,
+      weeks: 2,
+      booking_note: 'Buchungsnotiz',
+      note: 'Anmerkung',
+      notes: [{ id: 4, author: 'Nora', date: '2026-07-04', text: 'Neueste Notiz' }],
+      first_aid_entries: [{ id: 5, author: 'Emil', date: '2026-07-05', text: 'Knie verbunden' }],
+      transactions: [{ id: 6, author: 'Mia', date: '2026-07-06', amount: 5 }],
+      remaining_money: 9.5,
+      deposit: 2,
+    };
+    render(<KidDetailPage data={{ kids: [kid], csrf_token: 'token' }} id="7" mutate={vi.fn()} />);
 
-    render(<KidInteractionForm kid={{ id: 7 }} token="token" />);
+    const notesCard = screen.getByRole('heading', { name: 'Notizen' }).closest('.card');
+    const firstAidCard = screen.getByRole('heading', { name: 'Erste Hilfe' }).closest('.card');
+    const moneyCard = screen.getByRole('heading', { name: 'Taschengeld: 9.50 €' }).closest('.card');
+    expect(within(notesCard).getByPlaceholderText('Notiz...')).toBeInTheDocument();
+    expect(within(firstAidCard).getByPlaceholderText('Erste-Hilfe-Maßnahme...')).toBeInTheDocument();
+    expect(within(moneyCard).getByPlaceholderText('Taschengeld...')).toBeInTheDocument();
+    expect(notesCard).not.toHaveClass('closed-card');
+    expect(firstAidCard).toHaveClass('closed-card');
+    expect(moneyCard).toHaveClass('closed-card');
 
-    expect(screen.getByPlaceholderText('Taschengeld...')).toBeVisible();
-    expect(screen.getByPlaceholderText('Notiz...').closest('#notiz-form')).toHaveClass('hidden');
+    fireEvent.click(screen.getByRole('button', { name: 'Erste Hilfe öffnen' }));
+    expect(notesCard).toHaveClass('closed-card');
+    expect(firstAidCard).not.toHaveClass('closed-card');
+    fireEvent.click(screen.getByRole('button', { name: 'Erste Hilfe schließen' }));
+    expect(notesCard).toHaveClass('closed-card');
+    expect(firstAidCard).toHaveClass('closed-card');
+    expect(moneyCard).toHaveClass('closed-card');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Taschengeld: 9.50 € öffnen' }));
+    expect(moneyCard).not.toHaveClass('closed-card');
+    const notesContent = notesCard.querySelector('.card-info-content');
+    expect([...notesContent.children].map(child => child.tagName)).toEqual(['P', 'P', 'FORM', 'UL']);
+    const moneyContent = moneyCard.querySelector('.card-info-content');
+    expect([...moneyContent.children].map(child => child.tagName)).toEqual(['DIV', 'FORM', 'DIV']);
+    expect(within(moneyCard).getByLabelText('Pfand')).toHaveTextContent('Pfand:−Pfand2 (0.50 €)+Pfand');
+    const transactionTable = within(moneyCard).getByRole('table');
+    expect(within(transactionTable).getAllByRole('columnheader').map(header => header.textContent)).toEqual([
+      'Author',
+      'Datum',
+      'Betrag',
+    ]);
+    const transactionRow = within(transactionTable).getByText('Mia').closest('tr');
+    expect(transactionRow).toHaveTextContent('Mia');
+    expect(transactionRow).toHaveTextContent('06.07');
+    expect(transactionRow).toHaveTextContent('5.00 €');
+    expect(document.querySelector('#pfand')).not.toBeInTheDocument();
+  });
+
+  it('restores the open activity card when moving to another child', () => {
+    const kid = {
+      id: 7,
+      full_name: 'Ada Lovelace',
+      present: true,
+      weeks: 2,
+      notes: [],
+      first_aid_entries: [],
+      transactions: [],
+      remaining_money: 10,
+      deposit: 0,
+    };
+    const { unmount } = render(<KidDetailPage data={{ kids: [kid], csrf_token: 'token' }} id="7" mutate={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erste Hilfe öffnen' }));
+    expect(document.cookie).toContain('kid-detail-activity=first_aid');
+    unmount();
+
+    const nextKid = { ...kid, id: 8, full_name: 'Grace Hopper' };
+    render(<KidDetailPage data={{ kids: [nextKid], csrf_token: 'token' }} id="8" mutate={vi.fn()} />);
+
+    expect(screen.getByRole('heading', { name: 'Notizen' }).closest('.card')).toHaveClass('closed-card');
+    expect(screen.getByRole('heading', { name: 'Erste Hilfe' }).closest('.card')).not.toHaveClass('closed-card');
+    expect(screen.getByRole('heading', { name: 'Taschengeld: 10.00 €' }).closest('.card')).toHaveClass('closed-card');
   });
 
   it.each([
@@ -333,7 +400,8 @@ describe('Kinder pages', () => {
     };
     render(<KidDetailPage data={{ kids: [kid], csrf_token: 'token' }} id="7" mutate={mutate} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '+ Pfand' }));
+    fireEvent.click(screen.getByRole('button', { name: /Taschengeld: 0.00 €.*öffnen/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pfand erhöhen' }));
 
     await expectErrorToastOnly('Das Pfand konnte nicht gespeichert werden.');
   });
@@ -345,7 +413,6 @@ describe('Kinder pages', () => {
         full_name: 'Grace Hopper',
         present: true,
         budo_family: 'L',
-        special_family: 'Falkenhaus',
         sex_short: '♀',
         age: 14,
         weeks: 2,
@@ -364,7 +431,6 @@ describe('Kinder pages', () => {
         full_name: 'Ada Lovelace',
         present: false,
         budo_family: 'M',
-        special_family: 'Biberhaus',
         sex_short: '♀',
         age: 13,
         weeks: 1,
@@ -386,6 +452,7 @@ describe('Kinder pages', () => {
     expect(table.parentElement).toHaveAttribute('data-sticky-first-column');
     expect(table.parentElement).toHaveAttribute('data-vertical-scroll');
     expect(screen.getByRole('columnheader', { name: /Zeltwunsch/ })).toHaveAttribute('data-priority', 'low');
+    expect(screen.queryByRole('columnheader', { name: 'Haus' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ada Lovelace ❌' })).toHaveAttribute('href', '/kid_details/7');
     expect(screen.getByRole('columnheader', { name: /Anmerkungen \(Buchung\)/ })).toBeInTheDocument();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Kinder filtern' }), { target: { value: 'grace' } });
@@ -448,10 +515,13 @@ describe('Kinder pages', () => {
 
     render(<App fetchImpl={fetchImpl} />);
 
-    expect(await screen.findByRole('heading', { name: 'Pfand: 1' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Taschengeld: 9.75 €' })).toBeInTheDocument();
     expect(document.querySelector('#headertitle h1 a')).toHaveAttribute('href', '/admin/budo_app/kinder/7/change/');
-    fireEvent.click(screen.getByRole('button', { name: '+ Pfand' }));
-    expect(await screen.findByRole('heading', { name: 'Pfand: 2' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Taschengeld: 9.75 € öffnen' }));
+    expect(screen.getByLabelText('Pfand')).toHaveTextContent('1 (0.25 €)');
+    fireEvent.click(await screen.findByRole('button', { name: 'Pfand erhöhen' }));
+    expect(await screen.findByRole('heading', { name: 'Taschengeld: 9.50 €' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Pfand')).toHaveTextContent('2 (0.50 €)');
 
     expect(detailReads).toBe(2);
     expect(fetchImpl.mock.calls.filter(([url]) => url === '/api/bootstrap/')).toHaveLength(1);

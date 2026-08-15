@@ -5,7 +5,7 @@ import App from '../App';
 import { Toaster } from '../components/ui/toast';
 import { parseRoute } from '../routes';
 import { expectErrorToastOnly } from '../test-support';
-import { DashboardPage, GoodToKnowPage } from './dashboard';
+import { dashboardRoutes, DashboardPage, GoodToKnowPage, PocketMoneyPage } from './dashboard';
 
 const render = ui => testingLibraryRender(ui, {
   wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
@@ -74,10 +74,17 @@ const dashboardData = (activity = {}) => ({
   activity: {
     notes: emptyPage,
     first_aid: emptyPage,
-    transactions: emptyPage,
     ...activity,
   },
   turnus: { label: 'T2' },
+});
+
+const pocketMoneyData = (transactions = emptyPage) => ({
+  totals: {
+    pocket_money_paid: 20,
+    pocket_money: 18,
+  },
+  activity: { transactions },
 });
 
 const response = (data, { ok = true, status = 200 } = {}) => ({
@@ -93,7 +100,7 @@ describe('dashboard page', () => {
     window.history.pushState({}, '', '/');
   });
 
-  it('shows only safe Turnus request state while membership is awaiting', () => {
+  it('shows no dashboard hint while membership is awaiting', () => {
     const mutate = vi.fn();
     render(<DashboardPage data={{
       membership_awaiting: true,
@@ -103,11 +110,10 @@ describe('dashboard page', () => {
       ],
     }} mutate={mutate} />);
 
-    expect(screen.getByText('Anfrage ausstehend (noch kein Zugriff)', { exact: false })).toBeInTheDocument();
-    expect(screen.getByText('Anfrage abgelehnt', { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText(/Anfrage/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Mitgliedschaft/ })).not.toBeInTheDocument();
     expect(screen.queryByText('Kinder')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft anfragen' }));
-    expect(mutate).toHaveBeenCalledWith('/api/turnusse/2/join-requests/', {});
+    expect(mutate).not.toHaveBeenCalled();
   });
 
   it('renders exactly the requested operational dashboard cards', () => {
@@ -121,8 +127,6 @@ describe('dashboard page', () => {
       'SWP 1: Wald',
       'SWP 2: See',
       'Happy Cleaning 1: Küche',
-      'Taschengeld',
-      'Taschengeldkasse',
     ]) {
       expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
     }
@@ -137,6 +141,8 @@ describe('dashboard page', () => {
       'Essen & Allergien',
       'Geburtstagskinder: 1',
       'Verabschiedungsliste: 0',
+      'Taschengeld',
+      'Taschengeldkasse',
     ]) {
       expect(screen.queryByRole('heading', { name: removed })).not.toBeInTheDocument();
     }
@@ -154,29 +160,19 @@ describe('dashboard page', () => {
     expect(within(kidsCard).getByRole('link', { name: 'Zur Einteilung' })).toHaveAttribute('href', '/happy-cleaning/21/assignment/');
     expect(within(todosCard).getByRole('link', { name: 'Küche Details' })).toHaveAttribute('href', '/happy-cleaning/?event_id=21&station_id=31');
     expect(within(todosCard).getByRole('checkbox', { name: 'Boden fegen erledigen' })).toBeInTheDocument();
-    const moneyCard = screen.getByRole('heading', { name: 'Taschengeld' }).closest('.card');
-    expect(moneyCard).toHaveClass('transparent');
-    const cashCard = within(moneyCard).getByRole('heading', { name: 'Taschengeldkasse' }).closest('.card');
-    expect(within(moneyCard).queryByRole('heading', { name: 'Transaktionen' })).not.toBeInTheDocument();
-    expect(cashCard).not.toHaveClass('transparent');
-    expect(cashCard).toHaveTextContent('Gesamt eingezahlt: 20.00 €');
-    expect(cashCard).toHaveTextContent('Gesamt ausgegeben: 2.00 €');
-    expect(cashCard).toHaveTextContent('Kassenstand: 18.00 €');
   });
 
-  it('lets an approved member request another Turnus alongside scoped data', () => {
-    const mutate = vi.fn();
+  it('never renders Turnus membership requests on the dashboard', () => {
     const data = dashboardData();
     data.membership_turnuses = [
       { id: 1, label: '2. Turnus 2027', request_status: 'approved' },
       { id: 2, label: '3. Turnus 2027', request_status: null },
     ];
 
-    render(<DashboardPage data={data} mutate={mutate} />);
+    render(<DashboardPage data={data} mutate={vi.fn()} />);
 
     expect(screen.getByRole('heading', { name: 'Kinder: 1' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft anfragen' }));
-    expect(mutate).toHaveBeenCalledWith('/api/turnusse/2/join-requests/', {});
+    expect(screen.queryByRole('button', { name: /Mitgliedschaft anfragen/ })).not.toBeInTheDocument();
   });
 
   it('renders the moved informational cards on Gut zu wissen', () => {
@@ -194,6 +190,45 @@ describe('dashboard page', () => {
     }
     expect(screen.queryByRole('heading', { name: 'Kinder: 1' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Grace Hopper' }).length).toBeGreaterThan(0);
+  });
+
+  it('builds one printable page per Gut zu wissen card without presence indicators', () => {
+    const data = dashboardData();
+    data.kids[0].present = false;
+
+    render(<GoodToKnowPage data={data} />);
+
+    const printPages = document.querySelector('.good-to-know-print-pages');
+    expect(printPages).toHaveAttribute('aria-label', 'Gut-zu-wissen-Druckseiten');
+    const pages = [...printPages.querySelectorAll(':scope > .good-to-know-print-page')];
+    expect(pages.map(page => within(page).getByRole('heading', { hidden: true }).textContent)).toEqual([
+      'Erstes Mal im BuDO: 1/1',
+      'Einwöchige: 1',
+      'Gesundheitliches',
+      'Essen & Allergien',
+      'Geburtstagskinder: 1',
+      'Verabschiedungsliste: 0',
+    ]);
+    pages.forEach(page => {
+      expect(within(page).getAllByRole('heading', { hidden: true })).toHaveLength(1);
+      expect(within(page).queryByRole('link', { hidden: true })).not.toBeInTheDocument();
+      expect(page).not.toHaveTextContent('❌');
+    });
+    expect(within(printPages).getAllByText('Grace Hopper', { exact: false })).toHaveLength(5);
+    expect(document.querySelector('style[data-print-page-style]')).toHaveTextContent('@page { margin: 0; }');
+  });
+
+  it('offers Gut zu wissen printing from the shared page header', () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    const goodToKnowRoute = dashboardRoutes.find(route => route.page === 'good-to-know');
+
+    render(goodToKnowRoute.headerAction?.());
+
+    const printButton = screen.getByRole('button', { name: 'Drucken' });
+    expect(printButton).toHaveTextContent('Drucken');
+    expect(printButton.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    fireEvent.click(printButton);
+    expect(print).toHaveBeenCalledOnce();
   });
 
   it('owns the focused Gut zu wissen route contract', () => {
@@ -224,6 +259,31 @@ describe('dashboard page', () => {
     expect(fetchImpl.mock.calls[1][0]).toBe('/api/route-data/gut-zu-wissen/');
   });
 
+  it('owns and loads the dedicated Taschengeld route contract', async () => {
+    expect(parseRoute('/taschengeld/')).toMatchObject({
+      page: 'pocket-money',
+      title: 'Taschengeld',
+      readContractKey: 'pocket-money',
+    });
+    window.history.pushState({}, '', '/taschengeld/');
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({
+        authenticated: true,
+        csrf_token: 'token',
+        messages: [],
+        profile: { id: 1, rufname: 'Ada' },
+        turnus: { id: 2, label: 'T2' },
+        permissions: {},
+        search_index: { kids: [], focuses: [], places: [] },
+      }))
+      .mockResolvedValueOnce(response(pocketMoneyData()));
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByRole('heading', { name: 'Taschengeldkasse' })).toBeInTheDocument();
+    expect(fetchImpl.mock.calls[1][0]).toBe('/api/route-data/pocket-money/');
+  });
+
   it('waits to show each personal SWP until all present kids are assigned for that week', () => {
     const data = dashboardData();
     data.focus_assignments_complete = { w1: false, w2: true };
@@ -243,25 +303,27 @@ describe('dashboard page', () => {
     expect(screen.queryByRole('heading', { name: 'Happy Cleaning 1: Küche' })).not.toBeInTheDocument();
   });
 
-  it('renders pocket-money transactions as the four-column compact table', () => {
-    render(<DashboardPage data={dashboardData({
-      transactions: {
-        ...emptyPage,
-        items: [{
-          id: 41,
-          author: 'Ada',
-          date: '2026-07-11T10:00:00Z',
-          kid_id: 7,
-          kid: 'Grace Hopper',
-          amount: 3.4,
-        }],
-      },
+  it('renders the dedicated pocket-money page as one compact card', () => {
+    render(<PocketMoneyPage data={pocketMoneyData({
+      ...emptyPage,
+      items: [{
+        id: 41,
+        author: 'Ada',
+        date: '2026-07-11T10:00:00Z',
+        kid_id: 7,
+        kid: 'Grace Hopper',
+        amount: 3.4,
+      }],
     })} />);
 
-    const moneyCard = screen.getByRole('heading', { name: 'Taschengeld' }).closest('.card');
-    const cashCard = within(moneyCard).getByRole('heading', { name: 'Taschengeldkasse' }).closest('.card');
-    const table = within(moneyCard).getByRole('table');
-    expect(cashCard.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const cashCard = screen.getByRole('heading', { name: 'Taschengeldkasse' }).closest('.card');
+    const table = within(cashCard).getByRole('table');
+    expect(document.querySelectorAll('.card')).toHaveLength(1);
+    expect(cashCard).not.toHaveClass('transparent');
+    expect(cashCard.parentElement).toHaveClass('max-w-[800px]');
+    expect(cashCard).toHaveTextContent('Gesamt eingezahlt: 20.00 €');
+    expect(cashCard).toHaveTextContent('Gesamt ausgegeben: 2.00 €');
+    expect(cashCard).toHaveTextContent('Kassenstand: 18.00 €');
     expect(within(table).getAllByRole('columnheader').map(header => header.textContent)).toEqual([
       'Kind',
       'Datum',
@@ -374,22 +436,24 @@ describe('dashboard page', () => {
     expect(await screen.findByText('Hand gekühlt')).toBeInTheDocument();
   });
 
-  it('shows failed dashboard loads as error toasts, never inline', async () => {
+  it('loads pocket-money activity from its dedicated endpoint and reports failures as toasts', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(response({}, { ok: false, status: 503 }));
-    render(<DashboardPage
-      data={dashboardData({
-        transactions: {
-          items: [],
-          next_cursor: 'money-cursor',
-          has_more: true,
-          limit: 20,
-        },
+    render(<PocketMoneyPage
+      data={pocketMoneyData({
+        items: [],
+        next_cursor: 'money-cursor',
+        has_more: true,
+        limit: 20,
       })}
       fetchImpl={fetchImpl}
     />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Ältere Transaktionen laden' }));
 
+    await waitFor(() => expect(fetchImpl).toHaveBeenCalledWith(
+      '/api/route-data/pocket-money/?activity=transactions&cursor=money-cursor',
+      { credentials: 'same-origin' },
+    ));
     await expectErrorToastOnly('Ältere Transaktionen konnten nicht geladen werden.');
     expect(screen.getByRole('button', { name: 'Ältere Transaktionen laden' })).toBeEnabled();
   });

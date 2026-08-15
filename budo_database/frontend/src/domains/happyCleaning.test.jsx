@@ -890,7 +890,9 @@ describe('Happy Cleaning management', () => {
       ],
     }} />);
 
-    expect(screen.getByRole('heading', { name: 'Happy Cleaning · Nummernliste', level: 1 })).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { name: 'Happy Cleaning · Nummernliste', level: 1 });
+    expect(heading).toHaveClass('font-semibold');
+    expect(heading).not.toHaveClass('font-bold');
     const numbered = within(screen.getByRole('table', { name: 'Anwesend mit Nummer' }));
     const numberless = within(screen.getByRole('table', { name: 'Anwesend ohne Nummer' }));
     const absent = within(screen.getByRole('table', { name: 'Abwesend' }));
@@ -971,6 +973,9 @@ describe('Happy Cleaning management', () => {
       absent: [],
     }} />);
 
+    const pageStyle = document.querySelector('style[data-print-page-style]');
+    expect(pageStyle).toHaveAttribute('media', 'print');
+    expect(pageStyle).toHaveTextContent('@page { margin: 0; }');
     expect(screen.getAllByText('Keine Kinder in diesem Abschnitt.')).toHaveLength(3);
     expect(screen.queryByRole('link', { name: 'Zur Übersicht' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Drucken' })).not.toBeInTheDocument();

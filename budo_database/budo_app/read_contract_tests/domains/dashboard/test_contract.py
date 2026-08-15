@@ -157,6 +157,12 @@ class DashboardContractTests(TestCase):
             kwargs={"contract_key": "dashboard"},
         )
 
+    def pocket_money_url(self):
+        return reverse(
+            "route-data-api",
+            kwargs={"contract_key": "pocket-money"},
+        )
+
     def test_returns_only_dashboard_fields_for_the_active_turnus(self):
         response = self.client.get(self.contract_url())
 
@@ -173,21 +179,12 @@ class DashboardContractTests(TestCase):
             "budo_family": "M",
             "focus_ids": [self.focus.id],
         })
-        self.assertEqual(payload["team"], [{
-            "id": self.profile.id,
-            "rufname": "Ada",
-            "food_display": "🧀 Vegetarisch",
-            "allergies": "Haselnüsse",
-            "money_total": 12.0,
-        }])
+        self.assertNotIn("team", payload)
         self.assertEqual(payload["totals"], {
             "kids": 1,
             "checked_in": 1,
             "train_arrival": 1,
             "train_departure": 0,
-            "pocket_money": 18.0,
-            "pocket_money_paid": 20.0,
-            "team_money": 12.0,
         })
         self.assertEqual(payload["kids"], [{
             "id": self.kid.id,
@@ -232,7 +229,7 @@ class DashboardContractTests(TestCase):
                 "id": self.note.id,
                 "text": "Heute angekommen",
                 "date": self.note.date_added.isoformat().replace("+00:00", "Z"),
-                "author": "dashboard-user",
+                "author": "Ada",
                 "kid_id": self.kid.id,
                 "kid": "Grace Hopper",
                 "photos": [],
@@ -246,19 +243,13 @@ class DashboardContractTests(TestCase):
                 "date": self.first_aid_entry.date_added.isoformat().replace(
                     "+00:00", "Z"
                 ),
-                "author": "dashboard-user",
+                "author": "Ada",
                 "kid_id": self.kid.id,
                 "kid": "Grace Hopper",
                 "photos": [],
             }],
         )
-        self.assertEqual(
-            [
-                transaction["amount"]
-                for transaction in payload["activity"]["transactions"]["items"]
-            ],
-            [-2.0, 20.0],
-        )
+        self.assertEqual(set(payload["activity"]), {"notes", "first_aid"})
         response_text = response.content.decode()
         for private_value in (
             "PRIVATE-SVNR",
@@ -269,6 +260,25 @@ class DashboardContractTests(TestCase):
             "Other private teamer",
         ):
             self.assertNotIn(private_value, response_text)
+
+    def test_pocket_money_returns_only_scoped_totals_and_transactions(self):
+        response = self.client.get(self.pocket_money_url())
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["totals"], {
+            "pocket_money": 18.0,
+            "pocket_money_paid": 20.0,
+        })
+        self.assertEqual(
+            [
+                (transaction["amount"], transaction["author"])
+                for transaction in payload["activity"]["transactions"]["items"]
+            ],
+            [(-2.0, "Ada"), (20.0, "Ada")],
+        )
+        self.assertNotContains(response, "Other Private")
+        self.assertNotContains(response, "999")
 
     def test_good_to_know_returns_only_the_moved_card_fields_for_the_active_turnus(self):
         response = self.client.get(reverse(
@@ -418,6 +428,9 @@ class DashboardContractTests(TestCase):
         )
 
         initial = self.client.get(self.contract_url()).json()["activity"]
+        initial_transactions = self.client.get(
+            self.pocket_money_url()
+        ).json()["activity"]["transactions"]
 
         self.assertEqual(initial["notes"]["limit"], 20)
         self.assertTrue(initial["notes"]["has_more"])
@@ -431,7 +444,7 @@ class DashboardContractTests(TestCase):
         )
         self.assertTrue(initial["first_aid"]["has_more"])
         self.assertEqual(
-            [item["id"] for item in initial["transactions"]["items"]],
+            [item["id"] for item in initial_transactions["items"]],
             expected_transaction_ids[:20],
         )
 
@@ -484,10 +497,35 @@ class DashboardContractTests(TestCase):
         self.assertFalse(older_first_aid["has_more"])
         self.assertIsNone(older_first_aid["next_cursor"])
 
+        transaction_continuation = self.client.get(
+            self.pocket_money_url(),
+            {
+                "activity": "transactions",
+                "cursor": initial_transactions["next_cursor"],
+            },
+        )
+        self.assertEqual(transaction_continuation.status_code, 200)
+        older_transactions = transaction_continuation.json()["activity"]["transactions"]
+        combined_transaction_ids = (
+            [item["id"] for item in initial_transactions["items"]]
+            + [item["id"] for item in older_transactions["items"]]
+        )
+        self.assertEqual(combined_transaction_ids, expected_transaction_ids)
+        self.assertEqual(
+            len(combined_transaction_ids),
+            len(set(combined_transaction_ids)),
+        )
+        self.assertFalse(older_transactions["has_more"])
+        self.assertIsNone(older_transactions["next_cursor"])
+
     def test_rejects_invalid_activity_pagination_inputs(self):
         invalid_stream = self.client.get(
             self.contract_url(),
             {"activity": "private-stream"},
+        )
+        moved_stream = self.client.get(
+            self.contract_url(),
+            {"activity": "transactions"},
         )
         invalid_cursor = self.client.get(
             self.contract_url(),
@@ -501,11 +539,27 @@ class DashboardContractTests(TestCase):
             self.contract_url(),
             {"cursor": "not-a-cursor"},
         )
+        invalid_pocket_stream = self.client.get(
+            self.pocket_money_url(),
+            {"activity": "notes"},
+        )
+        invalid_pocket_cursor = self.client.get(
+            self.pocket_money_url(),
+            {"activity": "transactions", "cursor": "not-a-cursor"},
+        )
+        unscoped_pocket_cursor = self.client.get(
+            self.pocket_money_url(),
+            {"cursor": "not-a-cursor"},
+        )
 
         self.assertEqual(invalid_stream.status_code, 400)
+        self.assertEqual(moved_stream.status_code, 400)
         self.assertEqual(invalid_cursor.status_code, 400)
         self.assertEqual(invalid_first_aid_cursor.status_code, 400)
         self.assertEqual(unscoped_cursor.status_code, 400)
+        self.assertEqual(invalid_pocket_stream.status_code, 400)
+        self.assertEqual(invalid_pocket_cursor.status_code, 400)
+        self.assertEqual(unscoped_pocket_cursor.status_code, 400)
 
     def test_subsequent_load_reflects_persisted_money_and_note_mutations(self):
         arriving_kid = Kinder.objects.create(
@@ -517,6 +571,7 @@ class DashboardContractTests(TestCase):
             anwesend=False,
         )
         before = self.client.get(self.contract_url()).json()
+        before_money = self.client.get(self.pocket_money_url()).json()
 
         money_mutation = self.client.post(
             reverse("form-submit-api"),
@@ -537,20 +592,21 @@ class DashboardContractTests(TestCase):
             },
         )
         after = self.client.get(self.contract_url()).json()
+        after_money = self.client.get(self.pocket_money_url()).json()
 
         self.assertEqual(money_mutation.status_code, 200)
         self.assertEqual(attendance_mutation.status_code, 200)
-        self.assertEqual(before["totals"]["pocket_money"], 18.0)
+        self.assertEqual(before_money["totals"]["pocket_money"], 18.0)
         self.assertEqual(before["totals"]["checked_in"], 1)
-        self.assertEqual(after["totals"]["pocket_money"], 23.5)
-        self.assertEqual(after["totals"]["pocket_money_paid"], 25.5)
+        self.assertEqual(after_money["totals"]["pocket_money"], 23.5)
+        self.assertEqual(after_money["totals"]["pocket_money_paid"], 25.5)
         self.assertEqual(after["totals"]["checked_in"], 2)
         self.assertEqual(
             after["activity"]["notes"]["items"][0]["text"],
             "Neue Dashboard-Notiz",
         )
         self.assertEqual(
-            after["activity"]["transactions"]["items"][0]["amount"],
+            after_money["activity"]["transactions"]["items"][0]["amount"],
             5.5,
         )
 
@@ -565,7 +621,7 @@ class DashboardContractTests(TestCase):
         payload = self.client.get(self.contract_url()).json()
 
         self.assertEqual(payload["kids"], [])
-        self.assertEqual(payload["team"], [])
+        self.assertNotIn("team", payload)
         self.assertEqual(payload["focuses"], [])
         self.assertEqual(
             payload["focus_assignments_complete"],
@@ -574,4 +630,9 @@ class DashboardContractTests(TestCase):
         self.assertEqual(payload["totals"]["kids"], 0)
         self.assertEqual(payload["activity"]["notes"]["items"], [])
         self.assertEqual(payload["activity"]["first_aid"]["items"], [])
-        self.assertEqual(payload["activity"]["transactions"]["items"], [])
+        pocket_money = self.client.get(self.pocket_money_url()).json()
+        self.assertEqual(pocket_money["totals"], {
+            "pocket_money": 0.0,
+            "pocket_money_paid": 0.0,
+        })
+        self.assertEqual(pocket_money["activity"]["transactions"]["items"], [])

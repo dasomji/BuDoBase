@@ -10,10 +10,6 @@ export function TurnusUploadPage({ data, id }) {
   return <Columns><Column id="single-column"><Card title={turnus ? `Excel-Datei hochladen für Turnus ${turnus.number}` : 'Turnis'}><NativeForm token={data.csrf_token} action={turnus ? `/upload_excel/${turnus.id}/` : '/upload/'} encType="multipart/form-data" fields={[{ name: 'turnus_nr', label: 'Turnus Nummer', type: 'number', value: turnus?.number, required: true }, { name: 'turnus_beginn', label: 'Beginn des Turnus (muss ein Samstag sein)', type: 'date', value: turnus?.start, required: true }, { name: 'uploadedFile', label: 'Excel-File', type: 'file' }]} submit={turnus ? 'Hochladen' : 'Turnus hinzufügen'} /></Card>{!turnus && <DataTable columns={[{ key: 'label', label: 'Turnus' }, { key: 'id', label: 'ID' }, { key: 'start', label: 'Turnusbeginn', render: row => formatGermanDate(row.start) }, { key: 'actions', label: 'Aktionen', sortable: false, render: row => <Button href={`/upload_excel/${row.id}/`}>Excel hochladen</Button> }]} rows={data.turnuses} />}</Column></Columns>;
 }
 
-export function SimpleUploadPage({ data }) {
-  return <Columns><Column id="single-column"><Card title="Upload XLSX"><NativeForm token={data.csrf_token} action="/upload_spezialfamilien/" encType="multipart/form-data" fields={[{ name: 'csv_file', label: 'Datei', type: 'file', required: true }]} submit="Hochladen" /></Card></Column></Columns>;
-}
-
 export function AdminSettingsPage({ mutate }) {
   const [busy, setBusy] = useState(false);
   const showSuccess = useSuccessToast();
@@ -57,13 +53,5 @@ export const maintenanceRoutes = [
     readContractKey: 'turnus-upload',
     params: match => ({ id: match[1] }),
     render: ({ route, data }) => <TurnusUploadPage data={data} id={route.id} />,
-  },
-  {
-    pattern: /^\/upload_spezialfamilien$/,
-    page: 'special-upload',
-    title: 'Upload XLSX',
-    domain: 'maintenance',
-    readContractKey: 'special-upload',
-    render: ({ data }) => <SimpleUploadPage data={data} />,
   },
 ];

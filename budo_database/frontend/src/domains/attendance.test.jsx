@@ -63,6 +63,22 @@ describe('attendance pages', () => {
     ]);
   });
 
+  it.each([
+    ['Zuganreise', 'train-arrival'],
+    ['Zugabreise', 'train-departure'],
+  ])('offers %s printing from the shared page header', (_title, page) => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    const route = attendanceRoutes.find(candidate => candidate.page === page);
+
+    render(route.headerAction?.());
+
+    const printButton = screen.getByRole('button', { name: 'Drucken' });
+    expect(printButton).toHaveTextContent('Drucken');
+    expect(printButton.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    fireEvent.click(printButton);
+    expect(print).toHaveBeenCalledOnce();
+  });
+
   it('renders the Zuganreise projection, ticket totals, and Kind links', () => {
     render(<TrainPage data={{
       kids: [{
@@ -85,9 +101,84 @@ describe('attendance pages', () => {
 
     expect(screen.getByRole('link', { name: 'Ada Lovelace' })).toHaveAttribute('href', '/kid_details/7');
     expect(screen.getByRole('table').parentElement).toHaveAttribute('data-sticky-first-column');
-    expect(screen.getAllByText('Grace Hopper')).toHaveLength(1);
+    expect(within(screen.getByRole('main')).getByText('Grace Hopper')).toBeInTheDocument();
     expect(screen.getByText(/Kinder mit Top-Jugendticket: 1/)).toBeInTheDocument();
     expect(screen.getByText(/Kinder ohne Top-Jugendticket: 0/)).toBeInTheDocument();
+  });
+
+  it('shows every Kind in the editable Zuganreise list but prints only current train arrivals', async () => {
+    const mutate = vi.fn().mockResolvedValue({ status: 'success', new_count: 0 });
+    render(<TrainPage data={{
+      kids: [
+        {
+          id: 7,
+          full_name: 'Ada Lovelace',
+          present: true,
+          train_arrival: true,
+          youth_ticket: true,
+          age: 14,
+          registrant_name: 'Grace Hopper',
+          registrant_phone: '+4312345',
+          siblings: '',
+        },
+        {
+          id: 8,
+          full_name: 'Katherine Johnson',
+          present: true,
+          train_arrival: false,
+          youth_ticket: false,
+          age: 13,
+          registrant_name: 'Joylette Goble',
+          registrant_phone: '+4354321',
+          siblings: '',
+        },
+      ],
+      totals: {
+        train_arrival: 1,
+        with_youth_ticket: 1,
+        without_youth_ticket: 0,
+      },
+    }} mutate={mutate} />);
+
+    const screenTable = within(screen.getByRole('main')).getByRole('table');
+    expect([...screenTable.querySelectorAll('a[href^="/kid_details/"]')].map(link => link.textContent)).toEqual([
+      'Ada Lovelace',
+      'Katherine Johnson',
+    ]);
+    const adaControl = within(screenTable).getByRole('group', { name: 'Zuganreise für Ada Lovelace' });
+    expect(within(adaControl).getByRole('button', { name: 'Ja' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(within(adaControl).getByRole('button', { name: 'Nein' }));
+    expect(mutate).toHaveBeenCalledWith('/toggle_zug_anreise/', { id: 7 }, false);
+    expect(await screen.findByText('Zuganreise wurde gespeichert.', { selector: '.app-toast-description' })).toBeInTheDocument();
+
+    const printRegion = document.querySelector('section[aria-label="Zuganreise-Druckliste"]');
+    const printTable = within(printRegion).getByRole('table', { hidden: true });
+    expect([...printTable.querySelectorAll('a[href^="/kid_details/"]')].map(link => link.textContent)).toEqual([
+      'Ada Lovelace',
+    ]);
+    expect(within(printTable).queryByRole('button', { hidden: true })).not.toBeInTheDocument();
+  });
+
+  it('separates the Zugabreise presence indicator from the printable kid name', () => {
+    render(<TrainPage departure mutate={vi.fn()} data={{
+      kids: [{
+        id: 7,
+        full_name: 'Ada Lovelace',
+        present: false,
+        train_departure: false,
+        departure_note: '',
+        youth_ticket: false,
+        age: 14,
+        registrant_name: 'Grace Hopper',
+        registrant_phone: '+4312345',
+        siblings: '',
+      }],
+      totals: { train_departure: 0 },
+    }} />);
+
+    const kidLink = screen.getByRole('link', { name: 'Ada Lovelace ❌' });
+    expect(kidLink).toHaveTextContent('Ada Lovelace ❌');
+    expect(kidLink.querySelector('.kid-presence-indicator')).toHaveTextContent('❌');
   });
 
   it('keeps Zugabreise controls on their write interfaces and confirms successful saves', async () => {
@@ -109,7 +200,18 @@ describe('attendance pages', () => {
       totals: { train_departure: 0 },
     }} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Nein' }));
+    const departureControl = screen.getByRole('group', {
+      name: 'Zugabreise für Ada Lovelace',
+    });
+    const yes = within(departureControl).getByRole('button', { name: 'Ja' });
+    const no = within(departureControl).getByRole('button', { name: 'Nein' });
+    expect(yes).toHaveAttribute('aria-pressed', 'false');
+    expect(no).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(no);
+    expect(mutate).not.toHaveBeenCalled();
+
+    fireEvent.click(yes);
     expect(mutate).toHaveBeenCalledWith('/toggle_zug_abreise/', { id: 7 }, false);
     const success = await screen.findByText('Zugabreise wurde gespeichert.', { selector: '.app-toast-description' });
     expect(success.closest('.app-toast')).toHaveAttribute('data-type', 'success');
@@ -149,7 +251,7 @@ describe('attendance pages', () => {
     }} />);
 
     expect(rowNames()).toEqual(['Ada Alpha', 'Berta Beta', 'Clara Charlie']);
-    fireEvent.click(within(screen.getByRole('link', { name: 'Clara Charlie' }).closest('tr')).getByRole('button', { name: 'Nein' }));
+    fireEvent.click(within(screen.getByRole('link', { name: 'Clara Charlie' }).closest('tr')).getByRole('button', { name: 'Ja' }));
     await waitFor(() => expect(mutate).toHaveBeenCalledWith('/toggle_zug_abreise/', { id: 3 }, false));
 
     const updatedKids = initialKids.map(item => item.id === 3 ? { ...item, train_departure: true } : item);
@@ -185,7 +287,7 @@ describe('attendance pages', () => {
       totals: { train_departure: 0 },
     }} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Nein' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ja' }));
 
     await expectErrorToastOnly('Die Zugabreise konnte nicht gespeichert werden.');
   });
@@ -233,9 +335,12 @@ describe('attendance pages', () => {
     render(<App fetchImpl={fetchImpl} />);
     const claraRow = (await screen.findByRole('link', { name: 'Clara Charlie' })).closest('tr');
     expect(rowNames()).toEqual(['Ada Alpha', 'Berta Beta', 'Clara Charlie']);
-    fireEvent.click(within(claraRow).getByRole('button', { name: 'Nein' }));
+    fireEvent.click(within(claraRow).getByRole('button', { name: 'Ja' }));
 
-    await waitFor(() => expect(within(claraRow).getByRole('button', { name: 'Ja' })).toBeInTheDocument());
+    await waitFor(() => expect(within(claraRow).getByRole('button', {
+      name: 'Ja',
+      pressed: true,
+    })).toBeInTheDocument());
     expect(rowNames()).toEqual(['Ada Alpha', 'Berta Beta', 'Clara Charlie']);
     expect(screen.getByRole('button', { name: 'Zugabreise: 2 sortieren' })).toBeInTheDocument();
     await waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(4));

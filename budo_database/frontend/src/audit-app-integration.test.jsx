@@ -43,6 +43,7 @@ describe('Audit-Log application integration', () => {
     window.history.pushState({}, '', '/audit/');
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(response(bootstrap({
+        is_superuser: true,
         view_auditevent: true,
         export_auditevent: false,
       })))

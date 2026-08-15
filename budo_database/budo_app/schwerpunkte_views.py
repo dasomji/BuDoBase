@@ -34,7 +34,6 @@ from .utils import (
     cache_user_profile,
     get_active_kid_or_404,
     get_active_turnus,
-    get_turnus_data_optimized,
     parse_json_body,
     safe_get_object_or_404,
 )
@@ -196,47 +195,6 @@ class MealUpdate(ReactPageTemplateMixin, LoginRequiredMixin, UpdateView):
             meal_formset.save()
             return redirect(self.get_success_url())
         return self.render_to_response(self.get_context_data(form=form))
-
-
-@login_required
-@cache_user_profile
-def swp_dashboard(request):
-    if not request.user_profile:
-        messages.error(
-            request, "Profile not found. Please contact an administrator.")
-        return redirect('dashboard')
-
-    turnus_data = get_turnus_data_optimized(request.active_turnus)
-    kids = turnus_data['kids']
-    schwerpunkte = turnus_data['schwerpunkte']
-
-    schwerpunkte_u = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=request.active_turnus, schwerpunktzeit__woche='u'
-    ).select_related('ort', 'schwerpunktzeit').prefetch_related('betreuende')
-
-    schwerpunkte_data = []
-    for swp in schwerpunkte:
-        if swp.ort:
-            schwerpunkte_data.append({
-                'id': swp.id,
-                'name': swp.swp_name,
-                'koordinaten': swp.ort.koordinaten,
-                'kind': 'schwerpunkt',
-            })
-    auslagerorte = turnus_data['auslagerorte']
-
-    context = {
-        "profil": request.user_profile,
-        "kids": kids,
-        "schwerpunkte": schwerpunkte,
-        'orte_json': json.dumps({
-            'orte': schwerpunkte_data,
-        }),
-        "auslagerorte": auslagerorte,
-        "schwerpunkte_u": schwerpunkte_u,
-    }
-
-    return render_react_page(request, context)
 
 
 @login_required

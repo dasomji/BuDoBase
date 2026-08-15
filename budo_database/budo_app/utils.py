@@ -119,7 +119,7 @@ def get_turnus_data_optimized(turnus):
 
     if cached_data is None:
         kids = Kinder.objects.filter(turnus=turnus).select_related(
-            'turnus', 'spezial_familien'
+            'turnus'
         ).prefetch_related(
             'schwerpunkte', 'notizen', 'geld'
         ).order_by('kid_vorname')

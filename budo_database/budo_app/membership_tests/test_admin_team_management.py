@@ -68,6 +68,21 @@ class AdminTeamManagementTests(TestCase):
         created = Turnus.objects.get(pk=response.json()["id"])
         self.assertFalse(TurnusMembership.objects.filter(user=self.admin, turnus=created).exists())
 
+    def test_turnus_creation_rejects_a_non_saturday_start_date(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("turnus-create-api"),
+            {"turnus_nr": 5, "turnus_beginn": "2027-07-04"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json(),
+            {"detail": "Der Turnus muss an einem Samstag beginnen."},
+        )
+        self.assertFalse(Turnus.objects.filter(turnus_nr=5).exists())
+
     def test_product_admin_page_is_reachable_ahead_of_django_admin(self):
         self.client.force_login(self.admin)
         response = self.client.get(reverse("admin-team-overview-page"))
