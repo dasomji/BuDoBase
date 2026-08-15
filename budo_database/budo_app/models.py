@@ -40,13 +40,6 @@ class Profil(models.Model):
         ("XL", "X-largie"),
     ]
 
-    ROLLEN = (
-        ("b", "Betreuer:in"),
-        ("k", "Küche"),
-        ("o", "Organisator"),
-        ("f", "Freiwillige:r")
-    )
-
     ESSEN = (
         ("ft", "Flexitarisch"),
         ("vt", "Vegetarisch"),
@@ -61,14 +54,6 @@ class Profil(models.Model):
     allergien = models.CharField(max_length=500, blank=True, default="")
     coffee = models.CharField(max_length=500, blank=True,
                               default="", help_text="Wie magst du deinen Kaffee?")
-    rolle = models.CharField(
-        max_length=1,
-        choices=ROLLEN,
-        blank=True,
-        default="b",
-        help_text="Was ist deine Rolle im Team?"
-    )
-
     essen = models.CharField(
         max_length=2,
         choices=ESSEN,
@@ -77,8 +62,13 @@ class Profil(models.Model):
         help_text="Was möchtest du essen?"
     )
 
-    turnus = models.ForeignKey(
-        "Turnus", on_delete=models.SET_NULL, null=True, blank=True, related_name="teamer"
+    # Selection is working context, not an authorization grant.
+    selected_turnus = models.ForeignKey(
+        "Turnus",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="selected_by_profiles",
     )
 
     budo_family = models.CharField(
@@ -95,6 +85,19 @@ class Profil(models.Model):
     def __str__(self):
         return self.rufname
 
+    def clean(self):
+        super().clean()
+        from .memberships import has_approved_membership
+
+        if (
+            self.selected_turnus_id is not None
+            and self.user_id is not None
+            and not has_approved_membership(self.user, self.selected_turnus_id)
+        ):
+            raise ValidationError(
+                {"selected_turnus": "Der ausgewählte Turnus erfordert eine Mitgliedschaft."}
+            )
+
     def get_food(self):
         if self.essen == "ft":
             return "🥩 Flexitarisch"
@@ -103,23 +106,8 @@ class Profil(models.Model):
         if self.essen == "vn":
             return "🌱 Vegan"
 
-    def get_rolle(self):
-        return dict(self.ROLLEN).get(self.rolle)
-
     def get_geld_sum(self):
         return sum(t.amount for t in self.betreuerinnen_geld.all())
-
-
-class SpezialFamilien(models.Model):
-    name = models.CharField(max_length=255)
-    turnus = models.ForeignKey(
-        "Turnus", on_delete=models.SET_NULL, null=True, blank=True, related_name="spezial_familien")
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        verbose_name_plural = "Spezialfamilien"
 
 
 class Kinder(models.Model):
@@ -208,8 +196,6 @@ class Kinder(models.Model):
         max_length=20, null=True, default="", blank=True)
     budo_family = models.CharField(
         max_length=30, choices=BUDO_FAMILIES, null=True, blank=True)
-    spezial_familien = models.ForeignKey(
-        "SpezialFamilien", on_delete=models.SET_NULL, null=True, blank=True, related_name="kinder")
     late_anreise = models.DateField(null=True, blank=True)
     early_abreise_date = models.DateField(null=True, blank=True)
     early_abreise_abholer = models.CharField(
@@ -587,6 +573,111 @@ class Turnus(models.Model):
         ]
 
 
+class TurnusMembership(models.Model):
+    class FunctionalRole(models.TextChoices):
+        LEITUNG = "leitung", "Leitung"
+        TEAMER = "teamer", "Teamer"
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="turnus_memberships"
+    )
+    turnus = models.ForeignKey(
+        Turnus, on_delete=models.CASCADE, related_name="memberships"
+    )
+    functional_role = models.CharField(
+        max_length=10,
+        choices=FunctionalRole.choices,
+        default=FunctionalRole.TEAMER,
+    )
+    team_label = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "turnus"), name="unique_user_turnus_membership"
+            )
+        ]
+
+    @property
+    def is_leitung(self):
+        return self.functional_role == self.FunctionalRole.LEITUNG
+
+    def __str__(self):
+        return f"{self.user} – {self.turnus} ({self.get_functional_role_display()})"
+
+
+class TurnusJoinRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ausstehend"
+        APPROVED = "approved", "Angenommen"
+        REJECTED = "rejected", "Abgelehnt"
+        CANCELLED = "cancelled", "Storniert"
+        SUPERSEDED = "superseded", "Ersetzt"
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="turnus_join_requests"
+    )
+    turnus = models.ForeignKey(
+        Turnus, on_delete=models.CASCADE, related_name="join_requests"
+    )
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.PENDING
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "turnus"),
+                condition=models.Q(status="pending"),
+                name="unique_pending_user_turnus_join_request",
+            )
+        ]
+        ordering = ("-created_at", "-id")
+
+    def __str__(self):
+        return f"{self.user} – {self.turnus} ({self.get_status_display()})"
+
+
+class TurnusJoinRequestNotification(models.Model):
+    """A durable, recipient-specific notification created with a join request."""
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENDING = "sending", "Sending"
+        DELIVERED = "delivered", "Delivered"
+        FAILED = "failed", "Failed"
+
+    join_request = models.ForeignKey(
+        TurnusJoinRequest, on_delete=models.CASCADE, related_name="notifications"
+    )
+    recipient_user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="join_request_notifications"
+    )
+    recipient_email = models.EmailField(blank=True)
+    state = models.CharField(
+        max_length=10, choices=State.choices, default=State.PENDING
+    )
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("join_request", "recipient_user"),
+                name="unique_join_request_notification_recipient",
+            )
+        ]
+        ordering = ("id",)
+        indexes = [
+            models.Index(fields=("state", "claimed_at"), name="join_notify_claim_idx")
+        ]
+
+
 class HappyCleaning(models.Model):
     """One numbered Happy Cleaning event inside a Turnus."""
 
@@ -696,8 +787,10 @@ class HappyCleaningStation(models.Model):
         if (
             self.responsible_profile_id
             and self.happy_cleaning_id
-            and self.responsible_profile.turnus_id
-            != self.happy_cleaning.turnus_id
+            and not TurnusMembership.objects.filter(
+                user_id=self.responsible_profile.user_id,
+                turnus_id=self.happy_cleaning.turnus_id,
+            ).exists()
         ):
             raise ValidationError({
                 "responsible_profile": (
@@ -927,6 +1020,44 @@ class AuditEvent(models.Model):
                 name="audit_resource_idx",
             ),
         ]
+
+
+class SecurityAuditEventManager(models.Manager.from_queryset(ImmutableAuditEventQuerySet)):
+    def create(self, **fields):
+        event = self.model(**fields)
+        event._audit_insert = True
+        event.save(force_insert=True, using=self._db)
+        return event
+
+
+class SecurityAuditEvent(models.Model):
+    """Minimal audit for denied operations that have no authorized Turnus scope."""
+
+    actor_id = models.BigIntegerField(null=True, blank=True)
+    action = models.CharField(max_length=100)
+    reason = models.CharField(max_length=40)
+    request_id = models.CharField(max_length=255)
+    attempted_turnus_id = models.BigIntegerField(null=True, blank=True)
+    occurred_at = models.DateTimeField(auto_now_add=True)
+
+    objects = SecurityAuditEventManager()
+
+    def save(self, *args, **kwargs):
+        if not getattr(self, "_audit_insert", False) or self.pk is not None:
+            raise ValidationError("Audit events are immutable.")
+        try:
+            return super().save(*args, **kwargs)
+        finally:
+            self._audit_insert = False
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError(
+            "Audit events may only be deleted by Turnus retention."
+        )
+
+    class Meta:
+        ordering = ("-occurred_at", "-id")
+        indexes = [models.Index(fields=("action", "-occurred_at"), name="security_audit_action_idx")]
 
 
 class Schwerpunkte(models.Model):

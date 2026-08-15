@@ -1,12 +1,14 @@
 import json
 import re
 from dataclasses import dataclass
-from typing import Iterable
+from typing import BinaryIO
 
 from django.contrib.auth.models import AbstractBaseUser
 from rest_framework.exceptions import APIException
+from django.db import transaction
 
 from budo_app.audit import AuditEventData, actor_label_for_user, record_audit_event
+from budo_app.export_snapshots import create_export_snapshot, stream_snapshot
 from budo_app.audit_queries import (
     AuditFilters,
     filtered_audit_events,
@@ -37,8 +39,12 @@ class AuditExportCommand:
 
 @dataclass(frozen=True)
 class AuditExportResult:
-    lines: Iterable[str]
+    snapshot: BinaryIO
     filename: str
+
+    @property
+    def lines(self):
+        return stream_snapshot(self.snapshot)
 
 
 def _json_line(value):
@@ -54,12 +60,14 @@ def _safe_filename_label(label):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", label).strip("-") or "turnus"
 
 
-def _stream_records(header, queryset):
+def _materialize_records(header, queryset):
+    """Serialize protected rows while the caller's membership lock is held."""
     yield _json_line(header)
     for event in queryset.iterator(chunk_size=500):
         yield _json_line(serialize_audit_event(event))
 
 
+@transaction.atomic
 def export_audit_events(command):
     turnus = selected_audit_turnus(command.user, command.filters.turnus)
     if turnus is None:
@@ -113,7 +121,17 @@ def export_audit_events(command):
         "turnus": {"id": turnus.id, "label": str(turnus)},
         "snapshot_id": snapshot_id,
     }
+    # Materialize into a bounded-memory immutable file while the membership
+    # authorization lock is held. The response later reads no database rows.
+    snapshot = create_export_snapshot()
+    try:
+        for line in _materialize_records(header, queryset):
+            snapshot.write(line.encode("utf-8"))
+        snapshot.seek(0)
+    except Exception:
+        snapshot.close()
+        raise
     return AuditExportResult(
-        lines=_stream_records(header, queryset),
+        snapshot=snapshot,
         filename=f"audit-{_safe_filename_label(str(turnus))}.log",
     )

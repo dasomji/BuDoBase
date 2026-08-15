@@ -1,16 +1,16 @@
 from django.http import Http404
 from django.urls import reverse
 
-from budo_app.models import Profil
+from budo_app.memberships import selected_turnus_for
 
 
 def active_turnus_id(request):
-    """Return the request user's selected Turnus without loading its profile."""
-    return (
-        Profil.objects.filter(user_id=request.user.id)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
+    """Return the request user's approved selected Turnus."""
+    if hasattr(request, "active_turnus"):
+        turnus = request.active_turnus
+        return turnus.pk if turnus is not None else None
+    turnus = selected_turnus_for(request.user)
+    return turnus.pk if turnus is not None else None
 
 
 def require_active_turnus_id(request):
@@ -45,13 +45,19 @@ def serialize_datetime(value):
     return value.isoformat() if value else None
 
 
+def author_name(user):
+    profile = getattr(user, "profil", None)
+    rufname = getattr(profile, "rufname", "")
+    return rufname.strip() if rufname and rufname.strip() else user.get_username()
+
+
 def _serialize_text_entry(entry, text):
     return {
         "id": entry.id,
         "text": text or "",
         "date": serialize_datetime(entry.date_added),
         "day": entry.date_added.strftime("%d.%m.") if entry.date_added else "",
-        "author": entry.added_by.username,
+        "author": author_name(entry.added_by),
     }
 
 
@@ -106,7 +112,7 @@ def serialize_transaction(transaction):
             if transaction.date_added
             else ""
         ),
-        "author": transaction.added_by.username,
+        "author": author_name(transaction.added_by),
     }
 
 

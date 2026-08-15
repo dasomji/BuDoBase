@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 from unittest.mock import patch
 
@@ -5,6 +6,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     Auslagerorte,
     AuslagerorteImage,
@@ -78,8 +80,10 @@ class PlacesContractTests(TestCase):
             username="places-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.rufname = "Pia"
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.place = Auslagerorte.objects.create(
             name="Ada Hütte",
@@ -184,7 +188,7 @@ class PlacesContractTests(TestCase):
         self.assertEqual(place["notes"], [{
             "id": note.id,
             "text": "Wasser abdrehen",
-            "author": "places-user",
+            "author": "Pia",
             "date": note.date_added.isoformat(),
             "day": note.date_added.strftime("%d.%m."),
             "photos": [],

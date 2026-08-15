@@ -373,7 +373,7 @@ class VersionedChildWriteTests(TransactionTestCase):
                 write.child.kid_vorname = "Must roll back"
                 write.save_child(update_fields=("kid_vorname",))
                 write.child.turnus = self.other_turnus
-                write.child.save(update_fields=("turnus",))
+                write.child.save()
 
         self.child.refresh_from_db()
         self.assertEqual(self.child.turnus_id, self.turnus.id)

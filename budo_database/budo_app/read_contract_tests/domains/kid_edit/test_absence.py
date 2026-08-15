@@ -1,9 +1,11 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     AuditEvent,
     HappyCleaning,
@@ -25,8 +27,9 @@ class KidEditAbsenceContractTests(TestCase):
             username="kid-edit-absence-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.kid = Kinder.objects.create(
             kid_index="ABSENCE-163-07",

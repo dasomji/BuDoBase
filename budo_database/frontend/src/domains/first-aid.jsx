@@ -41,7 +41,7 @@ export function EntryPhotoStrip({ childName, entryId, photoKind = entryPhotoKind
 export function FirstAidEntry({ entry, childName, showChildLink = false }) {
   const name = childName || entry.kid;
   return (
-    <li className="min-w-0 max-w-full">
+    <li className="min-w-0 max-w-full break-words">
       <p>
         <strong>{entry.author}</strong> am {formatGermanDate(entry.date)}:{' '}
         {showChildLink
@@ -57,7 +57,7 @@ export function FirstAidEntry({ entry, childName, showChildLink = false }) {
 export function NoteEntry({ entry, childName, showChildLink = false }) {
   const name = childName || entry.kid;
   return (
-    <li className="min-w-0 max-w-full">
+    <li className="min-w-0 max-w-full break-words">
       <p>
         <strong>{entry.author}</strong> am {formatGermanDate(entry.date)}:{' '}
         {showChildLink

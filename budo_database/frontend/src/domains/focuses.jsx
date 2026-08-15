@@ -1,6 +1,3 @@
-import { useState } from 'react';
-import { PlusIcon } from 'lucide-react';
-
 import {
   Card,
   Column,
@@ -17,7 +14,6 @@ import {
   TableRow,
   TableScroll,
 } from '../components';
-import { GoogleMapCard } from '../components/google-map';
 import { Button } from '../components/ui/button';
 import { NativeSelect } from '../components/ui/input';
 import { displayOrPlaceholder, formatGermanDate, linkKid, MealTable, NotFoundPage, yesNo } from './shared';
@@ -31,50 +27,6 @@ const focusKidColumns = [
   { key: 'drugs', label: 'Medikamente', render: row => displayOrPlaceholder(row.drugs) },
   { key: 'illness', label: 'Gesundheitliches', render: row => displayOrPlaceholder(row.illness) },
 ];
-
-const MAP_WEEK_COOKIE = 'swp_map_week';
-
-const storedMapWeek = () => {
-  if (typeof document === 'undefined') return 'w1';
-  const value = document.cookie.split('; ').find(cookie => cookie.startsWith(`${MAP_WEEK_COOKIE}=`))?.split('=')[1];
-  return value === 'w2' ? 'w2' : 'w1';
-};
-
-export function FocusDashboardPage({ data }) {
-  const [mapWeek, setMapWeek] = useState(storedMapWeek);
-  const group = week => data.focuses.filter(focus => focus.week === week);
-  const selectMapWeek = week => {
-    setMapWeek(week);
-    document.cookie = `${MAP_WEEK_COOKIE}=${week}; Path=/; Max-Age=31536000; SameSite=Lax`;
-  };
-  const columns = [
-    {
-      key: 'name',
-      label: 'Name',
-      render: focus => <strong><a href={`/schwerpunkt/${focus.id}/`}>{focus.name}{!focus.meals_assigned && ' ❗🍔'}</a></strong>,
-    },
-    { key: 'place', label: 'Ort', render: focus => focus.place_id ? <a href={`/auslagerorte/${focus.place_id}/`}>{focus.place}</a> : '---' },
-    { key: 'carers', label: 'Betreuende', render: focus => focus.carers || '---' },
-    { key: 'off_site', label: 'Auslagern', render: focus => yesNo(focus.off_site) },
-    { key: 'kids', label: 'Kinder', render: focus => focus.kid_count, sortValue: focus => focus.kid_count },
-  ];
-  const tables = [['u', 'Unklar Wann'], ['w1', 'Woche 1'], ['w2', 'Woche 2']].filter(([week]) => group(week).length || week !== 'u');
-  return <Columns className="grid grid-cols-1 items-start min-[901px]:h-[calc(100svh-var(--app-header-height,0px))] min-[901px]:min-h-0 min-[901px]:grid-cols-[auto_minmax(0,1fr)] min-[901px]:overflow-hidden">
-    <Column id="left-column" className="min-w-0 min-[901px]:overflow-y-auto">
-      {tables.map(([week, title]) => <Card title={title} className="transparent" key={week} headerAction={week !== 'u' ? <Button href={`/swp-einteilung-${week}`}>Kinder einteilen</Button> : null}><DataTable columns={columns} rows={group(week)} /></Card>)}
-    </Column>
-    <Column id="right-column" className="min-w-0 min-[901px]:[&_.card-info-container]:min-h-0 min-[901px]:[&_.card-info-content]:min-h-0 min-[901px]:[&_.interactive-map]:h-full min-[901px]:[&_.interactive-map]:min-h-70 min-[901px]:[&>#swp-map]:flex min-[901px]:[&>#swp-map]:h-full min-[901px]:[&>#swp-map]:min-h-0 min-[901px]:[&>#swp-map]:flex-col min-[901px]:[&>#swp-map:not(.closed-card)>.card-info-container]:flex-1">
-      <GoogleMapCard
-        apiKey={data.google_maps_browser_api_key}
-        mapId={data.google_maps_map_id}
-        places={data.focuses.filter(focus => focus.week === mapWeek && focus.coordinates).map(focus => ({ id: focus.id, name: focus.name, coordinates: focus.coordinates, href: `/schwerpunkt/${focus.id}/` }))}
-        headerAction={<span className="inline-flex gap-1" role="group" aria-label="Kartenwoche">
-          {['w1', 'w2'].map(week => <Button key={week} type="button" variant={mapWeek === week ? 'default' : 'outline'} aria-pressed={mapWeek === week} onClick={() => selectMapWeek(week)}>Woche {week.slice(1)}</Button>)}
-        </span>}
-      />
-    </Column>
-  </Columns>;
-}
 
 function FocusDetails({ focus, kidCount }) {
   const fields = [
@@ -93,12 +45,26 @@ export function FocusDetailPage({ data, id }) {
   const focus = data.focus;
   if (!focus) return <NotFoundPage />;
   const kids = data.kids;
-  const mapPlaces = focus.place_id ? [{ id: focus.place_id, name: focus.place, coordinates: focus.coordinates }] : [];
-  return <Columns><Column id="left-column"><Card title={focus.name} actions={<Button href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</Button>}><FocusDetails focus={focus} kidCount={kids.length} /></Card><Card title="Essen" actions={<Button href={`/swpmeals/${focus.id}`}>Essen bearbeiten</Button>}><MealTable focus={focus} /></Card><GoogleMapCard apiKey={data.google_maps_browser_api_key} mapId={data.google_maps_map_id} places={mapPlaces} /></Column><Column id="right-column"><DataTable columns={focusKidColumns} rows={kids} /></Column></Columns>;
+  return <Columns className="grid min-w-0 grid-cols-1 items-start">
+    <Column id="focus-detail-content" className="w-full min-w-0">
+      <section className="grid min-w-0 grid-cols-1 items-start gap-4 min-[901px]:grid-cols-2" aria-label="Schwerpunktübersicht">
+        <Card className="min-w-0" title={focus.name} actions={<Button href={`/schwerpunkt/${focus.id}/update`}>SWP bearbeiten</Button>}><FocusDetails focus={focus} kidCount={kids.length} /></Card>
+        <Card className="min-w-0" title="Essen" actions={<Button href={`/swpmeals/${focus.id}`}>Essen bearbeiten</Button>}><MealTable focus={focus} /></Card>
+      </section>
+      <DataTable columns={focusKidColumns} rows={kids} />
+    </Column>
+  </Columns>;
 }
 
-export function FocusFormPage({ data, id }) {
+const allocationHref = week => `/swp-einteilung-${week === 'w2' ? 'w2' : 'w1'}`;
+
+const focusCreateOriginWeek = () => (
+  new URLSearchParams(window.location.search).get('from') === 'w2' ? 'w2' : 'w1'
+);
+
+export function FocusFormPage({ data, id, cancelWeek = 'w1' }) {
   const focus = id ? data.focus : null;
+  const focusWeek = data.focus_times.find(item => String(item.id) === String(focus?.time_id))?.week;
   const fields = [
     { name: 'schwerpunktzeit', label: 'Schwerpunktzeit', type: 'select', value: focus?.time_id, options: data.focus_times.map(item => ({ value: item.id, label: item.label })) },
     { name: 'swp_name', label: 'Schwerpunktname', value: focus?.name, required: true },
@@ -107,7 +73,7 @@ export function FocusFormPage({ data, id }) {
     { name: 'betreuende', label: 'Betreuende', type: 'checkbox-group', value: focus?.carer_ids || [], options: data.team.map(item => ({ value: item.id, label: item.rufname })) },
     { name: 'beschreibung', label: 'Beschreibung', type: 'textarea', value: focus?.description },
   ];
-  return <Columns><Column id="single-column"><Card title={`Schwerpunkt ${focus ? 'updaten' : 'erstellen'}`}><NativeForm token={data.csrf_token} action={focus ? `/schwerpunkt/${focus.id}/update` : '/schwerpunkt/create'} fields={fields}><Button href="/swp-dashboard/" variant="secondary">Cancel</Button></NativeForm></Card></Column></Columns>;
+  return <Columns><Column id="single-column"><Card title={`Schwerpunkt ${focus ? 'updaten' : 'erstellen'}`}><NativeForm token={data.csrf_token} action={focus ? `/schwerpunkt/${focus.id}/update` : '/schwerpunkt/create'} fields={fields}><Button href={allocationHref(focusWeek || cancelWeek)} variant="secondary">Cancel</Button></NativeForm></Card></Column></Columns>;
 }
 
 export function MealsPage({ data, id }) {
@@ -173,7 +139,7 @@ export const focusRoutes = [
     title: 'Neuer SWP',
     domain: 'focuses',
     readContractKey: 'focus-create',
-    render: ({ data }) => <FocusFormPage data={data} />,
+    render: ({ data }) => <FocusFormPage data={data} cancelWeek={focusCreateOriginWeek()} />,
   },
   {
     pattern: /^\/schwerpunkt\/(\d+)\/update$/,
@@ -204,19 +170,5 @@ export const focusRoutes = [
     params: match => ({ id: match[1] }),
     resolveTitle: selectedFocusTitle,
     render: ({ route, data }) => <MealsPage data={data} id={route.id} />,
-  },
-  {
-    pattern: /^\/swp-dashboard$/,
-    page: 'focus-dashboard',
-    title: 'Schwerpunkte',
-    domain: 'focuses',
-    readContractKey: 'focus-dashboard',
-    headerAction: () => (
-      <Button className="mobile-icon-action" size="responsive-icon" href="/schwerpunkt/create" aria-label="SWP hinzufügen">
-        <span className="desktop-action-label">SWP hinzufügen</span>
-        <PlusIcon className="mobile-action-label" aria-hidden="true" />
-      </Button>
-    ),
-    render: ({ data }) => <FocusDashboardPage data={data} />,
   },
 ];

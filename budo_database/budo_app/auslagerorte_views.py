@@ -7,23 +7,27 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.utils.decorators import method_decorator
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView, FormView, UpdateView
 
 from . import models
 from .forms import AuslagerForm, AuslagerNotizForm, AuslagerorteImageForm
 from .location_services import BUDO_PLACE_NAME, update_auslagerorte_coordinates
+from .memberships import membership_scoped_read
 from .models import (
     Auslagerorte,
     AuslagerorteImage,
-    Profil,
     Schwerpunkte,
 )
 from .react_views import ReactPageTemplateMixin, render_react_page
 
 logger = logging.getLogger(__name__)
 
+_ADDRESS_FIELDS = ("strasse", "ort", "bundesland", "postleitzahl", "land")
 
+
+@method_decorator(membership_scoped_read, name="dispatch")
 class AuslagerorteUpdate(
     ReactPageTemplateMixin,
     LoginRequiredMixin,
@@ -33,8 +37,7 @@ class AuslagerorteUpdate(
     form_class = AuslagerForm
 
     def get_context_data(self, **kwargs):
-        profil = Profil.objects.get(user=self.request.user)
-        active_turnus = profil.turnus
+        active_turnus = self.request.active_turnus
         schwerpunkte = Schwerpunkte.objects.filter(
             schwerpunktzeit__turnus=active_turnus)
         auslagerorte = Auslagerorte.objects.all()
@@ -61,6 +64,7 @@ class AuslagerorteUpdate(
         return reverse_lazy('auslagerorte-detail', kwargs={'pk': self.object.pk})
 
 
+@method_decorator(membership_scoped_read, name="dispatch")
 class AuslagerorteDetail(
     ReactPageTemplateMixin,
     LoginRequiredMixin,
@@ -71,8 +75,7 @@ class AuslagerorteDetail(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        profil = Profil.objects.get(user=self.request.user)
-        active_turnus = profil.turnus
+        active_turnus = self.request.active_turnus
         schwerpunkte = Schwerpunkte.objects.filter(
             schwerpunktzeit__turnus=active_turnus)
         auslagerorte = Auslagerorte.objects.all()
@@ -175,6 +178,12 @@ class AuslagerorteCreate(
         return context
 
     def form_valid(self, form):
+        # The reduced create form intentionally omits address controls. Apply
+        # their cleaned empty values so the model's country default cannot
+        # prevent reverse geocoding from filling the complete address.
+        for field_name in _ADDRESS_FIELDS:
+            if field_name not in form.data:
+                setattr(form.instance, field_name, form.cleaned_data[field_name])
         form.instance = update_auslagerorte_coordinates(form.instance)
         for warning in getattr(form.instance, '_location_warnings', []):
             messages.warning(self.request, warning)
@@ -234,9 +243,9 @@ class AuslagerorteImageUpload(
 
 
 @login_required
+@membership_scoped_read
 def auslagerorte_list(request):
-    profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
+    active_turnus = request.active_turnus
     kids = models.Kinder.objects.all().values()
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)

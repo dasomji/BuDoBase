@@ -1,8 +1,11 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+
+from budo_app.memberships import create_membership, select_turnus
 
 from budo_app.models import (
     Auslagerorte,
@@ -30,8 +33,9 @@ class BootstrapContractTests(TestCase):
             email="bootstrap@example.test",
         )
         self.user.profil.rufname = "Bootstrap Teamer"
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
 
         self.active_kid = Kinder.objects.create(
             kid_index="T2-1",
@@ -123,12 +127,23 @@ class BootstrapContractTests(TestCase):
                 "change_kids", "change_profiles", "change_focuses",
                 "change_places", "delete_places", "delete_place_images",
                 "change_tags", "delete_tags", "view_auditevent", "export_auditevent",
-                "admin_settings",
+                "admin_settings", "manage_teams", "is_superuser",
             },
         )
         self.assertFalse(payload["permissions"]["admin_settings"])
+        self.assertFalse(payload["permissions"]["is_superuser"])
         for unrelated in ("team", "focus_times", "totals", "activity", "turnuses"):
             self.assertNotIn(unrelated, payload)
+
+    def test_bootstrap_exposes_superuser_status_for_navigation_visibility(self):
+        self.user.is_superuser = True
+        self.user.save(update_fields=["is_superuser"])
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("bootstrap-api"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["permissions"]["is_superuser"])
 
     def test_only_bootstrap_consumes_each_queued_message_once(self):
         self.client.force_login(self.user)
@@ -136,6 +151,7 @@ class BootstrapContractTests(TestCase):
             reverse("profil-edit"),
             {
                 "rufname": "Bootstrap Teamer",
+                "email": "bootstrap@example.test",
                 "allergien": "",
                 "coffee": "",
                 "rolle": "b",

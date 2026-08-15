@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """RED contract for stable, metadata-only audit list reads (#164-05)."""
 
 import json
@@ -21,7 +22,8 @@ from budo_app.audit import (
 )
 from budo_app.audit_queries import FILTER_NAMES
 from budo_app.audit_tests.test_kid_edit_audit_schema import valid_details
-from budo_app.models import AuditEvent, Turnus
+from budo_app.memberships import create_membership, select_turnus
+from budo_app.models import AuditEvent, Turnus, TurnusMembership
 from budo_app.read_contracts.registry import get_contract
 
 
@@ -42,8 +44,9 @@ class AuditListContractTests(TestCase):
         self.user.user_permissions.add(
             Permission.objects.get(codename="view_auditevent"),
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.url = reverse(
             "route-data-api", kwargs={"contract_key": "audit-events"},
@@ -267,8 +270,8 @@ class AuditListContractTests(TestCase):
                 turnus = Turnus.objects.create(
                     turnus_nr=index, turnus_beginn=date(2026, 9, 1),
                 )
-                self.user.profil.turnus = turnus
-                self.user.profil.save(update_fields=["turnus"])
+                create_membership(user=self.user, turnus=turnus)
+                select_turnus(self.user, turnus)
                 details = {**valid_details(), **mutation}
                 self.event(
                     action="kid.edit", details=details, turnus=turnus,

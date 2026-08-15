@@ -13,6 +13,11 @@ from .happy_cleaning_page_views import (
     print_number_page,
 )
 from .kid_edit_views import kid_edit_page
+from .join_request_views import request_turnus_membership
+from .join_request_decision_views import decide_turnus_join_request
+from .admin_team_views import create_leitung_membership, create_turnus, set_membership_leadership
+from .excel_views import upload_turnus_excel
+from .team_membership_views import create_teamer_membership, remove_team_membership, update_team_membership_label
 
 
 def legacy_slashless_page(route, view, *, name):
@@ -31,6 +36,27 @@ def legacy_slashless_page(route, view, *, name):
 
 
 urlpatterns = [
+    path('api/turnusse/', create_turnus, name='turnus-create-api'),
+    path(
+        'api/turnusse/<int:turnus_id>/excel/',
+        upload_turnus_excel,
+        name='turnus-excel-upload-api',
+    ),
+    path(
+        'api/join-requests/<int:join_request_id>/decision/',
+        decide_turnus_join_request,
+        name='join-request-decision-api',
+    ),
+    path(
+        'api/turnusse/<int:turnus_id>/join-requests/',
+        request_turnus_membership,
+        name='turnus-join-request-api',
+    ),
+    path('api/admin/memberships/<int:membership_id>/role/', set_membership_leadership, name='admin-membership-role-api'),
+    path('api/admin/turnusse/<int:turnus_id>/leitung/', create_leitung_membership, name='admin-leitung-membership-create-api'),
+    path('api/turnusse/<int:turnus_id>/memberships/', create_teamer_membership, name='teamer-membership-create-api'),
+    path('api/memberships/<int:membership_id>/label/', update_team_membership_label, name='membership-label-api'),
+    path('api/memberships/<int:membership_id>/remove/', remove_team_membership, name='membership-remove-api'),
     path('settings/', admin_settings_page, name='admin-settings-page'),
     path(
         'api/settings/recalculate-travel-times/',
@@ -90,7 +116,6 @@ urlpatterns = [
     *legacy_slashless_page(
         'swpmeals/<int:pk>', MealUpdate.as_view(), name='swpmeals'
     ),
-    path("swp-dashboard/", views.swp_dashboard, name="swp-dashboard"),
     path("auslagerorte-list/", views.auslagerorte_list, name="auslagerorte-list"),
     *legacy_slashless_page(
         'auslagerorte/create',
@@ -106,6 +131,8 @@ urlpatterns = [
     ),
     path('auslagerorte/<int:pk>/upload-image/',
          AuslagerorteImageUpload.as_view(), name='auslagerorte-image-upload'),
+    path('toggle_zug_anreise/', views.toggle_zug_anreise,
+         name='toggle_zug_anreise'),
     path('toggle_zug_abreise/', views.toggle_zug_abreise,
          name='toggle_zug_abreise'),
     *legacy_slashless_page('kitchen', views.kitchen, name='kitchen'),
@@ -137,13 +164,9 @@ urlpatterns = [
     path('happy-cleaning/', views.happy_cleaning, name='happy_cleaning'),
     path('kindergesamtzahl/', views.kindergesamtzahl, name='kindergesamtzahl'),
     path('budo_familien/', views.budo_families, name='budo_familien'),
-    path('upload_spezialfamilien/', views.upload_spezialfamilien,
-         name='upload_spezialfamilien'),
-    path('spezial_familien/', views.spezial_familien, name='spezial_familien'),
     path('kindergeburtstage/', views.kindergeburtstage, name='kindergeburtstage'),
     path('update-birthdays-from-sv/', views.update_birthdays_from_sv,
          name='update_birthdays_from_sv'),
-    path('team/', views.team, name='team'),
 ]
 
 if settings.DEBUG:

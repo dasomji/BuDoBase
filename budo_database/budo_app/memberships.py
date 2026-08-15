@@ -1,0 +1,284 @@
+"""Public domain operations for approved Turnus memberships and selection."""
+
+from contextlib import contextmanager
+from functools import wraps
+
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.models import F
+
+from .models import Profil, Turnus, TurnusJoinRequest, TurnusMembership
+
+
+def membership_role_display(membership):
+    """Return the membership-specific team label, falling back to its role."""
+    return membership.team_label or membership.get_functional_role_display()
+
+
+def _synchronize_cached_profile(user, profile):
+    """Keep Django's reverse one-to-one cache aligned with stored selection."""
+    cached = user._state.fields_cache.get("profil")
+    if cached is not None:
+        cached.selected_turnus_id = profile.selected_turnus_id
+
+
+def lock_membership_scopes(*, user_ids, turnus_id):
+    """Lock membership parents in the one global order used by writers.
+
+    Commands which involve an actor and a target must acquire both User rows
+    before the Turnus. Sorting makes opposite-direction operations compatible.
+    """
+    ordered_user_ids = sorted(set(user_ids))
+    list(
+        get_user_model().objects.select_for_update()
+        .filter(pk__in=ordered_user_ids)
+        .order_by("pk")
+    )
+    Turnus.objects.select_for_update().get(pk=turnus_id)
+    list(
+        Profil.objects.select_for_update()
+        .filter(user_id__in=ordered_user_ids)
+        .order_by("user_id")
+    )
+
+
+def lock_membership_scope(*, user_id, turnus_id):
+    """Compatibility seam for workflows with a single participating user."""
+    lock_membership_scopes(user_ids=(user_id,), turnus_id=turnus_id)
+
+
+def approved_memberships_for(user):
+    """Return the sole authority-bearing membership query for ``user``."""
+    if not getattr(user, "is_authenticated", False):
+        return TurnusMembership.objects.none()
+    return TurnusMembership.objects.filter(user=user)
+
+
+def has_approved_membership(user, turnus):
+    """Say whether ``user`` has approved access to exactly ``turnus``."""
+    turnus_id = getattr(turnus, "pk", turnus)
+    return approved_memberships_for(user).filter(turnus_id=turnus_id).exists()
+
+
+def selected_profile_for_read(user):
+    """Return a profile only when its selection is membership-backed."""
+    if not getattr(user, "is_authenticated", False):
+        return None
+    profile = (
+        Profil.objects
+        .select_related("selected_turnus", "user")
+        .filter(
+            user_id=user.id,
+            selected_turnus__memberships__user_id=user.id,
+        )
+        .first()
+    )
+    return profile
+
+
+def selected_turnus_for_read(user):
+    """Return the membership-backed selection in one read query."""
+    profile = selected_profile_for_read(user)
+    return profile.selected_turnus if profile is not None else None
+
+
+def lock_selected_membership_for_read(user):
+    """Lock and return the membership that authorizes the stored selection."""
+    if not getattr(user, "is_authenticated", False):
+        return None
+    return (
+        approved_memberships_for(user)
+        .select_for_update(of=("self",))
+        .select_related("turnus", "user__profil")
+        .filter(turnus_id=F("user__profil__selected_turnus_id"))
+        .first()
+    )
+
+
+@transaction.atomic
+def create_membership(
+    *,
+    user,
+    turnus,
+    functional_role=TurnusMembership.FunctionalRole.TEAMER,
+    team_label="",
+):
+    """Create one approved membership through the public domain seam."""
+    lock_membership_scope(user_id=user.pk, turnus_id=turnus.pk)
+    membership = TurnusMembership(
+        user=user,
+        turnus=turnus,
+        functional_role=functional_role,
+        team_label=team_label,
+    )
+    membership.full_clean()
+    membership.save()
+    TurnusJoinRequest.objects.filter(
+        user=user,
+        turnus=turnus,
+        status=TurnusJoinRequest.Status.PENDING,
+    ).update(status=TurnusJoinRequest.Status.SUPERSEDED)
+    return membership
+
+
+@transaction.atomic
+def update_membership(membership, *, functional_role=None, team_label=None):
+    """Change authority and/or its independent descriptive label explicitly."""
+    lock_membership_scope(
+        user_id=membership.user_id,
+        turnus_id=membership.turnus_id,
+    )
+    membership = TurnusMembership.objects.select_for_update().get(pk=membership.pk)
+    update_fields = []
+    if functional_role is not None:
+        membership.functional_role = functional_role
+        update_fields.append("functional_role")
+    if team_label is not None:
+        membership.team_label = team_label
+        update_fields.append("team_label")
+    if not update_fields:
+        return membership
+    membership.full_clean()
+    membership.save(update_fields=update_fields)
+    return membership
+
+
+@transaction.atomic
+def remove_membership(membership):
+    """Remove approved access and repair a now-invalid selection atomically."""
+    lock_membership_scope(
+        user_id=membership.user_id,
+        turnus_id=membership.turnus_id,
+    )
+    membership = TurnusMembership.objects.select_for_update().get(pk=membership.pk)
+    user = membership.user
+    removed_turnus_id = membership.turnus_id
+    membership.delete()
+
+    profile = Profil.objects.select_for_update().get(user_id=user.pk)
+    if profile.selected_turnus_id == removed_turnus_id:
+        fallback = (
+            TurnusMembership.objects.select_for_update()
+            .filter(user_id=user.pk)
+            .order_by("turnus__turnus_beginn", "turnus_id")
+            .first()
+        )
+        profile.selected_turnus_id = fallback.turnus_id if fallback else None
+        profile.save(update_fields=("selected_turnus",))
+        _synchronize_cached_profile(user, profile)
+    return removed_turnus_id
+
+
+@transaction.atomic
+def select_turnus(user, turnus):
+    """Select an approved Turnus, without treating selection as authority."""
+    lock_membership_scope(user_id=user.pk, turnus_id=turnus.pk)
+    profile = Profil.objects.select_for_update().get(user=user)
+    membership = (
+        approved_memberships_for(user)
+        .select_for_update()
+        .filter(turnus_id=turnus.pk)
+        .first()
+    )
+    if membership is None:
+        raise ValidationError("Der ausgewählte Turnus erfordert eine Mitgliedschaft.")
+    profile.selected_turnus = turnus
+    profile.save(update_fields=("selected_turnus",))
+    _synchronize_cached_profile(user, profile)
+    return turnus
+
+
+@transaction.atomic
+def selected_turnus_for(user):
+    """Return selected Turnus only while an approved membership exists."""
+    if not getattr(user, "is_authenticated", False):
+        return None
+
+    profile = Profil.objects.select_for_update().filter(user=user).first()
+    if profile is None:
+        return None
+
+    memberships = approved_memberships_for(user).select_for_update()
+    membership = memberships.filter(turnus_id=profile.selected_turnus_id).first()
+    if membership is not None:
+        return membership.turnus
+
+    # A missing or revoked selection must never remain an authority source.
+    # Choose another approved membership deterministically, or clear the stale
+    # value so callers enter the awaiting-membership experience.
+    fallback_membership = (
+        memberships
+        .order_by("turnus__turnus_beginn", "turnus_id")
+        .first()
+    )
+    fallback_id = (
+        fallback_membership.turnus_id if fallback_membership is not None else None
+    )
+    profile.selected_turnus_id = fallback_id
+    profile.save(update_fields=("selected_turnus",))
+    _synchronize_cached_profile(user, profile)
+    return fallback_membership.turnus if fallback_membership is not None else None
+
+
+def scoped_turnus_for(user):
+    """Resolve authority exclusively through an approved selected membership."""
+    return selected_turnus_for(user)
+
+
+@contextmanager
+def authorized_turnus_scope(user):
+    """Hold the authority rows locked for the complete protected operation.
+
+    Membership removal uses the same profile/user parent locking discipline as
+    membership writes.  Consequently a removal can neither slip between an
+    authorization check and its command nor invalidate a file snapshot while
+    it is being opened.
+    """
+    if not getattr(user, "is_authenticated", False):
+        yield None
+        return
+    profile = user._state.fields_cache.get("profil")
+    if profile is None:
+        profile = Profil.objects.filter(user_id=user.pk).first()
+    if profile is None:
+        yield None
+        return
+    # The membership is the authority row and the deletion conflict point. Its
+    # joined Turnus supplies the complete request scope without separately
+    # locking User, Profil, and Turnus rows on every protected read.
+    with transaction.atomic():
+        membership = (
+            TurnusMembership.objects.select_for_update()
+            .select_related("turnus")
+            .filter(user_id=user.pk, turnus_id=profile.selected_turnus_id)
+            .first()
+        )
+        yield membership.turnus if membership is not None else None
+
+
+def membership_scoped_read(view_func):
+    """Hold approved membership authority through a synchronous page render.
+
+    Page CBVs can render their read context after an invalid POST or PUT, so
+    both methods must use the same scope as GET/HEAD.  This decorator does not
+    replace command authorization; it only keeps the selected membership
+    authoritative while the resulting page response is built and rendered.
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if request.method not in {"GET", "HEAD", "POST", "PUT"}:
+            return view_func(request, *args, **kwargs)
+        with authorized_turnus_scope(request.user) as turnus:
+            request.active_turnus = turnus
+            response = view_func(request, *args, **kwargs)
+            # Class-based template views defer context/queryset consumption
+            # until middleware renders their TemplateResponse.  Render it
+            # while the membership lock is still held.  Streaming responses
+            # deliberately have no render contract and remain lazy.
+            render = getattr(response, "render", None)
+            if callable(render) and not getattr(response, "is_rendered", True):
+                render()
+            return response
+
+    return wrapper

@@ -38,6 +38,41 @@ describe('allocation page', () => {
     expect(screen.queryByText('Noch keine Kinder für diesen Schwerpunkt eingeteilt')).not.toBeInTheDocument();
   });
 
+  it('builds one self-contained print kids list for every focus', () => {
+    render(<AllocationPage week="1" mutate={vi.fn()} data={{
+      focuses: [
+        { id: 2, name: 'Blubb', week: 'w1', kid_ids: [11], stats: null },
+        { id: 3, name: 'Test', week: 'w1', kid_ids: [12], stats: null },
+        { id: 4, name: 'hollla', week: 'w1', kid_ids: [], stats: null },
+        { id: 5, name: 'rumm', week: 'w1', kid_ids: [13], stats: null },
+      ],
+      kids: [
+        { id: 11, full_name: 'Ada', focus_ids: [2], choices: [], age: 12, siblings: '' },
+        { id: 12, full_name: 'Bea', focus_ids: [3], choices: [], age: 13, siblings: '' },
+        { id: 13, full_name: 'Chris', focus_ids: [5], choices: [], age: 14, siblings: '' },
+      ],
+    }} />);
+
+    const printPages = screen.getByRole('region', { name: 'SWP-Listen', hidden: true });
+    const pages = [...printPages.querySelectorAll(':scope > .allocation-print-page')];
+    expect(pages.map(page => within(page).getByRole('heading', { hidden: true }).textContent)).toEqual([
+      'Blubb',
+      'Test',
+      'hollla',
+      'rumm',
+    ]);
+    expect(pages.map(page => page.textContent)).toEqual([
+      'BlubbAda',
+      'TestBea',
+      'holllaKeine Kinder eingeteilt',
+      'rummChris',
+    ]);
+
+    const pageStyle = document.querySelector('style[data-print-page-style]');
+    expect(pageStyle).toHaveAttribute('media', 'print');
+    expect(pageStyle).toHaveTextContent('@page { margin: 0; }');
+  });
+
   it('shows failed allocation writes as error toasts, never inline', async () => {
     const mutate = vi.fn().mockRejectedValue(new Error('network down'));
     render(<AllocationPage week="2" mutate={mutate} data={{
@@ -59,6 +94,9 @@ describe('allocation page', () => {
         name: 'Wald',
         week: 'w2',
         kid_ids: [1, 2, 3],
+        place_id: 7,
+        place: 'Waldplatz',
+        carers: ['Alex', 'Grace'],
         stats: {
           average_age: 12.5,
           sex: { male: 1, female: 1, diverse: 1 },
@@ -72,20 +110,31 @@ describe('allocation page', () => {
       ],
     }} />);
 
-    const card = screen.getByRole('heading', { name: 'Wald: 3' }).closest('.card');
+    const heading = screen.getByRole('heading', { name: 'Wald: 3' });
+    const card = heading.closest('.card');
+    expect(within(heading).getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/2/');
+    expect(within(card).queryByRole('button')).not.toBeInTheDocument();
     const overview = card.parentElement;
-    const stickyControls = overview.parentElement;
+    const tableControls = overview.parentElement;
     expect(overview).toHaveAccessibleName('SWP-Übersicht');
     expect(overview).toHaveClass('max-[900px]:flex-wrap', 'max-[900px]:overflow-x-visible');
-    expect(stickyControls).toHaveAttribute('data-slot', 'table-sticky-controls');
-    expect(within(stickyControls).getByRole('searchbox', { name: 'Kinder filtern' })).toBeInTheDocument();
-    expect(stickyControls.nextElementSibling).toHaveAttribute('data-slot', 'table-scroll');
-    expect(stickyControls.nextElementSibling).toHaveAttribute('data-vertical-scroll');
+    expect(tableControls).toHaveAttribute('data-slot', 'table-controls');
+    expect(tableControls).not.toHaveClass('max-[900px]:sticky');
+    expect(within(tableControls).getByRole('searchbox', { name: 'Kinder filtern' })).toBeInTheDocument();
+    expect(tableControls.nextElementSibling).toHaveAttribute('data-slot', 'table-scroll');
+    expect(tableControls.nextElementSibling).toHaveAttribute('data-vertical-scroll');
     const stats = within(card).getByLabelText('Statistik Wald');
     expect(stats).toHaveTextContent('Ø Alter: 12,5');
     expect(stats).toHaveTextContent('Geschlechter: 1 ♂ · 1 ♀ · 1 ⚧');
     expect(stats).toHaveTextContent('BuDo-Familien: 1 S · 1 M · 0 L · 1 XL');
-    expect(within(card).getByRole('list')).toBeInTheDocument();
+    expect(stats).toHaveTextContent('Betreuer:innen: Alex, Grace');
+    expect(within(stats).queryByRole('link', { name: 'Alex' })).not.toBeInTheDocument();
+    expect(within(stats).queryByRole('link', { name: 'Grace' })).not.toBeInTheDocument();
+    expect(within(stats).getByRole('link', { name: 'Waldplatz' })).toHaveAttribute('href', '/auslagerorte/7/');
+    const kidList = within(card).getByRole('list');
+    expect(kidList).not.toHaveAttribute('inert');
+    fireEvent.click(heading);
+    expect(kidList).not.toHaveAttribute('inert');
     const printPages = screen.getByRole('region', { name: 'SWP-Listen', hidden: true });
     const printPage = within(printPages).getByRole('heading', { name: 'Wald', hidden: true }).closest('.allocation-print-page');
     expect(printPage.querySelector('.allocation-print-illustration[aria-hidden="true"]')).toBeInTheDocument();

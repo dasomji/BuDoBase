@@ -1,5 +1,5 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   BirthdaysPage,
@@ -11,7 +11,10 @@ import {
 } from './reports';
 
 describe('operational report pages', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it('declares every report route contract', () => {
     expect(reportRoutes.map(route => route.readContractKey)).toEqual([
@@ -19,9 +22,21 @@ describe('operational report pages', () => {
       'murder-game',
       'kid-count',
       'families',
-      'special-families',
       'birthdays',
     ]);
+  });
+
+  it('offers BuDo-Familien printing from the shared page header', () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    const familiesRoute = reportRoutes.find(route => route.page === 'families');
+
+    render(familiesRoute.headerAction?.());
+
+    const printButton = screen.getByRole('button', { name: 'Drucken' });
+    expect(printButton).toHaveTextContent('Drucken');
+    expect(printButton.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    fireEvent.click(printButton);
+    expect(print).toHaveBeenCalledOnce();
   });
 
   it('retains the serial-letter fields and printable document structure', () => {
@@ -59,6 +74,9 @@ describe('operational report pages', () => {
       team: [{ id: 2, rufname: 'Boris', role_display: 'Betreuer:in' }],
     }} />);
 
+    const pageStyle = document.querySelector('style[data-print-page-style]');
+    expect(pageStyle).toHaveAttribute('media', 'print');
+    expect(pageStyle).toHaveTextContent('@page { margin: 0; }');
     expect(screen.getByRole('heading', { name: 'Mörderspiel: Kids & Team' })).toBeInTheDocument();
     expect(screen.getByText('Ada Kind')).toBeInTheDocument();
     expect(screen.getByText('Betreuer:in Boris')).toBeInTheDocument();
@@ -71,10 +89,10 @@ describe('operational report pages', () => {
       { id: 3, full_name: 'Ada Third', present: true, age: 14, budo_family: 'L' },
     ] }} />);
 
-    const headings = screen.getAllByRole('heading').map(heading => heading.textContent);
-    expect(headings).toEqual(['S (2)', 'L (1)']);
-    const smallie = screen.getByRole('heading', { name: 'S (2)' }).closest('.card');
     const layout = screen.getByRole('main');
+    const headings = within(layout).getAllByRole('heading').map(heading => heading.textContent);
+    expect(headings).toEqual(['S (2)', 'L (1)']);
+    const smallie = within(layout).getByRole('heading', { name: 'S (2)' }).closest('.card');
     expect(layout).toHaveClass('responsive-card-grid');
     expect(layout.firstElementChild).toHaveClass('gap-4', '@[41rem]:grid-cols-2');
     expect(layout.firstElementChild).not.toHaveClass('@[62rem]:grid-cols-3');
@@ -86,9 +104,37 @@ describe('operational report pages', () => {
     expect(screen.getByRole('link', { name: 'Aaron First ❌' })).toHaveAttribute('href', '/kid_details/1');
     expect(within(smallie).getByRole('list')).toBeInTheDocument();
 
-    rerender(<FamiliesPage special data={{ kids: [] }} />);
+    rerender(<FamiliesPage data={{ kids: [] }} />);
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('builds one Schwerpunkte-style print page per populated BuDo family', () => {
+    render(<FamiliesPage data={{ kids: [
+      { id: 1, full_name: 'Aaron First', present: false, age: 13, budo_family: 'S' },
+      { id: 2, full_name: 'Abel Second', present: true, age: 12, budo_family: 'S' },
+      { id: 3, full_name: 'Ada Third', present: true, age: 14, budo_family: 'L' },
+      { id: 4, full_name: 'Ohne Familie', present: false, age: 11, budo_family: null },
+    ] }} />);
+
+    const familyRegion = document.querySelector('.families-page');
+    expect(familyRegion).toHaveAttribute('aria-label', 'BuDo-Familien-Listen');
+    const printPages = familyRegion.querySelector('.allocation-print-pages');
+    const pages = [...printPages.querySelectorAll(':scope > .allocation-print-page')];
+    expect(pages.map(page => within(page).getByRole('heading', { hidden: true }).textContent)).toEqual([
+      'S',
+      'L',
+    ]);
+    expect(pages.map(page => within(page).getAllByRole('listitem', { hidden: true }).map(item => item.textContent))).toEqual([
+      ['Aaron First', 'Abel Second'],
+      ['Ada Third'],
+    ]);
+    pages.forEach(page => {
+      expect(page.querySelector('.allocation-print-illustration[aria-hidden="true"]')).toBeInTheDocument();
+      expect(within(page).queryByRole('link', { hidden: true })).not.toBeInTheDocument();
+      expect(page).not.toHaveTextContent('❌');
+    });
+    expect(document.querySelector('style[data-print-page-style]')).toHaveTextContent('@page { margin: 0; }');
   });
 
   it('renders calculated birthdays without receiving raw social-security numbers', () => {
@@ -109,10 +155,11 @@ describe('operational report pages', () => {
       },
     ] }} />);
 
-    expect(screen.getByRole('link', { name: 'Ada Lovelace ❌' })).toHaveAttribute('href', '/kid_details/1');
+    const adaRow = screen.getByRole('link', { name: 'Ada Lovelace ❌' }).closest('tr');
+    expect(within(adaRow).getByRole('link', { name: 'Ada Lovelace ❌' })).toHaveAttribute('href', '/kid_details/1');
     expect(screen.getByText('01.01.2011 ❗')).toBeInTheDocument();
     expect(screen.getByText('02.07.2012')).toBeInTheDocument();
-    expect(screen.getByText('❌')).toBeInTheDocument();
+    expect(within(adaRow).getAllByRole('cell')[3]).toHaveTextContent('❌');
     expect(screen.getAllByText('---')).toHaveLength(3);
     const noteForms = screen.getAllByRole('button', { name: 'Speichern' }).map(button => button.closest('form'));
     expect(noteForms[0]).toHaveAttribute('action', '/kindergeburtstage/');

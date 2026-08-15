@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import User
@@ -6,6 +7,7 @@ from django.urls import reverse
 
 from budo_app.first_aid_tests.fixtures import MemoryPhotoStorage, use_photo_storage
 from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import ErsteHilfeEintrag, Kinder, Turnus
 from budo_app.read_contract_tests.first_aid_fixtures import add_first_aid_photo
 from budo_app.read_contracts.measurement import (
@@ -25,8 +27,9 @@ class KidDetailFirstAidPhotoContractTests(QueryBudgetAssertions, TestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.user = User.objects.create_user(username="kid-photo-contract")
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("turnus",))
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T2-photo-read",
             kid_vorname="Ada",

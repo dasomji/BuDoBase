@@ -5,6 +5,8 @@ import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
 import { Card } from '../components';
 import { fallbackTagIcon, loadTagIcons } from './tag-icon-loader';
 
+// Cloud basemap source and deployment instructions live beside this component:
+// ./google-map-style.json and ./google-map-style.md
 const parsePoint = coordinates => {
   const [lat, lng, ...rest] = String(coordinates || '').split(',').map(Number);
   return rest.length === 0 && Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;

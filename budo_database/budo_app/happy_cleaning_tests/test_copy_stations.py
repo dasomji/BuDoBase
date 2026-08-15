@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from unittest.mock import patch
 from datetime import date
 
@@ -63,14 +64,14 @@ class StationCopyApiFixtures:
             turnus_nr=2, turnus_beginn=date(2025, 7, 1)
         )
         self.user = User.objects.create_user("copy-editor")
-        self.user.profil.turnus = self.active
-        self.user.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(self.user.profil.user, self.active)
+        self.user.profil.save()
         self.active_responsible = User.objects.create_user("active-responsible")
-        self.active_responsible.profil.turnus = self.active
-        self.active_responsible.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(self.active_responsible.profil.user, self.active)
+        self.active_responsible.profil.save()
         self.old_responsible = User.objects.create_user("old-responsible")
-        self.old_responsible.profil.turnus = self.historical
-        self.old_responsible.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(self.old_responsible.profil.user, self.historical)
+        self.old_responsible.profil.save()
         self.source = HappyCleaning.objects.create(
             turnus=self.historical, display_number=1
         )
@@ -508,8 +509,8 @@ class SingleStationCopyApiTests(StationCopyApiFixtures, TransactionTestCase):
         })
         self.assertIn(unauthenticated.status_code, {401, 403})
         outsider = User.objects.create_user("copy-outsider")
-        outsider.profil.turnus = self.historical
-        outsider.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(outsider.profil.user, self.historical)
+        outsider.profil.save()
         self.client.force_authenticate(outsider)
         self.assertEqual(
             self.post_single(self.target, self.source_station, {

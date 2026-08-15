@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
@@ -8,6 +8,15 @@ const response = (data, { ok = true, status = 200 } = {}) => ({
   status,
   json: vi.fn().mockResolvedValue(data),
 });
+
+function openTurnusDialog() {
+  fireEvent.click(screen.getByRole('button', { name: 'Turnus wechseln' }));
+  return screen.getByRole('dialog', { name: 'Turnus wechseln' });
+}
+
+function chooseTurnus(label) {
+  fireEvent.click(within(openTurnusDialog()).getByRole('button', { name: label }));
+}
 
 describe('application loading', () => {
   afterEach(() => {
@@ -98,6 +107,199 @@ describe('application loading', () => {
       'href',
       '/happy-cleaning/9/assignment/',
     );
+  });
+
+  it('renders Team management when its Turnus records have no Happy Cleaning events', async () => {
+    window.history.pushState({}, '', '/teams/');
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({
+        authenticated: true,
+        csrf_token: 'token',
+        messages: [],
+        permissions: {},
+        happy_cleaning_events: [],
+      }))
+      .mockResolvedValueOnce(response({
+        years: [{
+          year: 2026,
+          turnuses: [{
+            id: 4,
+            label: 'T4-2026',
+            members: [],
+            pending_requests: [],
+            request_summary: { pending: 0 },
+          }],
+        }],
+        people: [],
+        can_manage_leitung: true,
+        can_manage_memberships: true,
+      }));
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByRole('heading', { name: 'T4-2026' })).toBeInTheDocument();
+  });
+
+  it('refreshes Aktiver Turnus after the signed-in user is added to another Turnus', async () => {
+    window.history.pushState({}, '', '/teams/');
+    const originalBootstrap = {
+      authenticated: true,
+      csrf_token: 'token',
+      messages: [],
+      profile: { id: 1, rufname: 'Ada' },
+      turnus: { id: 1, label: 'T1-2026' },
+      turnus_selection: { selected_id: 1, options: [{ id: 1, label: 'T1-2026' }] },
+      permissions: {},
+      search_index: { kids: [], focuses: [], places: [] },
+      happy_cleaning_events: [],
+    };
+    const teamData = {
+      years: [{
+        year: 2026,
+        turnuses: [{
+          id: 1, label: 'T1-2026', start: '2026-07-04', end: '2026-07-17',
+          excel_uploaded: false, members: [], pending_requests: [], request_summary: { pending: 0 },
+        }, {
+          id: 2, label: 'T2-2026', start: '2026-07-18', end: '2026-07-31',
+          excel_uploaded: false, members: [], pending_requests: [], request_summary: { pending: 0 },
+        }],
+      }],
+      people: [{
+        id: 1,
+        name: 'Ada Admin',
+        email: 'ada@example.test',
+        relationships: ['T1-2026'],
+        turnus_ids: [1],
+        available: false,
+      }],
+      can_manage_leitung: true,
+      can_manage_memberships: true,
+      can_create_turnus: true,
+    };
+    let bootstrapRequests = 0;
+    const fetchImpl = vi.fn((url, options = {}) => {
+      if (url === '/api/bootstrap/') {
+        bootstrapRequests += 1;
+        return Promise.resolve(response(bootstrapRequests === 1 ? originalBootstrap : {
+          ...originalBootstrap,
+          turnus_selection: {
+            selected_id: 1,
+            options: [{ id: 1, label: 'T1-2026' }, { id: 2, label: 'T2-2026' }],
+          },
+        }));
+      }
+      if (url === '/api/route-data/team-management/') return Promise.resolve(response(teamData));
+      if (url === '/api/turnusse/2/memberships/' && options.method === 'POST') {
+        return Promise.resolve(response({ membership_id: 77, role_label: 'Teamer', team_label: '' }));
+      }
+      throw new Error(`Unexpected request: ${options.method || 'GET'} ${url}`);
+    });
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    await screen.findByRole('button', { name: 'Turnus wechseln' });
+    let turnusDialog = openTurnusDialog();
+    expect(within(turnusDialog).getByRole('button', { name: /T1-2026/ })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(within(turnusDialog).queryByRole('button', { name: 'T2-2026' })).not.toBeInTheDocument();
+    fireEvent.click(within(turnusDialog).getByRole('button', { name: 'Abbrechen' }));
+    fireEvent.click(screen.getByRole('button', { name: /T2-2026/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
+    fireEvent.click(await screen.findByRole('button', {
+      name: 'Ada Admin als Betreuer:in zu T2-2026 hinzufügen',
+    }));
+    await screen.findByText('Ada Admin ist jetzt Teamer.');
+    fireEvent.click(screen.getByRole('button', { name: 'Dialog schließen' }));
+
+    await waitFor(() => expect(bootstrapRequests).toBe(2));
+    turnusDialog = openTurnusDialog();
+    expect(within(turnusDialog).getByRole('button', { name: 'T2-2026' })).toBeInTheDocument();
+  });
+
+  it('keeps the current page and shows the shared error toast when a Turnus switch fails', async () => {
+    window.history.pushState({}, '', '/all_kids');
+    const bootstrap = {
+      authenticated: true, csrf_token: 'token', messages: [], permissions: {},
+      profile: { id: 1, rufname: 'Ada' }, search_index: { kids: [], focuses: [], places: [] },
+      turnus: { id: 2, label: 'T2' },
+      turnus_selection: { selected_id: 2, options: [{ id: 2, label: 'T2' }, { id: 4, label: 'T4' }] },
+    };
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response(bootstrap))
+      .mockResolvedValueOnce(response({ kids: [] }))
+      .mockResolvedValueOnce(response({}, { ok: false, status: 403 }))
+      .mockResolvedValueOnce(response(bootstrap));
+
+    render(<App fetchImpl={fetchImpl} />);
+    await screen.findByRole('button', { name: 'Turnus wechseln' });
+    chooseTurnus('T4');
+
+    expect(await screen.findByText(
+      'Der Turnus konnte nicht gewechselt werden. Bitte erneut versuchen.',
+      { selector: '.app-toast-description' },
+    )).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Sitzung konnte nicht geladen werden' })).not.toBeInTheDocument();
+    expect(screen.getByText('T2', { selector: '[data-slot="active-turnus"]' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Turnus wechseln' })).toBeEnabled();
+  });
+
+  it('blocks stale scoped UI and reloads when switch refreshes fail on the network', async () => {
+    window.history.pushState({}, '', '/all_kids');
+    const bootstrap = {
+      authenticated: true, csrf_token: 'token', messages: [], permissions: {},
+      profile: { id: 1 }, turnus: { id: 2, label: 'T2' },
+      turnus_selection: { selected_id: 2, options: [{ id: 2, label: 'T2' }, { id: 4, label: 'T4' }] },
+      search_index: { kids: [], focuses: [], places: [] },
+    };
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response(bootstrap))
+      .mockResolvedValueOnce(response({ kids: [] }))
+      .mockResolvedValueOnce(response({ selected_id: 4 }))
+      .mockRejectedValueOnce(new TypeError('network down'));
+
+    const reload = vi.fn();
+    render(<App fetchImpl={fetchImpl} reload={reload} />);
+    await screen.findByRole('button', { name: 'Turnus wechseln' });
+    chooseTurnus('T4');
+
+    expect(await screen.findByText('Turnus wird gewechselt…')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Turnus wechseln' })).not.toBeInTheDocument();
+    await waitFor(() => expect(reload).toHaveBeenCalledOnce());
+  });
+
+  it('serializes rapid Turnus changes while the first selection is pending', async () => {
+    window.history.pushState({}, '', '/all_kids');
+    const bootstrap = {
+      authenticated: true, csrf_token: 'token', messages: [], permissions: {},
+      profile: { id: 1 }, turnus: { id: 2, label: 'T2' },
+      turnus_selection: {
+        selected_id: 2,
+        options: [{ id: 2, label: 'T2' }, { id: 4, label: 'T4' }, { id: 6, label: 'T6' }],
+      },
+      search_index: { kids: [], focuses: [], places: [] },
+    };
+    let resolveSelection;
+    const selection = new Promise(resolve => { resolveSelection = resolve; });
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response(bootstrap))
+      .mockResolvedValueOnce(response({ kids: [] }))
+      .mockReturnValueOnce(selection);
+
+    render(<App fetchImpl={fetchImpl} />);
+    const trigger = await screen.findByRole('button', { name: 'Turnus wechseln' });
+    chooseTurnus('T4');
+
+    expect(trigger).toBeDisabled();
+    expect(trigger).toHaveAttribute('aria-busy', 'true');
+    fireEvent.click(trigger);
+    expect(screen.queryByRole('button', { name: 'T6' })).not.toBeInTheDocument();
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl.mock.calls[2][1].body).toBe(JSON.stringify({ turnus_id: 4 }));
+
+    resolveSelection(response({}, { ok: false, status: 403 }));
+    await waitFor(() => expect(trigger).not.toBeDisabled());
   });
 
   it('redirects an unauthenticated protected route without loading route data', async () => {

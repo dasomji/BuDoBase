@@ -2,6 +2,7 @@ import uuid
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.http import Http404, StreamingHttpResponse
 from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view, permission_classes
@@ -20,6 +21,7 @@ from budo_app.audit_exports import (
     AuditExportTurnusNotFound,
     export_audit_events as build_audit_export,
 )
+from budo_app.export_snapshots import close_snapshot_with_response
 from budo_app.audit_queries import (
     AuditFilters,
     selected_audit_turnus,
@@ -44,6 +46,7 @@ def audit_page(request):
 
 @api_view(["GET"])
 @permission_classes([AuditDetailIsAuthenticated])
+@transaction.atomic
 def audit_event_detail(request, event_id):
     user = request.user
     if not can_view_audit(user):
@@ -81,6 +84,7 @@ def audit_event_detail(request, event_id):
 
 @api_view(["GET"])
 @permission_classes([AuditExportIsAuthenticated])
+@transaction.atomic
 def export_audit_events(request):
     user = request.user
     if not can_export_audit(user):
@@ -116,4 +120,4 @@ def export_audit_events(request):
     )
     response["Content-Disposition"] = f'attachment; filename="{result.filename}"'
     response["X-Content-Type-Options"] = "nosniff"
-    return response
+    return close_snapshot_with_response(response, result.snapshot)

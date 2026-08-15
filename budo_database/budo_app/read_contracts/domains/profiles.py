@@ -2,15 +2,12 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 
-from budo_app.models import Profil, Schwerpunkte, Turnus
+from budo_app.models import Profil, Schwerpunkte, TurnusMembership
+from budo_app.memberships import membership_role_display
 from budo_app.read_contracts.common import (
     active_turnus_id,
     required_query_integer,
 )
-
-
-def _can_change_turnus(user):
-    return not user.groups.filter(name="Test-users").exists()
 
 
 def _profile_queryset(turnus_id):
@@ -25,10 +22,29 @@ def _profile_queryset(turnus_id):
         )
     return Profil.objects.select_related("user").prefetch_related(
         Prefetch("swp", queryset=focuses, to_attr="route_focuses"),
+        Prefetch(
+            "user__turnus_memberships",
+            queryset=TurnusMembership.objects.filter(turnus_id=turnus_id),
+            to_attr="route_memberships",
+        ),
+        Prefetch(
+            "user__turnus_memberships",
+            queryset=TurnusMembership.objects.select_related("turnus").order_by(
+                "-turnus__turnus_beginn", "turnus__turnus_nr", "id"
+            ),
+            to_attr="route_all_memberships",
+        ),
     )
 
 
-def _profile_fields(profile):
+def _profile_fields(profile, turnus_id=None, *, include_all_turnuses=False):
+    memberships = getattr(profile.user, "route_memberships", ())
+    membership = memberships[0] if memberships else None
+    visible_memberships = (
+        getattr(profile.user, "route_all_memberships", ())
+        if include_all_turnuses
+        else memberships
+    )
     return {
         "id": profile.id,
         "email": profile.user.email,
@@ -36,19 +52,13 @@ def _profile_fields(profile):
         "phone": str(profile.telefonnummer),
         "allergies": profile.allergien,
         "coffee": profile.coffee,
-        "role": profile.rolle,
-        "role_display": profile.get_rolle(),
+        "role": membership.functional_role if membership else "",
+        "role_display": membership_role_display(membership) if membership else "",
         "food": profile.essen,
         "food_display": profile.get_food(),
         "budo_family": profile.budo_family,
+        "turnuses": [str(item.turnus) for item in visible_memberships],
     }
-
-
-def _profile(profile, *, can_change_turnus):
-    payload = _profile_fields(profile)
-    if can_change_turnus is not None:
-        payload["can_change_turnus"] = can_change_turnus
-    return payload
 
 
 def _focuses(profile):
@@ -58,19 +68,11 @@ def _focuses(profile):
     ]
 
 
-def _turnuses(can_change_turnus):
-    if not can_change_turnus:
-        return []
-    return [
-        {"id": turnus.id, "label": str(turnus)}
-        for turnus in Turnus.objects.order_by("-turnus_beginn", "-id")
-    ]
-
-
 def profile(request):
     turnus_id = active_turnus_id(request)
     selected_id = request.query_params.get("id")
-    if selected_id is None:
+    own_profile = selected_id is None
+    if own_profile:
         selected_profile = get_object_or_404(
             _profile_queryset(turnus_id),
             user_id=request.user.id,
@@ -79,38 +81,21 @@ def profile(request):
         if not request.user.has_perm("budo_app.change_profil"):
             raise PermissionDenied
         selected_profile = get_object_or_404(
-            _profile_queryset(turnus_id),
+            _profile_queryset(turnus_id).filter(
+                user__turnus_memberships__turnus_id=turnus_id,
+            ),
             id=required_query_integer(request),
         )
-    can_change_turnus = _can_change_turnus(request.user)
     return {
-        "profile": _profile(
+        "profile": _profile_fields(
             selected_profile,
-            can_change_turnus=can_change_turnus,
+            turnus_id,
+            include_all_turnuses=own_profile,
         ),
         "focuses": _focuses(selected_profile),
-        "turnuses": _turnuses(can_change_turnus),
-    }
-
-
-def team(request):
-    turnus_id = active_turnus_id(request)
-    if turnus_id is None:
-        return {"team": []}
-    profiles = (
-        _profile_queryset(turnus_id)
-        .filter(turnus_id=turnus_id)
-        .order_by("rufname", "id")
-    )
-    return {
-        "team": [
-            {**_profile_fields(item), "focuses": _focuses(item)}
-            for item in profiles
-        ],
     }
 
 
 CONTRACTS = {
     "profile": profile,
-    "team": team,
 }

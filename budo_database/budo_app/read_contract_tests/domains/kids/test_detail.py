@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import json
 from datetime import date
 
@@ -6,6 +7,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     ErsteHilfeEintrag,
     Geld,
@@ -16,7 +18,6 @@ from budo_app.models import (
     Notizen,
     Schwerpunkte,
     Schwerpunktzeit,
-    SpezialFamilien,
     Turnus,
 )
 
@@ -33,7 +34,6 @@ DETAIL_FIELDS = {
     "tent_request",
     "budo_experience",
     "budo_family",
-    "special_family",
     "focus_assignments",
     "happy_cleaning_number",
     "happy_cleaning_assignments",
@@ -78,13 +78,11 @@ class KidDetailContractTests(TestCase):
             username="kid-detail-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.rufname = "Mira"
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
-        self.special_family = SpezialFamilien.objects.create(
-            name="Biberhaus",
-            turnus=self.turnus,
-        )
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
             kid_vorname="Ada",
@@ -98,7 +96,6 @@ class KidDetailContractTests(TestCase):
             zeltwunsch="Grace",
             budo_erfahrung=True,
             budo_family="M",
-            spezial_familien=self.special_family,
             happy_cleaning_number=42,
             sozialversicherungsnr="1234 020712",
             illness="Allergie",
@@ -237,7 +234,7 @@ class KidDetailContractTests(TestCase):
         kid = response.json()["kids"][0]
         self.assertEqual(set(kid), DETAIL_FIELDS)
         self.assertEqual(kid["full_name"], "Ada Lovelace")
-        self.assertEqual(kid["special_family"], "Biberhaus")
+        self.assertNotIn("special_family", kid)
         self.assertNotIn("focus_w1", kid)
         self.assertNotIn("focus_w2", kid)
         self.assertEqual(kid["happy_cleaning_number"], 42)
@@ -304,7 +301,7 @@ class KidDetailContractTests(TestCase):
             "text": "Sonnencreme",
             "date": self.note.date_added.isoformat(),
             "day": self.note.date_added.strftime("%d.%m."),
-            "author": "kid-detail-user",
+            "author": "Mira",
             "photos": [],
         }])
         self.assertEqual(kid["first_aid_entries"], [
@@ -313,7 +310,7 @@ class KidDetailContractTests(TestCase):
                 "text": "Knie verbunden",
                 "date": self.first_aid_newer.date_added.isoformat(),
                 "day": self.first_aid_newer.date_added.strftime("%d.%m."),
-                "author": "kid-detail-user",
+                "author": "Mira",
                 "photos": [],
             },
             {
@@ -321,7 +318,7 @@ class KidDetailContractTests(TestCase):
                 "text": "Hand gekühlt",
                 "date": self.first_aid_older.date_added.isoformat(),
                 "day": self.first_aid_older.date_added.strftime("%d.%m."),
-                "author": "kid-detail-user",
+                "author": "Mira",
                 "photos": [],
             },
         ])
@@ -331,10 +328,37 @@ class KidDetailContractTests(TestCase):
             "amount": 10.0,
             "date": self.transaction.date_added.isoformat(),
             "day": self.transaction.date_added.strftime("%d.%m."),
-            "author": "kid-detail-user",
+            "author": "Mira",
         }])
         self.assertEqual(kid["remaining_money"], 9.5)
         self.assertEqual(kid["deposit"], 2)
+
+    def test_orders_activity_entries_from_newest_to_oldest(self):
+        newer_note = Notizen.objects.create(
+            kinder=self.kid,
+            notiz="Neuere Notiz",
+            added_by=self.user,
+        )
+        newer_transaction = Geld.objects.create(
+            kinder=self.kid,
+            amount=5,
+            added_by=self.user,
+        )
+
+        kid = self.client.get(self.contract_url(self.kid)).json()["kids"][0]
+
+        self.assertEqual(
+            [note["id"] for note in kid["notes"]],
+            [newer_note.id, self.note.id],
+        )
+        self.assertEqual(
+            [entry["id"] for entry in kid["first_aid_entries"]],
+            [self.first_aid_newer.id, self.first_aid_older.id],
+        )
+        self.assertEqual(
+            [transaction["id"] for transaction in kid["transactions"]],
+            [newer_transaction.id, self.transaction.id],
+        )
 
     def test_rejects_a_kind_outside_the_active_turnus(self):
         response = self.client.get(self.contract_url(self.other_kid))
@@ -465,8 +489,10 @@ class KidDetailMutationContractTests(TestCase):
             username="kid-mutation-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.rufname = "Nora"
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
             kid_vorname="Ada",
@@ -529,7 +555,7 @@ class KidDetailMutationContractTests(TestCase):
             "text": "Knie gereinigt und verbunden",
             "date": entry.date_added.isoformat(),
             "day": entry.date_added.strftime("%d.%m."),
-            "author": "kid-mutation-user",
+            "author": "Nora",
             "photos": [],
         }])
 

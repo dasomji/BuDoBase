@@ -1,0 +1,194 @@
+{
+  "admin": {
+    "desktop": {
+      "viewport": {
+        "width": 1440,
+        "height": 1050
+      },
+      "documentWidth": 1440,
+      "master": {
+        "display": "grid",
+        "columns": "300px 842px",
+        "borderRadius": "18px",
+        "railWidth": 300,
+        "railTop": 140.1875,
+        "detailTop": 140.1875
+      },
+      "requests": {
+        "background": "rgb(255, 248, 229)",
+        "borderStyle": "solid",
+        "insideDetail": true,
+        "warningInside": true
+      },
+      "members": {
+        "columns": "371px 371px",
+        "tileCount": 7,
+        "distinctLeftEdges": 2
+      },
+      "selector": {
+        "yearGroupCount": 2,
+        "yearGroupDisplays": [
+          "grid",
+          "grid"
+        ],
+        "rowOverflow": [
+          "visible",
+          "visible"
+        ],
+        "rowWidths": [
+          {
+            "client": 263,
+            "scroll": 263
+          },
+          {
+            "client": 263,
+            "scroll": 263
+          }
+        ]
+      }
+    },
+    "mobile": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "master": {
+        "display": "block",
+        "columns": "300px minmax(0px, 1fr)",
+        "borderRadius": "18px",
+        "railWidth": 364,
+        "railTop": 75,
+        "detailTop": 239.28125
+      },
+      "requests": {
+        "background": "rgb(255, 248, 229)",
+        "borderStyle": "solid",
+        "insideDetail": true,
+        "warningInside": true
+      },
+      "members": {
+        "columns": "310px",
+        "tileCount": 7,
+        "distinctLeftEdges": 1
+      },
+      "selector": {
+        "yearGroupCount": 2,
+        "yearGroupDisplays": [
+          "grid",
+          "grid"
+        ],
+        "rowOverflow": [
+          "auto",
+          "auto"
+        ],
+        "rowWidths": [
+          {
+            "client": 298,
+            "scroll": 351
+          },
+          {
+            "client": 298,
+            "scroll": 351
+          }
+        ]
+      }
+    }
+  },
+  "leitung": {
+    "desktop": {
+      "viewport": {
+        "width": 1440,
+        "height": 1050
+      },
+      "documentWidth": 1440,
+      "master": {
+        "display": "grid",
+        "columns": "300px 842px",
+        "borderRadius": "18px",
+        "railWidth": 300,
+        "railTop": 140.1875,
+        "detailTop": 140.1875
+      },
+      "requests": {
+        "background": "rgb(255, 248, 229)",
+        "borderStyle": "solid",
+        "insideDetail": true,
+        "warningInside": true
+      },
+      "members": {
+        "columns": "371px 371px",
+        "tileCount": 7,
+        "distinctLeftEdges": 2
+      },
+      "selector": {
+        "yearGroupCount": 2,
+        "yearGroupDisplays": [
+          "grid",
+          "grid"
+        ],
+        "rowOverflow": [
+          "visible",
+          "visible"
+        ],
+        "rowWidths": [
+          {
+            "client": 263,
+            "scroll": 263
+          },
+          {
+            "client": 263,
+            "scroll": 263
+          }
+        ]
+      }
+    },
+    "mobile": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "master": {
+        "display": "block",
+        "columns": "300px minmax(0px, 1fr)",
+        "borderRadius": "18px",
+        "railWidth": 364,
+        "railTop": 75,
+        "detailTop": 239.28125
+      },
+      "requests": {
+        "background": "rgb(255, 248, 229)",
+        "borderStyle": "solid",
+        "insideDetail": true,
+        "warningInside": true
+      },
+      "members": {
+        "columns": "310px",
+        "tileCount": 7,
+        "distinctLeftEdges": 1
+      },
+      "selector": {
+        "yearGroupCount": 2,
+        "yearGroupDisplays": [
+          "grid",
+          "grid"
+        ],
+        "rowOverflow": [
+          "auto",
+          "auto"
+        ],
+        "rowWidths": [
+          {
+            "client": 298,
+            "scroll": 351
+          },
+          {
+            "client": 298,
+            "scroll": 351
+          }
+        ]
+      }
+    }
+  }
+}

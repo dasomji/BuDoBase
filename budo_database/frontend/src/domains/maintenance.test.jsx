@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toaster } from '../components/ui/toast';
 import { routeDataRequest } from '../dataLoader';
 import { parseRoute } from '../routes';
-import { AdminSettingsPage, SimpleUploadPage, TurnusUploadPage } from './maintenance';
+import { AdminSettingsPage, TurnusUploadPage } from './maintenance';
 
 const render = ui => testingLibraryRender(ui, {
   wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
@@ -17,7 +17,7 @@ describe('maintenance and settings pages', () => {
     vi.unstubAllGlobals();
   });
 
-  it('loads only the three focused maintenance contracts', () => {
+  it('loads only the focused maintenance contracts', () => {
     expect(routeDataRequest(parseRoute('/upload'))).toEqual({
       contractKey: 'turnus-list',
       params: {},
@@ -28,11 +28,6 @@ describe('maintenance and settings pages', () => {
       params: { id: '27' },
       url: '/api/route-data/turnus-upload/?id=27',
     });
-    expect(routeDataRequest(parseRoute('/upload_spezialfamilien'))).toEqual({
-      contractKey: 'special-upload',
-      params: {},
-      url: '/api/route-data/special-upload/',
-    });
     expect(routeDataRequest(parseRoute('/settings/'))).toEqual({
       contractKey: 'admin-settings',
       params: {},
@@ -40,14 +35,9 @@ describe('maintenance and settings pages', () => {
     });
   });
 
-  it('retains multipart workbook inputs for both maintenance workflows', () => {
-    const { unmount } = render(<TurnusUploadPage data={{ csrf_token: 'token', turnuses: [] }} />);
+  it('retains the multipart workbook input', () => {
+    render(<TurnusUploadPage data={{ csrf_token: 'token', turnuses: [] }} />);
     expect(screen.getByLabelText('Excel-File').form).toHaveAttribute('enctype', 'multipart/form-data');
-    unmount();
-
-    render(<SimpleUploadPage data={{ csrf_token: 'token' }} />);
-    expect(screen.getByLabelText('Datei')).toBeRequired();
-    expect(screen.getByLabelText('Datei').form).toHaveAttribute('action', '/upload_spezialfamilien/');
   });
 
   it('renders the focused Turnus list and selected upload values', () => {

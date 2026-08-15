@@ -9,6 +9,7 @@ import { kidRoutes } from './domains/kids';
 import { kidEditRoutes } from './domains/kidEdit';
 import { kitchenRoutes } from './domains/kitchen';
 import { maintenanceRoutes } from './domains/maintenance';
+import { membershipRoutes } from './domains/memberships';
 import { profileRoutes } from './domains/profiles';
 import { placeRoutes } from './domains/places';
 import { reportRoutes } from './domains/reports';
@@ -20,6 +21,7 @@ export const routeDefinitions = [
   ...authRoutes,
   ...profileRoutes,
   ...maintenanceRoutes,
+  ...membershipRoutes,
   ...kidRoutes,
   ...kidEditRoutes,
   ...attendanceRoutes,

@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { parseRoute, renderRoute, resolveRouteTitle, routeDefinitions, routeHeaderAction } from './routes';
 
@@ -16,10 +16,11 @@ describe('route inventory', () => {
     ['/profil', 'profile', 'profiles', 'profile'],
     ['/profil/bearbeiten', 'profile-edit', 'profiles', 'profile'],
     ['/profil/5', 'profile-edit', 'profiles', 'profile'],
-    ['/team', 'team', 'profiles', 'team'],
     ['/upload', 'turnus-upload', 'maintenance', 'turnus-list'],
     ['/upload_excel/9', 'turnus-upload', 'maintenance', 'turnus-upload'],
     ['/settings/', 'admin-settings', 'maintenance', 'admin-settings'],
+    ['/teams/', 'team-management', 'memberships', 'team-management'],
+    ['/admin/teams/', 'admin-team-overview', 'memberships', 'admin-team-overview'],
     ['/all_kids', 'kids', 'kids', 'kids-directory'],
     ['/zugabreise', 'train-departure', 'attendance', 'train-departure'],
     ['/zuganreise', 'train-arrival', 'attendance', 'train-arrival'],
@@ -32,7 +33,6 @@ describe('route inventory', () => {
     ['/schwerpunkt/3/update', 'focus-update', 'focuses', 'focus-update'],
     ['/schwerpunkt/3', 'focus-detail', 'focuses', 'focus-detail'],
     ['/swpmeals/3', 'focus-meals', 'focuses', 'focus-meals'],
-    ['/swp-dashboard', 'focus-dashboard', 'focuses', 'focus-dashboard'],
     ['/auslagerorte-list', 'places', 'places', 'places-list'],
     ['/auslagerorte/create', 'place-create', 'places', 'place-create'],
     ['/auslagerorte/4/update', 'place-update', 'places', 'place-update'],
@@ -42,14 +42,19 @@ describe('route inventory', () => {
     ['/swp-einteilung-w2', 'allocation', 'allocation', 'allocation'],
     ['/kindergesamtzahl', 'kid-count', 'reports', 'kid-count'],
     ['/budo_familien', 'families', 'reports', 'families'],
-    ['/upload_spezialfamilien', 'special-upload', 'maintenance', 'special-upload'],
-    ['/spezial_familien', 'special-families', 'reports', 'special-families'],
     ['/kindergeburtstage/', 'birthdays', 'reports', 'birthdays'],
   ])('maps %s to the %s page in %s with contract %s', (path, page, domain, readContractKey) => {
     expect(parseRoute(path)).toMatchObject({ page, domain, readContractKey });
   });
 
-  it.each(['/login', '/register', '/does-not-exist'])(
+  it.each([
+    '/login',
+    '/register',
+    '/swp-dashboard',
+    '/upload_spezialfamilien',
+    '/spezial_familien',
+    '/does-not-exist',
+  ])(
     'does not declare protected route data for %s',
     path => expect(parseRoute(path).readContractKey).toBeNull(),
   );
@@ -68,6 +73,18 @@ describe('route inventory', () => {
   it('propagates entity identifiers and the allocation week for future loaders', () => {
     expect(parseRoute('/kid_details/21')).toMatchObject({ id: '21' });
     expect(parseRoute('/swp-einteilung-w2')).toMatchObject({ week: '2' });
+  });
+
+  it.each([
+    ['/swp-einteilung-w1', 'SWP 1'],
+    ['/swp-einteilung-w2', 'SWP 2'],
+  ])('uses the short allocation title on %s', (path, title) => {
+    expect(resolveRouteTitle(parseRoute(path), { authenticated: true })).toBe(title);
+  });
+
+  it('names Team management consistently in the page title', () => {
+    expect(resolveRouteTitle(parseRoute('/teams/'), { authenticated: true })).toBe('Team & Turnus');
+    expect(resolveRouteTitle(parseRoute('/admin/teams/'), { authenticated: true })).toBe('Team & Turnus');
   });
 
   it('keeps dynamic titles owned by their route domains', () => {
@@ -90,7 +107,6 @@ describe('route inventory', () => {
 
   it.each([
     ['/profil', 'link', 'Profil bearbeiten', 'href', '/profil/bearbeiten/'],
-    ['/swp-dashboard', 'link', 'SWP hinzufügen', 'href', '/schwerpunkt/create'],
     ['/auslagerorte-list', 'link', 'Ort hinzufügen', 'href', '/auslagerorte/create'],
     ['/kindergeburtstage', 'button', 'Geburtstage aktualisieren', 'formAction', '/update-birthdays-from-sv/'],
   ])('keeps the header action for %s', (path, role, label, attribute, target) => {
@@ -101,7 +117,6 @@ describe('route inventory', () => {
 
   it.each([
     ['/profil', 'Profil bearbeiten'],
-    ['/swp-dashboard', 'SWP hinzufügen'],
     ['/auslagerorte-list', 'Ort hinzufügen'],
   ])('marks the create action on %s for compact mobile placement', (path, label) => {
     render(routeHeaderAction(parseRoute(path), {}));
@@ -112,12 +127,33 @@ describe('route inventory', () => {
   });
 
   it.each([
+    ['1', 'w1'],
+    ['2', 'w2'],
+  ])('offers create, print, and visibility actions for allocation week %s', (week, origin) => {
+    render(routeHeaderAction(
+      parseRoute(`/swp-einteilung-w${week}`),
+      {},
+      { pageState: {} },
+    ));
+
+    const createAction = screen.getByRole('link', { name: 'SWP hinzufügen' });
+    expect(createAction).toHaveAttribute('href', `/schwerpunkt/create?from=${origin}`);
+    expect(createAction).toHaveClass('mobile-icon-action');
+    expect(createAction.querySelector('.mobile-action-label')).toHaveAttribute('aria-hidden', 'true');
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    fireEvent.click(screen.getByRole('button', { name: 'Drucken' }));
+    expect(print).toHaveBeenCalledOnce();
+    print.mockRestore();
+    expect(screen.getByRole('button', { name: 'Kinder ausblenden' })).toBeInTheDocument();
+  });
+
+  it.each([
     ['/profil', 'link', 'Profil bearbeiten'],
-    ['/swp-dashboard', 'link', 'SWP hinzufügen'],
     ['/auslagerorte-list', 'link', 'Ort hinzufügen'],
     ['/kindergeburtstage', 'button', 'Geburtstage aktualisieren'],
     ['/kitchen', 'button', 'Drucken'],
     ['/murdergame', 'button', 'Drucken'],
+    ['/swp-einteilung-w1', 'button', 'Drucken'],
     ['/swp-einteilung-w1', 'button', 'Kinder ausblenden'],
     ['/happy-cleaning', 'button', 'Happy Cleaning hinzufügen'],
     ['/happy-cleaning/print', 'button', 'Drucken'],

@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import json
 from copy import deepcopy
 from datetime import date
@@ -23,9 +24,9 @@ class HappyCleaningStationCreateTests(TransactionTestCase):
             turnus_nr=1, turnus_beginn=date(2026, 7, 1)
         )
         self.user = User.objects.create_user(username="station-creator")
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user, self.turnus)
         self.user.profil.rufname = "Mira"
-        self.user.profil.save(update_fields=["turnus", "rufname"])
+        self.user.profil.save()
         self.event = HappyCleaning.objects.create(
             turnus=self.turnus, display_number=1
         )
@@ -105,8 +106,8 @@ class HappyCleaningStationCreateTests(TransactionTestCase):
             turnus_nr=2, turnus_beginn=date(2026, 8, 1)
         )
         foreign_user = User.objects.create_user(username="foreign-responsible")
-        foreign_user.profil.turnus = foreign_turnus
-        foreign_user.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(foreign_user.profil.user, foreign_turnus)
+        foreign_user.profil.save()
 
         malformed = self.post(self.payload(
             request_id="malformed-create",
@@ -138,8 +139,8 @@ class HappyCleaningStationStructuralEditTests(TransactionTestCase):
     def setUp(self):
         self.turnus = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
         self.user = User.objects.create_user(username="structural-editor")
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         self.event = HappyCleaning.objects.create(turnus=self.turnus, display_number=1)
         self.station = HappyCleaningStation.objects.create(
             happy_cleaning=self.event,

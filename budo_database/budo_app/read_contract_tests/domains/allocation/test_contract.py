@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import json
 from datetime import date
 from unittest.mock import patch
@@ -7,7 +8,9 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from budo_app import schwerpunkte_views
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
+    Auslagerorte,
     Kinder,
     Schwerpunkte,
     SchwerpunktWahl,
@@ -46,8 +49,9 @@ class AllocationContractTests(TestCase):
             username="allocation-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
 
         self.week_1 = Schwerpunktzeit.objects.get(turnus=self.turnus, woche="w1")
@@ -163,6 +167,9 @@ class AllocationContractTests(TestCase):
                         "id": self.lake.id,
                         "name": "See",
                         "week": "w2",
+                        "place_id": None,
+                        "place": None,
+                        "carers": [],
                         "kid_ids": [self.kid.id],
                         "stats": {
                             "average_age": self.kid.get_alter(),
@@ -184,6 +191,9 @@ class AllocationContractTests(TestCase):
                     "id": self.forest.id,
                     "name": "Wald",
                     "week": "w1",
+                    "place_id": None,
+                    "place": None,
+                    "carers": [],
                     "kid_ids": [self.kid.id],
                     "stats": {
                         "average_age": self.kid.get_alter(),
@@ -243,6 +253,26 @@ class AllocationContractTests(TestCase):
             },
         )
 
+    def test_focus_metadata_includes_its_place_and_active_turnus_carers(self):
+        place = Auslagerorte.objects.create(name="Waldplatz")
+        active_carer = User.objects.create_user(username="active-carer")
+        active_carer.profil.rufname = "Grace"
+        active_carer.profil.save(update_fields=["rufname"])
+        create_membership(user=active_carer, turnus=self.turnus)
+        foreign_carer = User.objects.create_user(username="foreign-carer")
+        foreign_carer.profil.rufname = "Nicht sichtbar"
+        foreign_carer.profil.save(update_fields=["rufname"])
+        create_membership(user=foreign_carer, turnus=self.other_turnus)
+        self.lake.ort = place
+        self.lake.save(update_fields=["ort"])
+        self.lake.betreuende.add(active_carer.profil, foreign_carer.profil)
+
+        focus = self.client.get(self.contract_url(2)).json()["focuses"][0]
+
+        self.assertEqual(focus["place_id"], place.id)
+        self.assertEqual(focus["place"], "Waldplatz")
+        self.assertEqual(focus["carers"], ["Grace"])
+
     def test_contract_requires_authentication_and_a_supported_week(self):
         self.client.logout()
 
@@ -273,9 +303,8 @@ class AllocationContractTests(TestCase):
 
         response = self.client.get(self.contract_url(2))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"kids": [], "focuses": []})
-        self.assertNotContains(response, orphaned_kid.kid_vorname)
+        self.assertEqual(response.status_code, 404)
+        self.assertNotContains(response, orphaned_kid.kid_vorname, status_code=404)
 
     def test_existing_json_mutations_are_visible_in_the_selected_week_contract(self):
         climbing = Schwerpunkte.objects.create(
@@ -568,8 +597,9 @@ class AllocationContractPerformanceTests(QueryBudgetAssertions, TestCase):
             username="allocation-performance-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
         self.contract_url = (

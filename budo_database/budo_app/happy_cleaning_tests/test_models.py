@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import User
@@ -147,8 +148,8 @@ class HappyCleaningModelTests(TestCase):
 
     def test_responsible_profile_and_assignment_references_validate_turnus(self):
         other_profile = User.objects.create_user(username="other-carer").profil
-        other_profile.turnus = self.other_turnus
-        other_profile.save(update_fields=["turnus"])
+        approve_and_select_turnus(other_profile.user, self.other_turnus)
+        other_profile.save()
 
         self.station.responsible_profile = other_profile
         with self.assertRaises(ValidationError):

@@ -17,6 +17,7 @@ from budo_app.models import (
 from budo_app.read_contracts.common import (
     active_turnus_id,
     kid_full_name,
+    require_active_turnus_id,
     required_query_integer,
     serialize_datetime,
     serialize_first_aid_entry,
@@ -114,9 +115,6 @@ def _directory_kid(kid):
         "full_name": kid_full_name(kid.kid_vorname, kid.kid_nachname),
         "present": kid.anwesend,
         "budo_family": kid.budo_family,
-        "special_family": (
-            str(kid.spezial_familien) if kid.spezial_familien else None
-        ),
         "sex_short": kid.get_short_sex(),
         "age": kid.get_alter(),
         "birthday_during_turnus": kid.is_birthday_during_turnus(),
@@ -148,9 +146,6 @@ def _detail_kid(kid):
         "tent_request": kid.get_clean_zeltwunsch(),
         "budo_experience": kid.budo_erfahrung,
         "budo_family": kid.budo_family,
-        "special_family": (
-            str(kid.spezial_familien) if kid.spezial_familien else None
-        ),
         "focus_assignments": _detail_focus_assignments(kid),
         "happy_cleaning_number": kid.happy_cleaning_number,
         "happy_cleaning_assignments": (
@@ -191,14 +186,12 @@ def _detail_kid(kid):
 
 
 def kids_directory(request):
-    turnus_id = active_turnus_id(request)
-    if turnus_id is None:
-        return {"kids": []}
+    turnus_id = require_active_turnus_id(request)
 
     focuses = _focus_queryset(turnus_id)
     kids = (
         Kinder.objects.filter(turnus_id=turnus_id)
-        .select_related("turnus", "spezial_familien")
+        .select_related("turnus")
         .prefetch_related(
             Prefetch("schwerpunkte", queryset=focuses, to_attr="route_focuses")
         )
@@ -252,9 +245,9 @@ def kid_detail(request):
         "id", "eintrag_id", "position", "width", "height"
     ).order_by("position", "id")
     notes = (
-        Notizen.objects.select_related("added_by")
+        Notizen.objects.select_related("added_by__profil")
         .prefetch_related(Prefetch("fotos", queryset=note_photos, to_attr="route_photos"))
-        .order_by("date_added", "id")
+        .order_by("-date_added", "-id")
     )
     photos = ErsteHilfeFoto.objects.only(
         "id",
@@ -264,19 +257,19 @@ def kid_detail(request):
         "height",
     ).order_by("position", "id")
     first_aid_entries = (
-        ErsteHilfeEintrag.objects.select_related("added_by")
+        ErsteHilfeEintrag.objects.select_related("added_by__profil")
         .prefetch_related(
             Prefetch("fotos", queryset=photos, to_attr="route_photos")
         )
         .order_by("-date_added", "-id")
     )
-    transactions = Geld.objects.select_related("added_by").order_by(
-        "date_added",
-        "id",
+    transactions = Geld.objects.select_related("added_by__profil").order_by(
+        "-date_added",
+        "-id",
     )
     queryset = (
         Kinder.objects.filter(turnus_id=turnus_id)
-        .select_related("turnus", "spezial_familien")
+        .select_related("turnus")
         .prefetch_related(
             Prefetch("schwerpunkte", queryset=focuses, to_attr="route_focuses"),
             Prefetch(

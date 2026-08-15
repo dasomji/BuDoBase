@@ -8,13 +8,19 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
-from budo_app.models import Kinder, Profil
+from django.db import IntegrityError, transaction
+from budo_app.models import Kinder, Profil, TurnusMembership
 from budo_app.react_views import ReactPageTemplateMixin, render_react_page
 from django.views.decorators.http import require_GET
 from django.views.generic.edit import UpdateView
 from django.urls import reverse_lazy
-from django.conf import settings
-from .forms import LoginForm, RegisterForm
+from .forms import (
+    DUPLICATE_EMAIL_ERROR,
+    LoginForm,
+    ProfileForm,
+    RegisterForm,
+    is_email_unique_integrity_error,
+)
 from budo_app.utils import cache_user_profile
 from .dashboard_services import build_dashboard_context
 
@@ -66,20 +72,22 @@ def sign_up(request):
 
     if request.method == 'POST':
         form = RegisterForm(request.POST)
-        passphrase = request.POST.get('passphrase')
 
-        if form.is_valid() and passphrase == settings.REGISTRATION_PASSPHRASE:
+        if form.is_valid():
             user = form.save(commit=False)
             user.username = user.username.lower()
-            user.save()
-            messages.success(request, 'You have signed up successfully.')
-            login(request, user)
-            return redirect('profil-edit')
-        else:
-            if passphrase != settings.REGISTRATION_PASSPHRASE:
-                messages.error(
-                    request, 'Invalid passphrase. Please try again.')
-            return render_react_page(request, {'form': form})
+            try:
+                with transaction.atomic():
+                    user.save()
+            except IntegrityError as error:
+                if not is_email_unique_integrity_error(error):
+                    raise
+                form.add_error("email", DUPLICATE_EMAIL_ERROR)
+            else:
+                messages.success(request, 'You have signed up successfully.')
+                login(request, user)
+                return redirect('dashboard')
+        return render_react_page(request, {'form': form})
 
 
 @login_required
@@ -102,14 +110,19 @@ def good_to_know(request):
 
 @login_required
 @require_GET
+def pocket_money(request):
+    return render_react_page(request)
+
+
+@login_required
+@require_GET
 def profile_detail(request):
     return render_react_page(request)
 
 
 class ProfilUpdate(ReactPageTemplateMixin, UpdateView):
     model = Profil
-    fields = ['rufname', 'allergien', 'coffee', 'rolle',
-              'essen', 'telefonnummer', 'budo_family', 'turnus']
+    form_class = ProfileForm
     success_url = reverse_lazy('dashboard')
 
     def dispatch(self, request, *args, **kwargs):
@@ -117,28 +130,36 @@ class ProfilUpdate(ReactPageTemplateMixin, UpdateView):
             return redirect_to_login(request.get_full_path())
         return super().dispatch(request, *args, **kwargs)
 
-    def get_form_class(self):
-        form_class = super().get_form_class()
-        if self.request.user.groups.filter(name='Test-users').exists():
-            if 'turnus' in form_class.base_fields:
-                form_class.base_fields.pop('turnus')
-        return form_class
-
     def get_object(self, queryset=None):
         return self.request.user.profil
 
     def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+        except IntegrityError as error:
+            if not is_email_unique_integrity_error(error):
+                raise
+            form.add_error("email", DUPLICATE_EMAIL_ERROR)
+            return self.form_invalid(form)
         messages.success(self.request, "Profil upgedatet!")
-        return super(ProfilUpdate, self).form_valid(form)
+        return response
 
 
 class ProfilAdminUpdate(ProfilUpdate):
-    success_url = reverse_lazy('team')
+    success_url = reverse_lazy('team-management-page')
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect_to_login(request.get_full_path())
-        if not request.user.has_perm('budo_app.change_profil'):
+        can_edit_shared_turnus_profile = TurnusMembership.objects.filter(
+            user=request.user,
+            functional_role=TurnusMembership.FunctionalRole.LEITUNG,
+            turnus__memberships__user__profil__id=self.kwargs['pk'],
+        ).exists()
+        if (
+            not request.user.has_perm('budo_app.change_profil')
+            and not can_edit_shared_turnus_profile
+        ):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 

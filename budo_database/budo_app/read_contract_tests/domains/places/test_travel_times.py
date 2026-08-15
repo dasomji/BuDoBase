@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 from io import StringIO
 from unittest.mock import Mock, patch
@@ -9,6 +10,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from budo_app import google_maps_gateway, location_services
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import Auslagerorte, Turnus
 
 
@@ -229,8 +231,9 @@ class TravelTimeWriteContractTests(TestCase):
             username="travel-time-place-writer",
             password="secret",
         )
-        user.profil.turnus = turnus
+        approve_and_select_turnus(user.profil.user, turnus)
         user.profil.save()
+        select_turnus(user, turnus)
         self.client.force_login(user)
         self.budo = Auslagerorte.objects.create(
             name="BuDo",
@@ -390,8 +393,9 @@ class TravelTimeReadContractTests(TestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         user = User.objects.create_user(username="travel-time-reader")
-        user.profil.turnus = turnus
+        approve_and_select_turnus(user.profil.user, turnus)
         user.profil.save()
+        select_turnus(user, turnus)
         self.client.force_login(user)
         self.place = Auslagerorte.objects.create(
             name="Waldlichtung",

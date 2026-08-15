@@ -52,7 +52,22 @@ A person who belongs to a Turnus team without Admin or Leitung management author
 
 ### Team label
 
-An informational label on a person's Turnus profile, such as Betreuer:in, Küche, Organisator, or Freiwillige:r. Team labels describe responsibilities or context but do not grant permissions by themselves.
+An informational label on a person's Turnus membership, such as Betreuer:in, Küche, Organisator, or Freiwillige:r. A person may have a different team label in each Turnus; labels never grant permissions.
+
+### Turnus membership
+
+An approved relationship between one account and one Turnus, also called an approved Turnus membership. It is the only grant of access to that Turnus, identifies the person as either Leitung or Teamer there, and carries an independent descriptive team label. A profile, join request, visible Turnus, or selected Turnus never grants access.
+_Avoid_: Team assignment, profile Turnus
+
+### Join request
+
+A person's request for approved Turnus membership. A pending request grants no Turnus access and requires a Leitung or Admin to verify the requester out of band before approval.
+_Avoid_: Invitation, automatic membership
+
+### Selected Turnus
+
+The approved Turnus membership whose data a person is currently working with. Selection is stored on the profile but is valid only while the account has the matching approved membership. Every Turnus-scoped boundary revalidates that membership; removal immediately clears or repairs selection. Selecting a Turnus changes context but never grants access. Profiles contain personal information only and have no legacy Turnus or role authority fields.
+_Avoid_: Active team, profile Turnus
 
 ### Turnus
 

@@ -1,9 +1,11 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     Auslagerorte,
     AuslagerorteImage,
@@ -30,8 +32,10 @@ class MapFirstPlacesContractTests(TestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.user = User.objects.create_user(username="mia", password="secret")
-        self.user.profil.turnus = turnus
+        approve_and_select_turnus(self.user.profil.user, turnus)
+        self.user.profil.rufname = "Mia Rufname"
         self.user.profil.save()
+        select_turnus(self.user, turnus)
         self.client.force_login(self.user)
 
     def test_list_carries_everything_the_map_sidebar_needs_without_a_detail_fetch(self):
@@ -104,7 +108,7 @@ class MapFirstPlacesContractTests(TestCase):
             "notes": [{
                 "id": note.id,
                 "text": "Das Gatter bitte schließen.",
-                "author": "mia",
+                "author": "Mia Rufname",
                 "date": note.date_added.isoformat(),
                 "day": note.date_added.strftime("%d.%m."),
                 "photos": [{

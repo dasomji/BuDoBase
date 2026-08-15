@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """RED PostgreSQL integration contract for the atomic kid-edit producer (#166)."""
 
 from copy import deepcopy
@@ -22,6 +23,7 @@ from budo_app.kid_edit_contracts import (
     FIELD_CONTRACTS,
     canonicalize_storage_value,
 )
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     AuditEvent,
     HappyCleaning,
@@ -80,8 +82,9 @@ class KidEditProducerFixture(TransactionTestCase):
         )
         self.user = User.objects.create_user(username="kid-edit-producer")
         self.user.profil.rufname = "Operator"
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("rufname", "turnus"))
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
 
         self.child = Kinder.objects.create(
@@ -369,13 +372,12 @@ class KidEditProducerEndpointTests(KidEditProducerFixture):
         csrf.force_login(self.user)
         self.assertEqual(self.post(payload, client=csrf).status_code, 403)
 
-        self.user.profil.turnus = None
-        self.user.profil.save(update_fields=("turnus",))
+        self.user.turnus_memberships.filter(turnus=self.turnus).delete()
         cache.clear()
         unavailable = self.post(payload)
         self.assertEqual((unavailable.status_code, unavailable.json()), (404, NOT_FOUND))
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("turnus",))
+        create_membership(user=self.user, turnus=self.turnus)
+        select_turnus(self.user, self.turnus)
         cache.clear()
 
         unsupported = self.client.post(

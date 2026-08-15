@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import json
 from datetime import date
 from unittest.mock import patch
@@ -6,6 +7,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import Geld, Kinder, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
@@ -39,8 +41,9 @@ class AttendanceContractTests(TestCase):
             username="attendance-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.active_kid = self.create_kid(
             turnus=self.turnus,
             index="T2-1",
@@ -196,19 +199,22 @@ class AttendanceContractTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_train_arrival_returns_only_arriving_active_turnus_kids(self):
+    def test_train_arrival_returns_all_active_turnus_kids_and_arrival_totals(self):
         self.active_kid.anwesend = True
         self.active_kid.zug_anreise = True
         self.active_kid.top_jugendticket = True
         self.active_kid.geschwister = "Charles"
         self.active_kid.illness = "must stay private"
         self.active_kid.save()
-        self.create_kid(
+        not_arriving_kid = self.create_kid(
             turnus=self.turnus,
             index="T2-2",
             first_name="Not",
             last_name="Arriving",
+            anwesend=False,
             zug_anreise=False,
+            top_jugendticket=False,
+            geschwister="",
         )
         self.other_kid.zug_anreise = True
         self.other_kid.save()
@@ -217,17 +223,30 @@ class AttendanceContractTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {
-            "kids": [{
-                "id": self.active_kid.id,
-                "full_name": "Ada Lovelace",
-                "present": True,
-                "train_arrival": True,
-                "youth_ticket": True,
-                "age": 14.0,
-                "registrant_name": "Grace Hopper",
-                "registrant_phone": "+4312345",
-                "siblings": "Charles",
-            }],
+            "kids": [
+                {
+                    "id": self.active_kid.id,
+                    "full_name": "Ada Lovelace",
+                    "present": True,
+                    "train_arrival": True,
+                    "youth_ticket": True,
+                    "age": 14.0,
+                    "registrant_name": "Grace Hopper",
+                    "registrant_phone": "+4312345",
+                    "siblings": "Charles",
+                },
+                {
+                    "id": not_arriving_kid.id,
+                    "full_name": "Not Arriving",
+                    "present": False,
+                    "train_arrival": False,
+                    "youth_ticket": False,
+                    "age": 14.0,
+                    "registrant_name": "Grace Hopper",
+                    "registrant_phone": "+4312345",
+                    "siblings": "",
+                },
+            ],
             "totals": {
                 "train_arrival": 1,
                 "with_youth_ticket": 1,
@@ -578,8 +597,9 @@ class AttendanceContractPerformanceTests(QueryBudgetAssertions, TestCase):
             username="attendance-performance",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
 

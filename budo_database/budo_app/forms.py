@@ -143,8 +143,8 @@ class UploadForm(forms.ModelForm):
 class ProfilForm(forms.ModelForm):
     class Meta:
         model = Profil
-        fields = ['allergien', 'rolle', 'essen', 'telefonnummer']
-        labels = {'allergien': "Allergien", 'rolle': "Rolle", 'essen': "Essen"}
+        fields = ['allergien', 'essen', 'telefonnummer']
+        labels = {'allergien': "Allergien", 'essen': "Essen"}
 
 
 class SchwerpunktForm(forms.ModelForm):
@@ -155,7 +155,7 @@ class SchwerpunktForm(forms.ModelForm):
             self.fields['schwerpunktzeit'].queryset = Schwerpunktzeit.objects.none()
             return
         self.fields['betreuende'].queryset = Profil.objects.filter(
-            turnus=turnus,
+            user__turnus_memberships__turnus=turnus,
         ).order_by('rufname', 'id')
         self.fields['schwerpunktzeit'].queryset = (
             Schwerpunktzeit.objects.filter(turnus=turnus)
@@ -331,13 +331,6 @@ class MealChoiceForm(forms.ModelForm):
     class Meta:
         model = Meal
         fields = ('meal_choice',)
-
-
-# Form for uploading a CSV file to update the spezialfamilien for all kids in the current turnus
-
-
-class CSVUploadForm(forms.Form):
-    csv_file = forms.FileField()
 
 
 class BirthdayNotizForm(forms.ModelForm):

@@ -23,9 +23,37 @@ redirect from slashless GET requests. For historically slashless routes—most
 importantly POST targets—use `legacy_slashless_page()` in `budo_app/urls.py`
 so both forms resolve directly without losing POST data.
 
-### Static collection after asset removal
+### Local server and React changes
 
-After pulling a change that deletes static assets, run
-`python manage.py collectstatic --clear --noinput`. The ignored local
-`staticfiles/` tree is not pruned by a normal `collectstatic`, so stale files
-can otherwise survive even though fresh production builds do not contain them.
+The browser preview serves the compiled React bundle through Django; it does
+not read `frontend/src/` directly. After changing React or frontend CSS, run:
+
+```bash
+cd frontend && npm run build
+cd .. && python manage.py collectstatic --clear --noinput
+```
+
+The build updates `budo_app/static/frontend/`, while `collectstatic` refreshes
+the ignored `staticfiles/` tree used by the long-running preview. Use `--clear`
+even when no asset was deleted so an existing preview cannot keep serving a
+stale bundle.
+
+Python code is likewise loaded into the running Django process. The persistent
+interactive preview must use Django's normal autoreloader; do not pass
+`--noreload`:
+
+```bash
+python manage.py runserver 127.0.0.1:<existing-port>
+```
+
+Reserve `--noreload` for short-lived, deterministic test/evidence servers that
+will be stopped after a bounded check. If the exposed preview is running with
+`--noreload`, restart that exact server without the flag before continuing;
+rebuilding React or collecting static files does not reload Python. Do not
+start a duplicate server on another port, and preserve the existing
+environment—especially `DATABASE_URL`—and its Tailscale mapping.
+
+Before reporting completion, verify the actual exposed page after a hard
+refresh. For changes spanning frontend and backend, also inspect the live API
+response or exercise the changed interaction in the browser; passing tests and
+fresh source files alone do not prove that the preview process loaded them.

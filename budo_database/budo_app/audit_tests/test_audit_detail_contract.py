@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """RED contract for one-event audit detail reads (#164-06)."""
 
 from dataclasses import replace
@@ -15,7 +16,7 @@ from budo_app import audit_views
 from budo_app.audit import AuditEventData, record_audit_event
 from budo_app.audit_queries import serialize_audit_event
 from budo_app.audit_tests.test_kid_edit_audit_schema import valid_details
-from budo_app.models import AuditEvent, Turnus
+from budo_app.models import AuditEvent, Turnus, TurnusMembership
 
 
 PRIVACY_HEADERS = {
@@ -37,8 +38,8 @@ class AuditDetailHttpTests(TestCase):
         self.user = User.objects.create(username="detail-reader", is_staff=True)
         self.permission = Permission.objects.get(codename="view_auditevent")
         self.user.user_permissions.add(self.permission)
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         self.client.force_login(self.user)
 
     def event(self, *, turnus=None, action="happy_cleaning.event.create",

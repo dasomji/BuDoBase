@@ -223,16 +223,23 @@ describe('map-first Auslagerorte', () => {
     renderPage({ initialPlaceId: '7', fetchImpl: fetchMock, onSaved });
 
     const comment = screen.getByRole('textbox', { name: 'Kommentar' });
+    const photoButton = screen.getByRole('button', { name: 'Bilder zum Kommentar auswählen' });
+    const submitButton = screen.getByRole('button', { name: 'Kommentar senden' });
+    expect(comment).toHaveAttribute('rows', '1');
+    expect(photoButton.querySelector('.lucide-image-plus')).toBeInTheDocument();
+    expect(submitButton).toHaveTextContent('➤');
     await user.type(comment, 'Neuer Hinweis');
     const photo = new File(['gate'], 'gatter.jpg', { type: 'image/jpeg' });
     await user.upload(screen.getByLabelText('Kommentar-Bilder'), photo);
-    await user.click(screen.getByRole('button', { name: 'Kommentar senden' }));
+    expect(document.querySelector('[data-slot="attachment-count"]')).toHaveTextContent('1');
+    await user.click(submitButton);
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
     const body = fetchMock.mock.calls[0][1].body;
     expect(body.get('_target')).toBe('/auslagerorte/7/');
     expect(body.get('notiz')).toBe('Neuer Hinweis');
     expect(body.getAll('images')).toEqual([photo]);
+    expect(document.querySelector('[data-slot="attachment-count"]')).not.toBeInTheDocument();
     expect(fetchMock.mock.calls[1][0]).toBe('/api/route-data/place-detail/?id=7');
   });
 

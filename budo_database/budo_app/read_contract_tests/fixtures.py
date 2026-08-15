@@ -6,6 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
 from budo_app.first_aid_tests.fixtures import create_first_aid_entry_for_test
+from budo_app.memberships import create_membership
 from budo_app.models import (
     Auslagerorte,
     AuslagerorteImage,
@@ -15,6 +16,7 @@ from budo_app.models import (
     Geld,
     Kinder,
     Notizen,
+    Profil,
     Schwerpunkte,
     SchwerpunktWahl,
 )
@@ -40,14 +42,14 @@ class ActiveTurnusFixtureFactory:
         self._grow_kids(kids)
 
     def _grow_team(self, target):
-        current = self.turnus.teamer.count()
+        current = self.turnus.memberships.count()
         for index in range(current, target):
             user = User.objects.create_user(username=f"baseline-team-{index}")
             profile = user.profil
             profile.rufname = f"Teamer {index}"
-            profile.turnus = self.turnus
             profile.allergien = "Nüsse" if index % 3 == 0 else ""
             profile.save()
+            create_membership(user=user, turnus=self.turnus)
             BetreuerinnenGeld.objects.create(
                 who=profile,
                 amount=10 + index,
@@ -87,7 +89,10 @@ class ActiveTurnusFixtureFactory:
         places = list(
             Auslagerorte.objects.filter(name__startswith="Baseline Ort").order_by("id")
         )
-        team = list(self.turnus.teamer.order_by("id"))
+        team = list(
+            Profil.objects.filter(user__turnus_memberships__turnus=self.turnus)
+            .order_by("id")
+        )
         for index in range(current, target):
             focus = Schwerpunkte.objects.create(
                 swp_name=f"Baseline Schwerpunkt {index}",

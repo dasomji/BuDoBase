@@ -1,8 +1,10 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from django.test import TestCase, Client, SimpleTestCase, override_settings
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from .forms import AuslagerorteImageForm
 from .models import Auslagerorte, AuslagerorteImage, Document, Turnus, Kinder, Notizen
+from .test_membership_fixtures import approve_and_select_turnus
 from .excelProcessor import (
     parse_birthday,
     parse_budo_erfahrung,
@@ -14,6 +16,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from io import BytesIO
 from tempfile import TemporaryDirectory
+from tempfile import SpooledTemporaryFile
 import os
 import json
 import pandas as pd
@@ -103,8 +106,7 @@ class SchwerpunktAllocationCachingTest(TestCase):
             username="allocation-cache-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save()
+        approve_and_select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
 
     def test_allocation_pages_are_not_browser_cached(self):
@@ -342,7 +344,7 @@ class MutationSecurityTest(TestCase):
             turnus_nr=2,
             turnus_beginn=date(2024, 8, 1)
         )
-        self.user.profil.turnus = self.active_turnus
+        approve_and_select_turnus(self.user.profil.user, self.active_turnus)
         self.user.profil.save()
         self.active_kid = make_kid(self.active_turnus, "T1-1")
         self.other_kid = make_kid(self.other_turnus, "T2-1")
@@ -437,7 +439,8 @@ class TurnusUploadTest(TestCase):
         # Create a test user and log in
         self.user = User.objects.create_user(
             username='testuser',
-            password='testpass123'
+            password='testpass123',
+            is_superuser=True,
         )
         self.client.login(username='testuser', password='testpass123')
 
@@ -532,6 +535,7 @@ class TurnusWorkbookReplacementTest(TestCase):
         self.user = User.objects.create_user(
             username="workbook-uploader",
             password="testpass123",
+            is_superuser=True,
         )
         self.client.login(
             username="workbook-uploader",
@@ -609,8 +613,7 @@ class DownloadUpdatedExcelTest(TestCase):
             turnus_nr=1,
             turnus_beginn=date(2024, 7, 1),
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save()
+        approve_and_select_turnus(self.user, self.turnus)
         self.client.login(username="download-user", password="testpass123")
 
     def test_generated_download_uses_a_cleaned_up_temporary_file(self):
@@ -628,20 +631,60 @@ class DownloadUpdatedExcelTest(TestCase):
         ):
             response = self.client.get(reverse("download_updated_excel"))
             content = b"".join(response.streaming_content)
-            response.close()
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(content, b"generated workbook")
         self.assertIsNotNone(generated_path)
         self.assertFalse(os.path.exists(os.path.dirname(generated_path)))
 
+    def test_large_download_rolls_snapshot_to_disk_and_closes_it_with_response(self):
+        snapshot = SpooledTemporaryFile(max_size=8, mode="w+b")
+
+        def generate_file(path, turnus):
+            with open(path, "wb") as generated_file:
+                generated_file.write(b"a" * 64)
+
+        with patch(
+            "budo_app.excel_views.create_export_snapshot",
+            return_value=snapshot,
+        ), patch(
+            "budo_app.excel_views.update_excel_file",
+            side_effect=generate_file,
+        ):
+            response = self.client.get(reverse("download_updated_excel"))
+
+        self.assertTrue(snapshot._rolled)
+        self.assertEqual(b"".join(response.streaming_content), b"a" * 64)
+        self.assertTrue(snapshot.closed)
+
+    def test_abandoned_download_closes_snapshot_with_response(self):
+        snapshot = SpooledTemporaryFile(max_size=8, mode="w+b")
+
+        def generate_file(path, turnus):
+            with open(path, "wb") as generated_file:
+                generated_file.write(b"a" * 64)
+
+        with patch(
+            "budo_app.excel_views.create_export_snapshot",
+            return_value=snapshot,
+        ), patch(
+            "budo_app.excel_views.update_excel_file",
+            side_effect=generate_file,
+        ):
+            response = self.client.get(reverse("download_updated_excel"))
+
+        self.assertFalse(snapshot.closed)
+        with patch("django.http.response.signals.request_finished.send"):
+            response.close()
+        self.assertTrue(snapshot.closed)
+
     def test_export_does_not_mark_an_on_time_arrival_as_late(self):
         self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
-        self.turnus.save(update_fields=("turnus_beginn",))
+        self.turnus.save()
         kid = make_kid(self.turnus)
         kid.check_in_date = date(2024, 7, 7)  # default Sunday arrival
         kid.turnus_dauer = 2
-        kid.save(update_fields=("check_in_date", "turnus_dauer"))
+        kid.save()
 
         with TemporaryDirectory() as directory:
             path = os.path.join(directory, "aufenthaltsdoku.xlsx")
@@ -688,11 +731,11 @@ class DownloadUpdatedExcelTest(TestCase):
 
     def test_early_departure_uses_latest_note_when_departure_note_is_missing(self):
         self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
-        self.turnus.save(update_fields=("turnus_beginn",))
+        self.turnus.save()
         kid = make_kid(self.turnus)
         kid.turnus_dauer = 1
         kid.early_abreise_date = date(2024, 7, 11)  # one day early
-        kid.save(update_fields=("turnus_dauer", "early_abreise_date"))
+        kid.save()
         Notizen.objects.create(
             kinder=kid,
             notiz="Frühere allgemeine Notiz",
@@ -729,7 +772,7 @@ class DownloadUpdatedExcelTest(TestCase):
 
     def test_explicit_departure_note_takes_precedence_over_latest_note(self):
         self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
-        self.turnus.save(update_fields=("turnus_beginn",))
+        self.turnus.save()
         kid = make_kid(self.turnus)
         kid.turnus_dauer = 1
         kid.early_abreise_date = date(2024, 7, 11)  # one day early
@@ -757,11 +800,12 @@ class DownloadUpdatedExcelTest(TestCase):
             "Explizit markierte Abreisenotiz",
         )
 
-    def test_export_marks_train_departure_and_stay_changes_from_original_workbook(self):
+    def test_export_marks_train_travel_and_stay_changes_from_original_workbook(self):
         kid = make_kid(self.turnus)
+        kid.zug_anreise = False
         kid.zug_abreise = False
         kid.turnus_dauer = 1
-        kid.save(update_fields=("zug_abreise", "turnus_dauer"))
+        kid.save()
         self.turnus.uploadedFile = SimpleUploadedFile(
             "original.xlsx",
             b"original workbook",
@@ -777,20 +821,21 @@ class DownloadUpdatedExcelTest(TestCase):
             update_excel_file(path, self.turnus)
             exported = pd.read_excel(path, dtype=str).fillna("")
 
+        self.assertEqual(exported.loc[0, "Zuganreise geändert"], "ja")
         self.assertEqual(exported.loc[0, "Zugabreise geändert"], "ja")
         self.assertEqual(exported.loc[0, "Aufenthalt geändert"], "ja")
 
     def test_export_only_marks_departure_before_the_kids_planned_friday(self):
         self.turnus.turnus_beginn = date(2024, 7, 6)  # Saturday
-        self.turnus.save(update_fields=("turnus_beginn",))
+        self.turnus.save()
         one_week = make_kid(self.turnus, kid_index="one-week")
         one_week.turnus_dauer = 1
         one_week.early_abreise_date = date(2024, 7, 12)  # planned Friday
-        one_week.save(update_fields=("turnus_dauer", "early_abreise_date"))
+        one_week.save()
         two_weeks = make_kid(self.turnus, kid_index="two-weeks")
         two_weeks.turnus_dauer = 2
         two_weeks.early_abreise_date = date(2024, 7, 18)  # one day early
-        two_weeks.save(update_fields=("turnus_dauer", "early_abreise_date"))
+        two_weeks.save()
 
         with TemporaryDirectory() as directory:
             path = os.path.join(directory, "aufenthaltsdoku.xlsx")

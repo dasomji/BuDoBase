@@ -10,6 +10,7 @@ import { X } from 'lucide-react';
 
 import { Card } from '../components';
 import { Button } from '../components/ui/button';
+import { NativeSelect } from '../components/ui/input';
 import { useErrorToast } from '../components/ui/toast';
 import { SingleStationCopyDialog } from './happyCleaningCopy';
 
@@ -407,10 +408,10 @@ function StationEditor({ data, mutate, onSaved, onDeleted, registerNavigationGua
       </div>
       <form className="form-grid" onSubmit={async event_ => { event_.preventDefault(); await save(); }}>
         <label>Name<input aria-label="Name der Station" value={fields.name} onChange={event_ => setFields(value => ({ ...value, name: event_.target.value }))} /></label>
-        <label>Verantwortlich<select aria-label="Verantwortlich" value={fields.responsible_profile_id} onChange={event_ => setFields(value => ({ ...value, responsible_profile_id: event_.target.value }))}>
+        <label>Verantwortlich<NativeSelect aria-label="Verantwortlich" value={fields.responsible_profile_id} onChange={event_ => setFields(value => ({ ...value, responsible_profile_id: event_.target.value }))}>
           <option value="">Niemand</option>
           {(data.responsible_profiles || []).map(profile => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
-        </select></label>
+        </NativeSelect></label>
         <label>Kapazität<input aria-label="Kapazität der Station" type="number" min="0" required value={fields.max_kids} onChange={event_ => setFields(value => ({ ...value, max_kids: event_.target.value }))} /></label>
         <label>Treffpunkt<input aria-label="Treffpunkt der Station" value={fields.meeting_point} onChange={event_ => setFields(value => ({ ...value, meeting_point: event_.target.value }))} /></label>
         <label>Wünsche<textarea aria-label="Wünsche der Station" value={fields.wishes} onChange={event_ => setFields(value => ({ ...value, wishes: event_.target.value }))} /></label>

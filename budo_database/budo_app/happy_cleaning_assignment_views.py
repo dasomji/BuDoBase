@@ -17,7 +17,7 @@ from budo_app.happy_cleaning_assignment_commands import (
 from budo_app.happy_cleaning_number_batch import BATCH_NUMBER_ACTION
 from budo_app.happy_cleaning_commands import (
     CommandError,
-    command_context,
+    run_authorized_command,
     required_positive_integer,
 )
 
@@ -89,9 +89,11 @@ def _run(request, action, operation):
         )
     context = None
     try:
-        context = command_context(request, request.data)
-        payload, replayed = operation(context)
+        context, (payload, replayed) = run_authorized_command(
+            request, request.data, operation,
+        )
     except AssignmentCommandError as error:
+        context = getattr(error, "command_context", context)
         if context is None:
             return _error_response(error)
         payload, replayed = rejection_response(context, action, error)

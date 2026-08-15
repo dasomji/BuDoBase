@@ -5,7 +5,7 @@ from budo_app.models import BetreuerinnenGeld, Geld, Kinder, Notizen, Profil
 
 def build_dashboard_context(profile, active_turnus):
     kids = Kinder.objects.filter(turnus=active_turnus).select_related(
-        'turnus', 'spezial_familien')
+        'turnus')
 
     geburtstagskinder = sorted(
         [kid for kid in kids if kid.is_birthday_during_turnus()],
@@ -36,7 +36,9 @@ def build_dashboard_context(profile, active_turnus):
         "geburtstage": len(geburtstagskinder),
         "eingecheckte_kids": kids.filter(anwesend=True).count(),
         "anzahl_kids": kids.count(),
-        "team": Profil.objects.filter(turnus=active_turnus).annotate(
+        "team": Profil.objects.filter(
+            user__turnus_memberships__turnus=active_turnus,
+        ).annotate(
             total_betreuerinnen_geld=Sum('betreuerinnen_geld__amount')
         ).select_related('user'),
         "medikamente": medikamente,

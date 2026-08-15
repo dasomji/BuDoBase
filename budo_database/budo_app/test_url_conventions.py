@@ -1,5 +1,5 @@
 from django.test import SimpleTestCase
-from django.urls import resolve, reverse
+from django.urls import Resolver404, resolve, reverse
 
 
 class PageUrlConventionTests(SimpleTestCase):
@@ -36,6 +36,11 @@ class PageUrlConventionTests(SimpleTestCase):
         self.assertIs(slash_match.func, slashless_match.func)
         self.assertEqual(slash_match.kwargs, {"id": 21})
         self.assertEqual(slashless_match.kwargs, {"id": 21})
+
+    def test_retired_swp_dashboard_no_longer_resolves(self):
+        for path in ("/swp-dashboard", "/swp-dashboard/"):
+            with self.subTest(path=path), self.assertRaises(Resolver404):
+                resolve(path)
 
     def test_every_legacy_page_keeps_exact_slashless_resolution(self):
         for name, args, slashless_url in self.legacy_slashless_pages:

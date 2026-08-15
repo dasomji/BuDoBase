@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { parseRoute } from '../routes';
-import { ProfileEditPage, ProfilePage, TeamPage } from './profiles';
+import { ProfileEditPage, ProfilePage } from './profiles';
 
 const profile = {
   id: 5,
@@ -11,12 +11,10 @@ const profile = {
   phone: '+4312345',
   allergies: 'Nüsse',
   coffee: 'Schwarz',
-  role: 'b',
-  role_display: 'Betreuer:in',
   food: 'vt',
   food_display: '🧀 Vegetarisch',
   budo_family: 'M',
-  can_change_turnus: true,
+  turnuses: ['T2-2026', 'T3-2026'],
 };
 
 const data = {
@@ -24,25 +22,21 @@ const data = {
   profile,
   focuses: [{ id: 3, name: 'Wald' }],
   turnus: { id: 2, label: 'T2-2026' },
-  turnuses: [
-    { id: 2, label: 'T2-2026' },
-    { id: 4, label: 'T4-2026' },
-  ],
 };
 
-describe('Profil and Team pages', () => {
+describe('Profil pages', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
     window.history.pushState({}, '', '/');
   });
 
-  it('renders focused profile, contact, role, and focus information without accounting', () => {
+  it('renders focused profile, contact, and focus information without membership authority fields', () => {
     render(<ProfilePage data={data} />);
 
     const details = screen.getByRole('heading', { name: 'Ada' }).closest('section');
-    expect(within(details).getByText('Rolle').closest('p')).toHaveTextContent('Betreuer:in');
-    expect(within(details).getByText('Turnus').closest('p')).toHaveTextContent('T2-2026');
+    expect(within(details).queryByText('Rolle')).not.toBeInTheDocument();
+    expect(within(details).queryByText('Turnus')).not.toBeInTheDocument();
     expect(within(details).getByText('Essen').closest('p')).toHaveTextContent('🧀 Vegetarisch');
     expect(within(details).getByText('BuDo-Familie').closest('p')).toHaveTextContent('Medi');
     expect(within(details).getByText('Allergien').closest('p')).toHaveTextContent('Nüsse');
@@ -50,24 +44,28 @@ describe('Profil and Team pages', () => {
     expect(within(details).getByRole('link', { name: 'ada@example.test' })).toHaveAttribute('href', 'mailto:ada@example.test');
     expect(within(details).getByRole('link', { name: '+4312345' })).toHaveAttribute('href', 'tel:+4312345');
     expect(within(details).getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/3/');
+    expect(within(details).getByText('Turnis').closest('p')).toHaveTextContent('T2-2026, T3-2026');
+    expect(within(details).getByRole('link', { name: 'Zur Turnusliste' })).toHaveAttribute('href', '/teams/');
     expect(screen.queryByText(/Abrechnung/)).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Rufname')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
   });
 
-  it('retains own profile form values, choices, CSRF target, and active Turnus on the edit page', () => {
+  it('retains editable personal profile values without membership authority controls', () => {
     render(<ProfileEditPage data={data} />);
 
     expect(screen.getByLabelText('Rufname')).toHaveValue('Ada');
+    expect(screen.getByLabelText('E-Mail')).toHaveValue('ada@example.test');
+    expect(screen.getByLabelText('E-Mail')).toHaveAttribute('type', 'email');
+    expect(screen.getByLabelText('E-Mail')).toBeRequired();
     expect(screen.getByLabelText('Allergien')).toHaveValue('Nüsse');
     expect(screen.getByLabelText('Kaffee')).toHaveValue('Schwarz');
-    expect(screen.getByLabelText('Rolle')).toHaveValue('b');
+    expect(screen.queryByLabelText('Rolle')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Essen')).toHaveValue('vt');
     expect(screen.getByLabelText('BuDo-Familie')).toHaveValue('M');
     expect(screen.getByRole('option', { name: 'X-largie' })).toHaveValue('XL');
     expect(screen.getByLabelText('Telefonnummer')).toHaveValue('+4312345');
-    expect(screen.getByLabelText('Turnus')).toHaveValue('2');
-    expect(screen.getByRole('option', { name: 'T4-2026' })).toHaveValue('4');
+    expect(screen.queryByLabelText('Turnus')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Rufname').form).toHaveAttribute('action', '/profil/bearbeiten/');
     expect(screen.getByLabelText('Rufname').form.elements.csrfmiddlewaretoken).toHaveValue('token');
   });
@@ -76,103 +74,18 @@ describe('Profil and Team pages', () => {
     render(<ProfileEditPage data={data} target="/profil/5/" />);
 
     expect(screen.getByLabelText('Rufname').form).toHaveAttribute('action', '/profil/5/');
+    expect(screen.getByLabelText('E-Mail')).toHaveValue('ada@example.test');
+    expect(screen.getByLabelText('E-Mail')).toBeRequired();
   });
 
-  it('does not render a Turnus control when existing permissions disallow it', () => {
-    render(<ProfileEditPage data={{
-      ...data,
-      profile: { ...profile, can_change_turnus: false },
-      turnuses: [],
-    }} />);
-
-    expect(screen.queryByLabelText('Turnus')).not.toBeInTheDocument();
-  });
-
-  it('shows an update button only on the signed-in user’s Team card', () => {
-    render(<TeamPage data={{
-      profile: { id: 5 },
-      permissions: { change_profiles: false },
-      turnus: data.turnus,
-      team: [
-        { ...profile, focuses: data.focuses },
-        {
-          ...profile,
-          id: 6,
-          rufname: 'Grace',
-          email: 'grace@example.test',
-          phone: '+436789',
-          focuses: [],
-        },
-      ],
-    }} />);
-
-    const adaCard = screen.getByRole('heading', { name: 'Ada' }).closest('section');
-    expect(within(adaCard).getByText('Turnus').closest('p')).toHaveTextContent('T2-2026');
-    expect(within(adaCard).getByRole('link', { name: 'Wald' })).toHaveAttribute('href', '/schwerpunkt/3/');
-    expect(within(adaCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/bearbeiten/');
-    const graceCard = screen.getByRole('heading', { name: 'Grace' }).closest('section');
-    expect(within(graceCard).getByText('Keine Schwerpunkte zugeteilt.')).toBeInTheDocument();
-    expect(within(graceCard).queryByRole('link', { name: 'Informationen aktualisieren' })).not.toBeInTheDocument();
-  });
-
-  it('lets admins update every profile from its Team card', () => {
-    render(<TeamPage data={{
-      profile: { id: 5 },
-      permissions: { change_profiles: true },
-      turnus: data.turnus,
-      team: [
-        { ...profile, focuses: [] },
-        { ...profile, id: 6, rufname: 'Grace', focuses: [] },
-      ],
-    }} />);
-
-    const adaCard = screen.getByRole('heading', { name: 'Ada' }).closest('section');
-    const graceCard = screen.getByRole('heading', { name: 'Grace' }).closest('section');
-    expect(within(adaCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/bearbeiten/');
-    expect(within(graceCard).getByRole('link', { name: 'Informationen aktualisieren' })).toHaveAttribute('href', '/profil/6/');
-  });
-
-  it('keeps every Team profile in contract order', () => {
-    const team = Array.from({ length: 5 }, (_, index) => ({
-      ...profile,
-      id: index + 5,
-      rufname: `Teamer ${index + 1}`,
-      focuses: [],
-    }));
-
-    render(<TeamPage data={{ team, turnus: data.turnus }} />);
-    expect(screen.getAllByRole('heading').map(heading => heading.textContent)).toEqual([
-      'Teamer 1', 'Teamer 2', 'Teamer 3', 'Teamer 4', 'Teamer 5',
-    ]);
-  });
-
-  it('preserves long contact links inside Team cards without truncating their value', () => {
-    const longEmail = `${'long-address-'.repeat(8)}@example.test`;
-    render(<TeamPage data={{
-      team: [{ ...profile, email: longEmail, focuses: [] }],
-      turnus: data.turnus,
-    }} />);
-
-    const card = screen.getByRole('heading', { name: 'Ada' }).closest('section');
-    expect(within(card).getByRole('link', { name: longEmail })).toHaveAttribute('href', `mailto:${longEmail}`);
-  });
-
-  it('shows an empty state when no active-turnus Team exists', () => {
-    render(<TeamPage data={{ team: [], turnus: null }} />);
-
-    expect(screen.getByText('Kein Team für den aktiven Turnus vorhanden.')).toBeInTheDocument();
-  });
-
-  it('declares read-only, own-edit, admin-edit, and Team routes, but no Teamer detail route', () => {
+  it('declares read-only, own-edit, and admin-edit profile routes, but no Teamer detail route', () => {
     const ownProfileRoute = parseRoute('/profil');
     const ownProfileEditRoute = parseRoute('/profil/bearbeiten');
     const selectedProfileRoute = parseRoute('/profil/5');
-    const teamRoute = parseRoute('/team');
 
     expect(ownProfileRoute).toMatchObject({ page: 'profile', readContractKey: 'profile' });
     expect(ownProfileEditRoute).toMatchObject({ page: 'profile-edit', readContractKey: 'profile', title: 'Profil bearbeiten' });
     expect(selectedProfileRoute).toMatchObject({ page: 'profile-edit', readContractKey: 'profile', id: '5' });
-    expect(teamRoute).toMatchObject({ page: 'team', readContractKey: 'team', title: 'Team' });
     expect(parseRoute('/teamer/5').page).toBe('not-found');
   });
 });

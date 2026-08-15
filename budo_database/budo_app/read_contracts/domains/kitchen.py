@@ -1,4 +1,4 @@
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 
 from budo_app.models import Kinder, Meal, Profil, Schwerpunkte
 from budo_app.read_contracts.common import active_turnus_id, kid_full_name
@@ -108,8 +108,11 @@ def build_kitchen_contract(request):
         )
         .order_by("kid_vorname", "kid_nachname", "id")
     )
+    authorized_team = Profil.objects.filter(
+        user__turnus_memberships__turnus_id=turnus_id,
+    ).distinct()
     team = (
-        Profil.objects.filter(turnus_id=turnus_id)
+        authorized_team
         .only("id", "rufname", "essen", "allergien")
         .order_by("rufname", "id")
     )
@@ -138,7 +141,7 @@ def build_kitchen_contract(request):
             Prefetch(
                 "betreuende",
                 queryset=(
-                    Profil.objects.filter(turnus_id=turnus_id)
+                    authorized_team
                     .only("id", "rufname", "essen", "allergien")
                     .order_by("rufname", "id")
                 ),

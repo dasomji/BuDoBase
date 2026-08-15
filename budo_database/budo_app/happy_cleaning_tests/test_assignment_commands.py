@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import json
 from datetime import date
 from unittest.mock import patch
@@ -42,8 +43,8 @@ class HappyCleaningAssignmentCommandTests(TransactionTestCase):
         )
         self.user = User.objects.create_user(username="assignment-operator")
         self.user.profil.rufname = "Mira"
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("rufname", "turnus"))
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
         self.event = HappyCleaning.objects.create(
             turnus=self.turnus,
             display_number=1,
@@ -611,4 +612,6 @@ class HappyCleaningAssignmentCommandTests(TransactionTestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertLessEqual(len(queries), 24)
+        # The command boundary deliberately pays for the canonical
+        # User/Turnus/Profile/Membership authorization lock set.
+        self.assertLessEqual(len(queries), 29)

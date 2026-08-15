@@ -1,22 +1,26 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """RED contract for sensitive full-payload audit export v2 (#164-07)."""
 
 import json
 import tempfile
 from dataclasses import replace
 from datetime import date
+from types import GeneratorType
 from unittest import mock
 
 from django.contrib.auth.models import Permission, User
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError
+from django.db import DatabaseError, connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from budo_app import audit_exports
 from budo_app.audit import AuditEventData, record_audit_event
 from budo_app.audit_queries import FILTER_NAMES, serialize_audit_event
 from budo_app.audit_tests.test_kid_edit_audit_schema import valid_details
-from budo_app.models import AuditEvent, Turnus
+from budo_app.memberships import create_membership, select_turnus
+from budo_app.models import AuditEvent, Turnus, TurnusMembership
 
 
 PRIVACY_HEADERS = {
@@ -43,8 +47,9 @@ class AuditExportV2HttpTests(TestCase):
         self.user.user_permissions.add(
             self.view_permission, self.export_permission,
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.url = reverse("audit-export-api")
 
@@ -105,7 +110,14 @@ class AuditExportV2HttpTests(TestCase):
                 "result_count": 1, "filter_count": 0,
             })
             appended = self.event(request_id="after-issuance")
-            lines = self.lines(response)
+            with CaptureQueriesContext(connection) as consumption_queries:
+                lines = self.lines(response)
+            self.assertEqual(
+                consumption_queries.captured_queries,
+                [],
+                "protected export rows must be materialized before the "
+                "membership-lock transaction ends",
+            )
         named.assert_not_called()
         temporary.assert_not_called()
         mkstemp.assert_not_called()
@@ -126,8 +138,9 @@ class AuditExportV2HttpTests(TestCase):
         self.assert_privacy_headers(response, attachment=True)
 
     def test_empty_turnus_uses_zero_snapshot_and_excludes_its_issuance(self):
-        self.user.profil.turnus = self.other_turnus
-        self.user.profil.save(update_fields=["turnus"])
+        TurnusMembership.objects.create(user=self.user, turnus=self.other_turnus)
+        self.user.profil.selected_turnus = self.other_turnus
+        self.user.profil.save()
         response = self.client.get(self.url, HTTP_X_REQUEST_ID="empty-export")
 
         self.assertEqual(response.status_code, 200)
@@ -142,6 +155,63 @@ class AuditExportV2HttpTests(TestCase):
         }])
         issuance = AuditEvent.objects.get(request_id="empty-export")
         self.assertEqual(issuance.details["result_count"], 0)
+
+    def test_large_snapshot_rolls_to_disk_and_survives_membership_removal(self):
+        membership = TurnusMembership.objects.get(
+            user=self.user, turnus=self.turnus,
+        )
+        self.event(details={"station_name": "x" * 256})
+        snapshot = tempfile.SpooledTemporaryFile(max_size=8, mode="w+b")
+        real_materialize = audit_exports._materialize_records
+        real_serialize = audit_exports.serialize_audit_event
+        baseline_atomic_depth = len(connection.atomic_blocks)
+        observed = {}
+
+        def materialize(header, queryset):
+            records = real_materialize(header, queryset)
+            self.assertIsInstance(records, GeneratorType)
+            self.assertEqual(observed.get("serialized", 0), 0)
+            observed["records"] = records
+            return records
+
+        def serialize(event):
+            self.assertGreater(
+                len(connection.atomic_blocks), baseline_atomic_depth,
+                "rows must be serialized before the export atomic block exits",
+            )
+            observed["serialized"] = observed.get("serialized", 0) + 1
+            return real_serialize(event)
+
+        with mock.patch.object(
+            audit_exports, "create_export_snapshot", return_value=snapshot,
+        ), mock.patch.object(
+            audit_exports, "_materialize_records", side_effect=materialize,
+        ), mock.patch.object(
+            audit_exports, "serialize_audit_event", side_effect=serialize,
+        ):
+            response = self.client.get(self.url)
+
+        self.assertTrue(snapshot._rolled)
+        self.assertEqual(observed["serialized"], 1)
+        self.assertEqual(list(observed["records"]), [])
+        membership.delete()
+        lines = self.lines(response)
+        self.assertEqual(lines[1]["details"]["station_name"], "x" * 256)
+        self.assertTrue(snapshot.closed)
+
+    def test_abandoned_snapshot_closes_with_response(self):
+        self.event(details={"station_name": "x" * 256})
+        snapshot = tempfile.SpooledTemporaryFile(max_size=8, mode="w+b")
+
+        with mock.patch.object(
+            audit_exports, "create_export_snapshot", return_value=snapshot,
+        ):
+            response = self.client.get(self.url)
+
+        self.assertFalse(snapshot.closed)
+        with mock.patch("django.http.response.signals.request_finished.send"):
+            response.close()
+        self.assertTrue(snapshot.closed)
 
     def test_insertion_exceptions_return_sanitized_503_without_a_stream(self):
         self.event(details={"station_name": "MUST-NOT-LEAK"})
@@ -187,6 +257,17 @@ class AuditExportSchemaTests(TestCase):
             request_id="export-schema", client_ip=None, user_agent="tests",
             details={"result_count": 0, "filter_count": 0},
         )
+
+    def test_snapshot_closes_when_stream_iterator_is_abandoned(self):
+        snapshot = tempfile.SpooledTemporaryFile(max_size=8, mode="w+b")
+        snapshot.write(b"partial")
+        snapshot.seek(0)
+        stream = audit_exports.stream_snapshot(snapshot)
+
+        self.assertEqual(next(stream), b"partial")
+        stream.close()
+
+        self.assertTrue(snapshot.closed)
 
     def test_schema_envelope_and_ranges_are_exact(self):
         try:

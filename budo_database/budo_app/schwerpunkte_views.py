@@ -8,6 +8,7 @@ from django.forms import modelformset_factory
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
@@ -18,6 +19,7 @@ from . import models
 from .forms import MealChoiceForm, SchwerpunktForm
 from .kid_edit_writes import versioned_child_write
 from .location_services import BUDO_PLACE_NAME
+from .memberships import membership_scoped_read
 from .models import (
     Auslagerorte,
     Kinder,
@@ -32,12 +34,12 @@ from .utils import (
     cache_user_profile,
     get_active_kid_or_404,
     get_active_turnus,
-    get_turnus_data_optimized,
     parse_json_body,
     safe_get_object_or_404,
 )
 
 
+@method_decorator(membership_scoped_read, name="dispatch")
 class SchwerpunkteUpdate(
     ReactPageTemplateMixin,
     LoginRequiredMixin,
@@ -57,8 +59,7 @@ class SchwerpunkteUpdate(
         return kwargs
 
     def get_context_data(self, **kwargs):
-        profil = Profil.objects.get(user=self.request.user)
-        active_turnus = profil.turnus
+        active_turnus = self.request.active_turnus
         schwerpunkte = Schwerpunkte.objects.filter(
             schwerpunktzeit__turnus=active_turnus)
         auslagerorte = Auslagerorte.objects.all()
@@ -78,6 +79,7 @@ class SchwerpunkteUpdate(
         return reverse_lazy('schwerpunkt-detail', kwargs={'pk': self.object.pk})
 
 
+@method_decorator(membership_scoped_read, name="dispatch")
 class SchwerpunkteDetail(
     ReactPageTemplateMixin,
     LoginRequiredMixin,
@@ -92,8 +94,7 @@ class SchwerpunkteDetail(
         )
 
     def get_context_data(self, **kwargs):
-        profil = Profil.objects.get(user=self.request.user)
-        active_turnus = profil.turnus
+        active_turnus = self.request.active_turnus
         schwerpunkte = Schwerpunkte.objects.filter(
             schwerpunktzeit__turnus=active_turnus)
         auslagerorte = Auslagerorte.objects.all()
@@ -197,51 +198,13 @@ class MealUpdate(ReactPageTemplateMixin, LoginRequiredMixin, UpdateView):
 
 
 @login_required
-@cache_user_profile
-def swp_dashboard(request):
-    if not request.user_profile:
-        messages.error(
-            request, "Profile not found. Please contact an administrator.")
-        return redirect('dashboard')
-
-    turnus_data = get_turnus_data_optimized(request.active_turnus)
-    kids = turnus_data['kids']
-    schwerpunkte = turnus_data['schwerpunkte']
-
-    schwerpunkte_u = Schwerpunkte.objects.filter(
-        schwerpunktzeit__turnus=request.active_turnus, schwerpunktzeit__woche='u'
-    ).select_related('ort', 'schwerpunktzeit').prefetch_related('betreuende')
-
-    schwerpunkte_data = []
-    for swp in schwerpunkte:
-        if swp.ort:
-            schwerpunkte_data.append({
-                'id': swp.id,
-                'name': swp.swp_name,
-                'koordinaten': swp.ort.koordinaten,
-                'kind': 'schwerpunkt',
-            })
-    auslagerorte = turnus_data['auslagerorte']
-
-    context = {
-        "profil": request.user_profile,
-        "kids": kids,
-        "schwerpunkte": schwerpunkte,
-        'orte_json': json.dumps({
-            'orte': schwerpunkte_data,
-        }),
-        "auslagerorte": auslagerorte,
-        "schwerpunkte_u": schwerpunkte_u,
-    }
-
-    return render_react_page(request, context)
-
-
-@login_required
+@membership_scoped_read
 def kitchen(request):
     profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
-    team = Profil.objects.filter(turnus=active_turnus)
+    active_turnus = request.active_turnus
+    team = Profil.objects.filter(
+        user__turnus_memberships__turnus=active_turnus,
+    )
     kids = Kinder.objects.filter(turnus=active_turnus)
     schwerpunkte = Schwerpunkte.objects.filter(
         schwerpunktzeit__turnus=active_turnus)
@@ -301,9 +264,9 @@ def kitchen(request):
 
 @login_required
 @never_cache
+@membership_scoped_read
 def swp_einteilung(request, week):
-    profil = Profil.objects.get(user=request.user)
-    active_turnus = profil.turnus
+    active_turnus = request.active_turnus
     schwerpunktzeit = Schwerpunktzeit.objects.get(
         turnus=active_turnus, woche=f"w{week}")
 

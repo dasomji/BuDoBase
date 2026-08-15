@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 import re
 from datetime import date
 
@@ -12,6 +13,7 @@ from budo_app.kid_edit_contracts import (
     verify_legacy_preserve_value,
     verify_swp_baseline,
 )
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     AuditEvent,
     HappyCleaning,
@@ -79,8 +81,9 @@ class KidEditReadContractTests(TestCase):
             username="kid-edit-reader",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["turnus"])
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.kid = Kinder.objects.create(
             kid_index="SYNTHETIC-163-05",
@@ -609,8 +612,7 @@ class KidEditReadContractTests(TestCase):
         foreign = self.client.get(self.url(self.foreign_kid.id))
         missing = self.client.get(self.url(999_999_999))
         missing_id = self.client.get(self.url())
-        self.user.profil.turnus = None
-        self.user.profil.save(update_fields=["turnus"])
+        self.user.turnus_memberships.all().delete()
         no_turnus = self.client.get(self.url(self.kid.id))
         for response in (foreign, missing, missing_id, no_turnus):
             self.assertEqual(response.status_code, 404)

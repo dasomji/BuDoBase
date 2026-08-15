@@ -1,9 +1,15 @@
 """Authenticated read-only realtime invalidations for Happy Cleaning."""
 
 from channels.db import database_sync_to_async
+from channels.layers import get_channel_layer
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from asgiref.sync import async_to_sync
+from django.db import transaction
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
-from budo_app.models import HappyCleaning, Profil
+from budo_app.memberships import authorized_turnus_scope
+from budo_app.models import HappyCleaning, TurnusMembership
 
 
 INVALIDATION_FIELDS = frozenset({
@@ -21,18 +27,36 @@ def happy_cleaning_group_name(event_id):
     return f"happy_cleaning.event.{event_id}"
 
 
+@receiver(post_delete, sender=TurnusMembership)
+def disconnect_revoked_happy_cleaning_membership(sender, instance, **kwargs):
+    """Queue revocation behind prior event messages on each event's group."""
+    event_ids = tuple(HappyCleaning.objects.filter(
+        turnus_id=instance.turnus_id,
+    ).values_list("pk", flat=True))
+
+    def publish():
+        layer = get_channel_layer()
+        for event_id in event_ids:
+            async_to_sync(layer.group_send)(happy_cleaning_group_name(event_id), {
+                "type": "membership_revoked",
+                "user_id": instance.user_id,
+            })
+
+    transaction.on_commit(publish)
+
+
 def may_access_happy_cleaning_event(user_id, event_id):
-    turnus_id = (
-        Profil.objects.filter(user_id=user_id)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
-    if turnus_id is None:
+    from django.contrib.auth import get_user_model
+
+    user = get_user_model().objects.filter(pk=user_id).first()
+    if user is None:
         return False
-    return HappyCleaning.objects.filter(
-        pk=event_id,
-        turnus_id=turnus_id,
-    ).exists()
+    with authorized_turnus_scope(user) as turnus:
+        if turnus is None:
+            return False
+        return HappyCleaning.objects.filter(
+            pk=event_id, turnus_id=turnus.pk,
+        ).exists()
 
 
 class HappyCleaningInvalidationConsumer(AsyncJsonWebsocketConsumer):
@@ -42,12 +66,18 @@ class HappyCleaningInvalidationConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4401)
             return
         event_id = self.scope["url_route"]["kwargs"]["event_id"]
-        if not await self._may_access_event(user.id, event_id):
-            await self.close(code=4404)
-            return
         self.event_id = event_id
         self.group_name = happy_cleaning_group_name(event_id)
+        # Subscribe provisionally before authorization. This ordering closes
+        # the check-then-subscribe gap: a concurrent revocation is either
+        # observed by the authorization query or queued behind this add.
         await self.channel_layer.group_add(self.group_name, self.channel_name)
+        if not await self._may_access_event(user.id, event_id):
+            await self.channel_layer.group_discard(
+                self.group_name, self.channel_name,
+            )
+            await self.close(code=4404)
+            return
         await self.accept()
 
     async def disconnect(self, close_code):
@@ -62,8 +92,21 @@ class HappyCleaningInvalidationConsumer(AsyncJsonWebsocketConsumer):
 
     async def happy_cleaning_invalidation(self, event):
         envelope = event.get("envelope", {})
-        if self._valid_envelope(envelope):
-            await self.send_json({key: envelope[key] for key in INVALIDATION_FIELDS})
+        if not self._valid_envelope(envelope):
+            return
+        user = self.scope.get("user")
+        if not user or not await self._may_access_event(
+            user.id,
+            envelope["event_id"],
+        ):
+            await self.close(code=4404)
+            return
+        await self.send_json({key: envelope[key] for key in INVALIDATION_FIELDS})
+
+    async def membership_revoked(self, event):
+        user = self.scope.get("user")
+        if user and user.id == event.get("user_id"):
+            await self.close(code=4404)
 
     @staticmethod
     def _valid_envelope(envelope):

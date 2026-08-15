@@ -1,5 +1,6 @@
 import * as React from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
+import { ChevronDown } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -25,13 +26,29 @@ function Input({
 
 function NativeSelect({
   className,
+  multiple,
+  size,
   ...props
 }) {
+  const showIndicator = !multiple && (size == null || Number(size) <= 1);
   return (
-    <select
-      data-slot="native-select"
-      className={cn(nativeControlClassName, className)}
-      {...props} />
+    <span className="relative block w-full" data-slot="native-select-control">
+      <select
+        data-slot="native-select"
+        className={cn(
+          nativeControlClassName,
+          showIndicator && "peer appearance-none pr-10",
+          className
+        )}
+        multiple={multiple}
+        size={size}
+        {...props} />
+      {showIndicator && (
+        <ChevronDown
+          className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground peer-disabled:opacity-50"
+          aria-hidden="true" />
+      )}
+    </span>
   );
 }
 

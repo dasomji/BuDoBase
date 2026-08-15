@@ -13,6 +13,7 @@ from budo_app.models import (
     Kinder,
     Profil,
     Turnus,
+    TurnusMembership,
 )
 from budo_app.read_contracts.common import (
     kid_full_name,
@@ -51,17 +52,14 @@ def _requested_event(request, *, active_only=True):
     return event
 def overview(request):
     active_turnus_id = require_active_turnus_id(request)
-    active_turnus = (
-        HappyCleaning.objects.filter(turnus_id=active_turnus_id)
-        .values("turnus__turnus_beginn")
-        .first()
-    )
-    if active_turnus is None:
-        active_start = Turnus.objects.filter(id=active_turnus_id).values_list(
+    active_turnus = getattr(request, "active_turnus", None)
+    active_start = (
+        active_turnus.turnus_beginn
+        if active_turnus is not None and active_turnus.id == active_turnus_id
+        else Turnus.objects.filter(id=active_turnus_id).values_list(
             "turnus_beginn", flat=True
         ).first()
-    else:
-        active_start = active_turnus["turnus__turnus_beginn"]
+    )
     if active_start is None:
         raise Http404
     active_year = active_start.year
@@ -113,15 +111,18 @@ def overview(request):
             *station_fields,
             "responsible_profile__id",
             "responsible_profile__rufname",
-            "responsible_profile__turnus_id",
+            "responsible_profile__user_id",
         )
+    responsible_ids = set(TurnusMembership.objects.filter(
+        turnus_id=active_turnus_id,
+    ).values_list("user__profil", flat=True))
     stations_by_event = {}
     for station in station_rows:
         responsible = (
             station.responsible_profile
             if station.happy_cleaning_id in active_event_ids else None
         )
-        if responsible and responsible.turnus_id != active_turnus_id:
+        if responsible and responsible.id not in responsible_ids:
             responsible = None
         stations_by_event.setdefault(station.happy_cleaning_id, []).append({
             "id": station.id,
@@ -174,7 +175,9 @@ def overview(request):
         "responsible_profiles": (
             [
                 {"id": profile.id, "name": profile.rufname}
-                for profile in Profil.objects.filter(turnus_id=active_turnus_id)
+                for profile in Profil.objects.filter(
+                    user__turnus_memberships__turnus_id=active_turnus_id,
+                )
                 .only("id", "rufname")
                 .order_by("rufname", "id")
             ]
@@ -269,10 +272,10 @@ def _station_child(assignment):
     }
 
 
-def _assignment_station(station, turnus_id):
+def _assignment_station(station, responsible_user_ids):
     assignments = station.route_happy_cleaning_assignments
     responsible = station.responsible_profile
-    if responsible and responsible.turnus_id != turnus_id:
+    if responsible and responsible.user_id not in responsible_user_ids:
         responsible = None
     assigned_count = len(assignments)
     return {
@@ -360,7 +363,7 @@ def assignment_snapshot(request):
             "responsible_profile_id",
             "responsible_profile__id",
             "responsible_profile__rufname",
-            "responsible_profile__turnus_id",
+            "responsible_profile__user_id",
             "position",
             "version",
             "has_ever_had_assignment",
@@ -386,6 +389,9 @@ def assignment_snapshot(request):
         for assignment in child.route_happy_cleaning_assignments
         if assignment.is_excused
     ]
+    responsible_user_ids = set(TurnusMembership.objects.filter(
+        turnus_id=event.turnus_id,
+    ).values_list("user_id", flat=True))
     return {
         "event": _event_summary(event),
         "summary": {
@@ -396,7 +402,7 @@ def assignment_snapshot(request):
         "children": [_assignment_child(child) for child in children],
         "stations": [
             *(
-                _assignment_station(station, event.turnus_id)
+                _assignment_station(station, responsible_user_ids)
                 for station in stations
             ),
             {
@@ -437,7 +443,7 @@ def _requested_station(request, event, *, include_people):
             "responsible_profile_id",
             "responsible_profile__id",
             "responsible_profile__rufname",
-            "responsible_profile__turnus_id",
+            "responsible_profile__user_id",
         ])
     station = (
         stations
@@ -521,7 +527,9 @@ def station_detail(request):
         .order_by("child__kid_vorname", "child__kid_nachname", "child_id")
     ) if active else []
     responsible = station.responsible_profile if active else None
-    if responsible and responsible.turnus_id != event.turnus_id:
+    if responsible and not TurnusMembership.objects.filter(
+        user_id=responsible.user_id, turnus_id=event.turnus_id,
+    ).exists():
         responsible = None
     checked_count = sum(todo["checked"] for todo in todos)
     assigned_count = len(assignments)
@@ -583,7 +591,9 @@ def station_detail(request):
         ]
         projection["responsible_profiles"] = [
             {"id": profile.id, "name": profile.rufname}
-            for profile in Profil.objects.filter(turnus_id=event.turnus_id)
+            for profile in Profil.objects.filter(
+                user__turnus_memberships__turnus_id=event.turnus_id,
+            )
             .only("id", "rufname")
             .order_by("rufname", "id")
         ]

@@ -1,7 +1,12 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
+from datetime import date
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
+from budo_app.models import Kinder, Turnus
 from budo_app.read_contracts.registry import ROUTE_CONTRACTS
 
 
@@ -9,11 +14,13 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "audit-events",
     "dashboard",
     "gut-zu-wissen",
+    "pocket-money",
     "profile",
-    "team",
     "turnus-list",
     "turnus-upload",
     "admin-settings",
+    "admin-team-overview",
+    "team-management",
     "kids-directory",
     "train-departure",
     "train-arrival",
@@ -27,7 +34,6 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "focus-update",
     "focus-detail",
     "focus-meals",
-    "focus-dashboard",
     "places-list",
     "place-create",
     "place-update",
@@ -38,8 +44,6 @@ KNOWN_ROUTE_CONTRACT_KEYS = (
     "allocation",
     "kid-count",
     "families",
-    "special-upload",
-    "special-families",
     "birthdays",
     "happy-cleaning-overview",
     "happy-cleaning-assignment",
@@ -72,20 +76,116 @@ class RouteContractDispatchTests(TestCase):
             )
         )
 
-    def test_profile_contracts_use_glossary_aligned_domain_name(self):
+    def test_profile_contract_uses_glossary_aligned_domain_name(self):
         self.assertEqual(ROUTE_CONTRACTS["profile"].domain, "profiles")
-        self.assertEqual(ROUTE_CONTRACTS["team"].domain, "profiles")
 
-    def test_unknown_route_contract_is_rejected(self):
+    def test_retired_contracts_are_rejected(self):
         self.client.force_login(self.user)
 
-        response = self.client.get(self.contract_url("complete-application"))
+        for key in (
+            "focus-dashboard",
+            "special-upload",
+            "special-families",
+        ):
+            with self.subTest(key=key):
+                response = self.client.get(self.contract_url(key))
+                self.assertEqual(response.status_code, 404)
+                self.assertEqual(
+                    response.json(),
+                    {
+                        "code": "unknown_contract",
+                        "detail": "Unknown route contract.",
+                    },
+                )
 
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(
-            response.json(),
-            {
-                "code": "unknown_contract",
-                "detail": "Unknown route contract.",
-            },
+    def test_scoped_contracts_require_the_approved_selected_membership(self):
+        legacy_turnus = Turnus.objects.create(
+            turnus_nr=1,
+            turnus_beginn=date(2026, 7, 1),
         )
+        selected_turnus = Turnus.objects.create(
+            turnus_nr=2,
+            turnus_beginn=date(2026, 7, 15),
+        )
+        approve_and_select_turnus(self.user.profil.user, legacy_turnus)
+        self.user.profil.save()
+        membership = create_membership(
+            user=self.user,
+            turnus=selected_turnus,
+        )
+        select_turnus(self.user, selected_turnus)
+        Kinder.objects.create(
+            kid_index="LEGACY-1",
+            kid_vorname="Legacy",
+            kid_nachname="Turnus",
+            turnus=legacy_turnus,
+        )
+        Kinder.objects.create(
+            kid_index="SELECTED-1",
+            kid_vorname="Selected",
+            kid_nachname="Member",
+            turnus=selected_turnus,
+        )
+        self.client.force_login(self.user)
+
+        selected_response = self.client.get(
+            self.contract_url("kids-directory")
+        )
+
+        self.assertEqual(selected_response.status_code, 200)
+        self.assertEqual(
+            [kid["full_name"] for kid in selected_response.json()["kids"]],
+            ["Selected Member"],
+        )
+
+        membership.delete()
+
+        revoked_response = self.client.get(
+            self.contract_url("kids-directory")
+        )
+        self.assertEqual(revoked_response.status_code, 404)
+
+    def test_switching_changes_reports_and_global_search_together(self):
+        first = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
+        second = Turnus.objects.create(turnus_nr=2, turnus_beginn=date(2026, 7, 15))
+        for turnus, name in ((first, "First"), (second, "Second")):
+            create_membership(user=self.user, turnus=turnus)
+            Kinder.objects.create(
+                kid_index=f"{turnus.id}-1",
+                kid_vorname=name,
+                kid_nachname="Kid",
+                turnus=turnus,
+            )
+        self.client.force_login(self.user)
+
+        for turnus, expected in ((first, "First Kid"), (second, "Second Kid")):
+            select_turnus(self.user, turnus)
+            report = self.client.get(self.contract_url("serial-letter"))
+            bootstrap = self.client.get(reverse("bootstrap-api"))
+            self.assertEqual(
+                [kid["full_name"] for kid in report.json()["kids"]],
+                [expected],
+            )
+            self.assertEqual(
+                [kid["full_name"] for kid in bootstrap.json()["search_index"]["kids"]],
+                [expected],
+            )
+
+    def test_stored_selection_without_membership_exposes_no_global_search(self):
+        turnus = Turnus.objects.create(turnus_nr=1, turnus_beginn=date(2026, 7, 1))
+        self.user.profil.selected_turnus = turnus
+        approve_and_select_turnus(self.user.profil.user, turnus)
+        self.user.profil.save()
+        self.user.turnus_memberships.filter(turnus=turnus).delete()
+        Kinder.objects.create(
+            kid_index="PRIVATE-1",
+            kid_vorname="Private",
+            kid_nachname="Kid",
+            turnus=turnus,
+        )
+        self.client.force_login(self.user)
+
+        payload = self.client.get(reverse("bootstrap-api")).json()
+
+        self.assertIsNone(payload["turnus"])
+        self.assertEqual(payload["search_index"]["kids"], [])

@@ -3,13 +3,14 @@ import { Dialog } from '@base-ui/react/dialog';
 import { ArrowLeftIcon, CarIcon, ChevronLeftIcon, ChevronRightIcon, FootprintsIcon, ImagePlusIcon, ListFilterIcon, MapIcon, MapPinIcon, PencilIcon, PlusIcon, SatelliteIcon, SearchIcon, Trash2Icon, XIcon } from 'lucide-react';
 
 import { Card, Column, Columns, ConfirmationDialog, findById, NativeForm, RestForm } from '../components';
+import { AttachmentInputBar } from '../components/attachment-input-bar';
 import { DirectionsButton } from '../components/directions-button';
 import { GoogleMap } from '../components/google-map';
 import { TagIcon, tagIconForName } from '../components/tag-icon';
 import SettingsTagIconPicker from '../components/tag-icon-picker';
 import { Button } from '../components/ui/button';
 import { Drawer, DrawerContent, DrawerTitle } from '../components/ui/drawer';
-import { Input, Textarea } from '../components/ui/input';
+import { Input } from '../components/ui/input';
 import { useErrorToast, useSuccessToast } from '../components/ui/toast';
 import { useIsMobile } from '../hooks/use-mobile';
 import { formatGermanDate, NotFoundPage } from './shared';
@@ -219,9 +220,22 @@ function AddPlaceImagesButton({ place, token, onSaved }) {
 }
 
 function CommentForm({ place, token, onSaved }) {
-  const [photos, setPhotos] = useState([]);
-  const saved = async result => { setPhotos([]); await onSaved?.(result); };
-  return <RestForm className="mt-3 flex items-center gap-2" target={`/auslagerorte/${place.id}/`} token={token} encType="multipart/form-data" onSuccess={saved} resetOnSuccess><div className="relative flex-1"><Textarea className="min-h-10 bg-background pr-10" rows="1" aria-label="Kommentar" name="notiz" placeholder="Kommentar…" /><label className="absolute top-1/2 right-1 grid size-8 -translate-y-1/2 place-items-center" htmlFor="place-comment-images"><span className="sr-only">Kommentar-Bilder</span><ImagePlusIcon className="size-4" aria-hidden="true" />{photos.length > 0 && <span className="absolute -right-1 -bottom-1 grid size-4 rounded-full bg-destructive text-[10px] text-destructive-foreground">{photos.length}</span>}</label><input id="place-comment-images" className="sr-only" aria-label="Kommentar-Bilder" name="images" type="file" accept="image/*" multiple onChange={event => setPhotos([...event.target.files])} /></div><Button size="icon" type="submit" aria-label="Kommentar senden">➤</Button></RestForm>;
+  const saved = async result => { await onSaved?.(result); };
+  return <AttachmentInputBar
+    className="mt-3"
+    target={`/auslagerorte/${place.id}/`}
+    token={token}
+    onSuccess={saved}
+    textId={`place-comment-${place.id}`}
+    textName="notiz"
+    textLabel="Kommentar"
+    placeholder="Kommentar…"
+    photoId={`place-comment-images-${place.id}`}
+    photoName="images"
+    photoLabel="Kommentar-Bilder"
+    photoButtonLabel="Bilder zum Kommentar auswählen"
+    submitLabel="Kommentar senden"
+  />;
 }
 
 function PlaceDeleteDialog({ place, onCancel, onConfirm }) {
@@ -511,9 +525,46 @@ function TagInput({ availableTags, initialTags, tagCatalog }) {
   </fieldset>;
 }
 
+const addressFields = [
+  ['strasse', 'Straße', 'street'],
+  ['ort', 'Stadt', 'city'],
+  ['bundesland', 'Bundesland', 'state'],
+  ['postleitzahl', 'Postleitzahl', 'postal_code'],
+  ['land', 'Land', 'country'],
+];
+
+function AddressAdjustments({ place }) {
+  const [expanded, setExpanded] = useState(false);
+  const fieldsId = useId();
+  return <div className="grid gap-3">
+    <Button
+      className="justify-self-start"
+      variant="secondary"
+      type="button"
+      aria-controls={fieldsId}
+      aria-expanded={expanded}
+      onClick={() => setExpanded(current => !current)}
+    >
+      {expanded ? 'Adressfelder ausblenden' : 'Adresse manuell anpassen'}
+    </Button>
+    <div className="grid gap-3" id={fieldsId} hidden={!expanded}>
+      {addressFields.map(([name, label, key]) => <label key={name}>{label}<Input name={name} defaultValue={place?.[key] || ''} /></label>)}
+    </div>
+  </div>;
+}
+
 export function PlaceFormPage({ data, id }) {
-  const place = id ? findById(data.places, id) : null; const keys = { name: 'name', strasse: 'street', ort: 'city', bundesland: 'state', postleitzahl: 'postal_code', land: 'country', maps_link: 'maps_link', beschreibung: 'description', kontakt: 'contact', maps_link_parkspot: 'parking_link' };
-  const fields = [['name', 'Name'], ['strasse', 'Straße'], ['ort', 'Stadt'], ['bundesland', 'Bundesland'], ['postleitzahl', 'Postleitzahl'], ['land', 'Land'], ['maps_link', 'Google Maps Link'], ['beschreibung', 'Beschreibung', 'textarea'], ['kontakt', 'Kontakt', 'textarea'], ['maps_link_parkspot', 'Google Maps Link Parkspot']].map(([name, label, type]) => ({ name, label, type, value: place?.[keys[name]] })); fields.push({ name: 'tags', render: () => <TagInput availableTags={data.available_tags || []} initialTags={place?.tags || []} tagCatalog={data.tag_catalog || []} /> });
+  const place = id ? findById(data.places, id) : null;
+  const keys = { name: 'name', maps_link: 'maps_link', maps_link_parkspot: 'parking_link', beschreibung: 'description', kontakt: 'contact' };
+  const fields = [
+    ['name', 'Name'],
+    ['maps_link', 'Google Maps Link'],
+    ['maps_link_parkspot', 'Google Maps Link Parkspot'],
+    ['beschreibung', 'Beschreibung', 'textarea'],
+    ['kontakt', 'Kontakt', 'textarea'],
+  ].map(([name, label, type]) => ({ name, label, type, value: place?.[keys[name]] }));
+  if (place) fields.push({ name: 'address_adjustments', render: () => <AddressAdjustments place={place} /> });
+  fields.push({ name: 'tags', render: () => <TagInput availableTags={data.available_tags || []} initialTags={place?.tags || []} tagCatalog={data.tag_catalog || []} /> });
   return <Columns><Column id="single-column"><Card title={`Auslagerort ${place ? 'updaten' : 'erstellen'}`}><NativeForm token={data.csrf_token} action={place ? `/auslagerorte/${place.id}/update` : '/auslagerorte/create'} fields={fields} /></Card></Column></Columns>;
 }
 

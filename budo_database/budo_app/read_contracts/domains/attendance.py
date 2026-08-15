@@ -108,22 +108,21 @@ def _transport_kid(kid):
 
 def train_arrival(request):
     kids = list(
-        _transport_kids(request)
-        .filter(zug_anreise=True)
-        .order_by("kid_vorname", "kid_nachname")
+        _transport_kids(request).order_by("kid_vorname", "kid_nachname")
     )
+    arriving_kids = [kid for kid in kids if kid.zug_anreise is True]
     return {
         "kids": [
             {**_transport_kid(kid), "train_arrival": kid.zug_anreise}
             for kid in kids
         ],
         "totals": {
-            "train_arrival": len(kids),
+            "train_arrival": len(arriving_kids),
             "with_youth_ticket": sum(
-                kid.top_jugendticket is True for kid in kids
+                kid.top_jugendticket is True for kid in arriving_kids
             ),
             "without_youth_ticket": sum(
-                kid.top_jugendticket is not True for kid in kids
+                kid.top_jugendticket is not True for kid in arriving_kids
             ),
         },
     }

@@ -1,9 +1,11 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import (
     Auslagerorte,
     Kinder,
@@ -12,6 +14,7 @@ from budo_app.models import (
     Schwerpunktzeit,
     Turnus,
 )
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
     RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
@@ -44,11 +47,12 @@ class KitchenContractTests(TestCase):
             username="kitchen-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user, self.turnus)
         self.user.profil.rufname = "Kathi"
         self.user.profil.essen = "vt"
         self.user.profil.allergien = "Haselnüsse"
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
 
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
@@ -160,7 +164,7 @@ class KitchenContractTests(TestCase):
 
     def test_excludes_cross_turnus_records_and_unrelated_private_fields(self):
         other_user = User.objects.create_user(username="other-kitchen-user")
-        other_user.profil.turnus = self.other_turnus
+        approve_and_select_turnus(other_user, self.other_turnus)
         other_user.profil.rufname = "Other Teamer"
         other_user.profil.allergien = "Private other allergy"
         other_user.profil.save()
@@ -260,7 +264,7 @@ class KitchenContractTests(TestCase):
         )
         vegan_user = User.objects.create_user(username="vegan-kitchen")
         vegan_profile = Profil.objects.get(user=vegan_user)
-        vegan_profile.turnus = self.turnus
+        approve_and_select_turnus(vegan_profile.user, self.turnus)
         vegan_profile.rufname = "Vera"
         vegan_profile.essen = "vn"
         vegan_profile.allergien = "Soja"
@@ -328,7 +332,7 @@ class KitchenContractTests(TestCase):
             turnus=self.turnus,
         )
         second_user = User.objects.create_user(username="aaron-kitchen")
-        second_user.profil.turnus = self.turnus
+        approve_and_select_turnus(second_user, self.turnus)
         second_user.profil.rufname = "Aaron"
         second_user.profil.save()
         week_2 = self.turnus.schwerpunktzeit_set.get(woche="w2")
@@ -364,8 +368,9 @@ class KitchenContractPerformanceTests(QueryBudgetAssertions, TestCase):
             username="kitchen-performance",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
 

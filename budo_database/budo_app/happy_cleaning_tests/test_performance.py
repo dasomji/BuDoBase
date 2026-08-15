@@ -19,6 +19,7 @@ from budo_app.read_contracts.measurement import (
     measure_http_get,
     measure_http_post,
 )
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 
 
 class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
@@ -31,9 +32,9 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
             username="happy-cleaning-performance",
             password="secret",
         )
-        self.user.profil.rufname = "Performance carer"
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=["rufname", "turnus"])
+        profile = approve_and_select_turnus(self.user, self.turnus)
+        profile.rufname = "Performance carer"
+        profile.save(update_fields=["rufname"])
         self.event = HappyCleaning.objects.create(
             turnus=self.turnus,
             display_number=1,
@@ -252,7 +253,9 @@ class HappyCleaningPerformanceTests(QueryBudgetAssertions, TestCase):
         )
         self.assertEqual(preview.status_code, 200)
         self.assertEqual(preview.response.json()["result"], "conflicts")
-        self.assertQueryCountAtMost(preview, 18)
+        # Includes the User/Turnus/Profile/Membership lifetime authorization
+        # lock acquired before the preview is built.
+        self.assertQueryCountAtMost(preview, 19)
         self.assertLess(preview.response_bytes, 8_000)
 
         commit_target = HappyCleaning.objects.create(

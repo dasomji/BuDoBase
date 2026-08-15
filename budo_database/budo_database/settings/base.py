@@ -41,6 +41,8 @@ MIDDLEWARE = [
     'budo_app.audit_privacy.AuditPrivacyHeadersMiddleware',
 ]
 
+AUTHENTICATION_BACKENDS = ["budo_app.auth_backends.ProfileAwareModelBackend"]
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',

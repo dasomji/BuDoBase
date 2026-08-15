@@ -4,6 +4,7 @@ from copy import deepcopy
 import json
 
 from django.contrib import messages
+from django.db import transaction
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET
 from rest_framework.authentication import SessionAuthentication
@@ -28,7 +29,8 @@ from budo_app.kid_edit_contracts import (
     canonicalize_storage_value,
     decode_kid_edit_request,
 )
-from budo_app.models import Kinder, Profil
+from budo_app.memberships import scoped_turnus_for
+from budo_app.models import Kinder
 from budo_app.react_views import render_react_page
 
 
@@ -46,7 +48,7 @@ def kid_edit_page(request, kid_id):
     return render_react_page(request)
 
 
-def _recover_field_command(request, error, profile, kid_id):
+def _recover_field_command(request, error, turnus, kid_id):
     field_names = {field.api_name for field in FIELD_CONTRACTS}
     if error.status != 422 or not set(error.errors).issubset(field_names):
         return None
@@ -55,7 +57,7 @@ def _recover_field_command(request, error, profile, kid_id):
     except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
         return None
     child = Kinder.objects.filter(
-        pk=kid_id, turnus_id=profile.turnus_id,
+        pk=kid_id, turnus_id=turnus.id,
     ).only(*[field.storage_name for field in FIELD_CONTRACTS]).first()
     if child is None:
         return None
@@ -74,17 +76,15 @@ def _recover_field_command(request, error, profile, kid_id):
 @api_view(["POST"])
 @authentication_classes([_RawBodySessionAuthentication])
 @permission_classes([IsAuthenticated])
+@transaction.atomic
 def kid_edit(request, kid_id):
     decoded = decode_kid_edit_request(request.body, request.content_type)
-    profile = (
-        Profil.objects.select_related("turnus")
-        .filter(user_id=request.user.id, turnus__isnull=False).first()
-    )
-    if profile is None:
+    turnus = scoped_turnus_for(request.user)
+    if turnus is None:
         return Response({"ok": False, "code": "not_found"}, status=404)
     pre_errors = None
     if isinstance(decoded, KidEditParseError):
-        recovered = _recover_field_command(request, decoded, profile, kid_id)
+        recovered = _recover_field_command(request, decoded, turnus, kid_id)
         if recovered is None:
             return Response(
                 validation_error_response(decoded), status=decoded.status,
@@ -92,7 +92,7 @@ def kid_edit(request, kid_id):
         pre_errors = decoded.errors
         decoded = recovered
     context = CommandContext(
-        turnus=profile.turnus,
+        turnus=turnus,
         actor_id=request.user.id,
         actor_label=actor_label_for_user(request.user),
         request_id=decoded.request_id,

@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { Card, Column, DataTable, FieldList, findById, ResponsiveCardGrid, RestForm } from '../components';
+import { AttachmentInputBar } from '../components/attachment-input-bar';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useErrorToast } from '../components/ui/toast';
+import { useIsMobile } from '../hooks/use-mobile';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { entryPhotoKinds, EntryPhotoGallery } from './entry-photo-gallery';
 import {
@@ -19,90 +21,85 @@ import {
   yesNo,
 } from './shared';
 
-function interactionModeCookie() {
-  if (typeof document === 'undefined') return null;
-  const cookie = document.cookie.split('; ').find(item => item.startsWith('interaction-bar='));
-  return cookie?.split('=')[1] || null;
+const photoAccept = '.jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif';
+const activityCookieName = 'kid-detail-activity';
+const activityCookieValues = new Set(['notes', 'first_aid', 'money']);
+
+function savedActivity() {
+  if (typeof document === 'undefined') return undefined;
+  const value = document.cookie
+    .split('; ')
+    .find(item => item.startsWith(`${activityCookieName}=`))
+    ?.split('=')[1];
+  if (value === 'closed') return null;
+  return activityCookieValues.has(value) ? value : undefined;
 }
 
-const interactionModes = {
-  'erste-hilfe-form': 'first_aid',
-  'geld-form': 'amount',
-  'notiz-form': 'notiz',
-};
-
-function saveInteractionMode(field) {
-  const value = Object.entries(interactionModes).find(([, mode]) => mode === field)?.[0] || 'notiz-form';
-  document.cookie = `interaction-bar=${value}; Max-Age=2592000; Path=/; SameSite=Lax`;
+function defaultActivity(mobile) {
+  const saved = savedActivity();
+  return saved === undefined ? (mobile ? null : 'notes') : saved;
 }
 
-export function KidInteractionForm({ kid, token, onSaved }) {
-  const [field, setField] = useState(() => interactionModes[interactionModeCookie()] || 'notiz');
-  const [notePhotoCount, setNotePhotoCount] = useState(0);
-  const [firstAidPhotoCount, setFirstAidPhotoCount] = useState(0);
-  const handleSaved = onSaved
-    ? async result => {
-        await onSaved(result);
-        setNotePhotoCount(0);
-        setFirstAidPhotoCount(0);
-      }
-    : undefined;
-  const show = name => event => {
-    event.preventDefault();
-    setField(name);
-    saveInteractionMode(name);
-  };
+function saveActivity(activity) {
+  document.cookie = `${activityCookieName}=${activity || 'closed'}; Max-Age=2592000; Path=/; SameSite=Lax`;
+}
+
+const transactionColumns = [
+  { key: 'author', label: 'Author' },
+  {
+    key: 'date',
+    label: 'Datum',
+    render: transaction => formatGermanDate(transaction.date)?.slice(0, 5),
+  },
+  {
+    key: 'amount',
+    label: 'Betrag',
+    render: transaction => money(transaction.amount),
+    sortValue: transaction => Number(transaction.amount),
+  },
+];
+
+export function KidInteractionForm({ kid, token, onSaved, kind = 'note' }) {
+  if (kind === 'money') {
+    return (
+      <RestForm className="kid-interaction-form mb-3 flex min-w-0 flex-wrap items-center gap-2" target={`/kid_details/${kid.id}`} token={token} onSuccess={onSaved} resetOnSuccess>
+        <label className="sr-only" htmlFor="id_amount">Taschengeld</label>
+        <Input className="min-w-24 flex-1" id="id_amount" name="amount" type="number" min="0" step="0.01" placeholder="Taschengeld..." />
+        <Button className="shrink-0" variant="success" type="submit" name="money_action" value="withdraw">Abbuchen</Button>
+        <Button className="shrink-0" variant="destructive" type="submit" name="money_action" value="topup">Aufladen</Button>
+      </RestForm>
+    );
+  }
+
+  const firstAid = kind === 'first_aid';
+  const photoLabel = firstAid ? 'EH-Fotos' : 'Notiz-Fotos';
   return (
-    <div id="interaction-bar">
-      <div id="interaction-input">
-        <RestForm target={`/kid_details/${kid.id}`} token={token} encType="multipart/form-data" onSuccess={handleSaved} resetOnSuccess>
-          <div id="notiz-form" className={field === 'notiz' ? '' : 'hidden'}>
-            <p className="note-input-field">
-              <label htmlFor="id_notiz" onClick={show('amount')} title="Zu Taschengeld wechseln">Notiz</label>
-              <textarea className="interaction-textarea" id="id_notiz" name="notiz" placeholder="Notiz..." rows="2" />
-              <label className="attachment-button" htmlFor="id_notiz_fotos">
-                <span className="sr-only">Notiz-Fotos</span><span aria-hidden="true">+</span>
-                {notePhotoCount > 0 && <span className="attachment-count" aria-hidden="true">{notePhotoCount}</span>}
-              </label>
-              <input id="id_notiz_fotos" className="attachment-input" aria-label="Notiz-Fotos" name="notiz_fotos" type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif" multiple disabled={field !== 'notiz'} onChange={event => setNotePhotoCount(event.target.files?.length || 0)} />
-            </p>
-          </div>
-          <div id="geld-form" className={field === 'amount' ? '' : 'hidden'}>
-            <p><label htmlFor="id_amount" onClick={show('first_aid')} title="Zu Erste Hilfe wechseln">Taschengeld</label><Input id="id_amount" name="amount" type="number" min="0" step="0.01" placeholder="Taschengeld..." /></p>
-          </div>
-          <div id="erste-hilfe-form" className={field === 'first_aid' ? '' : 'hidden'}>
-            <p className="first-aid-input-field">
-              <label htmlFor="id_erste_hilfe_beschreibung" onClick={show('notiz')} title="Zu Notiz wechseln">Erste Hilfe</label>
-              <textarea className="interaction-textarea" id="id_erste_hilfe_beschreibung" name="erste_hilfe_beschreibung" placeholder="Erste-Hilfe-Maßnahme..." rows="2" required disabled={field !== 'first_aid'} />
-              <label className="attachment-button" htmlFor="id_erste_hilfe_fotos">
-                <span className="sr-only">EH-Fotos</span><span aria-hidden="true">+</span>
-                {firstAidPhotoCount > 0 && <span className="attachment-count" aria-hidden="true">{firstAidPhotoCount}</span>}
-              </label>
-              <input
-                id="id_erste_hilfe_fotos"
-                className="attachment-input"
-                name="erste_hilfe_fotos"
-                type="file"
-                accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
-                multiple
-                disabled={field !== 'first_aid'}
-                onChange={event => setFirstAidPhotoCount(event.target.files?.length || 0)}
-              />
-            </p>
-          </div>
-          {field === 'amount'
-            ? <><Button className="money-action" variant="success" type="submit" name="money_action" value="withdraw">Abbuchen</Button><Button className="money-action" variant="destructive" type="submit" name="money_action" value="topup">Aufladen</Button></>
-            : <button className="interaction-send-button" type="submit" name={field === 'first_aid' ? 'interaction_kind' : undefined} value={field === 'first_aid' ? 'first_aid' : undefined} aria-label={field === 'first_aid' ? 'EH-Eintrag senden' : undefined}><img src="/static/img/send-button.svg" alt={field === 'first_aid' ? '' : 'Senden'} /></button>}
-        </RestForm>
-      </div>
-    </div>
+    <AttachmentInputBar
+      className="kid-interaction-form mb-3"
+      target={`/kid_details/${kid.id}`}
+      token={token}
+      onSuccess={onSaved}
+      textId={firstAid ? 'id_erste_hilfe_beschreibung' : 'id_notiz'}
+      textName={firstAid ? 'erste_hilfe_beschreibung' : 'notiz'}
+      textLabel={firstAid ? 'Was ist passiert und welche Maßnahme wurde getroffen?' : 'Notiz'}
+      textLabelVisible={firstAid}
+      placeholder={firstAid ? 'Erste-Hilfe-Maßnahme...' : 'Notiz...'}
+      required={firstAid}
+      photoId={firstAid ? 'id_erste_hilfe_fotos' : 'id_notiz_fotos'}
+      photoName={firstAid ? 'erste_hilfe_fotos' : 'notiz_fotos'}
+      photoLabel={photoLabel}
+      photoButtonLabel={firstAid ? 'Fotos für Erste Hilfe auswählen' : 'Fotos zur Notiz auswählen'}
+      photoAccept={photoAccept}
+      submitLabel={firstAid ? 'EH-Eintrag senden' : 'Notiz senden'}
+      submitName={firstAid ? 'interaction_kind' : undefined}
+      submitValue={firstAid ? 'first_aid' : undefined}
+    />
   );
 }
 
 export const kidColumns = [
   { key: 'name', label: 'Name', render: linkKid },
   { key: 'budo_family', label: 'Familie', render: row => displayOrPlaceholder(row.budo_family) },
-  { key: 'special_family', label: 'Haus', priority: 'low', render: row => displayOrPlaceholder(row.special_family) },
   { key: 'sex_short', label: '⚧', priority: 'low' },
   { key: 'age', label: 'Alter', className: 'number-cell', render: row => <>{row.birthday_during_turnus && '🥳 '}{displayOrPlaceholder(row.age)}</> },
   { key: 'weeks', label: 'Wochen', priority: 'low' },
@@ -124,6 +121,14 @@ export function KidsPage({ data }) {
 
 export function KidDetailPage({ data, id, mutate, onSaved }) {
   const showError = useErrorToast();
+  const mobile = useIsMobile();
+  const [openActivity, setOpenActivity] = useState(() => defaultActivity(mobile));
+  useEffect(() => setOpenActivity(defaultActivity(mobile)), [mobile]);
+  const changeOpenActivity = (activity, expanded) => {
+    const nextActivity = expanded ? activity : null;
+    saveActivity(nextActivity);
+    setOpenActivity(nextActivity);
+  };
   const kid = findById(data.kids, id);
   if (!kid) return <NotFoundPage />;
   const focusItems = kid.focus_assignments?.length
@@ -152,7 +157,7 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
       <ResponsiveCardGrid independentColumns>
         <Column id="left-column" className="min-w-0 gap-4">
           <Card title={`${kid.full_name}${kid.present ? '' : ' ❌'}`} id="kinderinfos"><FieldList items={[["Geschlecht", kid.sex], ["Alter", kid.age], ["Geburtstag", formatKidBirthday(kid)], ["Aufenthaltsdauer", `${kid.weeks}-wöchig`], ["Geschwister", kid.siblings], ["Zeltwunsch", kid.tent_request], ["War schon mal im Bunten Dorf", yesNo(kid.budo_experience)]]} /></Card>
-          <Card title="BuDo" id="budo-container" actions={<Button href={`/${kid.present ? 'check_out' : 'check_in'}/${kid.id}`}>{kid.present ? 'Auschecken' : 'Einchecken'}</Button>}><FieldList items={[["Turnus", data.turnus?.label], ["Budo Familie", kid.budo_family], ["Haus", kid.special_family], ...focusItems, ["Happy Cleaning Nummer", displayOrPlaceholder(kid.happy_cleaning_number)], ...happyCleaningItems]} /></Card>
+          <Card title="BuDo" id="budo-container" actions={<Button href={`/${kid.present ? 'check_out' : 'check_in'}/${kid.id}`}>{kid.present ? 'Auschecken' : 'Einchecken'}</Button>}><FieldList items={[["Turnus", data.turnus?.label], ["Budo Familie", kid.budo_family], ...focusItems, ["Happy Cleaning Nummer", displayOrPlaceholder(kid.happy_cleaning_number)], ...happyCleaningItems]} /></Card>
         </Column>
         <Column id="center-column" className="min-w-0 gap-4">
           <Card title="Gesundheitsinfos" id="health_info"><FieldList items={[["Sozialversicherungsnummer", kid.social_security_number], ["Krankheiten", displayOrPlaceholder(kid.illness)], ["Medikamente", displayOrPlaceholder(kid.drugs)], ["Vegetarisch", kid.vegetarian], ["Ernährungsvorgaben", kid.special_food], ["Schwimmkenntnisse", kid.swimmer], ["Einverständnis für ärztliche Behandlung", requiredHealthYesNo(kid.consent)], ["Rezeptfreie Medikamente", requiredHealthValue(kid.over_the_counter_medication)], ["Medikamente auf Rezept", requiredHealthValue(kid.prescription_medication)], ["Tetanusimpfung", requiredHealthValue(kid.tetanus)], ["Zeckenimpfung", requiredHealthValue(kid.tick_vaccine)]]} /></Card>
@@ -160,16 +165,30 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
         </Column>
         <Column id="right-column" className="min-w-0 gap-4">
           <EntryPhotoGallery entries={kid.notes} childName={kid.full_name} photoKind={entryPhotoKinds.notes}>
-            <Card title="Notizen" id="notizen"><FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} /><ul>{kid.notes.length ? kid.notes.map(note => <NoteEntry entry={note} childName={kid.full_name} key={note.id} />) : <li>Noch keine Notizen.</li>}</ul></Card>
+            <Card title="Notizen" id="notizen" expanded={openActivity === 'notes'} onExpandedChange={expanded => changeOpenActivity('notes', expanded)}>
+              <FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} />
+              <KidInteractionForm kid={kid} token={data.csrf_token} onSaved={onSaved} kind="note" />
+              <ul>{kid.notes.length ? kid.notes.map(note => <NoteEntry entry={note} childName={kid.full_name} key={note.id} />) : <li>Noch keine Notizen.</li>}</ul>
+            </Card>
           </EntryPhotoGallery>
           <EntryPhotoGallery entries={kid.first_aid_entries} childName={kid.full_name}>
-            <Card title="Erste Hilfe" id="erste-hilfe"><ul>{kid.first_aid_entries?.length ? kid.first_aid_entries.map(entry => <FirstAidEntry entry={entry} childName={kid.full_name} key={entry.id} />) : <li>Noch keine EH-Einträge.</li>}</ul></Card>
+            <Card title="Erste Hilfe" id="erste-hilfe" expanded={openActivity === 'first_aid'} onExpandedChange={expanded => changeOpenActivity('first_aid', expanded)}>
+              <KidInteractionForm kid={kid} token={data.csrf_token} onSaved={onSaved} kind="first_aid" />
+              <ul>{kid.first_aid_entries?.length ? kid.first_aid_entries.map(entry => <FirstAidEntry entry={entry} childName={kid.full_name} key={entry.id} />) : <li>Noch keine EH-Einträge.</li>}</ul>
+            </Card>
           </EntryPhotoGallery>
-          <Card title={`Taschengeld: ${money(kid.remaining_money)}${kid.remaining_money < 5 ? ' 🚨' : ''}`} id="taschengeld"><ul>{kid.transactions.length ? kid.transactions.map(item => <li key={item.id}>{item.author} am {formatGermanDate(item.date)}: {money(item.amount)}</li>) : <li>Dieses Kind ist arm.</li>}</ul></Card>
-          <Card title={`Pfand: ${kid.deposit}`} id="pfand" actions={<><Button type="button" onClick={() => deposit('increase')}>+ Pfand</Button><Button type="button" variant="secondary" onClick={() => deposit('decrease')}>− Pfand</Button></>} />
+          <Card title={`Taschengeld: ${money(kid.remaining_money)}${kid.remaining_money < 5 ? ' 🚨' : ''}`} id="taschengeld" expanded={openActivity === 'money'} onExpandedChange={expanded => changeOpenActivity('money', expanded)}>
+            <div className="mb-3 flex flex-wrap items-center gap-2" aria-label="Pfand">
+              <span>Pfand:</span>
+              <Button className="gap-1" size="sm" type="button" variant="secondary" aria-label="Pfand verringern" onClick={() => deposit('decrease')}><span aria-hidden="true">−</span><span className="max-[900px]:hidden">Pfand</span></Button>
+              <strong>{kid.deposit} ({money(kid.deposit * 0.25)})</strong>
+              <Button className="gap-1" size="sm" type="button" aria-label="Pfand erhöhen" onClick={() => deposit('increase')}><span aria-hidden="true">+</span><span className="max-[900px]:hidden">Pfand</span></Button>
+            </div>
+            <KidInteractionForm kid={kid} token={data.csrf_token} onSaved={onSaved} kind="money" />
+            <DataTable columns={transactionColumns} rows={kid.transactions} empty="Dieses Kind ist arm." />
+          </Card>
         </Column>
       </ResponsiveCardGrid>
-      <KidInteractionForm kid={kid} token={data.csrf_token} onSaved={onSaved} />
     </>
   );
 }

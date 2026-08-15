@@ -1,10 +1,12 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from budo_app.models import Kinder, SpezialFamilien, Turnus
+from budo_app.memberships import create_membership, select_turnus
+from budo_app.models import Kinder, Turnus
 from budo_app.read_contract_tests.fixtures import ActiveTurnusFixtureFactory
 from budo_app.read_contracts.measurement import (
     RECORDED_LEGACY_REALISTIC_RESPONSE_BYTES,
@@ -31,7 +33,6 @@ class ReportContractPerformanceTests(QueryBudgetAssertions, TestCase):
         "kid-count",
         "murder-game",
         "serial-letter",
-        "special-families",
     )
 
     def setUp(self):
@@ -40,14 +41,11 @@ class ReportContractPerformanceTests(QueryBudgetAssertions, TestCase):
             turnus_beginn=date(2026, 7, 1),
         )
         self.user = User.objects.create_user(username="reports-performance")
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
         self.fixtures = ActiveTurnusFixtureFactory(self.turnus, self.user)
-        self.special_family = SpezialFamilien.objects.create(
-            name="Performance-Haus",
-            turnus=self.turnus,
-        )
 
     def grow_to(self, *, kids, focuses, team, places):
         self.fixtures.grow_to(
@@ -58,7 +56,6 @@ class ReportContractPerformanceTests(QueryBudgetAssertions, TestCase):
         )
         Kinder.objects.filter(turnus=self.turnus).update(
             budo_family="S",
-            spezial_familien=self.special_family,
             sozialversicherungsnr="1234 020712",
         )
 
@@ -82,7 +79,8 @@ class ReportContractPerformanceTests(QueryBudgetAssertions, TestCase):
             with self.subTest(contract=key):
                 self.assertEqual(small[key].status_code, 200)
                 self.assertEqual(realistic[key].status_code, 200)
-                self.assertQueryCountAtMost(realistic[key], 6)
+                # Includes BEGIN/COMMIT for the membership-lock lifetime.
+                self.assertQueryCountAtMost(realistic[key], 8)
                 self.assertQueryGrowthAtMost(small[key], realistic[key], 1)
                 self.assertLess(
                     realistic[key].response_bytes,

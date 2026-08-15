@@ -76,6 +76,36 @@ AUDIT_VIEW_DETAIL_DETAIL_KEYS = frozenset({
 AUDIT_EXPORT_DETAIL_KEYS = frozenset({"result_count", "filter_count"})
 
 ACTION_DETAIL_FIELDS = {
+    "turnus.selection.switch": {
+        "previous_turnus_id": (int, type(None)),
+        "selected_turnus_id": (int,),
+    },
+    "membership.role.change": {
+        "previous_role": (str,),
+        "new_role": (str,),
+        "member_id": (int,),
+    },
+    "membership.create": {
+        "functional_role": (str,),
+        "member_id": (int,),
+    },
+    "membership.remove": {
+        "functional_role": (str,),
+        "member_id": (int,),
+    },
+    "membership.label.change": {
+        "previous_label": (str,),
+        "new_label": (str,),
+        "member_id": (int,),
+    },
+    "join_request.approve": {
+        "requester_id": (int,),
+        "membership_id": (int,),
+    },
+    "join_request.reject": {
+        "requester_id": (int,),
+        "membership_id": (type(None),),
+    },
     "happy_cleaning.event.create": COMMON_DETAIL_FIELDS,
     "happy_cleaning.event.update": COMMON_DETAIL_FIELDS,
     "happy_cleaning.event.delete": COMMON_DETAIL_FIELDS,

@@ -14,7 +14,8 @@ from budo_app.audit import (
     AUDIT_VIEW_LIST_DETAIL_KEYS,
 )
 from budo_app.kid_edit_audit import validate_kid_edit_summary
-from budo_app.models import AuditEvent, Profil, Turnus
+from budo_app.memberships import scoped_turnus_for
+from budo_app.models import AuditEvent, Turnus
 
 
 FILTER_NAMES = (
@@ -73,11 +74,8 @@ def _time_boundary(value, *, end):
 
 
 def _active_turnus_id(user):
-    return (
-        Profil.objects.filter(user_id=user.id)
-        .values_list("turnus_id", flat=True)
-        .first()
-    )
+    turnus = scoped_turnus_for(user)
+    return turnus.pk if turnus is not None else None
 
 
 def selected_audit_turnus(user, requested_turnus):

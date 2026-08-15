@@ -31,10 +31,6 @@ def turnus_upload(request):
     return {"turnuses": [_turnus(turnus)]}
 
 
-def special_upload(request):
-    return {}
-
-
 def admin_settings(request):
     if not request.user.is_staff:
         raise PermissionDenied("Admin settings access denied.")
@@ -42,7 +38,6 @@ def admin_settings(request):
 
 
 CONTRACTS = {
-    "special-upload": special_upload,
     "admin-settings": admin_settings,
     "turnus-list": turnus_list,
     "turnus-upload": turnus_upload,

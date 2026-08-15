@@ -41,10 +41,42 @@ describe('Auslagerorte workflows', () => {
     expect(document.querySelector('.lucide-waves-horizontal')).not.toBeNull();
   });
 
-  it('shows and initializes the multiline contact field when editing a place', () => {
+  it('shows only the reduced fields when creating a place', () => {
     render(<PlaceFormPage data={{
       csrf_token: 'token',
-      places: [{ id: 4, name: 'Hütte', contact: 'Ada\n+43 123', tags: [] }],
+      places: [],
+      available_tags: [],
+    }} />);
+
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Google Maps Link' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Google Maps Link Parkspot' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Beschreibung' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Kontakt' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Tags' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Straße' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Stadt' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Bundesland' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Postleitzahl' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Land' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Adresse manuell anpassen' })).not.toBeInTheDocument();
+  });
+
+  it('reveals initialized address fields only on request when editing a place', async () => {
+    const user = userEvent.setup();
+    render(<PlaceFormPage data={{
+      csrf_token: 'token',
+      places: [{
+        id: 4,
+        name: 'Hütte',
+        street: 'Waldweg 7',
+        city: 'Zwettl',
+        state: 'Niederösterreich',
+        postal_code: '3910',
+        country: 'Österreich',
+        contact: 'Ada\n+43 123',
+        tags: [],
+      }],
       available_tags: [],
     }} id="4" />);
 
@@ -52,6 +84,19 @@ describe('Auslagerorte workflows', () => {
     expect(contact.tagName).toBe('TEXTAREA');
     expect(contact).toHaveValue('Ada\n+43 123');
     expect(contact).toHaveAttribute('name', 'kontakt');
+    expect(screen.queryByRole('textbox', { name: 'Straße' })).not.toBeInTheDocument();
+    expect(document.querySelector('input[name="strasse"]')).toHaveValue('Waldweg 7');
+
+    const reveal = screen.getByRole('button', { name: 'Adresse manuell anpassen' });
+    expect(reveal).toHaveAttribute('aria-expanded', 'false');
+    await user.click(reveal);
+
+    expect(screen.getByRole('textbox', { name: 'Straße' })).toHaveValue('Waldweg 7');
+    expect(screen.getByRole('textbox', { name: 'Stadt' })).toHaveValue('Zwettl');
+    expect(screen.getByRole('textbox', { name: 'Bundesland' })).toHaveValue('Niederösterreich');
+    expect(screen.getByRole('textbox', { name: 'Postleitzahl' })).toHaveValue('3910');
+    expect(screen.getByRole('textbox', { name: 'Land' })).toHaveValue('Österreich');
+    expect(screen.getByRole('button', { name: 'Adressfelder ausblenden' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('opens tag creation from the route header and filters the icon catalog', async () => {

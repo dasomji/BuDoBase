@@ -1,10 +1,12 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from budo_app.models import Kinder, Schwerpunkte, SpezialFamilien, Turnus
+from budo_app.memberships import create_membership, select_turnus
+from budo_app.models import Kinder, Schwerpunkte, Turnus
 
 
 DIRECTORY_FIELDS = {
@@ -12,7 +14,6 @@ DIRECTORY_FIELDS = {
     "full_name",
     "present",
     "budo_family",
-    "special_family",
     "sex_short",
     "age",
     "birthday_during_turnus",
@@ -43,13 +44,10 @@ class KidsDirectoryContractTests(TestCase):
             username="kids-directory-user",
             password="secret",
         )
-        self.user.profil.turnus = self.turnus
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
         self.user.profil.save()
+        select_turnus(self.user, self.turnus)
         self.client.force_login(self.user)
-        family = SpezialFamilien.objects.create(
-            name="Biberhaus",
-            turnus=self.turnus,
-        )
         self.kid = Kinder.objects.create(
             kid_index="T2-1",
             kid_vorname="Ada",
@@ -58,7 +56,6 @@ class KidsDirectoryContractTests(TestCase):
             turnus=self.turnus,
             anwesend=False,
             budo_family="M",
-            spezial_familien=family,
             sex="weiblich",
             turnus_dauer=2,
             geschwister="Charles",
@@ -110,7 +107,6 @@ class KidsDirectoryContractTests(TestCase):
                 "full_name": "Ada Lovelace",
                 "present": False,
                 "budo_family": "M",
-                "special_family": "Biberhaus",
                 "sex_short": "♀",
                 "age": 14.0,
                 "birthday_during_turnus": True,

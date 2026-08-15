@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -12,6 +13,7 @@ from budo_app.happy_cleaning_consumers import (
     HappyCleaningInvalidationConsumer,
     may_access_happy_cleaning_event,
 )
+from budo_app.memberships import create_membership, select_turnus
 from budo_app.models import HappyCleaning, Turnus
 from budo_database.asgi import application
 
@@ -35,8 +37,8 @@ class HappyCleaningSocketAuthorizationTests(TestCase):
             display_number=1,
         )
         self.user = User.objects.create_user(username="socket-operator")
-        self.user.profil.turnus = self.turnus
-        self.user.profil.save(update_fields=("turnus",))
+        approve_and_select_turnus(self.user.profil.user, self.turnus)
+        self.user.profil.save()
 
     def test_only_the_users_active_turnus_and_a_live_immutable_event_are_allowed(self):
         self.assertTrue(may_access_happy_cleaning_event(self.user.id, self.event.id))
@@ -47,6 +49,14 @@ class HappyCleaningSocketAuthorizationTests(TestCase):
         stale_id = self.event.id
         self.event.delete()
         self.assertFalse(may_access_happy_cleaning_event(self.user.id, stale_id))
+
+    def test_removed_membership_immediately_blocks_realtime_access(self):
+        membership = self.user.turnus_memberships.get(turnus=self.turnus)
+        self.assertTrue(may_access_happy_cleaning_event(self.user.id, self.event.id))
+
+        membership.delete()
+
+        self.assertFalse(may_access_happy_cleaning_event(self.user.id, self.event.id))
 
 
 class HappyCleaningConsumerProtocolTests(SimpleTestCase):
@@ -90,7 +100,29 @@ class HappyCleaningConsumerProtocolTests(SimpleTestCase):
         anonymous.close.assert_awaited_once_with(code=4401)
         wrong_turnus.close.assert_awaited_once_with(code=4404)
         anonymous.channel_layer.group_add.assert_not_awaited()
-        wrong_turnus.channel_layer.group_add.assert_not_awaited()
+        wrong_turnus.channel_layer.group_add.assert_awaited_once()
+        wrong_turnus.channel_layer.group_discard.assert_awaited_once_with(
+            "happy_cleaning.event.7", "test-channel",
+        )
+        wrong_turnus.accept.assert_not_awaited()
+
+    def test_revocation_between_provisional_add_and_authorization_never_accepts(self):
+        consumer = self._consumer()
+
+        async def revoke_before_authorization(*args):
+            # Models the committed deletion becoming visible after group_add.
+            self.assertEqual(consumer.channel_layer.group_add.await_count, 1)
+            return False
+
+        consumer._may_access_event.side_effect = revoke_before_authorization
+
+        async_to_sync(consumer.connect)()
+
+        consumer.accept.assert_not_awaited()
+        consumer.close.assert_awaited_once_with(code=4404)
+        consumer.channel_layer.group_discard.assert_awaited_once_with(
+            "happy_cleaning.event.7", "test-channel",
+        )
 
     def test_only_allow_listed_envelope_fields_are_sent(self):
         consumer = self._consumer()
@@ -108,6 +140,38 @@ class HappyCleaningConsumerProtocolTests(SimpleTestCase):
         })
 
         consumer.send_json.assert_awaited_once_with(envelope)
+
+    def test_membership_is_revalidated_before_each_invalidation(self):
+        consumer = self._consumer(allowed=False)
+        envelope = {
+            "version": 1,
+            "event_id": 7,
+            "projection": "todos",
+            "revision": 9,
+            "invalidation_id": "evt-9",
+            "request_id": "todo-9",
+        }
+
+        async_to_sync(consumer.happy_cleaning_invalidation)({
+            "envelope": envelope,
+        })
+
+        consumer.close.assert_awaited_once_with(code=4404)
+        consumer.send_json.assert_not_awaited()
+
+    def test_committed_membership_revocation_closes_matching_socket(self):
+        consumer = self._consumer()
+
+        async_to_sync(consumer.membership_revoked)({"user_id": 1})
+
+        consumer.close.assert_awaited_once_with(code=4404)
+
+    def test_other_users_revocation_does_not_close_socket(self):
+        consumer = self._consumer()
+
+        async_to_sync(consumer.membership_revoked)({"user_id": 2})
+
+        consumer.close.assert_not_awaited()
 
     def test_asgi_stack_applies_origin_validation_before_session_authentication(self):
         websocket = application.application_mapping["websocket"]

@@ -30,6 +30,7 @@ from budo_app.models import (
     Profil,
     Turnus,
 )
+from budo_app.memberships import scoped_turnus_for
 
 
 class CommandError(Exception):
@@ -64,7 +65,7 @@ class CommandContext:
     user_agent: str
 
 
-def command_context(request, payload):
+def command_context(request, payload, *, authorized_turnus=None):
     if not isinstance(payload, Mapping):
         raise CommandError(
             "validation_error",
@@ -81,21 +82,32 @@ def command_context(request, payload):
             "validation_error",
             errors={"request_id": ["Must be at most 255 characters."]},
         )
-    profile = (
-        Profil.objects.select_related("turnus")
-        .filter(user_id=request.user.id, turnus__isnull=False)
-        .first()
-    )
-    if profile is None:
+    turnus = authorized_turnus or scoped_turnus_for(request.user)
+    if turnus is None:
         raise CommandError("not_found", status=404)
     return CommandContext(
-        turnus=profile.turnus,
+        turnus=turnus,
         actor_id=request.user.id,
         actor_label=actor_label_for_user(request.user),
         request_id=request_id.strip(),
         client_ip=client_ip_from_request(request),
         user_agent=request.META.get("HTTP_USER_AGENT", ""),
     )
+
+
+def run_authorized_command(request, payload, operation):
+    """Authorize and execute while the selected membership row stays locked."""
+    from budo_app.memberships import authorized_turnus_scope
+
+    with authorized_turnus_scope(request.user) as turnus:
+        if turnus is None:
+            raise CommandError("not_found", status=404)
+        context = command_context(request, payload, authorized_turnus=turnus)
+        try:
+            return context, operation(context)
+        except CommandError as error:
+            error.command_context = context
+            raise
 
 
 def required_positive_integer(payload, name):
@@ -398,7 +410,7 @@ def _responsible(context, profile_id, *, event_id, station_id=None):
         return None
     profile = Profil.objects.filter(
         pk=profile_id,
-        turnus=context.turnus,
+        user__turnus_memberships__turnus=context.turnus,
     ).first()
     if profile is None:
         details = {"happy_cleaning_id": event_id}
@@ -433,7 +445,7 @@ def _normalize_stations(event, ordered_ids):
 
 def create_event(context):
     action = "happy_cleaning.event.create"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -464,7 +476,7 @@ def create_event(context):
 
 def delete_event(context, event_id, expected_revision):
     action = "happy_cleaning.event.delete"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -531,7 +543,7 @@ def delete_event(context, event_id, expected_revision):
 
 def create_station(context, event_id, expected_revision, fields, document):
     action = "happy_cleaning.station.create"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -654,7 +666,7 @@ def update_station(
     overbooking_confirmation=None,
 ):
     action = "happy_cleaning.station.update"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -747,7 +759,7 @@ def update_station(
 
 def delete_station(context, event_id, station_id, expected_version):
     action = "happy_cleaning.station.delete"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -792,7 +804,7 @@ def delete_station(context, event_id, station_id, expected_version):
 
 def reorder_stations(context, event_id, expected_revision, station_ids):
     action = "happy_cleaning.station.reorder"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:
@@ -955,7 +967,7 @@ def _copy_stations(
     source_station_id=None,
 ):
     action = "happy_cleaning.station.copy"
-    with transaction.atomic():
+    with transaction.atomic(savepoint=False):
         _locked_turnus(context)
         replay = replay_completed_command(context, action)
         if replay is not None:

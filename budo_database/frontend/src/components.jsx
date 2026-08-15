@@ -2,6 +2,7 @@ import { Children, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { SearchIcon } from 'lucide-react';
 
 import { Button, buttonVariants } from '@/components/ui/button';
+import { NativeSelect } from '@/components/ui/input';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
   Table,
@@ -199,13 +200,14 @@ export function Card({
   headingLevel = 2,
   expanded,
   onExpandedChange,
+  collapsible = true,
 }) {
   const mobile = useIsMobile();
   const contentId = useId();
   const [internallyClosed, setInternallyClosed] = useState(initiallyClosed || mobile);
   const controlled = expanded !== undefined;
-  const closed = controlled ? !expanded : internallyClosed;
-  const toggleIconVisible = showToggleIcon ?? className.split(/\s+/).includes('transparent');
+  const closed = collapsible && (controlled ? !expanded : internallyClosed);
+  const toggleIconVisible = collapsible && (showToggleIcon ?? className.split(/\s+/).includes('transparent'));
   useEffect(() => {
     if (!controlled) setInternallyClosed(initiallyClosed || mobile);
   }, [controlled, initiallyClosed, mobile]);
@@ -217,19 +219,19 @@ export function Card({
   return (
     <Container className={`card ${closed ? 'closed-card' : ''} ${className}`} id={id}>
       <div
-        className="info-header-container card-toggle"
-        role="button"
-        tabIndex={0}
-        aria-expanded={!closed}
-        aria-controls={contentId}
-        aria-label={`${title} ${closed ? 'öffnen' : 'schließen'}`}
-        onClick={toggle}
-        onKeyDown={event => {
+        className={`info-header-container ${collapsible ? 'card-toggle' : 'card-static-header'}`}
+        role={collapsible ? 'button' : undefined}
+        tabIndex={collapsible ? 0 : undefined}
+        aria-expanded={collapsible ? !closed : undefined}
+        aria-controls={collapsible ? contentId : undefined}
+        aria-label={collapsible ? `${title} ${closed ? 'öffnen' : 'schließen'}` : undefined}
+        onClick={collapsible ? toggle : undefined}
+        onKeyDown={collapsible ? event => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             toggle();
           }
-        }}
+        } : undefined}
       >
         <Heading>{title}</Heading>
         {headerAction && (
@@ -256,6 +258,15 @@ export function Card({
         </div>
       </div>
     </Container>
+  );
+}
+
+export function TranslucentCard({ className = '', ...props }) {
+  return (
+    <Card
+      {...props}
+      className={['translucent-card', className].filter(Boolean).join(' ')}
+    />
   );
 }
 
@@ -413,6 +424,7 @@ export function DataTable({
   id,
   empty = 'Keine Einträge',
   beforeFilter = null,
+  stickyControls = true,
   stickyHeader = false,
   stickyFirstColumn = false,
   verticalScroll = false,
@@ -441,8 +453,8 @@ export function DataTable({
     <>
       {(beforeFilter || showFilter) && (
         <div
-          className={`table-controls${beforeFilter ? ' max-[900px]:sticky max-[900px]:top-[var(--app-header-height,0px)] max-[900px]:z-5 max-[900px]:flex-none' : ''}`}
-          data-slot={beforeFilter ? 'table-sticky-controls' : undefined}
+          className={`table-controls${beforeFilter && stickyControls ? ' max-[900px]:sticky max-[900px]:top-[var(--app-header-height,0px)] max-[900px]:z-5 max-[900px]:flex-none' : ''}`}
+          data-slot={beforeFilter ? (stickyControls ? 'table-sticky-controls' : 'table-controls') : undefined}
         >
           {beforeFilter}
           {showFilter && <input className="filter-table" type="search" placeholder="Kinder filtern..." aria-label="Kinder filtern" value={query} onChange={event => setQuery(event.target.value)} />}
@@ -504,7 +516,7 @@ export function RestForm({ target, token, children, className = '', encType, onS
         return;
       }
       if (onSuccess) {
-        await onSuccess(result);
+        await onSuccess(result, form);
         if (resetOnSuccess) form.reset();
         return;
       }
@@ -519,7 +531,7 @@ export function RestForm({ target, token, children, className = '', encType, onS
   return <form action={target} method="post" encType={encType} className={className} onSubmit={submit} aria-busy={submitting}><CsrfInput token={token} />{typeof children === 'function' ? children({ submitting }) : children}{submitting && <p aria-live="polite">Wird gespeichert…</p>}</form>;
 }
 
-export function NativeForm({ action = '', method = 'post', token, encType, fields, submit = 'Speichern', children }) {
+export function NativeForm({ action = '', method = 'post', token, encType, fields, submit = 'Speichern', children, onSuccess }) {
   const contents = (submitting = false) => (
     <>
       {fields.map(field => {
@@ -531,7 +543,7 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
           return <fieldset className="checkbox-group" key={field.name}><legend>{field.label}</legend><div className="checkbox-group-options">{field.options?.map(option => <label className="checkbox-row" key={option.value}><input type="checkbox" name={field.name} value={option.value} defaultChecked={selected.has(String(option.value))} />{option.label}</label>)}</div></fieldset>;
         }
         if (field.type === 'select') {
-          return <label key={field.name}>{field.label}<select name={field.name} defaultValue={field.value ?? ''} multiple={field.multiple}>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
+          return <label key={field.name}>{field.label}<NativeSelect name={field.name} defaultValue={field.value ?? ''} multiple={field.multiple}>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</NativeSelect></label>;
         }
         if (field.type === 'textarea') {
           return <label key={field.name}>{field.label}<textarea name={field.name} defaultValue={field.value ?? ''} required={field.required} /></label>;
@@ -546,7 +558,7 @@ export function NativeForm({ action = '', method = 'post', token, encType, field
     </>
   );
   if (method.toLowerCase() === 'post') {
-    return <RestForm target={action} token={token} encType={encType} className="form-grid">{({ submitting }) => contents(submitting)}</RestForm>;
+    return <RestForm target={action} token={token} encType={encType} className="form-grid" onSuccess={onSuccess}>{({ submitting }) => contents(submitting)}</RestForm>;
   }
   return <form action={action} method={method} encType={encType} className="form-grid">{contents()}</form>;
 }

@@ -24,7 +24,6 @@ from .models import (
     SchwerpunktWahl,
     Schwerpunkte,
     Schwerpunktzeit,
-    SpezialFamilien,
     Tag,
     Turnus,
 )
@@ -163,11 +162,11 @@ class KinderAdminForm(forms.ModelForm):
 class KinderAdmin(admin.ModelAdmin):
     list_display = ("__str__", "turnus")
     form = KinderAdminForm
-    list_select_related = ('turnus', 'spezial_familien')
+    list_select_related = ('turnus',)
     readonly_fields = ('edit_version',)
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('turnus', 'spezial_familien')
+        return super().get_queryset(request).select_related('turnus')
 
     def get_readonly_fields(self, request, obj=None):
         readonly_fields = list(super().get_readonly_fields(request, obj))
@@ -253,7 +252,7 @@ class TurnusAdmin(admin.ModelAdmin):
 
 class ProfilAdmin(admin.ModelAdmin):
     list_display = (
-        "__str__", 'rolle', 'get_food', 'budo_family', 'allergien', 'turnus',
+        "__str__", 'get_food', 'budo_family', 'allergien',
     )
 
 
@@ -372,27 +371,6 @@ class SchwerpunkteAdmin(admin.ModelAdmin):
     get_kids_count.short_description = 'Kinder'
 
 
-class KinderInlineForSpezialFamilien(admin.TabularInline):
-    model = Kinder
-    extra = 0
-    verbose_name = "Kind"
-    verbose_name_plural = "Kinder"
-    readonly_fields = ('kid_vorname', 'kid_nachname')
-    fields = ('kid_vorname', 'kid_nachname')
-
-    def kid_name(self, obj):
-        return f"{obj.kid_vorname} {obj.kid_nachname}"
-
-
-class SpezialFamilienAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "turnus", "get_kids_count")
-    inlines = [KinderInlineForSpezialFamilien]
-
-    def get_kids_count(self, obj):
-        return obj.kinder.count()
-    get_kids_count.short_description = 'Kinder'
-
-
 class SchwerpunktzeitAdmin(admin.ModelAdmin):
     list_display = ("__str__", "display_swps")
 
@@ -488,14 +466,44 @@ class TurnusEntryAdmin(admin.ModelAdmin):
     readonly_fields = ("date_added", "added_by")
     ordering = ("-date_added", "-id")
 
+    def _authorized_admin_operation(self, request, operation, *args, **kwargs):
+        if request.user.is_superuser:
+            return operation(request, *args, **kwargs)
+        from .memberships import authorized_turnus_scope
+        with authorized_turnus_scope(request.user) as turnus:
+            if turnus is None:
+                from django.core.exceptions import PermissionDenied
+                raise PermissionDenied
+            return operation(request, *args, **kwargs)
+
+    def changeform_view(self, request, *args, **kwargs):
+        return self._authorized_admin_operation(
+            request, super().changeform_view, *args, **kwargs,
+        )
+
+    def delete_view(self, request, *args, **kwargs):
+        return self._authorized_admin_operation(
+            request, super().delete_view, *args, **kwargs,
+        )
+
+    def changelist_view(self, request, *args, **kwargs):
+        return self._authorized_admin_operation(
+            request, super().changelist_view, *args, **kwargs,
+        )
+
     def has_module_permission(self, request):
-        return request.user.is_staff and getattr(
-            getattr(request.user, "profil", None), "turnus_id", None
-        ) is not None
+        if request.user.is_superuser:
+            return True
+        from .memberships import scoped_turnus_for
+        return request.user.is_staff and scoped_turnus_for(request.user) is not None
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
-        turnus_id = getattr(getattr(request.user, "profil", None), "turnus_id", None)
+        if request.user.is_superuser:
+            return queryset
+        from .memberships import scoped_turnus_for
+        turnus = scoped_turnus_for(request.user)
+        turnus_id = turnus.pk if turnus is not None else None
         return queryset.filter(kinder__turnus_id=turnus_id) if turnus_id else queryset.none()
 
     def has_add_permission(self, request):
@@ -512,11 +520,13 @@ class TurnusEntryAdmin(admin.ModelAdmin):
 
     @staticmethod
     def _same_turnus(request, obj):
+        if request.user.is_superuser:
+            return True
+        from .memberships import scoped_turnus_for
         if obj is None:
             return True
-        return obj.kinder.turnus_id == getattr(
-            getattr(request.user, "profil", None), "turnus_id", None
-        )
+        turnus = scoped_turnus_for(request.user)
+        return turnus is not None and obj.kinder.turnus_id == turnus.pk
 
 
 class NotizenAdmin(TurnusEntryAdmin):
@@ -543,5 +553,4 @@ admin.site.register(Schwerpunkte, SchwerpunkteAdmin)
 admin.site.register(Meal)
 admin.site.register(Schwerpunktzeit, SchwerpunktzeitAdmin)
 admin.site.register(SchwerpunktWahl)
-admin.site.register(SpezialFamilien, SpezialFamilienAdmin)
 admin.site.register(ErsteHilfeEintrag, FirstAidEntryAdmin)

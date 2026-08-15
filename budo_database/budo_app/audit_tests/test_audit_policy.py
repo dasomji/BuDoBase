@@ -1,3 +1,4 @@
+from budo_app.test_membership_fixtures import approve_and_select_turnus
 """RED contract for centralized audit authorization only (#164-04)."""
 
 from dataclasses import dataclass
@@ -8,7 +9,7 @@ from django.contrib.auth.models import AnonymousUser, Permission, User
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from budo_app.models import AuditEvent, Turnus
+from budo_app.models import AuditEvent, Turnus, TurnusMembership
 
 try:
     from budo_app.audit_policy import (
@@ -121,8 +122,8 @@ class AuditAuthorizationHttpTests(TestCase):
         user.save(update_fields=["is_staff", "is_superuser"])
         user.user_permissions.add(*permissions)
         if active_turnus:
-            user.profil.turnus = self.turnus
-            user.profil.save(update_fields=["turnus"])
+            approve_and_select_turnus(user.profil.user, self.turnus)
+            user.profil.save()
         return user
 
     def denied_users(self):
@@ -200,8 +201,9 @@ class AuditAuthorizationHttpTests(TestCase):
                 "change_kids", "change_profiles", "change_focuses",
                 "change_places", "delete_places", "delete_place_images",
                 "change_tags", "delete_tags", "view_auditevent", "export_auditevent",
-                "admin_settings",
+                "admin_settings", "manage_teams", "is_superuser",
             })
+            self.assertFalse(permission_payload["is_superuser"])
             self.assertIs(permission_payload["admin_settings"], staff)
             self.assertIs(permission_payload["view_auditevent"], expected_view)
             self.assertIs(permission_payload["export_auditevent"], expected_export)

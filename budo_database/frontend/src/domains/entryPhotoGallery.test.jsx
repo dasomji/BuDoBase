@@ -158,7 +158,13 @@ const response = data => ({
   json: vi.fn().mockResolvedValue(data),
 });
 
+function openKidFirstAidCardIfNeeded() {
+  const toggle = screen.queryByRole('button', { name: 'Erste Hilfe öffnen' });
+  if (toggle) fireEvent.click(toggle);
+}
+
 function openPhoto(photo, { keyboard = false } = {}) {
+  openKidFirstAidCardIfNeeded();
   const trigger = screen.getByRole('button', { name: photo.alt });
   trigger.focus();
   fireEvent.click(trigger, { detail: keyboard ? 0 : 1 });
@@ -188,7 +194,7 @@ function touchGesture(target, { from, to }) {
 
 describe('page-level EH photo gallery', () => {
   beforeEach(() => {
-    document.cookie = 'interaction-bar=; Max-Age=0; Path=/';
+    document.cookie = 'kid-detail-activity=; Max-Age=0; Path=/';
     window.matchMedia = vi.fn().mockReturnValue({
       matches: false,
       media: '',
@@ -239,6 +245,7 @@ describe('page-level EH photo gallery', () => {
 
   it('gives same-child photos collision-free names with safe entry context in cards and gallery', () => {
     render(<KidDetailPage data={kidDetailData()} id="7" mutate={vi.fn()} />);
+    openKidFirstAidCardIfNeeded();
 
     const recentTrigger = screen.getByRole('button', { name: recentPhotos[0].alt });
     const olderTrigger = screen.getByRole('button', { name: olderPhoto.alt });
@@ -290,11 +297,9 @@ describe('page-level EH photo gallery', () => {
     const notesCard = screen.getByRole('heading', { name: 'Notizen' }).closest('section');
     const firstAidCard = screen.getByRole('heading', { name: 'Erste Hilfe' }).closest('section');
     expect(within(notesCard).getByRole('img', { name: recentNotePhoto.alt })).toBeInTheDocument();
-    expect(within(firstAidCard).getByRole('img', { name: recentPhotos[0].alt })).toBeInTheDocument();
 
     const noteTrigger = within(notesCard).getByRole('button', { name: recentNotePhoto.alt });
-    const firstAidTrigger = within(firstAidCard).getByRole('button', { name: recentPhotos[0].alt });
-    expect(noteTrigger.id).not.toBe(firstAidTrigger.id);
+    const noteTriggerId = noteTrigger.id;
     fireEvent.click(noteTrigger);
     const noteGallery = screen.getByRole('dialog', { name: 'Notizfotogalerie' });
     expectCurrentPhoto(noteGallery, recentNotePhoto);
@@ -303,6 +308,10 @@ describe('page-level EH photo gallery', () => {
     expectCurrentPhoto(noteGallery, olderNotePhoto);
     fireEvent.click(within(noteGallery).getByRole('button', { name: 'Galerie schließen' }));
 
+    openKidFirstAidCardIfNeeded();
+    expect(within(firstAidCard).getByRole('img', { name: recentPhotos[0].alt })).toBeInTheDocument();
+    const firstAidTrigger = within(firstAidCard).getByRole('button', { name: recentPhotos[0].alt });
+    expect(noteTriggerId).not.toBe(firstAidTrigger.id);
     fireEvent.click(firstAidTrigger);
     const firstAidGallery = screen.getByRole('dialog', { name: 'EH-Fotogalerie' });
     expectCurrentPhoto(firstAidGallery, recentPhotos[0]);

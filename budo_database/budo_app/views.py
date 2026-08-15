@@ -3,10 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.contrib import messages
-from .models import Kinder, SpezialFamilien, Profil
+from .models import Kinder, Profil
 from .react_views import render_react_page
-from .forms import CSVUploadForm, BirthdayNotizForm
+from .forms import BirthdayNotizForm
 from .kid_edit_writes import versioned_child_write
+from .memberships import membership_scoped_read
 from django.views.decorators.http import require_GET, require_POST
 from django.db import transaction
 from .utils import (
@@ -17,7 +18,6 @@ from .utils import (
     parse_sv_birthday,
     safe_get_object_or_404,
 )
-import pandas as pd
 import logging
 from .auslagerorte_views import (
     AuslagerorteCreate,
@@ -35,7 +35,7 @@ from .kids_views import (
     kids_list,
     murdergame,
     serienbrief,
-    spezial_familien,
+    toggle_zug_anreise,
     toggle_zug_abreise,
     update_notiz_abreise,
     zugabreise,
@@ -47,7 +47,6 @@ from .schwerpunkte_views import (
     SchwerpunkteDetail,
     SchwerpunkteUpdate,
     kitchen,
-    swp_dashboard,
     swp_einteilung,
     swp_einteilung_w1,
     swp_einteilung_w2,
@@ -105,10 +104,9 @@ def happy_cleaning(request):
 
 
 @login_required
+@membership_scoped_read
 def kindergesamtzahl(request):
-    current_user = request.user
-    profil = Profil.objects.get(user=current_user)
-    active_turnus = profil.turnus
+    active_turnus = request.active_turnus
     checked_in_count = Kinder.objects.filter(
         turnus=active_turnus, anwesend=True).count()
     total_kids = Kinder.objects.filter(turnus=active_turnus).count()
@@ -117,81 +115,6 @@ def kindergesamtzahl(request):
         'total_kids': total_kids,
     }
     return render_react_page(request, context)
-
-
-@login_required
-def upload_spezialfamilien(request):
-    if request.method == "POST":
-        form = CSVUploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            xlsx_file = request.FILES['csv_file']
-            current_user = request.user
-            profil = Profil.objects.get(user=current_user)
-            active_turnus = profil.turnus
-
-            try:
-                with transaction.atomic():
-                    df = pd.read_excel(xlsx_file)
-
-                    # Normalize column names to lower case and strip spaces
-                    df.columns = df.columns.str.strip().str.lower()
-
-                    # Check for the 'index' and 'coven' columns
-                    if 'index' not in df.columns or 'coven' not in df.columns:
-                        raise ValueError(
-                            "XLSX file must contain 'Index' and 'Coven' columns")
-
-                    # Strip whitespace from all string columns
-                    for column in df.select_dtypes(include=['object']).columns:
-                        df[column] = df[column].str.strip()
-
-                    updated_count = 0
-                    for _, row in df.iterrows():
-                        kid_index = str(row['index']).strip()
-                        coven_name = str(row['coven']).strip()
-
-                        # Skip rows with no index or summary rows
-                        if pd.isna(kid_index) or kid_index == '' or 'Kiddos' in kid_index:
-                            continue
-
-                        try:
-                            # Assuming kid_index in the database is stored as "T2-39"
-                            kid = Kinder.objects.get(
-                                kid_index=kid_index, turnus=active_turnus)
-
-                            spezial_familie, created = SpezialFamilien.objects.get_or_create(
-                                name=coven_name,
-                                turnus=active_turnus
-                            )
-
-                            kid.spezial_familien = spezial_familie
-                            kid.save(update_fields=("spezial_familien",))
-                            updated_count += 1
-
-                        except Kinder.DoesNotExist:
-                            logger.warning(
-                                f"Kid with index {kid_index} not found, skipping")
-                            continue
-
-                    messages.success(
-                        request, f"Spezialfamilien wurden erfolgreich aktualisiert. {updated_count} Kinder wurden zugeordnet.")
-                    logger.info(
-                        f"Successfully updated {updated_count} kids with spezialfamilien")
-                    return redirect('upload_spezialfamilien')
-            except Exception as e:
-                logger.error(
-                    f"Error processing spezialfamilien file: {str(e)}")
-                messages.error(
-                    request, f"Ein Fehler ist aufgetreten: {str(e)}")
-    else:
-        form = CSVUploadForm()
-
-    return render_react_page(request, {'form': form})
-
-
-@login_required
-def team(request):
-    return render_react_page(request)
 
 
 @login_required

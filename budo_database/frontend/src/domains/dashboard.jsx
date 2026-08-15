@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Printer } from 'lucide-react';
 
-import { Card, DataTable, ResponsiveCardGrid } from '../components';
+import { Card, Columns, DataTable, ResponsiveCardGrid } from '../components';
 import { Button } from '../components/ui/button';
 import { useErrorToast } from '../components/ui/toast';
 import { FirstAidEntry, NoteEntry } from './first-aid';
 import { entryPhotoKinds, EntryPhotoGallery } from './entry-photo-gallery';
 import { HappyCleaningStationTodoDocument } from './happyCleaningStationDetail';
-import { formatGermanDate, formatKidBirthday, linkKid, money } from './shared';
+import { formatGermanDate, formatKidBirthday, linkKid, money, PrintPageStyle } from './shared';
 
 function appendUnique(current, incoming) {
   const existing = new Set(current.map(item => item.id));
@@ -36,7 +37,7 @@ const transactionColumns = [
   { key: 'author', label: 'Autor' },
 ];
 
-function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
+function ActivityList({ kind, initialPage, fetchImpl, onItemsChange, contractKey = 'dashboard' }) {
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
   const showError = useErrorToast();
@@ -55,7 +56,7 @@ function ActivityList({ kind, initialPage, fetchImpl, onItemsChange }) {
     setLoading(true);
     try {
       const query = new URLSearchParams({ activity: kind, cursor: page.next_cursor });
-      const response = await fetchImpl(`/api/route-data/dashboard/?${query}`, {
+      const response = await fetchImpl(`/api/route-data/${contractKey}/?${query}`, {
         credentials: 'same-origin',
       });
       if (!response.ok) throw new Error(`Dashboard activity request failed (${response.status})`);
@@ -96,10 +97,12 @@ const familyLabels = {
   XL: 'X-largie',
 };
 
-function GoodToKnowKidList({ kids }) {
+const goodToKnowKidName = (kid, plainNames) => plainNames ? kid.full_name : linkKid(kid);
+
+function GoodToKnowKidList({ kids, plainNames = false }) {
   return <>{kids.map(kid => (
     <div className="print-nobreak" key={kid.id}>
-      <p><span className="label">{linkKid(kid)}</span>: {kid.age}</p>
+      <p><span className="label">{goodToKnowKidName(kid, plainNames)}</span>: {kid.age}</p>
       {kid.illness && <p>Krankheiten: {kid.illness}</p>}
       {kid.drugs && <p>Medikamente: {kid.drugs}</p>}
     </div>
@@ -114,33 +117,80 @@ export function GoodToKnowPage({ data }) {
   const food = kids.filter(kid => kid.special_food);
   const birthdays = kids.filter(kid => kid.birthday_during_turnus);
   const goodbyes = kids.filter(kid => kid.age > 14.8).sort((left, right) => left.age - right.age);
+  const cards = [
+    {
+      id: 'db-ersties',
+      title: `Erstes Mal im BuDO: ${firstTimers.length}/${totals.kids}`,
+      initiallyClosed: true,
+      content: plainNames => <GoodToKnowKidList kids={firstTimers} plainNames={plainNames} />,
+    },
+    {
+      id: 'db-einwöchig',
+      title: `Einwöchige: ${oneWeek.length}`,
+      initiallyClosed: true,
+      content: plainNames => <GoodToKnowKidList kids={oneWeek} plainNames={plainNames} />,
+    },
+    {
+      id: 'db-gesundheit',
+      title: 'Gesundheitliches',
+      initiallyClosed: true,
+      content: plainNames => <GoodToKnowKidList kids={health} plainNames={plainNames} />,
+    },
+    {
+      id: 'db-essen',
+      title: 'Essen & Allergien',
+      initiallyClosed: true,
+      content: plainNames => food.map(kid => (
+        <div className="print-nobreak" key={kid.id}>
+          <p>{goodToKnowKidName(kid, plainNames)}: {kid.age}</p>
+          <p>{kid.food} · {kid.special_food}</p>
+        </div>
+      )),
+    },
+    {
+      id: 'db-geburtstagskinder',
+      title: `Geburtstagskinder: ${birthdays.length}`,
+      content: plainNames => birthdays.map(kid => (
+        <p key={kid.id}>{goodToKnowKidName(kid, plainNames)}: {formatKidBirthday(kid)}</p>
+      )),
+    },
+    {
+      id: 'db-sechzehner',
+      title: `Verabschiedungsliste: ${goodbyes.length}`,
+      content: plainNames => goodbyes.map(kid => (
+        <p key={kid.id}>{goodToKnowKidName(kid, plainNames)}: {kid.age} – {formatKidBirthday(kid)}</p>
+      )),
+    },
+  ];
 
   return (
-    <ResponsiveCardGrid independentColumns>
-      <Card title={`Erstes Mal im BuDO: ${firstTimers.length}/${totals.kids}`} id="db-ersties" initiallyClosed>
-        <GoodToKnowKidList kids={firstTimers} />
-      </Card>
-      <Card title={`Einwöchige: ${oneWeek.length}`} id="db-einwöchig" initiallyClosed>
-        <GoodToKnowKidList kids={oneWeek} />
-      </Card>
-      <Card title="Gesundheitliches" id="db-gesundheit" initiallyClosed>
-        <GoodToKnowKidList kids={health} />
-      </Card>
-      <Card title="Essen & Allergien" id="db-essen" initiallyClosed>
-        {food.map(kid => (
-          <div className="print-nobreak" key={kid.id}>
-            <p>{linkKid(kid)}: {kid.age}</p>
-            <p>{kid.food} · {kid.special_food}</p>
-          </div>
+    <>
+      <PrintPageStyle />
+      <ResponsiveCardGrid className="good-to-know-screen" independentColumns>
+        {cards.map(card => (
+          <Card
+            id={card.id}
+            initiallyClosed={card.initiallyClosed}
+            key={card.id}
+            title={card.title}
+          >
+            {card.content(false)}
+          </Card>
         ))}
-      </Card>
-      <Card title={`Geburtstagskinder: ${birthdays.length}`} id="db-geburtstagskinder">
-        {birthdays.map(kid => <p key={kid.id}>{linkKid(kid)}: {formatKidBirthday(kid)}</p>)}
-      </Card>
-      <Card title={`Verabschiedungsliste: ${goodbyes.length}`} id="db-sechzehner">
-        {goodbyes.map(kid => <p key={kid.id}>{linkKid(kid)}: {kid.age} – {formatKidBirthday(kid)}</p>)}
-      </Card>
-    </ResponsiveCardGrid>
+      </ResponsiveCardGrid>
+      <section
+        aria-hidden="true"
+        aria-label="Gut-zu-wissen-Druckseiten"
+        className="good-to-know-print-pages"
+      >
+        {cards.map(card => (
+          <article className="good-to-know-print-page" key={card.id}>
+            <h1>{card.title}</h1>
+            {card.content(true)}
+          </article>
+        ))}
+      </section>
+    </>
   );
 }
 
@@ -197,6 +247,7 @@ function HappyCleaningStationCard({ event, station, kidsById, mutate, refresh })
 }
 
 export function DashboardPage({ data, fetchImpl = fetch, mutate, refresh, onFirstAidItemsChange }) {
+  if (data.membership_awaiting) return null;
   const {
     profile,
     totals,
@@ -262,17 +313,28 @@ export function DashboardPage({ data, fetchImpl = fetch, mutate, refresh, onFirs
           />
         ))
       ))}
-      <Card className="transparent" title="Taschengeld" id="db-geld">
-        <div className="grid grid-cols-1 items-start gap-4">
-          <Card headingLevel={3} title="Taschengeldkasse">
-            <p><span className="label">Gesamt eingezahlt</span>: {money(totals.pocket_money_paid)}</p>
-            <p><span className="label">Gesamt ausgegeben</span>: {money(totals.pocket_money_paid - totals.pocket_money)}</p>
-            <p><span className="label">Kassenstand</span>: {money(totals.pocket_money)}</p>
-          </Card>
-          <ActivityList kind="transactions" initialPage={activity.transactions} fetchImpl={fetchImpl} />
-        </div>
-      </Card>
       </ResponsiveCardGrid>
+  );
+}
+
+export function PocketMoneyPage({ data, fetchImpl = fetch }) {
+  const { totals, activity } = data;
+  return (
+    <Columns>
+      <div className="w-full max-w-[800px]">
+        <Card title="Taschengeldkasse" id="taschengeldkasse">
+          <p><span className="label">Gesamt eingezahlt</span>: {money(totals.pocket_money_paid)}</p>
+          <p><span className="label">Gesamt ausgegeben</span>: {money(totals.pocket_money_paid - totals.pocket_money)}</p>
+          <p><span className="label">Kassenstand</span>: {money(totals.pocket_money)}</p>
+          <ActivityList
+            kind="transactions"
+            initialPage={activity.transactions}
+            fetchImpl={fetchImpl}
+            contractKey="pocket-money"
+          />
+        </Card>
+      </div>
+    </Columns>
   );
 }
 
@@ -293,6 +355,26 @@ export const dashboardRoutes = [
     title: 'Gut zu wissen',
     domain: 'dashboard',
     readContractKey: 'gut-zu-wissen',
+    headerAction: () => (
+      <Button
+        aria-label="Drucken"
+        className="mobile-icon-action"
+        size="responsive-icon"
+        type="button"
+        onClick={() => window.print()}
+      >
+        <span className="desktop-action-label">Drucken</span>
+        <Printer className="mobile-action-label" aria-hidden="true" />
+      </Button>
+    ),
     render: ({ data }) => <GoodToKnowPage data={data} />,
+  },
+  {
+    pattern: /^\/taschengeld$/,
+    page: 'pocket-money',
+    title: 'Taschengeld',
+    domain: 'dashboard',
+    readContractKey: 'pocket-money',
+    render: ({ data, fetchImpl }) => <PocketMoneyPage data={data} fetchImpl={fetchImpl} />,
   },
 ];
