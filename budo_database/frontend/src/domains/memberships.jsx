@@ -711,20 +711,26 @@ export function AdminTeamOverviewPage({ data, mutate, createOpen = false, onCrea
         ...year,
         turnuses: year.turnuses.map(turnus => turnus.id === selectedTurnusId ? {
           ...turnus,
-          members: [...turnus.members, {
-            id: result.membership_id,
-            user_id: person.id,
-            name: person.name,
-            functional_role: role,
-            role_label: result.role_label || (role === 'leitung' ? 'Leitung' : 'Teamer'),
-            team_label: result.team_label || '',
-          }],
+          members: turnus.members.some(member => member.id === result.membership_id)
+            ? turnus.members
+            : [...turnus.members, {
+                id: result.membership_id,
+                user_id: person.id,
+                name: person.name,
+                functional_role: role,
+                role_label: result.role_label || (role === 'leitung' ? 'Leitung' : 'Teamer'),
+                team_label: result.team_label || '',
+              }],
         } : turnus),
       })));
       setPeople(current => current.map(item => item.id === person.id ? {
         ...item,
-        relationships: [...item.relationships, selectedContext.label],
-        turnus_ids: [...(item.turnus_ids || []), selectedTurnusId],
+        relationships: item.relationships.includes(selectedContext.label)
+          ? item.relationships
+          : [...item.relationships, selectedContext.label],
+        turnus_ids: (item.turnus_ids || []).includes(selectedTurnusId)
+          ? item.turnus_ids
+          : [...(item.turnus_ids || []), selectedTurnusId],
         available: false,
       } : item));
       showSuccess(`${person.name} ist jetzt ${role === 'leitung' ? 'Leitung' : 'Teamer'}.`);
