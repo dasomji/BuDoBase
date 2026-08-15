@@ -36,6 +36,7 @@ describe('application sidebar navigation', () => {
     expect(happyCleaning).toHaveAttribute('aria-expanded', 'true');
     expect(orga).toHaveAttribute('aria-expanded', 'true');
     expect(admin).toHaveAttribute('aria-expanded', 'true');
+    expect(documentation.compareDocumentPosition(lists) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(documentation.compareDocumentPosition(orga) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(orga.compareDocumentPosition(admin) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(documentation).toHaveAttribute('href', '/dokumentation/');
@@ -71,6 +72,25 @@ describe('application sidebar navigation', () => {
     expect(within(navigation).getByRole('link', { name: 'Django' })).toHaveAttribute('href', '/admin/');
     expect(screen.getByRole('link', { name: 'Profil' })).toHaveAttribute('href', '/profil/');
     expect(within(navigation).getByRole('link', { name: 'Alle Kinder' })).toHaveAttribute('data-active');
+  });
+
+  it('shows only Team & Turnus and Profil when no Turnus is available', () => {
+    render(
+      <ApplicationShell
+        sidebar={<AppSidebar withoutTurnus />}
+        header={<div>Header</div>}
+      >
+        <div>Inhalt</div>
+      </ApplicationShell>,
+    );
+
+    const navigation = screen.getByRole('navigation', { name: 'Hauptnavigation' });
+    expect(within(navigation).getAllByRole('link').map(link => link.textContent)).toEqual([
+      'Team & Turnus',
+    ]);
+    expect(screen.getByRole('link', { name: 'Profil' })).toHaveAttribute('href', '/profil/');
+    expect(document.querySelector('.sidebar-brand')).toHaveAttribute('href', '/teams/');
+    expect(screen.queryByRole('button', { name: 'Listen' })).not.toBeInTheDocument();
   });
 
   it('hides the complete Admin group from non-superusers', () => {

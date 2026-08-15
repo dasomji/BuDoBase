@@ -46,6 +46,10 @@ function AppContent({
   const routeRequestSequence = useRef(0);
   const turnusSwitchInFlight = useRef(false);
   const request = useMemo(() => routeDataRequest(route), [route]);
+  const withoutTurnus = bootstrap?.authenticated === true && bootstrap.turnus === null;
+  const isOwnProfileRoute = route.page === 'profile'
+    || (route.page === 'profile-edit' && route.id == null);
+  const isWithoutTurnusRoute = route.page === 'team-management' || isOwnProfileRoute;
   const navigateRoute = useCallback((path, { replace = false } = {}) => {
     routeRequestSequence.current += 1;
     const target = new URL(path, window.location.origin);
@@ -125,16 +129,22 @@ function AppContent({
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
   useEffect(() => {
-    if (bootstrap?.authenticated && request) refreshRoute();
-  }, [bootstrap?.authenticated, refreshRoute, request]);
+    if (bootstrap?.authenticated && request && (!withoutTurnus || isWithoutTurnusRoute)) {
+      refreshRoute();
+    }
+  }, [bootstrap?.authenticated, isWithoutTurnusRoute, refreshRoute, request, withoutTurnus]);
   useEffect(() => {
     if (
       (bootstrap && !bootstrap.authenticated && !isPublicRoute(route))
       || routeState.authenticationRequired
     ) {
       navigate(`/login/?next=${encodeURIComponent(window.location.pathname)}`);
+      return;
     }
-  }, [bootstrap, navigate, route, routeState.authenticationRequired]);
+    if (withoutTurnus && !isWithoutTurnusRoute) {
+      navigateRoute('/teams/', { replace: true });
+    }
+  }, [bootstrap, isWithoutTurnusRoute, navigate, navigateRoute, route, routeState.authenticationRequired, withoutTurnus]);
 
   const realtimeEventId = route.event_id || pageState.happyCleaningEventId;
   const overviewRealtimeEvent = findHappyCleaningOverviewEvent(
@@ -297,6 +307,7 @@ function AppContent({
             : data.happy_cleaning_events
         } permissions={data.permissions}
         turnusSelection={data.turnus_selection}
+        withoutTurnus={withoutTurnus}
         turnusSwitching={turnusSwitching}
         onTurnusChange={switchTurnus} />
       ) : null}
