@@ -519,6 +519,42 @@ describe('admin team overview', () => {
     expect(screen.queryByRole('button', { name: 'Chris Frei als Leitung zu T2-2026 hinzufügen' })).not.toBeInTheDocument();
   });
 
+  it('does not duplicate a person when refreshed route data arrives before the add request resolves', async () => {
+    const user = userEvent.setup();
+    const addedMember = {
+      id: 31,
+      user_id: 30,
+      name: 'Chris Frei',
+      functional_role: 'teamer',
+      role_label: 'Teamer',
+      team_label: '',
+    };
+    const refreshed = {
+      ...data,
+      years: data.years.map(year => ({
+        ...year,
+        turnuses: year.turnuses.map(turnus => ({
+          ...turnus,
+          members: [...turnus.members, addedMember],
+        })),
+      })),
+    };
+    let view;
+    const mutate = vi.fn().mockImplementation(async () => {
+      view.rerender(<Toaster><AdminTeamOverviewPage data={refreshed} mutate={mutate} /></Toaster>);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      return { membership_id: 31, role_label: 'Teamer', team_label: '' };
+    });
+    view = render(<Toaster><AdminTeamOverviewPage data={data} mutate={mutate} /></Toaster>);
+
+    await user.click(screen.getByRole('button', { name: 'Person hinzufügen' }));
+    await user.type(screen.getByRole('textbox', { name: 'Person nach Name oder E-Mail-Adresse suchen' }), 'Chris');
+    await user.click(screen.getByRole('button', { name: 'Chris Frei als Betreuer:in zu T2-2026 hinzufügen' }));
+    await user.click(screen.getByRole('button', { name: 'Dialog schließen' }));
+
+    expect(within(screen.getByTestId('member-panel')).getAllByText('Chris Frei')).toHaveLength(1);
+  });
+
   it('lets Leitung add and remove Teamers through accessible actions', async () => {
     const user = userEvent.setup();
     const mutate = vi.fn()
