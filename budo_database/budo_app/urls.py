@@ -18,6 +18,7 @@ from .join_request_decision_views import decide_turnus_join_request
 from .admin_team_views import create_leitung_membership, create_turnus, set_membership_leadership
 from .excel_views import upload_turnus_excel
 from .team_membership_views import create_teamer_membership, remove_team_membership, update_team_membership_label
+from .documentation_views import documentation_page
 
 
 def legacy_slashless_page(route, view, *, name):
@@ -58,6 +59,7 @@ urlpatterns = [
     path('api/memberships/<int:membership_id>/label/', update_team_membership_label, name='membership-label-api'),
     path('api/memberships/<int:membership_id>/remove/', remove_team_membership, name='membership-remove-api'),
     path('settings/', admin_settings_page, name='admin-settings-page'),
+    path('dokumentation/', documentation_page, name='documentation-page'),
     path(
         'api/settings/recalculate-travel-times/',
         recalculate_travel_times,

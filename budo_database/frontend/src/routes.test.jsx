@@ -10,6 +10,7 @@ describe('route inventory', () => {
     ['/', 'dashboard', 'dashboard', 'dashboard'],
     ['/dashboard/', 'dashboard', 'dashboard', 'dashboard'],
     ['/gut-zu-wissen/', 'good-to-know', 'dashboard', 'gut-zu-wissen'],
+    ['/dokumentation/', 'documentation', 'documentation', 'documentation'],
     ['/audit/', 'audit', 'audit', 'audit-events'],
     ['/login', 'login', 'auth', null],
     ['/register', 'register', 'auth', null],
@@ -157,6 +158,7 @@ describe('route inventory', () => {
     ['/swp-einteilung-w1', 'button', 'Kinder ausblenden'],
     ['/happy-cleaning', 'button', 'Happy Cleaning hinzufügen'],
     ['/happy-cleaning/print', 'button', 'Drucken'],
+    ['/dokumentation', 'button', 'Dokumentation drucken'],
   ])('renders the header action on %s as a labeled icon affordance', (path, role, name) => {
     render(routeHeaderAction(
       parseRoute(path),

@@ -388,6 +388,7 @@ class ReactPageRouteSmokeTests(TestCase):
             "auslagerorte-list": reverse("auslagerorte-list"),
             "place-tag-settings": reverse("place-tag-settings"),
             "admin-settings-page": reverse("admin-settings-page"),
+            "documentation-page": reverse("documentation-page"),
             "auslagerorte-create": reverse("auslagerorte-create"),
             "auslagerorte-detail": reverse(
                 "auslagerorte-detail",

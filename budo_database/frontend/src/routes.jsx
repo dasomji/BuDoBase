@@ -3,6 +3,7 @@ import { auditRoutes } from './domains/audit';
 import { attendanceRoutes } from './domains/attendance';
 import { authRoutes } from './domains/auth';
 import { dashboardRoutes } from './domains/dashboard';
+import { documentationRoutes } from './domains/documentation';
 import { focusRoutes } from './domains/focuses';
 import { happyCleaningRoutes } from './domains/happyCleaning';
 import { kidRoutes } from './domains/kids';
@@ -17,6 +18,7 @@ import { notFoundRoute } from './domains/shared';
 
 export const routeDefinitions = [
   ...dashboardRoutes,
+  ...documentationRoutes,
   ...auditRoutes,
   ...authRoutes,
   ...profileRoutes,

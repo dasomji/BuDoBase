@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import {
   ArrowRightLeft,
+  BookOpenText,
   ChefHat,
   ChevronRight,
   ClipboardList,
@@ -71,6 +72,7 @@ export const sidebarItems = [
   { label: 'Küche', href: '/kitchen', icon: ChefHat },
   { label: 'Spiele', href: gamesUrl, icon: Gamepad2, external: true },
   { label: 'Team & Turnus', href: '/teams/', icon: UsersRound },
+  { label: 'Dokumentation', href: '/dokumentation/', icon: BookOpenText },
   {
     label: 'Orgi',
     icon: Settings,
