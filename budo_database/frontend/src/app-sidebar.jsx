@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import {
   ArrowRightLeft,
+  BookOpenText,
   ChefHat,
   ChevronRight,
   ClipboardList,
@@ -39,6 +40,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 const gamesUrl = 'https://honey-glue-e51.notion.site/Methoden-eaff0abb8b2a42bfb319c50d5357022c';
 
 export const sidebarItems = [
+  { label: 'Dokumentation', href: '/dokumentation/', icon: BookOpenText },
   {
     label: 'Listen',
     icon: ClipboardList,
@@ -327,8 +329,12 @@ export function AppSidebar({
   turnusSelection,
   onTurnusChange,
   turnusSwitching = false,
+  withoutTurnus = false,
 }) {
-  const items = withDynamicNavEntries(happyCleaningEvents, permissions);
+  const availableItems = withDynamicNavEntries(happyCleaningEvents, permissions);
+  const items = withoutTurnus
+    ? availableItems.filter(item => item.label === 'Team & Turnus')
+    : availableItems;
   const options = turnusSelection?.options || [];
   return (
     <Sidebar side="left" collapsible="icon">
@@ -336,8 +342,8 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              render={<a href="/dashboard/" />}
-              tooltip="BuDoBase Dashboard"
+              render={<a href={withoutTurnus ? '/teams/' : '/dashboard/'} />}
+              tooltip={withoutTurnus ? 'Team & Turnus' : 'BuDoBase Dashboard'}
               className="sidebar-brand"
             >
               <Logo />

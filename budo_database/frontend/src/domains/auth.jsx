@@ -1,4 +1,5 @@
 import { Card, Column, Columns, NativeForm } from '../components';
+import { Button } from '../components/ui/button';
 
 export function AuthPage({ kind, data }) {
   if (kind === 'registered') {
@@ -8,7 +9,15 @@ export function AuthPage({ kind, data }) {
   return (
     <Columns>
       <Column id="single-column">
-        <Card title={register ? 'Registrieren' : 'Login'}>
+        <Card
+          title={register ? 'Registrieren' : 'Login'}
+          actions={register ? undefined : (
+            <>
+              <span>Noch keinen Account?</span>
+              <Button variant="secondary" href="/register/">Registrieren</Button>
+            </>
+          )}
+        >
           <NativeForm token={data.csrf_token} action={register ? '/register/' : '/login/'} fields={register ? [
             { name: 'username', label: 'Username', required: true },
             { name: 'email', label: 'E-Mail', type: 'email', required: true },

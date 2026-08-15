@@ -140,6 +140,88 @@ describe('application loading', () => {
     expect(await screen.findByRole('heading', { name: 'T4-2026' })).toBeInTheDocument();
   });
 
+  it('redirects a signed-in user without a Turnus to Team & Turnus', async () => {
+    window.history.pushState({}, '', '/all_kids');
+    const fetchImpl = vi.fn((url) => {
+      if (url === '/api/bootstrap/') {
+        return Promise.resolve(response({
+          authenticated: true,
+          csrf_token: 'token',
+          messages: [],
+          profile: { id: 1, rufname: 'Ada' },
+          turnus: null,
+          turnus_selection: { selected_id: null, options: [] },
+          permissions: {},
+          search_index: { kids: [], focuses: [], places: [] },
+          happy_cleaning_events: [],
+        }));
+      }
+      if (url === '/api/route-data/team-management/') {
+        return Promise.resolve(response({
+          years: [{
+            year: 2026,
+            turnuses: [{
+              id: 4,
+              label: 'T4-2026',
+              members: [],
+              leads: [],
+              can_view_team: false,
+              request_status: null,
+              pending_requests: [],
+              request_summary: { pending: 0 },
+            }],
+          }],
+          people: [],
+          can_manage_leitung: false,
+          can_manage_memberships: false,
+        }));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByRole('heading', { name: 'T4-2026' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/teams/');
+    expect(fetchImpl).not.toHaveBeenCalledWith('/api/route-data/kids-directory/');
+    const navigation = screen.getByRole('navigation', { name: 'Hauptnavigation' });
+    expect(within(navigation).getAllByRole('link').map(link => link.textContent)).toEqual([
+      'Team & Turnus',
+    ]);
+    expect(screen.getByRole('link', { name: 'Profil' })).toBeInTheDocument();
+  });
+
+  it('keeps Profil reachable for a signed-in user without a Turnus', async () => {
+    window.history.pushState({}, '', '/profil/');
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(response({
+        authenticated: true,
+        csrf_token: 'token',
+        messages: [],
+        profile: { id: 1, rufname: 'Ada' },
+        turnus: null,
+        turnus_selection: { selected_id: null, options: [] },
+        permissions: {},
+        search_index: { kids: [], focuses: [], places: [] },
+        happy_cleaning_events: [],
+      }))
+      .mockResolvedValueOnce(response({
+        profile: {
+          id: 1,
+          rufname: 'Ada',
+          food_display: 'Flexitarisch',
+          turnuses: [],
+        },
+        focuses: [],
+      }));
+
+    render(<App fetchImpl={fetchImpl} />);
+
+    expect(await screen.findByRole('heading', { name: 'Ada', level: 2 })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/profil/');
+    expect(fetchImpl.mock.calls[1][0]).toBe('/api/route-data/profile/');
+  });
+
   it('refreshes Aktiver Turnus after the signed-in user is added to another Turnus', async () => {
     window.history.pushState({}, '', '/teams/');
     const originalBootstrap = {

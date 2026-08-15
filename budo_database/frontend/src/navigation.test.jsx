@@ -22,6 +22,7 @@ describe('application sidebar navigation', () => {
     const lists = within(navigation).getByRole('button', { name: 'Listen' });
     const focuses = within(navigation).getByRole('button', { name: 'Schwerpunkte' });
     const happyCleaning = within(navigation).getByRole('button', { name: 'Happy Cleaning' });
+    const documentation = within(navigation).getByRole('link', { name: 'Dokumentation' });
     const orga = within(navigation).getByRole('button', { name: 'Orgi' });
     const admin = within(navigation).getByRole('button', { name: 'Admin' });
     const listsMenu = document.getElementById(lists.getAttribute('aria-controls'));
@@ -35,7 +36,10 @@ describe('application sidebar navigation', () => {
     expect(happyCleaning).toHaveAttribute('aria-expanded', 'true');
     expect(orga).toHaveAttribute('aria-expanded', 'true');
     expect(admin).toHaveAttribute('aria-expanded', 'true');
+    expect(documentation.compareDocumentPosition(lists) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(documentation.compareDocumentPosition(orga) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(orga.compareDocumentPosition(admin) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(documentation).toHaveAttribute('href', '/dokumentation/');
     expect(within(navigation).getByRole('link', { name: 'Team & Turnus' })).toHaveAttribute('href', '/teams/');
     expect(within(navigation).getByRole('link', { name: 'Alle Kinder' })).toHaveAttribute('href', '/all_kids');
     expect(within(listsMenu).queryByRole('link', { name: 'Spezialfamilien' })).not.toBeInTheDocument();
@@ -68,6 +72,25 @@ describe('application sidebar navigation', () => {
     expect(within(navigation).getByRole('link', { name: 'Django' })).toHaveAttribute('href', '/admin/');
     expect(screen.getByRole('link', { name: 'Profil' })).toHaveAttribute('href', '/profil/');
     expect(within(navigation).getByRole('link', { name: 'Alle Kinder' })).toHaveAttribute('data-active');
+  });
+
+  it('shows only Team & Turnus and Profil when no Turnus is available', () => {
+    render(
+      <ApplicationShell
+        sidebar={<AppSidebar withoutTurnus />}
+        header={<div>Header</div>}
+      >
+        <div>Inhalt</div>
+      </ApplicationShell>,
+    );
+
+    const navigation = screen.getByRole('navigation', { name: 'Hauptnavigation' });
+    expect(within(navigation).getAllByRole('link').map(link => link.textContent)).toEqual([
+      'Team & Turnus',
+    ]);
+    expect(screen.getByRole('link', { name: 'Profil' })).toHaveAttribute('href', '/profil/');
+    expect(document.querySelector('.sidebar-brand')).toHaveAttribute('href', '/teams/');
+    expect(screen.queryByRole('button', { name: 'Listen' })).not.toBeInTheDocument();
   });
 
   it('hides the complete Admin group from non-superusers', () => {
