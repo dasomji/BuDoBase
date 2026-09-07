@@ -25,6 +25,19 @@ so both forms resolve directly without losing POST data.
 
 ### Local server and React changes
 
+Development now uses Lizardtail's local PostgreSQL 18 main database, initially
+copied from Neon. The Neon URL in `.env` is not the development target. Start with
+`lizardtail up` from the repository root; run database commands through
+`lizardtail exec -- .venv/bin/python budo_database/manage.py <command>` so the
+managed local `DATABASE_URL` overrides `.env`. In a feature worktree, initialize
+the isolated clone with `lizardtail db migrate` before schema changes. Use the
+`finish-and-cleanup` skill after a PR to migrate main after merge and remove the
+feature resources. Do not merge feature database rows into main.
+
+Use `lizardtail refresh` after frontend changes to build, collect static files,
+and restart the managed preview together. Django's autoreloader handles Python
+changes. Do not launch a separate unmanaged development server using `.env`.
+
 The browser preview serves the compiled React bundle through Django; it does
 not read `frontend/src/` directly. After changing React or frontend CSS, run:
 
