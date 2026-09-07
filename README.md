@@ -1,5 +1,7 @@
 
 
+For the managed headless development workflow, see [Lizardtail development](docs/development-lizardtail.md).
+
 BuDoBase is a datamanagement-solution for a summercamp called BuDo.
 It is meant to make the work of trainers there easier to open up more ressources to work with the children and teenagers in the camp,
 rather than having to deal with excel-sheets.

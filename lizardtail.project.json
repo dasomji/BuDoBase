@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "project": "budobase",
+  "envFiles": [
+    "budo_database/.env"
+  ],
+  "env": {
+    "LIZARDTAIL_ORIGIN": "${origin.app}",
+    "DJANGO_SETTINGS_MODULE": "budo_database.settings.development"
+  },
+  "database": {
+    "kind": "postgres",
+    "image": "postgres:18-bookworm@sha256:1c59e2c3c818eaa0f0628f695b36e7c9e362d6b219b36a54a32df645cbd7e1af",
+    "source": "import",
+    "cwd": "budo_database",
+    "migrate": [
+      "${root}/.venv/bin/python",
+      "manage.py",
+      "migrate",
+      "--noinput"
+    ],
+    "volumePath": "/var/lib/postgresql"
+  },
+  "services": {
+    "web": {
+      "command": [
+        "${root}/.venv/bin/python",
+        "manage.py",
+        "runserver",
+        "127.0.0.1:${port.web}"
+      ],
+      "cwd": "budo_database",
+      "port": true,
+      "ready": {
+        "path": "/login/",
+        "timeoutMs": 90000
+      }
+    }
+  },
+  "endpoints": {
+    "app": {
+      "routes": [
+        {
+          "path": "/",
+          "service": "web"
+        }
+      ]
+    }
+  },
+  "update": [
+    [
+      "npm",
+      "--prefix",
+      "budo_database/frontend",
+      "run",
+      "build"
+    ],
+    [
+      "${root}/.venv/bin/python",
+      "budo_database/manage.py",
+      "collectstatic",
+      "--clear",
+      "--noinput"
+    ]
+  ]
+}

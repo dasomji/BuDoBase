@@ -40,3 +40,10 @@ else:
 
 # Static files
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+
+# Exact per-worktree browser origin supplied by the managed preview runtime.
+if os.environ.get('LIZARDTAIL_ORIGIN'):
+    from urllib.parse import urlparse
+    preview_origin = os.environ['LIZARDTAIL_ORIGIN']
+    ALLOWED_HOSTS.append(urlparse(preview_origin).hostname)
+    CSRF_TRUSTED_ORIGINS.append(preview_origin)
