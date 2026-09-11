@@ -182,3 +182,20 @@ Upstream references:
 - [Django 6.0 release notes](https://docs.djangoproject.com/en/6.1/releases/6.0/)
 - [Django 6.1 release notes](https://docs.djangoproject.com/en/6.1/releases/6.1/)
 - [Django 6.1.1 release notes](https://docs.djangoproject.com/en/6.1/releases/6.1.1/)
+
+## BUDOBASE-11: @testing-library/jest-dom 7.0.1
+
+- Upgraded `@testing-library/jest-dom` from 6.9.1 to 7.0.1.
+- The 7.0 boundary makes `@testing-library/dom` a required peer and raises the
+  Node minimum to 22. BuDoBase resolves `@testing-library/dom` 10.4.1 through
+  Testing Library React/user-event, satisfying jest-dom's `>=10 <11` peer; the
+  repository runs Node 22.22.2 and CI tracks Node 22.
+- The existing Vitest-specific setup import remains supported; no matcher
+  assertions were changed.
+- Validation: clean install/update, peer tree check, 35 test files and 414 tests
+  passed, and `npm audit` reported zero vulnerabilities.
+
+Upstream references:
+
+- [jest-dom 7.0.0 release](https://github.com/testing-library/jest-dom/releases/tag/v7.0.0)
+- [jest-dom 7.0.1 release](https://github.com/testing-library/jest-dom/releases/tag/v7.0.1)
