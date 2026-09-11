@@ -151,3 +151,34 @@ Upstream references:
 
 - [pandas 3.0 release notes](https://pandas.pydata.org/docs/whatsnew/v3.0.0.html)
 - [pandas on PyPI](https://pypi.org/project/pandas/)
+
+## BUDOBASE-1: Django 6.1.1
+
+- Upgraded Django from the 5.2.17 LTS line to 6.1.1, the latest PyPI release.
+- Django 6 requires Python 3.12 or newer. BUDOBASE-3 already made Python 3.12
+  the explicit repository minimum, matching the existing production runtime.
+- Removed `FORMS_URLFIELD_ASSUME_HTTPS`: Django 6 removed this transitional
+  setting and HTTPS is now the built-in `URLField` default.
+- Reviewed the 6.0 removals against the project: constraints already use
+  `condition=`, model saves use keyword arguments, `DEFAULT_AUTO_FIELD` is
+  explicit, and the project does not use removed renderer, prefetch, GIS, or
+  formatting APIs. Django 6.1 supports PostgreSQL 15+ and SQLite 3.37+; CI uses
+  PostgreSQL 16, local integration uses PostgreSQL 18, and the Python 3.12
+  runtime supplies a supported SQLite.
+- Django 6.1 introduces the `MAILERS` replacement. The project now explicitly
+  configures the SMTP default that older Django versions supplied implicitly,
+  preserving behavior while eliminating the Django 7 deprecation path. The
+  synchronous join-request notification flow is unchanged.
+- The complete production manifest was installed for compatibility testing;
+  current Django REST Framework 3.18.1 loads successfully with Django 6.1.1.
+- Validation: `pip check`, Django system/deployment checks, and
+  `makemigrations --check --dry-run` passed; SQLite ran all 802 tests with 57
+  expected skips; the post-`MAILERS` notification suite passed 17 tests with 2
+  expected skips; managed PostgreSQL 18 ran all 802 tests successfully;
+  `pip-audit` reported no known vulnerabilities.
+
+Upstream references:
+
+- [Django 6.0 release notes](https://docs.djangoproject.com/en/6.1/releases/6.0/)
+- [Django 6.1 release notes](https://docs.djangoproject.com/en/6.1/releases/6.1/)
+- [Django 6.1.1 release notes](https://docs.djangoproject.com/en/6.1/releases/6.1.1/)
