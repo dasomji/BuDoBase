@@ -241,3 +241,27 @@ Upstream references:
 - [Vitest 5 migration guide](https://vitest.dev/guide/migration/)
 - [Vitest 5 announcement](https://vitest.dev/blog/vitest-5)
 - [Vitest 5.0.0 release](https://github.com/vitest-dev/vitest/releases/tag/v5.0.0)
+
+## BUDOBASE-13: Vite 8.3.0
+
+- Upgraded Vite from 8.1.4 to 8.3.0 and regenerated the committed production
+  bundle.
+- The 8.2/8.3 minors add opt-in bundled-development and devtools features,
+  build/HMR fixes, and Rolldown updates. BuDoBase does not enable the new
+  experimental options, so its build and development behavior remains on the
+  stable defaults.
+- Vite 8.3 warned that the ESM config's CommonJS-style `__dirname` references
+  would be incompatible with the planned native config-loader default. The
+  config now uses Node's ESM `import.meta.dirname`; the warning is eliminated
+  without changing resolved paths.
+- Validation: Vite 8.3.0 resolves alongside Vitest 5.0.0 and React plugin
+  6.0.3; all 35 test files and 414 tests passed; the production build
+  transformed 2,216 modules and regenerated `app.js`/`app.css`; `npm audit`
+  reported zero vulnerabilities. The existing single-chunk size advisory
+  remains informational and is outside this dependency-update scope.
+
+Upstream references:
+
+- [Vite 8.3 changelog](https://github.com/vitejs/vite/blob/v8.3.0/packages/vite/CHANGELOG.md)
+- [Vite 8.3.0 comparison](https://github.com/vitejs/vite/compare/v8.1.4...v8.3.0)
+- [Vite release policy](https://vite.dev/releases)
