@@ -77,3 +77,24 @@ Upstream references:
 
 - [python-phonenumbers version history](https://github.com/daviddrysdale/python-phonenumbers/blob/dev/python/HISTORY.md)
 - [phonenumbers on PyPI](https://pypi.org/project/phonenumbers/)
+
+## BUDOBASE-6: Gunicorn 26.2.0
+
+- Upgraded Gunicorn from 23.0.0 to the latest PyPI release, 26.2.0. Git tags
+  and the development changelog contain later 26.2.x entries, but those builds
+  are not published on PyPI and therefore are not installable release targets.
+- Gunicorn now requires Python 3.10 or newer. BuDoBase's Railway `Procfile` and
+  `railway.json` use Daphne/ASGI, so Gunicorn is a WSGI fallback rather than the
+  configured production entrypoint; no worker configuration required migration.
+- The 26.x HTTP parser tightened request handling and introduced optional HTTP/2
+  and ASGI workers. BuDoBase retains the default sync WSGI worker and enables no
+  new protocol options.
+- Validation: `pip check`, Django system checks, and production migrations/static
+  collection passed. A disposable production-configured Gunicorn process booted
+  one sync worker, served `/login/` with HTTP 200 behind the configured proxy
+  header, and shut its worker and master down cleanly on `SIGTERM`.
+
+Upstream references:
+
+- [Gunicorn 2026 changelog](https://github.com/benoitc/gunicorn/blob/master/docs/content/2026-news.md)
+- [Gunicorn on PyPI](https://pypi.org/project/gunicorn/)

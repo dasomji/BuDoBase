@@ -14,7 +14,7 @@ django-phonenumber-field==8.5.0
 django-resized==1.0.3
 django-storages[s3]==1.14.6
 et_xmlfile==2.0.0
-gunicorn==23.0.0
+gunicorn==26.2.0
 idna==3.19
 jmespath==1.1.0
 numpy==2.1.3
