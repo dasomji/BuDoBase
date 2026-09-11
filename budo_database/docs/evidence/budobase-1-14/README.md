@@ -265,3 +265,31 @@ Upstream references:
 - [Vite 8.3 changelog](https://github.com/vitejs/vite/blob/v8.3.0/packages/vite/CHANGELOG.md)
 - [Vite 8.3.0 comparison](https://github.com/vitejs/vite/compare/v8.1.4...v8.3.0)
 - [Vite release policy](https://vite.dev/releases)
+
+## BUDOBASE-14: @vitejs/plugin-react 6.1.1
+
+- Upgraded `@vitejs/plugin-react` from 6.0.3 to 6.1.1, retaining the
+  repository's exact production dependency pins.
+- Version 6.0.5 fixes the non-linear React Compiler filter introduced in
+  6.0.3. Versions 6.1/6.1.1 add opt-in native React Compiler support and its
+  diagnostics/sourcemap controls. BuDoBase does not enable a React Compiler,
+  so the existing `react()` configuration remains correct.
+- npm initially selected Babel 8's optional transform-runtime while evaluating
+  the plugin's optional Babel integration, conflicting with shadcn's Babel 7
+  toolchain even though that integration is not installed. An npm override
+  keeps the optional peer candidate on compatible Babel 7.29.7. The final tree
+  contains neither `@rolldown/plugin-babel` nor
+  `@babel/plugin-transform-runtime`; no unused compiler was added.
+- Validation: a default `npm ci` completed with zero vulnerabilities; the
+  resolved plugin 6.1.1 has Vite 8.3.0 as its peer; all 35 test files and 414
+  tests passed on the final rerun; a middleware-mode transform of `App.jsx`
+  contains the React Refresh boundary and HMR accept path; the production build
+  transformed 2,216 modules with no generated-bundle change from plugin 6.0.3.
+  One focus-trap timing assertion failed once immediately after the clean
+  install, then passed both its focused rerun and the complete suite and was not
+  reproducible.
+
+Upstream references:
+
+- [React plugin changelog](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/CHANGELOG.md)
+- [@vitejs/plugin-react 6.1.1 on npm](https://www.npmjs.com/package/@vitejs/plugin-react/v/6.1.1)
