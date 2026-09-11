@@ -79,6 +79,14 @@ CHANNEL_LAYERS = {
     },
 }
 
+# Preserve Django's historical default SMTP behavior explicitly. Django 6.1
+# deprecates the implicit default and Django 7 removes it.
+MAILERS = {
+    'default': {
+        'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+    },
+}
+
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -100,9 +108,6 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
-
-# Adopt Django 6.0's URLField default during the 5.2 transition.
-FORMS_URLFIELD_ASSUME_HTTPS = True
 
 # Static files
 STATIC_ROOT = BASE_DIR / 'staticfiles'

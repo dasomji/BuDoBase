@@ -8,15 +8,15 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
+      '@': resolve(import.meta.dirname, './src'),
     },
   },
   build: {
-    outDir: resolve(__dirname, '../budo_app/static/frontend'),
+    outDir: resolve(import.meta.dirname, '../budo_app/static/frontend'),
     emptyOutDir: true,
     cssCodeSplit: false,
     rollupOptions: {
-      input: resolve(__dirname, 'src/main.jsx'),
+      input: resolve(import.meta.dirname, 'src/main.jsx'),
       output: {
         entryFileNames: 'app.js',
         assetFileNames: assetInfo =>

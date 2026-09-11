@@ -724,7 +724,7 @@ describe('Happy Cleaning management', () => {
     expect(document.activeElement).toHaveAttribute('data-base-ui-focus-guard');
     expect(trigger).not.toHaveFocus();
     await user.keyboard('{Shift>}{Tab}{/Shift}');
-    expect(dialog.contains(document.activeElement)).toBe(true);
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
     await user.keyboard('{Escape}');
 
     expect(screen.queryByRole('dialog', { name: 'Stationen kopieren' })).not.toBeInTheDocument();
