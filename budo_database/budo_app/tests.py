@@ -86,7 +86,7 @@ def sample_excel_frames():
         "Hat_Ihr_Kind_eine_Krankheit,_körperliche_Einschränkungen_oder_besondere_Bedürfnisse?": "nein",
         "Stimmen_Sie_der_Verabreichung_von_NICHT-rezeptpflichtigen_Medikamenten_zu,_wie_zum_Beispiel_Salbe_bei_Insektenstich?": "ja",
         "Stimmen_Sie_der_Verabreichung_von_rezeptpflichtigen_Medikamenten_zu,_welche_Ihrem_Kind_von_einem_Arzt_verordnet_wurden?": "ja",
-    }])
+    }], dtype=object)
     budo_raw = pd.DataFrame([{
         "Index": "T1-1",
         "Submitted": "",

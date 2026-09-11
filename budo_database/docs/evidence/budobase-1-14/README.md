@@ -123,3 +123,31 @@ Upstream references:
 - [NumPy 2.5 release notes](https://numpy.org/doc/2.5/release/2.5.0-notes.html)
 - [NumPy 2.0 migration guide](https://numpy.org/doc/2.5/numpy_2_0_migration_guide.html)
 - [NumPy on PyPI](https://pypi.org/project/numpy/)
+
+## BUDOBASE-2: pandas 3.0.5
+
+- Upgraded pandas from 2.2.3 to 3.0.5, the latest PyPI release, together with
+  the already-validated NumPy 2.5.3 runtime.
+- pandas 3 enables copy-on-write semantics, infers its dedicated string dtype
+  by default, changes inferred datetime resolution, and removes APIs deprecated
+  in earlier releases. BuDoBase does not assert exact pandas dtypes or mutate
+  through chained assignment. Its reads use column/row selection and values are
+  normalized to Python/Django types before persistence.
+- pandas requires Python 3.11 or newer. The explicit Python 3.12 minimum adopted
+  for BUDOBASE-3 satisfies that requirement.
+- Excel ingestion, birthday/postal-code parsing, family assignment,
+  transactional rollback, upload authorization, and Excel export round trips
+  form the relevant compatibility seam.
+- Initial validation exposed the intentional pandas 3 string-dtype rule in a
+  test fixture: an all-string birthday column no longer accepts a numeric Excel
+  ordinal. The fixture now declares object dtype, accurately representing the
+  supported mixed-cell workbook input without weakening the assertion or
+  changing production behavior.
+- Validation: `pip check` passed; the final NumPy 2.5.3/pandas 3.0.5 combination
+  passed all 30 focused Excel/import/export/family/date/upload tests with
+  deprecation warnings enabled.
+
+Upstream references:
+
+- [pandas 3.0 release notes](https://pandas.pydata.org/docs/whatsnew/v3.0.0.html)
+- [pandas on PyPI](https://pypi.org/project/pandas/)
