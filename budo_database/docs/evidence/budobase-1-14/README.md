@@ -22,3 +22,22 @@ Upstream references:
 
 - [packaging documentation](https://packaging.pypa.io/)
 - [packaging on PyPI](https://pypi.org/project/packaging/)
+
+## BUDOBASE-4: dj-database-url 3.1.2
+
+- Upgraded `dj-database-url` from 2.3.0 to 3.1.2.
+- The 3.0 release changed the extension registry API, but BuDoBase only calls
+  the stable public `config()` function. The 3.1 line adds Django 6 support and
+  requires Python 3.10 or newer, preserving the pre-Django-upgrade runtime
+  policy.
+- SQLite in-memory parsing, PostgreSQL credentials/options, SSL-required
+  parsing, persistent-connection settings, development startup, and production
+  deployment checks were exercised locally.
+- Validation: `pip check` and Django development/production checks passed;
+  SQLite ran 802 tests with 57 expected skips; managed PostgreSQL 18 ran all
+  802 tests successfully.
+
+Upstream references:
+
+- [dj-database-url changelog](https://github.com/jazzband/dj-database-url/blob/master/CHANGELOG.md)
+- [dj-database-url on PyPI](https://pypi.org/project/dj-database-url/)
