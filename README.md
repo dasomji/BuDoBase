@@ -55,6 +55,9 @@ Reading over the tutorials may give you a better understanding of how Django wor
 
 ## Installing the project locally
 
+BuDoBase requires Python 3.12 or newer. Production currently uses Python
+3.12.13, as pinned in `budo_database/runtime.txt` and CI.
+
 Clone the repository:
 ```bash
 git clone https://github.com/budo-app/budo_database.git
@@ -259,4 +262,3 @@ If pipfreeze doesn't work at all, you can manually update the requirements by ru
 ```bash
 pip freeze > ./budo_database/requirements/base.txt
 ```
-

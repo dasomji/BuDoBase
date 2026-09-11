@@ -98,3 +98,28 @@ Upstream references:
 
 - [Gunicorn 2026 changelog](https://github.com/benoitc/gunicorn/blob/master/docs/content/2026-news.md)
 - [Gunicorn on PyPI](https://pypi.org/project/gunicorn/)
+
+## BUDOBASE-3: NumPy 2.5.3 and Python 3.12 baseline
+
+- Upgraded NumPy from 2.1.3 to 2.5.3, the latest PyPI release.
+- NumPy 2.5 supports Python 3.12-3.14 and publishes CPython 3.12 manylinux
+  wheels for both x86-64 and ARM64. It drops Python 3.11 and expires several
+  NumPy 2.0 deprecations. BuDoBase does not import NumPy directly; it consumes
+  arrays only through pandas' Excel paths and does not use the removed APIs.
+- The repository's production runtime was already pinned to Python 3.12.13.
+  Python 3.10 was retained only as a compatibility CI lane after PERS-12. The
+  supported minimum is now explicitly Python 3.12 in README and CI so adopting
+  NumPy 2.5 does not silently change runtime support.
+- NumPy's 2.0 dtype promotion and copy-semantics changes predate the old 2.1.3
+  pin. The focused import/export round trips remain the behavioral guard for
+  pandas-backed data conversion.
+- Validation: the CPython 3.12 manylinux wheel installed successfully;
+  `pip check` passed; the Excel value parsing, upload authorization, import
+  transaction, family/date handling, and export suites passed all 30 tests with
+  pandas 2.2.3.
+
+Upstream references:
+
+- [NumPy 2.5 release notes](https://numpy.org/doc/2.5/release/2.5.0-notes.html)
+- [NumPy 2.0 migration guide](https://numpy.org/doc/2.5/numpy_2_0_migration_guide.html)
+- [NumPy on PyPI](https://pypi.org/project/numpy/)
