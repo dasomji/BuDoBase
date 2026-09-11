@@ -59,3 +59,21 @@ Upstream references:
 
 - [django-extensions changelog](https://github.com/django-extensions/django-extensions/blob/main/CHANGELOG.md)
 - [django-extensions on PyPI](https://pypi.org/project/django-extensions/)
+
+## BUDOBASE-8: phonenumbers 9.0.39
+
+- Upgraded `phonenumbers` from 8.13.49 to 9.0.39.
+- Upstream's Python history states that 9.0 is a major version only because the
+  source Java library changed its required Java version; the Python package has
+  metadata-only changes at that boundary. Later 9.0.x releases refresh number
+  metadata.
+- Representative German, Austrian, and international parsing, validation,
+  E.164 normalization, national/international formatting, and
+  `django-phonenumber-field` model/form integration were exercised.
+- Validation: `pip check` passed; representative phone contracts passed; the
+  focused profile and Leitung team-management suites passed all 21 tests.
+
+Upstream references:
+
+- [python-phonenumbers version history](https://github.com/daviddrysdale/python-phonenumbers/blob/dev/python/HISTORY.md)
+- [phonenumbers on PyPI](https://pypi.org/project/phonenumbers/)
