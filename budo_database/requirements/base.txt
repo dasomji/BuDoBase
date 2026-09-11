@@ -9,7 +9,7 @@ channels==4.3.2
 channels-redis==4.3.0
 daphne==4.2.3
 djangorestframework==3.18.1
-django-extensions==3.2.3
+django-extensions==4.1
 django-phonenumber-field==8.5.0
 django-resized==1.0.3
 django-storages[s3]==1.14.6

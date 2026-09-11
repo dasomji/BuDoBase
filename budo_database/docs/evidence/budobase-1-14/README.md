@@ -41,3 +41,21 @@ Upstream references:
 
 - [dj-database-url changelog](https://github.com/jazzband/dj-database-url/blob/master/CHANGELOG.md)
 - [dj-database-url on PyPI](https://pypi.org/project/dj-database-url/)
+
+## BUDOBASE-5: django-extensions 4.1
+
+- Upgraded `django-extensions` from 3.2.3 to 4.1.
+- The 4.0 release removed `pipchecker`; BuDoBase neither configures nor invokes
+  it. No other django-extensions command is referenced by project code or
+  automation.
+- Python 3.12 and Django 5 are supported upstream. Installed-app discovery,
+  Django system checks, and the available management-command registry were
+  verified without optional shell/Graphviz dependencies.
+- Validation: `pip check` and `manage.py check` passed; `graph_models`,
+  `shell_plus`, and `show_urls` remain registered; `show_urls` successfully
+  loaded and rendered the project's 219 URL entries.
+
+Upstream references:
+
+- [django-extensions changelog](https://github.com/django-extensions/django-extensions/blob/main/CHANGELOG.md)
+- [django-extensions on PyPI](https://pypi.org/project/django-extensions/)
