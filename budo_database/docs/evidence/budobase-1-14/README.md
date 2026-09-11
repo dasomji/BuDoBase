@@ -293,3 +293,36 @@ Upstream references:
 
 - [React plugin changelog](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/CHANGELOG.md)
 - [@vitejs/plugin-react 6.1.1 on npm](https://www.npmjs.com/package/@vitejs/plugin-react/v/6.1.1)
+
+## BUDOBASE-12: React and ReactDOM 19.3.0
+
+- Upgraded `react` and `react-dom` together from 19.2.7 to 19.3.0, retaining
+  exact production dependency pins and a single deduplicated runtime version.
+- React 19.3 stabilizes View Transitions and Fragment refs, adds ReactDOM's
+  `browser()` and Trusted Types support, and includes fixes for transitions,
+  Suspense, Fast Refresh, form status, focus, and hydration. BuDoBase does not
+  adopt the new APIs in this dependency-only change, so there is no application
+  migration surface.
+- The existing Vite React plugin supplies the modern automatic JSX transform.
+  `@base-ui/react`, `@tiptap/react`, Testing Library React, Floating UI, and
+  lucide-react all resolve against the same React/ReactDOM 19.3.0 pair without
+  invalid peers.
+- Validation: after a clean install, three consecutive full runs of all 35 test
+  files and 414 tests passed; the Vite 8.3 production build transformed 2,216
+  modules and regenerated the committed `app.js`;
+  `npm audit` reported zero vulnerabilities. After Django `collectstatic` and
+  a Lizardtail refresh, an authenticated browser smoke loaded the dashboard,
+  the 77-row all-kids table, and kid detail 21 with 28 interactive controls.
+  The exercised navigation produced no console errors, runtime exceptions, or
+  HTTP responses at status 400 or above.
+- Two clean-install full-suite runs exposed an existing timing assumption in a
+  focus-trap test: Base UI first focuses its guard and then redirects focus back
+  into the dialog asynchronously. Under parallel-worker load, the assertion
+  sometimes ran between those steps. The test now waits for the user-visible
+  invariant—focus contained by the dialog—without weakening it; Escape closure
+  and trigger-focus restoration remain immediate assertions.
+
+Upstream references:
+
+- [React 19.3 release post](https://react.dev/blog/2026/09/09/react-19-3)
+- [React 19.3.0 release](https://github.com/facebook/react/releases/tag/v19.3.0)
