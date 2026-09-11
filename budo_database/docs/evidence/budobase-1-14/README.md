@@ -199,3 +199,24 @@ Upstream references:
 
 - [jest-dom 7.0.0 release](https://github.com/testing-library/jest-dom/releases/tag/v7.0.0)
 - [jest-dom 7.0.1 release](https://github.com/testing-library/jest-dom/releases/tag/v7.0.1)
+
+## BUDOBASE-10: jsdom 30.0.1
+
+- Upgraded jsdom from 29.1.1 to 30.0.1.
+- jsdom 30 drops Node 20 and requires Node 22.22.2, 24.15, or 26+. CI now
+  pins Node 22.22.2 explicitly and README records that frontend minimum.
+- The release adds native `CSS.escape()`/`CSS.supports()`, pixel-normalized
+  computed styles, and dependency updates. It exposed an integration defect in
+  `css.escape`, used by jest-dom: that package exports an existing native
+  operation as a bare function, while jsdom's Web IDL wrapper correctly checks
+  its receiver. Test setup now binds jsdom's native `CSS.escape` before loading
+  the jest-dom matchers. The existing `toHaveFormValues` assertion remains
+  unchanged and passing.
+- Validation: all 35 frontend test files and 414 tests passed, covering focus,
+  navigation, forms, and editor interactions; `npm audit` reported zero
+  vulnerabilities.
+
+Upstream references:
+
+- [jsdom 29.1.1 to 30.0.1 comparison](https://github.com/jsdom/jsdom/compare/v29.1.1...v30.0.1)
+- [jsdom on npm](https://www.npmjs.com/package/jsdom)

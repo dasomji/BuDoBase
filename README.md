@@ -57,6 +57,7 @@ Reading over the tutorials may give you a better understanding of how Django wor
 
 BuDoBase requires Python 3.12 or newer. Production currently uses Python
 3.12.13, as pinned in `budo_database/runtime.txt` and CI.
+Building and testing the React frontend requires Node.js 22.22.2 or newer.
 
 Clone the repository:
 ```bash
