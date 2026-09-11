@@ -220,3 +220,24 @@ Upstream references:
 
 - [jsdom 29.1.1 to 30.0.1 comparison](https://github.com/jsdom/jsdom/compare/v29.1.1...v30.0.1)
 - [jsdom on npm](https://www.npmjs.com/package/jsdom)
+
+## BUDOBASE-9: Vitest 5.0.0
+
+- Upgraded Vitest from 4.1.11 to 5.0.0.
+- Vitest 5 requires Node 22.12+ and Vite 6.4+. BuDoBase uses Node 22.22.2 and
+  Vite 8.1.4, so both prerequisites are satisfied.
+- Reviewed the Vitest 5 migration surface. The repository has no inline test
+  projects, benchmark suites, browser-mode tests, custom reporters, removed
+  entry-point imports, sequential test options, or worker-id assumptions.
+- Vitest 5 enables `clearMocks` by default. The suite already establishes mock
+  state within each test or hook, and the unchanged assertions pass with the
+  new isolation behavior; no compatibility override was added.
+- Validation: the resolved dependency tree contains Vitest 5.0.0, Vite 8.1.4,
+  and jsdom 30.0.1; all 35 test files and 414 tests passed; `npm audit`
+  reported zero vulnerabilities.
+
+Upstream references:
+
+- [Vitest 5 migration guide](https://vitest.dev/guide/migration/)
+- [Vitest 5 announcement](https://vitest.dev/blog/vitest-5)
+- [Vitest 5.0.0 release](https://github.com/vitest-dev/vitest/releases/tag/v5.0.0)
