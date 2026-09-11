@@ -33,6 +33,9 @@ local audit success is not evidence that GitHub has closed the alerts.
 
 The Python audit also found a Django advisory beyond the GitHub snapshot;
 Django is updated from 5.2.16 to 5.2.17 within the existing LTS series.
+During verification GitHub added alert #143 for Vitest itself, bringing the
+default-branch total to 72. It shares the mocker advisory and is already fixed
+by the selected Vitest 4.1.11 update.
 Pillow's security fixes require the 12.x upgrade. Its
 [12.0 migration notes](https://pillow.readthedocs.io/en/stable/releasenotes/12.0.0.html)
 were checked against the application's image APIs, and existing upload,
@@ -65,13 +68,25 @@ deferred releases are incompatible.
   including propagated dependency findings; this count differs from GitHub alerts).
 - `pip-audit -r requirements/production.txt`: zero known vulnerabilities
   (baseline: 66 findings across 8 resolved packages).
+- Compared every installed affected package version against GitHub's live
+  vulnerable-version ranges: 37 npm alerts and 35 Python alerts checked,
+  zero vulnerable matches (including newly added #143).
 - `npm test`: 35 files, 414 tests passed on Node 22.22.2 / Vitest 4.1.11.
 - `npm run build`: passed; existing large-bundle warning remains.
 - Python 3.12.13, SQLite, `python -Wd manage.py test`: 802 tests, 57 skipped,
   no failures. Existing Django 6 deprecation warning remains.
+- All six [GitHub CI checks](https://github.com/dasomji/BuDoBase/actions/runs/34551129010)
+  passed for dependency commit `7092846`. Both Python 3.10 and 3.12.13 ran
+  802 tests with 57 SQLite skips; PostgreSQL 16/Redis 7 ran 802 tests with
+  only one skip. CI also verified committed generated assets and production
+  static collection/S3 URL configuration.
 - `uv pip check`, Django `check`, `makemigrations --check --dry-run`, and
   production `check --deploy` with dummy CI configuration: passed.
 - Production requirements resolve for Python 3.10 as well as 3.12.
+- Local Python 3.10.6/PostgreSQL 18, `manage.py test --keepdb --noinput`:
+  802 tests passed with 2 skips. The first run without `--keepdb` failed during
+  database teardown because worker connections were still open; the rerun
+  uses the same retention setting as CI. No application change was needed.
 - Lizardtail preview rebuilt, static files collected with `--clear`, and process
   refreshed. Browser reload of the HTTPS login page succeeded; compiled JS/CSS
   both returned HTTP 200 and the login panel collapsed/expanded successfully.
