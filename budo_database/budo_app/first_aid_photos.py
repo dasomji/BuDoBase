@@ -9,12 +9,12 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
 from PIL import Image, ImageOps, UnidentifiedImageError
-from pillow_heif import register_heif_opener
 
 from .first_aid_contract import (
     FIRST_AID_DESCRIPTION_MAX_LENGTH,
     FIRST_AID_MAX_PHOTOS,
 )
+from .image_formats import register_heif_opener
 from .models import ErsteHilfeEintrag, ErsteHilfeFoto, Notizen, NotizFoto
 
 
