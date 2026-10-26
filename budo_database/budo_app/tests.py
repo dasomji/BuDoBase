@@ -21,7 +21,7 @@ from tempfile import SpooledTemporaryFile
 import os
 import json
 import pandas as pd
-from PIL import Image, ImageCms
+from PIL import Image, ImageCms, ImageOps
 import pillow_heif
 from datetime import date
 
@@ -220,6 +220,8 @@ class AuslagerorteImageTest(TestCase):
                             self.assertEqual(resized_image.format, "JPEG")
                             self.assertEqual(resized_image.size, (540, 1080))
                             stored_exif = resized_image.getexif()
+                            self.assertEqual(stored_exif[0x0112], 1)
+                            self.assertEqual(ImageOps.exif_transpose(resized_image).size, (540, 1080))
                             self.assertEqual(stored_exif[0x010F], "Regression camera")
                             gps = stored_exif.get_ifd(0x8825)
                             self.assertEqual(gps[1], "N")
