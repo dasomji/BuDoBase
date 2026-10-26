@@ -717,18 +717,17 @@ describe('Happy Cleaning management', () => {
     const dialog = screen.getByRole('dialog', { name: 'Stationen kopieren' });
     const first = within(dialog).getByRole('checkbox', { name: 'Alle Stationen auswählen' });
     const last = within(dialog).getByRole('button', { name: 'Schließen' });
-    expect(first).toHaveFocus();
+    await waitFor(() => expect(first).toHaveFocus());
 
     last.focus();
-    await user.keyboard('{Tab}');
-    expect(document.activeElement).toHaveAttribute('data-base-ui-focus-guard');
-    expect(trigger).not.toHaveFocus();
-    await user.keyboard('{Shift>}{Tab}{/Shift}');
-    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+    await user.tab();
+    await waitFor(() => expect(first).toHaveFocus());
+    await user.tab({ shift: true });
+    await waitFor(() => expect(last).toHaveFocus());
     await user.keyboard('{Escape}');
 
     expect(screen.queryByRole('dialog', { name: 'Stationen kopieren' })).not.toBeInTheDocument();
-    expect(trigger).toHaveFocus();
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it('shows failed station copies as error toasts, never inline', async () => {

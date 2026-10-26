@@ -327,13 +327,13 @@ describe('page-level EH photo gallery', () => {
     fireEvent.click(within(gallery()).getByRole('button', { name: /Galerie schließen/i }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(trigger).toHaveFocus();
+    await waitFor(() => expect(trigger).toHaveFocus());
 
     openPhoto(recentPhotos[1]);
     fireEvent.keyDown(document, { key: 'Escape' });
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(trigger).toHaveFocus();
+    await waitFor(() => expect(trigger).toHaveFocus());
     expect(window.location.pathname).toBe('/kid_details/7');
   });
 
@@ -348,15 +348,15 @@ describe('page-level EH photo gallery', () => {
     const backgroundAction = screen.getByRole('button', { name: 'Hintergrundaktion' });
     const trigger = openPhoto(recentPhotos[0]);
     const dialog = gallery();
+    const close = within(dialog).getByRole('button', { name: 'Galerie schließen' });
 
     await waitFor(() => {
-      expect(dialog).toContainElement(document.activeElement);
+      expect(close).toHaveFocus();
       expect(backgroundAction.closest('[aria-hidden="true"]')).not.toBeNull();
       expect(screen.queryByRole('button', { name: 'Hintergrundaktion' })).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Hintergrundaktion', hidden: true })).toBe(backgroundAction);
     });
 
-    const close = within(dialog).getByRole('button', { name: /Galerie schließen/i });
     const next = within(dialog).getByRole('button', { name: /Nächstes EH-Foto/i });
     close.focus();
     await user.tab({ shift: true });
@@ -370,7 +370,7 @@ describe('page-level EH photo gallery', () => {
 
     await user.click(close);
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(trigger).toHaveFocus();
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it('uses a horizontal threshold and leaves vertical gestures for CSS pan-y scrolling', () => {
