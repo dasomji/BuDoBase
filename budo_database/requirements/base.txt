@@ -33,6 +33,7 @@ s3transfer==0.19.2
 six==1.17.0
 sqlparse==0.6.0
 toml==0.10.2
+# Pre-release pin for CVE-2026-115877 (bare CR/LF HTTP header parsing via daphne); replace with Twisted 26.10.0 final once released.
 Twisted==26.10.0rc1
 typing_extensions==4.16.0
 tzdata==2026.3
