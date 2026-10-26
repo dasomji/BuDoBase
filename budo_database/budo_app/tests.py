@@ -1,4 +1,5 @@
 from budo_app.test_membership_fixtures import approve_and_select_turnus
+from django.apps import apps
 from django.test import TestCase, Client, SimpleTestCase, override_settings
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -126,6 +127,22 @@ class ExcelValueParsingTest(SimpleTestCase):
                 self.assertIs(parse_budo_erfahrung(value), True)
 
 
+class HeifRegistrationTest(SimpleTestCase):
+    def test_app_ready_can_register_heif_repeatedly(self):
+        app_config = apps.get_app_config("budo_app")
+        app_config.ready()
+        registered_opener = Image.OPEN["HEIF"]
+        app_config.ready()
+        self.assertEqual(Image.OPEN["HEIF"], registered_opener)
+
+        source = BytesIO()
+        pillow_heif.from_pillow(Image.new("RGB", (20, 10), "red")).save(source)
+        with Image.open(BytesIO(source.getvalue())) as decoded:
+            decoded.load()
+            self.assertEqual(decoded.size, (20, 10))
+            self.assertNotIn(None, decoded.info.values())
+
+
 class AuslagerorteImageTest(TestCase):
     def test_heif_without_exif_is_resized_and_converted_to_jpeg(self):
         source = BytesIO()
@@ -203,15 +220,12 @@ class AuslagerorteImageTest(TestCase):
                             self.assertEqual(resized_image.format, "JPEG")
                             self.assertEqual(resized_image.size, (540, 1080))
                             stored_exif = resized_image.getexif()
-                            # pillow-heif applies orientation on decoding and
-                            # resets its EXIF tag to 1; retain that behavior.
-                            self.assertEqual(
-                                stored_exif[0x0112], 1 if image_format == "HEIF" else 6
-                            )
                             self.assertEqual(stored_exif[0x010F], "Regression camera")
                             gps = stored_exif.get_ifd(0x8825)
                             self.assertEqual(gps[1], "N")
+                            self.assertEqual(gps[2], (48.0, 12.0, 0.0))
                             self.assertEqual(gps[3], "E")
+                            self.assertEqual(gps[4], (16.0, 22.0, 0.0))
                             self.assertEqual(resized_image.info["icc_profile"], icc_profile)
 
     def test_uploaded_image_is_resized_and_converted_to_jpeg(self):

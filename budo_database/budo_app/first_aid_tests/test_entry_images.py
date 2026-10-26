@@ -31,6 +31,7 @@ def image_upload(image_format="PNG", size=(2400, 1200)):
 
 class PhotoProcessingTests(SimpleTestCase):
     def test_heif_without_exif_is_converted_to_metadata_free_webp(self):
+        """HEIF coverage; this path does not forward info to the WebP encoder."""
         upload = image_upload("HEIF")
         with Image.open(upload) as original:
             self.assertFalse(original.getexif())

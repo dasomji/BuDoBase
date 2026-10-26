@@ -24,7 +24,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'rest_framework',
     'channels',
-    'budo_app',
+    'budo_app.apps.BudoAppConfig',
     'users.apps.UsersConfig',
     "phonenumber_field",
 ]
