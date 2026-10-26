@@ -25,6 +25,9 @@ so both forms resolve directly without losing POST data.
 
 ### Local server and React changes
 
+Frontend build tooling (vite, tailwind, shadcn, etc.) is in devDependencies, so builds require a full `npm ci` (not `--omit=dev`).
+Production serves the committed bundle from `budo_app/static/frontend/`.
+
 Development now uses Lizardtail's local PostgreSQL 18 main database, initially
 copied from Neon. The Neon URL in `.env` is not the development target. Start with
 `lizardtail up` from the repository root; run database commands through

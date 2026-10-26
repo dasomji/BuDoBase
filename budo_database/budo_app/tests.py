@@ -1,4 +1,5 @@
 from budo_app.test_membership_fixtures import approve_and_select_turnus
+from django.apps import apps
 from django.test import TestCase, Client, SimpleTestCase, override_settings
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -20,7 +21,8 @@ from tempfile import SpooledTemporaryFile
 import os
 import json
 import pandas as pd
-from PIL import Image
+from PIL import Image, ImageCms
+import pillow_heif
 from datetime import date
 
 
@@ -125,7 +127,107 @@ class ExcelValueParsingTest(SimpleTestCase):
                 self.assertIs(parse_budo_erfahrung(value), True)
 
 
+class HeifRegistrationTest(SimpleTestCase):
+    def test_app_ready_can_register_heif_repeatedly(self):
+        app_config = apps.get_app_config("budo_app")
+        app_config.ready()
+        registered_opener = Image.OPEN["HEIF"]
+        app_config.ready()
+        self.assertEqual(Image.OPEN["HEIF"], registered_opener)
+
+        source = BytesIO()
+        pillow_heif.from_pillow(Image.new("RGB", (20, 10), "red")).save(source)
+        with Image.open(BytesIO(source.getvalue())) as decoded:
+            decoded.load()
+            self.assertEqual(decoded.size, (20, 10))
+            self.assertNotIn(None, decoded.info.values())
+
+
 class AuslagerorteImageTest(TestCase):
+    def test_heif_without_exif_is_resized_and_converted_to_jpeg(self):
+        source = BytesIO()
+        pillow_heif.from_pillow(Image.new("RGB", (1200, 600), "red")).save(source)
+        with Image.open(BytesIO(source.getvalue())) as original:
+            self.assertIsNone(original.info.get("exif"))
+        upload = SimpleUploadedFile(
+            "location.heic", source.getvalue(), content_type="image/heic"
+        )
+
+        with (
+            TemporaryDirectory() as media_root,
+            override_settings(
+                MEDIA_ROOT=media_root,
+                STORAGES={
+                    "default": {
+                        "BACKEND": "django.core.files.storage.FileSystemStorage",
+                    },
+                },
+            ),
+        ):
+            location = Auslagerorte.objects.create(name="HEIF location")
+            stored_image = AuslagerorteImage(auslagerort=location)
+            stored_image.image.save(upload.name, upload)
+
+            with stored_image.image.open("rb") as stored_file:
+                with Image.open(stored_file) as resized_image:
+                    self.assertEqual(resized_image.format, "JPEG")
+                    self.assertEqual(resized_image.size, (1080, 540))
+                    self.assertFalse(resized_image.getexif())
+
+    def test_uploaded_heif_and_jpeg_keep_exif_and_icc_metadata(self):
+        exif = Image.Exif()
+        exif[0x0112] = 6
+        exif[0x010F] = "Regression camera"
+        exif[0x8825] = {
+            1: "N",
+            2: (48.0, 12.0, 0.0),
+            3: "E",
+            4: (16.0, 22.0, 0.0),
+        }
+        icc_profile = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+
+        with (
+            TemporaryDirectory() as media_root,
+            override_settings(
+                MEDIA_ROOT=media_root,
+                STORAGES={
+                    "default": {
+                        "BACKEND": "django.core.files.storage.FileSystemStorage",
+                    },
+                },
+            ),
+        ):
+            location = Auslagerorte.objects.create(name="Metadata location")
+            for image_format in ("HEIF", "JPEG"):
+                with self.subTest(image_format=image_format):
+                    source = BytesIO()
+                    Image.new("RGB", (1200, 600), "red").save(
+                        source,
+                        format=image_format,
+                        exif=exif.tobytes(),
+                        icc_profile=icc_profile,
+                    )
+                    upload = SimpleUploadedFile(
+                        f"location.{image_format.lower()}",
+                        source.getvalue(),
+                        content_type=f"image/{image_format.lower()}",
+                    )
+                    stored_image = AuslagerorteImage(auslagerort=location)
+                    stored_image.image.save(upload.name, upload)
+
+                    with stored_image.image.open("rb") as stored_file:
+                        with Image.open(stored_file) as resized_image:
+                            self.assertEqual(resized_image.format, "JPEG")
+                            self.assertEqual(resized_image.size, (540, 1080))
+                            stored_exif = resized_image.getexif()
+                            self.assertEqual(stored_exif[0x010F], "Regression camera")
+                            gps = stored_exif.get_ifd(0x8825)
+                            self.assertEqual(gps[1], "N")
+                            self.assertEqual(gps[2], (48.0, 12.0, 0.0))
+                            self.assertEqual(gps[3], "E")
+                            self.assertEqual(gps[4], (16.0, 22.0, 0.0))
+                            self.assertEqual(resized_image.info["icc_profile"], icc_profile)
+
     def test_uploaded_image_is_resized_and_converted_to_jpeg(self):
         upload = make_image_upload()
 

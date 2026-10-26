@@ -9,7 +9,6 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
 from PIL import Image, ImageOps, UnidentifiedImageError
-from pillow_heif import register_heif_opener
 
 from .first_aid_contract import (
     FIRST_AID_DESCRIPTION_MAX_LENGTH,
@@ -19,10 +18,6 @@ from .models import ErsteHilfeEintrag, ErsteHilfeFoto, Notizen, NotizFoto
 
 
 logger = logging.getLogger(__name__)
-
-# HEIC/HEIF decoding is opt-in in pillow-heif. Register it once at this
-# application boundary before Pillow inspects any upload.
-register_heif_opener()
 
 SUPPORTED_FORMATS = frozenset({"JPEG", "PNG", "WEBP", "HEIF"})
 
