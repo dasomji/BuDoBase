@@ -5,7 +5,8 @@ from unittest.mock import Mock, patch
 
 from django.core.files.base import ContentFile
 from django.core.management import call_command, CommandError
-from django.db import connection
+from django.db import connection, OperationalError
+from django.db.transaction import Atomic
 from django.test import TransactionTestCase, override_settings
 from PIL import Image
 
@@ -116,6 +117,47 @@ class RepairLocationImageOrientationTest(TransactionTestCase):
         self.assertIn("repaired=0, skipped=0, skipped_not_resized=0, missing=0, errors=1", output)
         self.assertIn("DB failed", errors)
 
+    def test_ambiguous_commit_failure_retains_both_files_and_reports_error(self):
+        real_exit = Atomic.__exit__
+
+        def commit_then_raise(atomic, *args):
+            real_exit(atomic, *args)
+            raise OperationalError("commit acknowledgement lost")
+
+        with patch.object(Atomic, "__exit__", new=commit_then_raise), patch.object(
+            self.storage, "delete", wraps=self.storage.delete
+        ) as delete:
+            output, errors = self.run_repair("--apply", "--assume-normalized", expect_errors=True)
+            delete.assert_not_called()
+        self.photo.refresh_from_db()
+        self.assertNotEqual(self.photo.image.name, self.old_name)
+        self.assertTrue(self.storage.exists(self.photo.image.name))
+        self.assertTrue(self.storage.exists(self.old_name))
+        self.assertEqual(len(self.files()), 2)
+        self.assertIn("repaired=0, skipped=0, skipped_not_resized=0, missing=0, errors=1", output)
+        self.assertIn("commit acknowledgement lost", errors)
+        self.assertIn(f"image={self.photo.pk}, key={self.old_name}", errors)
+
+    def test_failed_replacement_reference_check_retains_both_files_for_manual_review(self):
+        with patch("django.db.models.query.QuerySet.update", side_effect=OperationalError("DB failed")), patch(
+            "django.db.models.query.QuerySet.exists", side_effect=OperationalError("reference check failed")
+        ), patch.object(self.storage, "delete", wraps=self.storage.delete) as delete:
+            output, errors = self.run_repair("--apply", "--assume-normalized", expect_errors=True)
+            delete.assert_not_called()
+        self.photo.refresh_from_db()
+        self.assertEqual(self.photo.image.name, self.old_name)
+        self.assertTrue(self.storage.exists(self.old_name))
+        replacements = [name for name in self.files() if name != Path(self.old_name)]
+        self.assertEqual(len(replacements), 1)
+        self.assertTrue(self.storage.exists(str(replacements[0])))
+        self.assertIn("needs manual review", errors.lower())
+        self.assertIn(f"image={self.photo.pk}", errors)
+        self.assertIn(f"old key={self.old_name}", errors)
+        self.assertIn(f"new key={replacements[0]}", errors)
+        self.assertIn("reference check failed", errors)
+        self.assertIn("DB failed", errors)
+        self.assertIn("errors=2", output)
+
     def test_concurrent_row_change_does_not_delete_either_referenced_file(self):
         with patch("django.db.models.query.QuerySet.update", return_value=0):
             output, errors = self.run_repair("--apply", "--assume-normalized", expect_errors=True)
@@ -148,7 +190,8 @@ class RepairLocationImageOrientationTest(TransactionTestCase):
                 else:
                     self.assertEqual(missing.image.name, self.old_name)
 
-    def test_oversized_legacy_jpeg_is_skipped_without_decoding_or_reading_all_bytes(self):
+    def test_oversized_legacy_jpeg_is_skipped_without_decoding_or_reading_all_local_bytes(self):
+        """Local header reads stay bounded; S3's first read spools the whole object."""
         source = BytesIO()
         exif = Image.Exif()
         exif[0x0112] = 6
@@ -213,6 +256,22 @@ class RepairLocationImageOrientationTest(TransactionTestCase):
                 self.assertIn("scanned=2, needs repair=1", output)
                 self.assertIn(f"missing={missing}, errors=1", output)
                 self.assertIn(f"image={bad.pk}", errors)
+
+    def test_non_dict_storage_error_response_does_not_abort_later_rows(self):
+        AuslagerorteImage.objects.create(auslagerort=self.photo.auslagerort, image=self.old_name)
+        real_open = self.storage.open
+        for response in (None, "unavailable", []):
+            error = OSError("download failed")
+            error.response = response
+            # Fail the first row's open; the second row must still be inspected.
+            with self.subTest(response=response), real_open(self.old_name, "rb") as stored, patch.object(
+                self.storage, "open", side_effect=[error, stored]
+            ):
+                output, errors = self.run_repair(expect_errors=True)
+                self.assertIn("scanned=2, needs repair=1", output)
+                self.assertIn("missing=0, errors=1", output)
+                self.assertIn(f"image={self.photo.pk}, key={self.old_name}", errors)
+                self.assertIn("download failed", errors)
 
     def test_unidentified_image_is_reported_and_other_rows_continue(self):
         name = self.storage.save("broken.jpeg", ContentFile(b"not an image"))

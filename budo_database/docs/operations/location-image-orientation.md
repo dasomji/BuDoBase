@@ -39,7 +39,10 @@ The command applies two layers of protection:
    dimension exceeds the model field's `size` limit (currently 1080). The resized
    pipeline cannot produce these files. They are counted as `skipped_not_resized`;
    use `--verbosity 2` to list their row ids and keys. This check does not decode
-   pixels.
+   pixels. Local storage reads only the header for this size check. With
+   django-storages S3, the first read downloads the whole object into a spooled
+   temporary file, which subsequent reads reuse. A dry run over S3 therefore
+   transfers every image once, including oversized files that are skipped.
 2. For files at or below that limit, applying requires `--assume-normalized`.
    Smaller plain-ImageField legacy uploads remain ambiguous: dimensions and EXIF
    cannot prove that pixels have already been normalized. The flag is an operator
@@ -86,8 +89,11 @@ Production S3 has `file_overwrite=False`. For each repair the command:
 1. Saves patched bytes under a new UUID-based name via the field's storage and
    uses the actual returned storage key.
 2. Updates the row inside a durable transaction, conditional on its old key
-   still matching. A concurrent edit or failed update discards the replacement
-   and retains the original.
+   still matching. On a concurrent edit or transaction error, retains the old
+   key and deletes the replacement only after confirming no row references it.
+   A commit can succeed even if its acknowledgement fails; a referenced
+   replacement is retained. If the reference check fails, both keys are kept
+   and stderr reports the row id and both keys as needing manual review.
 3. Deletes the old key after commit, only if no location-image row references
    it. A deletion failure leaves the repaired row valid and reports the old key
    for cleanup. Failed replacement cleanup is also reported with its key.

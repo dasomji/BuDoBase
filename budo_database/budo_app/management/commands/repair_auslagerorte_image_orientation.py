@@ -64,7 +64,8 @@ class Command(BaseCommand):
                 continue
             try:
                 with storage.open(name, "rb") as stored:
-                    # Inspect only the header; never decode or transpose pixels.
+                    # Inspect dimensions without decoding or transposing pixels.
+                    # Local reads use only the header; S3 spools the whole object.
                     with Image.open(stored) as image:
                         dimensions = image.size
                     if max(dimensions) > resize_limit:
@@ -89,7 +90,9 @@ class Command(BaseCommand):
                 # django-storages maps open-time S3 404s to FileNotFoundError.
                 # Downloads can also raise ClientError; inspect its response
                 # without requiring a particular storage backend's exception type.
-                response = getattr(error, "response", {})
+                response = getattr(error, "response", None)
+                if not isinstance(response, dict):
+                    response = {}
                 missing = isinstance(error, FileNotFoundError) or (
                     response.get("ResponseMetadata", {}).get("HTTPStatusCode") == 404
                     or response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}
@@ -129,10 +132,22 @@ class Command(BaseCommand):
                 if changed != 1:
                     raise CommandError("Row changed while repairing; replacement discarded.")
         except Exception:
+            # Commit may have succeeded even when its acknowledgement failed.
+            # Keep both keys unless the replacement is known to be unreferenced.
             try:
-                storage.delete(new_name)
+                referenced = AuslagerorteImage.objects.filter(image=new_name).exists()
             except Exception as error:
-                self._error(f"Could not remove unused replacement key={new_name}: {error}")
+                self._error(
+                    f"Replacement needs manual review: image={image_id}, "
+                    f"old key={old_name}, new key={new_name}: "
+                    f"could not check references: {error}"
+                )
+            else:
+                if not referenced:
+                    try:
+                        storage.delete(new_name)
+                    except Exception as error:
+                        self._error(f"Could not remove unused replacement key={new_name}: {error}")
             raise
         # The row is committed. Old-key cleanup must never delete the new key
         # if deletion (or its error reporting) fails.
