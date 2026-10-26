@@ -45,7 +45,7 @@ class JpegExifOrientationTest(SimpleTestCase):
                     self.assertEqual(patched, jpeg_with_exif(1, endian))
                     self.assertEqual(len(patched), len(original))
 
-    def test_unneeded_or_unsupported_patches_return_original_object(self):
+    def test_unneeded_or_unsupported_patches_return_none(self):
         png = BytesIO()
         Image.new("RGB", (3, 2)).save(png, format="PNG")
         for original in (
@@ -54,7 +54,7 @@ class JpegExifOrientationTest(SimpleTestCase):
             b"\xff\xd8\xff\xd9", b"not a jpeg", png.getvalue(), b"",
         ):
             with self.subTest(original=original):
-                self.assertIs(reset_jpeg_exif_orientation(original), original)
+                self.assertIsNone(reset_jpeg_exif_orientation(original))
 
     def test_truncated_or_malformed_app1_and_tiff_are_unchanged(self):
         valid = jpeg_with_exif()
@@ -72,21 +72,20 @@ class JpegExifOrientationTest(SimpleTestCase):
         ]
         for original in samples:
             with self.subTest(original=original[:50]):
-                self.assertIs(reset_jpeg_exif_orientation(original), original)
+                self.assertIsNone(reset_jpeg_exif_orientation(original))
 
     def test_fuzz_inputs_never_raise(self):
         rng = random.Random(206)
         for length in range(1024):
             raw = rng.randbytes(length)
             for original in (raw, b"\xff\xd8" + raw, b"\xff\xd8\xff\xe1" + raw):
-                self.assertIsInstance(reset_jpeg_exif_orientation(original), bytes)
+                self.assertIsNone(reset_jpeg_exif_orientation(original))
 
     def test_mro_places_reset_between_resizer_and_django_save(self):
-        self.assertEqual(
-            OrientedResizedImageFieldFile.__mro__[:4],
-            (OrientedResizedImageFieldFile, ResizedImageFieldFile,
-             ExifOrientationResetMixin, ImageFieldFile),
-        )
+        mro = OrientedResizedImageFieldFile.__mro__
+        self.assertLess(mro.index(OrientedResizedImageFieldFile), mro.index(ResizedImageFieldFile))
+        self.assertLess(mro.index(ResizedImageFieldFile), mro.index(ExifOrientationResetMixin))
+        self.assertLess(mro.index(ExifOrientationResetMixin), mro.index(ImageFieldFile))
         self.assertIs(
             AuslagerorteImage._meta.get_field("image").attr_class,
             OrientedResizedImageFieldFile,

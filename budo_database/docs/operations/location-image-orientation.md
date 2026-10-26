@@ -4,6 +4,8 @@ Issue [#206](https://github.com/dasomji/BuDoBase/issues/206) affected JPEG uploa
 to `AuslagerorteImage.image`: django-resized normalized the pixels but retained
 the original EXIF Orientation. The field now resets the final JPEG's IFD0
 Orientation SHORT to 1 without re-encoding. All other bytes remain unchanged.
+XMP `tiff:Orientation` may still say 6; browsers ignore XMP orientation, so this
+remaining metadata is cosmetic.
 PNG and HEIF uploads still use the same resize/convert pipeline. First-aid
 photos already use `ImageOps.exif_transpose()` and encode metadata-free WebP;
 they do not need this repair.
@@ -26,16 +28,25 @@ For JPEGs saved through this pipeline, non-1 Orientation describes a transform
 already applied to the pixels, so resetting it is safe.
 
 However, `053c808` introduced location images with a plain `ImageField` on
-2024-07-03. Files uploaded before the resized field was deployed, direct imports,
-or files saved with normalization disabled may still need their orientation tag.
-The model has no upload timestamp or processing provenance. Image dimensions
-and EXIF cannot prove whether pixels have already been normalized.
+2024-07-03. Files uploaded before the deployment of commit e555a57 (2024-07-09),
+direct imports, or files saved with normalization disabled may still need their
+orientation tag. The commit date does not establish the deployment date. The
+model has no upload timestamp or processing provenance.
 
-Therefore applying requires `--assume-normalized`, asserting that the selected
-files were saved through the normalization pipeline. Establish this from upload
-or deployment records, known migration history, or visual inspection. Use
-repeatable `--image-id` to restrict the scope if only some rows are verified.
-Do not assert normalization for an unknown legacy collection.
+The command applies two layers of protection:
+
+1. Automatically read the image header's dimensions and skip files whose larger
+   dimension exceeds the model field's `size` limit (currently 1080). The resized
+   pipeline cannot produce these files. They are counted as `skipped_not_resized`;
+   use `--verbosity 2` to list their row ids and keys. This check does not decode
+   pixels.
+2. For files at or below that limit, applying requires `--assume-normalized`.
+   Smaller plain-ImageField legacy uploads remain ambiguous: dimensions and EXIF
+   cannot prove that pixels have already been normalized. The flag is an operator
+   assertion that the remaining selected files went through the normalization
+   pipeline. Establish this from upload or deployment records, known migration
+   history, or visual inspection. Use repeatable `--image-id` to restrict scope
+   to verified rows. Do not assert normalization for an unknown legacy collection.
 
 ## Command
 
@@ -53,14 +64,22 @@ After establishing provenance, apply to verified rows:
 python manage.py repair_auslagerorte_image_orientation --apply --assume-normalized --image-id 123
 ```
 
-Omit `--image-id` only when the entire collection is verified. No image files
-are decoded or re-encoded. Non-JPEG, absent/already-normal EXIF, and malformed
-headers are left untouched and counted as skipped. Dry-run candidates mean
-“the bytes can be patched,” not proof of processing provenance.
+Omit `--image-id` only when every file passing the automatic size filter is
+verified. Run `--apply` during a quiet window: a concurrent admin save of the
+same image could re-point a row at the old key after the repair commits.
 
-The summary reports scanned, needs repair, repaired, skipped, and errors.
-Errors include the affected row/file key and make the command exit nonzero;
-other rows continue to be processed. A second run skips repaired files.
+No image pixels are decoded or re-encoded. Recognized non-JPEG images and
+absent/already-normal or unsupported EXIF are left untouched and counted as
+`skipped`. Unreadable files, including headers PIL cannot identify, are errors.
+Dry-run candidates mean “the bytes can be patched,” not proof of processing
+provenance.
+
+The summary reports scanned, needs repair, repaired, skipped,
+`skipped_not_resized`, `missing`, and errors. Missing files are included in both
+`missing` and errors. Each error includes the affected row id/file key and makes
+the command exit nonzero after processing the remaining rows. This includes
+filesystem errors and S3 not-found/download errors. A second run skips repaired
+files.
 
 Production S3 has `file_overwrite=False`. For each repair the command:
 
