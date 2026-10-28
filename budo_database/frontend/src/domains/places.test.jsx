@@ -535,7 +535,8 @@ describe('Auslagerorte workflows', () => {
     await user.click(trigger);
 
     const dialog = screen.getByRole('dialog', { name: 'Bilder von Ada Hütte' });
-    expect(dialog).toContainElement(document.activeElement);
+    const first = within(dialog).getByRole('button', { name: 'Galerie schließen' });
+    await waitFor(() => expect(first).toHaveFocus());
     const modalElements = [...document.body.querySelectorAll('*')];
     expect(modalElements.find(element => element.classList.contains('z-[var(--z-modal)]'))).toHaveClass('bg-modal-overlay');
     expect(modalElements.some(element => element.classList.contains('z-[calc(var(--z-modal)+1)]'))).toBe(true);
@@ -545,6 +546,13 @@ describe('Auslagerorte workflows', () => {
         'text-overlay-foreground',
       );
     }
+    const last = within(dialog).getByRole('button', { name: 'Nächstes Bild' });
+    last.focus();
+    await user.tab();
+    await waitFor(() => expect(first).toHaveFocus());
+    await user.tab({ shift: true });
+    await waitFor(() => expect(last).toHaveFocus());
+
     const image = within(dialog).getByAltText('Ada Hütte 1');
     fireEvent.touchStart(image, { touches: [{ clientX: 100, clientY: 10 }] });
     fireEvent.touchEnd(image, { changedTouches: [{ clientX: 20, clientY: 12 }] });
@@ -554,6 +562,6 @@ describe('Auslagerorte workflows', () => {
     expect(within(dialog).getByAltText('Ada Hütte 1')).toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(trigger).toHaveFocus();
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 });
