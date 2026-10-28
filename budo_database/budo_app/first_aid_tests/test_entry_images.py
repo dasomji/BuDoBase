@@ -5,7 +5,7 @@ from io import BytesIO
 from django.contrib.auth.models import User
 from django.core.files.storage import InMemoryStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TransactionTestCase
+from django.test import SimpleTestCase, TransactionTestCase
 from django.urls import reverse
 from PIL import Image
 
@@ -27,6 +27,24 @@ def image_upload(image_format="PNG", size=(2400, 1200)):
         output.getvalue(),
         content_type=f"image/{extension}",
     )
+
+
+class PhotoProcessingTests(SimpleTestCase):
+    def test_heif_without_exif_is_converted_to_metadata_free_webp(self):
+        """HEIF coverage; this path does not forward info to the WebP encoder."""
+        upload = image_upload("HEIF")
+        with Image.open(upload) as original:
+            self.assertFalse(original.getexif())
+
+        processed = process_first_aid_photos([upload])[0]
+
+        self.assertEqual((processed.width, processed.height), (1600, 800))
+        with Image.open(BytesIO(processed.content)) as image:
+            self.assertEqual(image.format, "WEBP")
+            self.assertEqual(image.size, (1600, 800))
+            self.assertFalse(image.getexif())
+            self.assertNotIn("icc_profile", image.info)
+            self.assertNotIn("xmp", image.info)
 
 
 class EntryImageTests(TransactionTestCase):

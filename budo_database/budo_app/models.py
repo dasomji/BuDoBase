@@ -8,7 +8,7 @@ from django.db.models.signals import post_save, post_delete, pre_delete, pre_sav
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
 from phonenumber_field.modelfields import PhoneNumberField
-from django_resized import ResizedImageField
+from .fields import ResizedImageField
 from .first_aid_contract import OPAQUE_WEBP_KEY_PATTERN, SHA256_PATTERN
 from .private_storage import attachment_storage
 from .storage_lifecycle import (
