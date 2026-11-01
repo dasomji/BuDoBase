@@ -6,7 +6,7 @@ import { Toaster } from '../components/ui/toast';
 import { parseRoute } from '../routes';
 import { expectErrorToastOnly } from '../test-support';
 import { KidDetailPage, KidInteractionForm, KidsPage } from './kids';
-import { formatGermanDate, formatKidBirthday } from './shared';
+import { formatGermanDate, formatKidBirthday, NoteText } from './shared';
 
 const render = ui => testingLibraryRender(ui, {
   wrapper: ({ children }) => <Toaster timeout={0}>{children}</Toaster>,
@@ -33,6 +33,13 @@ function mockResponsiveContainerWidth(width) {
 }
 
 describe('Kinder pages', () => {
+  it('renders imported notes as text without creating executable HTML', () => {
+    const note = '<img src=x onerror="alert(document.cookie)">\n<script>alert(1)</script>';
+    const { baseElement } = render(<NoteText value={note} />);
+    expect(baseElement.querySelector('img, script')).toBeNull();
+    expect(baseElement.textContent).toBe(note);
+  });
+
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
