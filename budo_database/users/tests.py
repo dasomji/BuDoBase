@@ -1,9 +1,26 @@
 from django.db import IntegrityError, transaction
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 
 from budo_app.models import TurnusMembership
+
+
+class AnonymousFormCsrfTests(TestCase):
+    def test_login_and_registration_adapter_require_csrf(self):
+        client = Client(enforce_csrf_checks=True)
+        for target in ("/login/", "/register/"):
+            with self.subTest(target=target):
+                response = client.post("/api/form-submit/", {"_target": target})
+                self.assertEqual(response.status_code, 403)
+
+    def test_anonymous_login_adapter_accepts_bootstrap_csrf_token(self):
+        client = Client(enforce_csrf_checks=True)
+        token = client.get("/api/bootstrap/").json()["csrf_token"]
+        response = client.post(
+            "/api/form-submit/", {"_target": "/login/"}, HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, 422)
 
 
 @override_settings(REGISTRATION_PASSPHRASE="legacy-shared-secret")

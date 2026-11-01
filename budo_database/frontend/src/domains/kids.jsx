@@ -17,7 +17,7 @@ import {
   NotFoundPage,
   requiredHealthValue,
   requiredHealthYesNo,
-  TrustedHtml,
+  NoteText,
   yesNo,
 } from './shared';
 
@@ -110,8 +110,8 @@ export const kidColumns = [
   { key: 'food', label: 'Ernährung' },
   { key: 'drugs', label: 'Medikamente', render: row => displayOrPlaceholder(row.drugs) },
   { key: 'illness', label: 'Gesundheitliches', render: row => displayOrPlaceholder(row.illness) },
-  { key: 'note', label: 'Anmerkungen', priority: 'low', render: row => <TrustedHtml value={row.note} /> },
-  { key: 'booking_note', label: 'Anmerkungen (Buchung)', priority: 'low', render: row => <TrustedHtml value={row.booking_note} /> },
+  { key: 'note', label: 'Anmerkungen', priority: 'low', render: row => <NoteText value={row.note} /> },
+  { key: 'booking_note', label: 'Anmerkungen (Buchung)', priority: 'low', render: row => <NoteText value={row.booking_note} /> },
 ];
 
 export function KidsPage({ data }) {
@@ -166,7 +166,7 @@ export function KidDetailPage({ data, id, mutate, onSaved }) {
         <Column id="right-column" className="min-w-0 gap-4">
           <EntryPhotoGallery entries={kid.notes} childName={kid.full_name} photoKind={entryPhotoKinds.notes}>
             <Card title="Notizen" id="notizen" expanded={openActivity === 'notes'} onExpandedChange={expanded => changeOpenActivity('notes', expanded)}>
-              <FieldList items={[["Anmerkungen (Buchung)", <TrustedHtml value={kid.booking_note} />], ["Anmerkungen", <TrustedHtml value={kid.note} />]]} />
+              <FieldList items={[["Anmerkungen (Buchung)", <NoteText value={kid.booking_note} />], ["Anmerkungen", <NoteText value={kid.note} />]]} />
               <KidInteractionForm kid={kid} token={data.csrf_token} onSaved={onSaved} kind="note" />
               <ul>{kid.notes.length ? kid.notes.map(note => <NoteEntry entry={note} childName={kid.full_name} key={note.id} />) : <li>Noch keine Notizen.</li>}</ul>
             </Card>

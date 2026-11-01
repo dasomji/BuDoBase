@@ -18,7 +18,7 @@ export const requiredHealthValue = value => value === null || value === undefine
 export const requiredHealthYesNo = value => value === null || value === undefined ? '❗' : yesNo(value);
 export const money = value => `${Number(value || 0).toFixed(2)} €`;
 export const linkKid = kid => <a href={`/kid_details/${kid.id}`}>{kid.full_name}{!kid.present && <> <span className="kid-presence-indicator">❌</span></>}</a>;
-export const TrustedHtml = ({ value }) => value ? <span dangerouslySetInnerHTML={{ __html: value }} /> : '---';
+export const NoteText = ({ value }) => value ? <span style={{ whiteSpace: 'pre-wrap' }}>{value}</span> : '---';
 
 export function PrintPageStyle() {
   return (

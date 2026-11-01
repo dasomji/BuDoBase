@@ -1,6 +1,7 @@
 import re
 
 from django.urls import resolve
+from django.views.decorators.csrf import csrf_protect
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -18,12 +19,16 @@ FORM_TARGETS = (
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@csrf_protect
 def submit_form(request):
     """REST adapter for the established Django form/domain handlers.
 
     React owns form rendering and state. The existing handlers remain the
     single source of validation and business rules while this adapter turns
     redirects and bound-form errors into a stable JSON contract.
+
+    Explicit CSRF protection also covers anonymous login/registration requests,
+    for which DRF's SessionAuthentication does not enforce CSRF.
     """
     target = request.data.get("_target", "")
     if not any(re.fullmatch(pattern, target) for pattern in FORM_TARGETS):
